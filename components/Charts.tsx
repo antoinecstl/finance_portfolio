@@ -351,10 +351,10 @@ export function PortfolioHistoryChart({
               stroke="#9ca3af"
             />
             <Tooltip 
-              formatter={(value: number, name: string) => {
+              formatter={(value, name) => {
                 const label = name === 'totalValue' ? 'Total' : 
                              name === 'stocksValue' ? 'Actions' : 'Épargne';
-                return [formatCurrency(value), label];
+                return [formatCurrency(Number(value) || 0), label];
               }}
               labelFormatter={(label) => `Date: ${label}`}
               contentStyle={{
