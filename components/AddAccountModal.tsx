@@ -25,7 +25,6 @@ const accountTypes: { value: AccountType; label: string }[] = [
 export function AddAccountModal({ isOpen, onClose, onSuccess }: AddAccountModalProps) {
   const [name, setName] = useState('');
   const [type, setType] = useState<AccountType>('LIVRET_A');
-  const [balance, setBalance] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
@@ -48,7 +47,7 @@ export function AddAccountModal({ isOpen, onClose, onSuccess }: AddAccountModalP
         user_id: user.id,
         name,
         type,
-        balance: parseFloat(balance) || 0,
+        balance: 0,
         currency: 'EUR',
       });
 
@@ -56,7 +55,6 @@ export function AddAccountModal({ isOpen, onClose, onSuccess }: AddAccountModalP
 
       setName('');
       setType('LIVRET_A');
-      setBalance('');
       onSuccess();
       onClose();
     } catch (err) {
@@ -113,19 +111,9 @@ export function AddAccountModal({ isOpen, onClose, onSuccess }: AddAccountModalP
             </select>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-              Solde initial (€)
-            </label>
-            <input
-              type="number"
-              step="0.01"
-              value={balance}
-              onChange={(e) => setBalance(e.target.value)}
-              placeholder="0.00"
-              className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
+          <p className="text-sm text-zinc-500 dark:text-zinc-400 bg-zinc-50 dark:bg-zinc-800 p-3 rounded-lg">
+            💡 Le solde du compte sera calculé automatiquement à partir de vos transactions. Ajoutez un dépôt après avoir créé le compte.
+          </p>
 
           {error && (
             <p className="text-sm text-red-600">{error}</p>

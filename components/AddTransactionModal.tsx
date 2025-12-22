@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { X, Search } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { Account, StockPosition, Transaction } from '@/lib/types';
@@ -46,6 +46,8 @@ export function AddTransactionModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showSearchDropdown, setShowSearchDropdown] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
   const [existingPositions, setExistingPositions] = useState<StockPosition[]>([]);
   const [allTransactions, setAllTransactions] = useState<Transaction[]>([]);
   const { user } = useAuth();
@@ -59,6 +61,18 @@ export function AddTransactionModal({
     }
   }, [quantity, pricePerUnit]);
 
+  // Fermer le dropdown au clic extérieur
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+        setShowSearchDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   // Recherche d'actions
   useEffect(() => {
     if (searchQuery.length >= 2) {
@@ -69,29 +83,37 @@ export function AddTransactionModal({
 
   // Charger les positions existantes et toutes les transactions pour le compte
   const loadExistingPositions = useCallback(async () => {
-    if (!accountId || !user) return;
+    if (!user) return;
     
-    // Charger les positions actuelles
-    const { data: positions } = await supabase
+    // Charger les positions de TOUS les comptes de l'utilisateur (pour les dividendes)
+    const { data: allPositions } = await supabase
       .from('stock_positions')
       .select('*')
-      .eq('account_id', accountId)
       .eq('user_id', user.id);
     
-    if (positions) {
-      setExistingPositions(positions);
+    if (allPositions) {
+      // Dédupliquer par symbole (au cas où une action serait sur plusieurs comptes)
+      const uniquePositions = allPositions.reduce((acc: StockPosition[], pos) => {
+        if (!acc.find(p => p.symbol === pos.symbol)) {
+          acc.push(pos);
+        }
+        return acc;
+      }, []);
+      setExistingPositions(uniquePositions);
     }
 
     // Charger toutes les transactions pour calculer les positions à une date donnée
-    const { data: transactions } = await supabase
-      .from('transactions')
-      .select('*')
-      .eq('account_id', accountId)
-      .eq('user_id', user.id)
-      .order('date', { ascending: true });
-    
-    if (transactions) {
-      setAllTransactions(transactions);
+    if (accountId) {
+      const { data: transactions } = await supabase
+        .from('transactions')
+        .select('*')
+        .eq('account_id', accountId)
+        .eq('user_id', user.id)
+        .order('date', { ascending: true });
+      
+      if (transactions) {
+        setAllTransactions(transactions);
+      }
     }
   }, [accountId, user]);
 
@@ -102,6 +124,8 @@ export function AddTransactionModal({
   if (!isOpen) return null;
 
   const isStockTransaction = ['BUY', 'SELL'].includes(type);
+  const isDividendTransaction = type === 'DIVIDEND';
+  const needsStockSelection = isStockTransaction || isDividendTransaction;
   const selectedAccount = accounts.find(a => a.id === accountId);
   const isStockAccount = selectedAccount && ['PEA', 'CTO'].includes(selectedAccount.type);
 
@@ -109,6 +133,7 @@ export function AddTransactionModal({
     setStockSymbol(symbol);
     setStockName(name);
     setSearchQuery('');
+    setShowSearchDropdown(false);
   };
 
   const handleSelectExistingPosition = (position: StockPosition) => {
@@ -145,6 +170,11 @@ export function AddTransactionModal({
         }
       }
 
+      // Validation pour les dividendes
+      if (isDividendTransaction && !stockSymbol) {
+        throw new Error('Veuillez sélectionner l\'action associée au dividende');
+      }
+
       // Pour une vente, vérifier qu'on a assez de titres À LA DATE de la transaction
       if (type === 'SELL') {
         // Calculer les positions à la date de la transaction
@@ -172,7 +202,7 @@ export function AddTransactionModal({
         account_id: accountId,
         type,
         amount: totalAmount,
-        description: description || (isStockTransaction ? `${type === 'BUY' ? 'Achat' : 'Vente'} ${qty} x ${stockSymbol}` : ''),
+        description: description || (isStockTransaction ? `${type === 'BUY' ? 'Achat' : 'Vente'} ${qty} x ${stockSymbol}` : (isDividendTransaction && stockSymbol ? `Dividende ${stockSymbol}` : '')),
         date,
       };
 
@@ -180,6 +210,11 @@ export function AddTransactionModal({
         transactionData.stock_symbol = stockSymbol.toUpperCase();
         transactionData.quantity = qty;
         transactionData.price_per_unit = price;
+      }
+
+      // Ajouter le symbole pour les dividendes
+      if (isDividendTransaction && stockSymbol) {
+        transactionData.stock_symbol = stockSymbol.toUpperCase();
       }
 
       const { error: transactionError } = await supabase.from('transactions').insert(transactionData);
@@ -344,6 +379,48 @@ export function AddTransactionModal({
             />
           </div>
 
+          {/* Sélection d'action pour les dividendes */}
+          {isDividendTransaction && existingPositions.length > 0 && (
+            <div>
+              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                Action concernée par le dividende
+              </label>
+              <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto">
+                {existingPositions.map((pos) => (
+                  <button
+                    key={pos.id}
+                    type="button"
+                    onClick={() => handleSelectExistingPosition(pos)}
+                    className={`text-left p-2 rounded-lg border text-sm transition-colors ${
+                      stockSymbol.toUpperCase() === pos.symbol.toUpperCase()
+                        ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/30'
+                        : 'border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800'
+                    }`}
+                  >
+                    <div className="font-medium text-zinc-900 dark:text-zinc-100">{pos.symbol}</div>
+                    <div className="text-xs text-zinc-500">{pos.name}</div>
+                  </button>
+                ))}
+              </div>
+              {stockSymbol && (
+                <div className="mt-2 p-2 bg-emerald-50 dark:bg-emerald-900/30 rounded-lg border border-emerald-200 dark:border-emerald-800">
+                  <div className="flex justify-between items-center">
+                    <div className="text-sm text-emerald-700 dark:text-emerald-300">
+                      Dividende pour <span className="font-semibold">{stockSymbol}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => { setStockSymbol(''); setStockName(''); }}
+                      className="text-emerald-500 hover:text-emerald-700"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {isStockTransaction && (
             <>
               {/* Pour les ventes, afficher les positions existantes */}
@@ -374,7 +451,7 @@ export function AddTransactionModal({
 
               {/* Pour les achats, recherche d'action */}
               {type === 'BUY' && (
-                <div className="relative">
+                <div className="relative" ref={searchRef}>
                   <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
                     Rechercher une action
                   </label>
@@ -383,12 +460,16 @@ export function AddTransactionModal({
                     <input
                       type="text"
                       value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onChange={(e) => {
+                        setSearchQuery(e.target.value);
+                        setShowSearchDropdown(true);
+                      }}
+                      onFocus={() => setShowSearchDropdown(true)}
                       placeholder="Rechercher par nom ou symbole..."
                       className="w-full pl-10 pr-3 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                   </div>
-                  {searchResults.length > 0 && (
+                  {showSearchDropdown && searchResults.length > 0 && (
                     <div className="absolute z-10 w-full mt-1 bg-white dark:bg-zinc-800 rounded-lg shadow-lg border border-zinc-200 dark:border-zinc-700 max-h-48 overflow-y-auto">
                       {searchResults.map((result) => (
                         <button

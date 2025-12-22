@@ -11,6 +11,8 @@ import {
   PortfolioHistoryPoint,
   calculateAccountTotalValue,
   AccountCalculatedValue,
+  calculatePositionsAtDate,
+  CalculatedPosition,
 } from '@/lib/portfolio-calculator';
 
 // Hook pour récupérer les comptes
@@ -370,11 +372,77 @@ export function useAccountsWithCalculatedValues(
         };
       }
 
-      // Pour les autres comptes (épargne), garder le solde stocké
+      // Pour les autres comptes (épargne), calculer le solde depuis les transactions
+      const accountTransactions = transactions.filter(t => t.account_id === account.id);
+      let calculatedBalance = 0;
+      
+      for (const tx of accountTransactions) {
+        switch (tx.type) {
+          case 'DEPOSIT':
+          case 'DIVIDEND':
+          case 'INTEREST':
+            calculatedBalance += tx.amount;
+            break;
+          case 'WITHDRAWAL':
+          case 'FEE':
+            calculatedBalance -= tx.amount;
+            break;
+        }
+      }
+
       return {
         ...account,
-        calculatedTotalValue: account.balance,
+        calculatedTotalValue: calculatedBalance,
+        balance: calculatedBalance,
       };
     });
   }, [accounts, transactions, positions, quotes]);
+}
+
+/**
+ * Position enrichie avec les valeurs calculées depuis les transactions
+ */
+export interface EnrichedPosition extends StockPosition {
+  calculatedQuantity: number;
+  calculatedAveragePrice: number;
+  calculatedTotalInvested: number;
+}
+
+/**
+ * Hook pour enrichir les positions avec les quantités calculées dynamiquement depuis les transactions
+ * La quantité et le PRU sont recalculés depuis les transactions
+ */
+export function usePositionsWithCalculatedValues(
+  positions: StockPosition[],
+  transactions: Transaction[]
+): EnrichedPosition[] {
+  return useMemo(() => {
+    // Calculer les positions actuelles depuis les transactions
+    const today = new Date().toISOString().split('T')[0];
+    const calculatedPositions = calculatePositionsAtDate(transactions, today);
+
+    return positions.map(position => {
+      const calculated = calculatedPositions.get(position.symbol.toUpperCase());
+      
+      if (calculated) {
+        return {
+          ...position,
+          calculatedQuantity: calculated.quantity,
+          calculatedAveragePrice: calculated.averagePrice,
+          calculatedTotalInvested: calculated.totalInvested,
+          // Remplacer les valeurs par les valeurs calculées
+          quantity: calculated.quantity,
+          average_price: calculated.averagePrice,
+        };
+      }
+
+      // Si pas de transactions trouvées, garder les valeurs stockées
+      return {
+        ...position,
+        calculatedQuantity: position.quantity,
+        calculatedAveragePrice: position.average_price,
+        calculatedTotalInvested: position.quantity * position.average_price,
+      };
+    });
+  }, [positions, transactions]);
 }

@@ -118,74 +118,101 @@ export function PositionsTable({
   }, [accounts]);
 
   // Calculer les positions clôturées à partir des transactions
+  // Une position fermée = des ventes ont eu lieu, et soit:
+  // - Le symbole n'a plus de position ouverte (vendu totalement)
+  // - OU il y a eu des cycles d'achat/vente complets dans le passé
   const closedPositions = useMemo(() => {
-    const positionMap = new Map<string, {
+    // Grouper les transactions par symbole et suivre les cycles de trading
+    const symbolHistory = new Map<string, {
       symbol: string;
       name: string;
-      buyQty: number;
-      buyTotal: number;
-      sellQty: number;
-      sellTotal: number;
-      lastSellDate: string;
+      closedTrades: Array<{
+        buyQty: number;
+        buyTotal: number;
+        sellQty: number;
+        sellTotal: number;
+        sellDate: string;
+      }>;
     }>();
 
-    // Grouper les transactions par symbole
-    transactions
+    // Trier les transactions par date pour suivre les cycles
+    const sortedTransactions = [...transactions]
       .filter(t => t.stock_symbol && ['BUY', 'SELL'].includes(t.type))
-      .forEach(t => {
-        const symbol = t.stock_symbol!.toUpperCase();
-        const existing = positionMap.get(symbol) || {
-          symbol,
-          name: symbol,
-          buyQty: 0,
-          buyTotal: 0,
-          sellQty: 0,
-          sellTotal: 0,
-          lastSellDate: '',
-        };
+      .sort((a, b) => a.date.localeCompare(b.date));
 
-        if (t.type === 'BUY') {
-          existing.buyQty += t.quantity || 0;
-          existing.buyTotal += t.amount || 0;
-        } else if (t.type === 'SELL') {
-          existing.sellQty += t.quantity || 0;
-          existing.sellTotal += t.amount || 0;
-          if (t.date > existing.lastSellDate) {
-            existing.lastSellDate = t.date;
-          }
+    // Pour chaque symbole, calculer les positions vendues
+    const runningPositions = new Map<string, { qty: number; totalCost: number }>();
+
+    sortedTransactions.forEach(t => {
+      const symbol = t.stock_symbol!.toUpperCase();
+      const qty = t.quantity || 0;
+      const amount = t.amount || 0;
+
+      if (!symbolHistory.has(symbol)) {
+        symbolHistory.set(symbol, { symbol, name: symbol, closedTrades: [] });
+      }
+
+      const running = runningPositions.get(symbol) || { qty: 0, totalCost: 0 };
+
+      if (t.type === 'BUY') {
+        running.qty += qty;
+        running.totalCost += amount;
+        runningPositions.set(symbol, running);
+      } else if (t.type === 'SELL') {
+        // Calculer le PRU moyen au moment de la vente
+        const avgBuyPrice = running.qty > 0 ? running.totalCost / running.qty : 0;
+        const sellQty = Math.min(qty, running.qty); // Ne pas vendre plus que ce qu'on a
+        
+        if (sellQty > 0) {
+          // Enregistrer cette vente comme un trade fermé
+          symbolHistory.get(symbol)!.closedTrades.push({
+            buyQty: sellQty,
+            buyTotal: sellQty * avgBuyPrice,
+            sellQty: sellQty,
+            sellTotal: amount,
+            sellDate: t.date,
+          });
+
+          // Mettre à jour la position courante
+          running.qty -= sellQty;
+          running.totalCost -= sellQty * avgBuyPrice;
+          runningPositions.set(symbol, running);
         }
+      }
+    });
 
-        positionMap.set(symbol, existing);
-      });
-
-    // Filtrer les positions qui ont été vendues et qui ne sont plus ouvertes
-    const openSymbols = new Set(positions.map(p => p.symbol.toUpperCase()));
-    
+    // Convertir en positions fermées
     const closed: ClosedPosition[] = [];
-    positionMap.forEach((data) => {
-      // Une position est clôturée si elle a été vendue et n'est plus dans les positions ouvertes
-      if (data.sellQty > 0 && !openSymbols.has(data.symbol)) {
-        const avgBuyPrice = data.buyQty > 0 ? data.buyTotal / data.buyQty : 0;
-        const avgSellPrice = data.sellQty > 0 ? data.sellTotal / data.sellQty : 0;
-        const realizedGain = data.sellTotal - (data.sellQty * avgBuyPrice);
-        const realizedGainPercent = data.buyTotal > 0 ? (realizedGain / (data.sellQty * avgBuyPrice)) * 100 : 0;
+    symbolHistory.forEach((data) => {
+      if (data.closedTrades.length > 0) {
+        // Agréger tous les trades fermés pour ce symbole
+        const totalBought = data.closedTrades.reduce((sum, t) => sum + t.buyQty, 0);
+        const totalBuyAmount = data.closedTrades.reduce((sum, t) => sum + t.buyTotal, 0);
+        const totalSold = data.closedTrades.reduce((sum, t) => sum + t.sellQty, 0);
+        const totalSellAmount = data.closedTrades.reduce((sum, t) => sum + t.sellTotal, 0);
+        const lastSellDate = data.closedTrades[data.closedTrades.length - 1].sellDate;
+
+        const avgBuyPrice = totalBought > 0 ? totalBuyAmount / totalBought : 0;
+        const avgSellPrice = totalSold > 0 ? totalSellAmount / totalSold : 0;
+        const realizedGain = totalSellAmount - totalBuyAmount;
+        const realizedGainPercent = totalBuyAmount > 0 ? (realizedGain / totalBuyAmount) * 100 : 0;
 
         closed.push({
           symbol: data.symbol,
           name: data.name,
-          totalBought: data.buyQty,
-          totalSold: data.sellQty,
+          totalBought,
+          totalSold,
           avgBuyPrice,
           avgSellPrice,
           realizedGain,
           realizedGainPercent,
-          lastSellDate: data.lastSellDate,
+          lastSellDate,
         });
       }
     });
 
     return closed.sort((a, b) => b.lastSellDate.localeCompare(a.lastSellDate));
-  }, [transactions, positions]);
+  }, [transactions]);
 
   // Calculer les totaux
   let totalValue = 0;

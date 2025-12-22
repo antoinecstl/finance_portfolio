@@ -9,12 +9,14 @@ import {
   History, 
   TrendingUp,
   LogOut,
-  Loader2
+  Loader2,
+  Coins
 } from 'lucide-react';
 import { PortfolioStats } from './PortfolioStats';
 import { AccountList } from './AccountList';
 import { PositionsTable } from './PositionsTable';
 import { TransactionsList } from './TransactionsList';
+import { DividendsTable } from './DividendsTable';
 import { AllocationChart, SectorAllocationChart, PortfolioHistoryChart } from './Charts';
 import { AddAccountModal } from './AddAccountModal';
 import { AddTransactionModal } from './AddTransactionModal';
@@ -26,13 +28,14 @@ import {
   useStockQuotes,
   usePortfolioSummary,
   usePortfolioHistory,
-  useAccountsWithCalculatedValues
+  useAccountsWithCalculatedValues,
+  usePositionsWithCalculatedValues
 } from '@/lib/hooks';
 import { formatDateTime } from '@/lib/utils';
 import { useAuth } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
 
-type TabType = 'dashboard' | 'accounts' | 'positions' | 'transactions';
+type TabType = 'dashboard' | 'accounts' | 'positions' | 'transactions' | 'dividends';
 
 export function Dashboard() {
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
@@ -53,11 +56,14 @@ export function Dashboard() {
   const symbols = useMemo(() => positions.map(p => p.symbol), [positions]);
   const { quotes, refetch: refetchQuotes } = useStockQuotes(symbols);
 
-  // Comptes enrichis avec valeurs calculées (PEA/CTO recalculés dynamiquement)
-  const enrichedAccounts = useAccountsWithCalculatedValues(accounts, transactions, positions, quotes);
+  // Positions enrichies avec quantités calculées depuis les transactions
+  const enrichedPositions = usePositionsWithCalculatedValues(positions, transactions);
 
-  // Calculer le résumé du portefeuille
-  const portfolioSummary = usePortfolioSummary(positions, quotes);
+  // Comptes enrichis avec valeurs calculées (PEA/CTO recalculés dynamiquement)
+  const enrichedAccounts = useAccountsWithCalculatedValues(accounts, transactions, enrichedPositions, quotes);
+
+  // Calculer le résumé du portefeuille (utiliser les positions enrichies)
+  const portfolioSummary = usePortfolioSummary(enrichedPositions, quotes);
 
   // Historique du portefeuille (calculé dynamiquement)
   const { history: portfolioHistory, loading: loadingHistory } = usePortfolioHistory(
@@ -130,6 +136,7 @@ export function Dashboard() {
     { id: 'accounts' as TabType, label: 'Comptes', icon: Wallet },
     { id: 'positions' as TabType, label: 'Positions', icon: TrendingUp },
     { id: 'transactions' as TabType, label: 'Transactions', icon: History },
+    { id: 'dividends' as TabType, label: 'Dividendes', icon: Coins },
   ];
 
   return (
@@ -211,8 +218,8 @@ export function Dashboard() {
 
             {/* Charts */}
             <div className="grid gap-6 lg:grid-cols-2">
-              <AllocationChart positions={positions} quotes={quotes} />
-              <SectorAllocationChart positions={positions} quotes={quotes} />
+              <AllocationChart positions={enrichedPositions} quotes={quotes} />
+              <SectorAllocationChart positions={enrichedPositions} quotes={quotes} />
             </div>
 
             {/* History Chart */}
@@ -280,20 +287,16 @@ export function Dashboard() {
 
         {activeTab === 'positions' && (
           <div>
-            <div className="flex items-center justify-between mb-6">
+            <div className="mb-6">
               <h2 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
                 Mes Positions
               </h2>
-              <button
-                onClick={() => setShowAddPosition(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                <Plus className="h-4 w-4" />
-                Ajouter une position
-              </button>
+              <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
+                Gérez vos positions via l'onglet Transactions
+              </p>
             </div>
             <PositionsTable 
-              positions={positions} 
+              positions={enrichedPositions} 
               quotes={quotes} 
               accounts={enrichedAccounts}
               transactions={transactions}
@@ -315,7 +318,29 @@ export function Dashboard() {
                 Ajouter une transaction
               </button>
             </div>
-            <TransactionsList transactions={transactions} />
+            <TransactionsList 
+              transactions={transactions} 
+              accounts={accounts}
+              showFilters={true}
+            />
+          </div>
+        )}
+
+        {activeTab === 'dividends' && (
+          <div>
+            <div className="mb-6">
+              <h2 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
+                Mes Dividendes
+              </h2>
+              <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
+                Ajoutez vos dividendes via l'onglet Transactions
+              </p>
+            </div>
+            <DividendsTable 
+              transactions={transactions}
+              positions={enrichedPositions}
+              quotes={quotes}
+            />
           </div>
         )}
       </main>
