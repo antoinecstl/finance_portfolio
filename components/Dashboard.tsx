@@ -143,51 +143,51 @@ export function Dashboard() {
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
       {/* Header */}
       <header className="bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-3">
-              <div className="bg-blue-600 rounded-lg p-2">
-                <TrendingUp className="h-6 w-6 text-white" />
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-14 sm:h-16">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="bg-blue-600 rounded-lg p-1.5 sm:p-2">
+                <TrendingUp className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
               </div>
-              <div>
-                <h1 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">
+              <div className="hidden xs:block">
+                <h1 className="text-base sm:text-xl font-bold text-zinc-900 dark:text-zinc-100">
                   Mon Portefeuille
                 </h1>
-                <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                <p className="text-[10px] sm:text-xs text-zinc-500 dark:text-zinc-400 hidden sm:block">
                   Mis à jour: {formatDateTime(lastUpdate)}
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
-              <span className="text-sm text-zinc-500 dark:text-zinc-400 hidden sm:inline">
+            <div className="flex items-center gap-1 sm:gap-3">
+              <span className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 hidden md:inline truncate max-w-[150px]">
                 {user.email}
               </span>
               <button
                 onClick={handleRefresh}
                 disabled={isLoading}
-                className="p-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors disabled:opacity-50"
+                className="p-1.5 sm:p-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors disabled:opacity-50"
                 title="Rafraîchir"
               >
-                <RefreshCw className={`h-5 w-5 text-zinc-600 dark:text-zinc-400 ${isLoading ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`h-4 w-4 sm:h-5 sm:w-5 text-zinc-600 dark:text-zinc-400 ${isLoading ? 'animate-spin' : ''}`} />
               </button>
               <button
                 onClick={handleLogout}
-                className="p-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors text-zinc-600 dark:text-zinc-400"
+                className="p-1.5 sm:p-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors text-zinc-600 dark:text-zinc-400"
                 title="Déconnexion"
               >
-                <LogOut className="h-5 w-5" />
+                <LogOut className="h-4 w-4 sm:h-5 sm:w-5" />
               </button>
             </div>
           </div>
 
-          {/* Tabs */}
-          <nav className="flex gap-1 -mb-px">
+          {/* Tabs - scrollable on mobile */}
+          <nav className="flex gap-1 -mb-px overflow-x-auto scrollbar-hide">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
                   activeTab === tab.id
                     ? 'border-blue-600 text-blue-600'
                     : 'border-transparent text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
@@ -195,6 +195,7 @@ export function Dashboard() {
               >
                 <tab.icon className="h-4 w-4" />
                 <span className="hidden sm:inline">{tab.label}</span>
+                <span className="sm:hidden">{tab.label.slice(0, 4)}</span>
               </button>
             ))}
           </nav>
@@ -202,9 +203,9 @@ export function Dashboard() {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
         {activeTab === 'dashboard' && (
-          <div className="space-y-8">
+          <div className="space-y-4 sm:space-y-6 lg:space-y-8">
             {/* Stats */}
             <PortfolioStats
               totalValue={portfolioSummary.totalValue}
@@ -216,8 +217,8 @@ export function Dashboard() {
               savingsTotal={savingsTotal}
             />
 
-            {/* Charts */}
-            <div className="grid gap-6 lg:grid-cols-2">
+            {/* Charts - stack on mobile */}
+            <div className="grid gap-4 sm:gap-6 md:grid-cols-2">
               <AllocationChart positions={enrichedPositions} quotes={quotes} />
               <SectorAllocationChart positions={enrichedPositions} quotes={quotes} />
             </div>
@@ -230,18 +231,18 @@ export function Dashboard() {
               selectedPeriod={historyPeriod}
             />
 
-            {/* Quick Views */}
-            <div className="grid gap-6 lg:grid-cols-2">
+            {/* Quick Views - stack on mobile */}
+            <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
               <div>
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+                <div className="flex items-center justify-between mb-3 sm:mb-4">
+                  <h2 className="text-base sm:text-lg font-semibold text-zinc-900 dark:text-zinc-100">
                     Mes Comptes
                   </h2>
                   <button
                     onClick={() => setShowAddAccount(true)}
-                    className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700"
+                    className="flex items-center gap-1 text-xs sm:text-sm text-blue-600 hover:text-blue-700"
                   >
-                    <Plus className="h-4 w-4" />
+                    <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                     Ajouter
                   </button>
                 </div>
@@ -249,15 +250,15 @@ export function Dashboard() {
               </div>
 
               <div>
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+                <div className="flex items-center justify-between mb-3 sm:mb-4">
+                  <h2 className="text-base sm:text-lg font-semibold text-zinc-900 dark:text-zinc-100">
                     Dernières Transactions
                   </h2>
                   <button
                     onClick={() => setShowAddTransaction(true)}
-                    className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700"
+                    className="flex items-center gap-1 text-xs sm:text-sm text-blue-600 hover:text-blue-700"
                   >
-                    <Plus className="h-4 w-4" />
+                    <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                     Ajouter
                   </button>
                 </div>
@@ -269,16 +270,16 @@ export function Dashboard() {
 
         {activeTab === 'accounts' && (
           <div>
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 sm:mb-6">
+              <h2 className="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-zinc-100">
                 Mes Comptes
               </h2>
               <button
                 onClick={() => setShowAddAccount(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm sm:text-base"
               >
                 <Plus className="h-4 w-4" />
-                Ajouter un compte
+                <span>Ajouter un compte</span>
               </button>
             </div>
             <AccountList accounts={enrichedAccounts} />
@@ -287,11 +288,11 @@ export function Dashboard() {
 
         {activeTab === 'positions' && (
           <div>
-            <div className="mb-6">
-              <h2 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
+            <div className="mb-4 sm:mb-6">
+              <h2 className="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-zinc-100">
                 Mes Positions
               </h2>
-              <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
+              <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 mt-1">
                 Gérez vos positions via l'onglet Transactions
               </p>
             </div>
@@ -306,16 +307,16 @@ export function Dashboard() {
 
         {activeTab === 'transactions' && (
           <div>
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 sm:mb-6">
+              <h2 className="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-zinc-100">
                 Historique des Transactions
               </h2>
               <button
                 onClick={() => setShowAddTransaction(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm sm:text-base"
               >
                 <Plus className="h-4 w-4" />
-                Ajouter une transaction
+                <span>Ajouter une transaction</span>
               </button>
             </div>
             <TransactionsList 
@@ -328,11 +329,11 @@ export function Dashboard() {
 
         {activeTab === 'dividends' && (
           <div>
-            <div className="mb-6">
-              <h2 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
+            <div className="mb-4 sm:mb-6">
+              <h2 className="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-zinc-100">
                 Mes Dividendes
               </h2>
-              <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
+              <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 mt-1">
                 Ajoutez vos dividendes via l'onglet Transactions
               </p>
             </div>

@@ -51,29 +51,29 @@ export function StatCard({
   };
 
   return (
-    <div className={`${bgColors[variant]} rounded-xl border border-zinc-200 dark:border-zinc-800 p-6 shadow-sm`}>
+    <div className={`${bgColors[variant]} rounded-xl border border-zinc-200 dark:border-zinc-800 p-3 sm:p-4 lg:p-6 shadow-sm`}>
       <div className="flex items-center justify-between">
-        <div className={`${iconColors[variant]} rounded-lg p-3`}>
-          <Icon className="h-6 w-6" />
+        <div className={`${iconColors[variant]} rounded-lg p-2 sm:p-3`}>
+          <Icon className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6" />
         </div>
         {change !== undefined && (
-          <div className={`flex items-center gap-1 text-sm font-medium ${
+          <div className={`flex items-center gap-0.5 sm:gap-1 text-xs sm:text-sm font-medium ${
             isPositive ? 'text-emerald-600' : 'text-red-600'
           }`}>
             {isPositive ? (
-              <ArrowUpRight className="h-4 w-4" />
+              <ArrowUpRight className="h-3 w-3 sm:h-4 sm:w-4" />
             ) : (
-              <ArrowDownRight className="h-4 w-4" />
+              <ArrowDownRight className="h-3 w-3 sm:h-4 sm:w-4" />
             )}
             {formatPercent(change)}
           </div>
         )}
       </div>
-      <div className="mt-4">
-        <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">{title}</p>
-        <p className="mt-1 text-2xl font-bold text-zinc-900 dark:text-zinc-100">{value}</p>
+      <div className="mt-2 sm:mt-3 lg:mt-4">
+        <p className="text-xs sm:text-sm font-medium text-zinc-500 dark:text-zinc-400">{title}</p>
+        <p className="mt-0.5 sm:mt-1 text-lg sm:text-xl lg:text-2xl font-bold text-zinc-900 dark:text-zinc-100">{value}</p>
         {changeLabel && (
-          <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{changeLabel}</p>
+          <p className="mt-0.5 sm:mt-1 text-[10px] sm:text-xs lg:text-sm text-zinc-500 dark:text-zinc-400">{changeLabel}</p>
         )}
       </div>
     </div>
@@ -100,7 +100,7 @@ export function PortfolioStats({
   savingsTotal,
 }: PortfolioStatsProps) {
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
       <StatCard
         title="Valeur Totale"
         value={formatCurrency(totalValue + savingsTotal)}

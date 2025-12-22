@@ -315,30 +315,30 @@ export function AddTransactionModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative bg-white dark:bg-zinc-900 rounded-xl shadow-xl w-full max-w-md mx-4 p-6 max-h-[90vh] overflow-y-auto">
+      <div className="relative bg-white dark:bg-zinc-900 rounded-t-xl sm:rounded-xl shadow-xl w-full sm:max-w-md mx-0 sm:mx-4 p-4 sm:p-6 max-h-[90vh] overflow-y-auto">
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
+          className="absolute top-3 sm:top-4 right-3 sm:right-4 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
         >
           <X className="h-5 w-5" />
         </button>
 
-        <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-100 mb-6">
+        <h2 className="text-lg sm:text-xl font-bold text-zinc-900 dark:text-zinc-100 mb-4 sm:mb-6">
           Ajouter une transaction
         </h2>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
           <div>
-            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+            <label className="block text-xs sm:text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
               Compte
             </label>
             <select
               value={accountId}
               onChange={(e) => setAccountId(e.target.value)}
               required
-              className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 text-sm sm:text-base border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="">Sélectionner un compte</option>
               {accounts.map((account) => (
@@ -350,13 +350,13 @@ export function AddTransactionModal({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+            <label className="block text-xs sm:text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
               Type
             </label>
             <select
               value={type}
               onChange={(e) => setType(e.target.value)}
-              className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 text-sm sm:text-base border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               {transactionTypes.map((t) => (
                 <option key={t.value} value={t.value}>
@@ -367,7 +367,7 @@ export function AddTransactionModal({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+            <label className="block text-xs sm:text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
               Date
             </label>
             <input
@@ -375,37 +375,37 @@ export function AddTransactionModal({
               value={date}
               onChange={(e) => setDate(e.target.value)}
               required
-              className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 text-sm sm:text-base border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
 
           {/* Sélection d'action pour les dividendes */}
           {isDividendTransaction && existingPositions.length > 0 && (
             <div>
-              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-                Action concernée par le dividende
+              <label className="block text-xs sm:text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                Action concernée
               </label>
-              <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto">
+              <div className="grid grid-cols-2 gap-2 max-h-28 sm:max-h-32 overflow-y-auto">
                 {existingPositions.map((pos) => (
                   <button
                     key={pos.id}
                     type="button"
                     onClick={() => handleSelectExistingPosition(pos)}
-                    className={`text-left p-2 rounded-lg border text-sm transition-colors ${
+                    className={`text-left p-2 rounded-lg border text-xs sm:text-sm transition-colors ${
                       stockSymbol.toUpperCase() === pos.symbol.toUpperCase()
                         ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/30'
                         : 'border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800'
                     }`}
                   >
                     <div className="font-medium text-zinc-900 dark:text-zinc-100">{pos.symbol}</div>
-                    <div className="text-xs text-zinc-500">{pos.name}</div>
+                    <div className="text-xs text-zinc-500 truncate">{pos.name}</div>
                   </button>
                 ))}
               </div>
               {stockSymbol && (
                 <div className="mt-2 p-2 bg-emerald-50 dark:bg-emerald-900/30 rounded-lg border border-emerald-200 dark:border-emerald-800">
                   <div className="flex justify-between items-center">
-                    <div className="text-sm text-emerald-700 dark:text-emerald-300">
+                    <div className="text-xs sm:text-sm text-emerald-700 dark:text-emerald-300">
                       Dividende pour <span className="font-semibold">{stockSymbol}</span>
                     </div>
                     <button
@@ -426,16 +426,16 @@ export function AddTransactionModal({
               {/* Pour les ventes, afficher les positions existantes */}
               {type === 'SELL' && existingPositions.length > 0 && (
                 <div>
-                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-                    Sélectionner une position à vendre
+                  <label className="block text-xs sm:text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                    Position à vendre
                   </label>
-                  <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto">
+                  <div className="grid grid-cols-2 gap-2 max-h-28 sm:max-h-32 overflow-y-auto">
                     {existingPositions.map((pos) => (
                       <button
                         key={pos.id}
                         type="button"
                         onClick={() => handleSelectExistingPosition(pos)}
-                        className={`text-left p-2 rounded-lg border text-sm transition-colors ${
+                        className={`text-left p-2 rounded-lg border text-xs sm:text-sm transition-colors ${
                           stockSymbol.toUpperCase() === pos.symbol.toUpperCase()
                             ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30'
                             : 'border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800'
@@ -452,7 +452,7 @@ export function AddTransactionModal({
               {/* Pour les achats, recherche d'action */}
               {type === 'BUY' && (
                 <div className="relative" ref={searchRef}>
-                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                  <label className="block text-xs sm:text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
                     Rechercher une action
                   </label>
                   <div className="relative">
@@ -465,12 +465,12 @@ export function AddTransactionModal({
                         setShowSearchDropdown(true);
                       }}
                       onFocus={() => setShowSearchDropdown(true)}
-                      placeholder="Rechercher par nom ou symbole..."
-                      className="w-full pl-10 pr-3 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Rechercher..."
+                      className="w-full pl-10 pr-3 py-2 text-sm sm:text-base border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                   </div>
                   {showSearchDropdown && searchResults.length > 0 && (
-                    <div className="absolute z-10 w-full mt-1 bg-white dark:bg-zinc-800 rounded-lg shadow-lg border border-zinc-200 dark:border-zinc-700 max-h-48 overflow-y-auto">
+                    <div className="absolute z-10 w-full mt-1 bg-white dark:bg-zinc-800 rounded-lg shadow-lg border border-zinc-200 dark:border-zinc-700 max-h-40 sm:max-h-48 overflow-y-auto">
                       {searchResults.map((result) => (
                         <button
                           key={result.symbol}
@@ -478,8 +478,8 @@ export function AddTransactionModal({
                           onClick={() => handleSelectStock(result.symbol, result.name)}
                           className="w-full text-left px-3 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-700 border-b border-zinc-100 dark:border-zinc-700 last:border-0"
                         >
-                          <div className="font-medium text-zinc-900 dark:text-zinc-100">{result.symbol}</div>
-                          <div className="text-sm text-zinc-500 truncate">{result.name}</div>
+                          <div className="font-medium text-sm text-zinc-900 dark:text-zinc-100">{result.symbol}</div>
+                          <div className="text-xs text-zinc-500 truncate">{result.name}</div>
                         </button>
                       ))}
                     </div>
@@ -508,11 +508,11 @@ export function AddTransactionModal({
 
               {/* Affichage de l'action sélectionnée */}
               {stockSymbol && (
-                <div className="p-3 bg-blue-50 dark:bg-blue-900/30 rounded-lg border border-blue-200 dark:border-blue-800">
+                <div className="p-2 sm:p-3 bg-blue-50 dark:bg-blue-900/30 rounded-lg border border-blue-200 dark:border-blue-800">
                   <div className="flex justify-between items-center">
                     <div>
-                      <div className="font-medium text-blue-900 dark:text-blue-100">{stockSymbol}</div>
-                      <div className="text-sm text-blue-700 dark:text-blue-300">{stockName}</div>
+                      <div className="font-medium text-sm text-blue-900 dark:text-blue-100">{stockSymbol}</div>
+                      <div className="text-xs text-blue-700 dark:text-blue-300 truncate max-w-[200px]">{stockName}</div>
                     </div>
                     <button
                       type="button"
@@ -525,9 +525,9 @@ export function AddTransactionModal({
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-2 sm:gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                  <label className="block text-xs sm:text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
                     Quantité
                   </label>
                   <input
@@ -536,11 +536,11 @@ export function AddTransactionModal({
                     value={quantity}
                     onChange={(e) => setQuantity(e.target.value)}
                     required={isStockTransaction}
-                    className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 text-sm sm:text-base border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                  <label className="block text-xs sm:text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
                     Prix unitaire (€)
                   </label>
                   <input
@@ -549,7 +549,7 @@ export function AddTransactionModal({
                     value={pricePerUnit}
                     onChange={(e) => setPricePerUnit(e.target.value)}
                     required={isStockTransaction}
-                    className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 text-sm sm:text-base border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
               </div>
@@ -557,8 +557,8 @@ export function AddTransactionModal({
           )}
 
           <div>
-            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-              Montant total (€) {isStockTransaction && <span className="text-zinc-400 text-xs">(calculé automatiquement)</span>}
+            <label className="block text-xs sm:text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+              Montant (€) {isStockTransaction && <span className="text-zinc-400 text-[10px] sm:text-xs">(auto)</span>}
             </label>
             <input
               type="number"
@@ -568,12 +568,12 @@ export function AddTransactionModal({
               placeholder="0.00"
               required
               readOnly={isStockTransaction}
-              className={`w-full px-3 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent ${isStockTransaction ? 'bg-zinc-50 dark:bg-zinc-900' : ''}`}
+              className={`w-full px-3 py-2 text-sm sm:text-base border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent ${isStockTransaction ? 'bg-zinc-50 dark:bg-zinc-900' : ''}`}
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+            <label className="block text-xs sm:text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
               Description
             </label>
             <input
@@ -581,26 +581,26 @@ export function AddTransactionModal({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Ex: Virement mensuel"
-              className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 text-sm sm:text-base border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
 
           {error && (
-            <p className="text-sm text-red-600">{error}</p>
+            <p className="text-xs sm:text-sm text-red-600">{error}</p>
           )}
 
-          <div className="flex gap-3 pt-2">
+          <div className="flex gap-2 sm:gap-3 pt-2">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
+              className="flex-1 px-3 sm:px-4 py-2 text-sm sm:text-base border border-zinc-300 dark:border-zinc-700 rounded-lg text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
             >
               Annuler
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+              className="flex-1 px-3 sm:px-4 py-2 text-sm sm:text-base bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
             >
               {loading ? 'Ajout...' : 'Ajouter'}
             </button>

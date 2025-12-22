@@ -42,16 +42,16 @@ export function AllocationChart({ positions, quotes }: AllocationChartProps) {
 
   if (data.length === 0) {
     return (
-      <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-6">
+      <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-4 sm:p-6">
         <div className="flex items-center gap-2 mb-4">
-          <PieChartIcon className="h-5 w-5 text-zinc-400" />
-          <h3 className="font-semibold text-zinc-900 dark:text-zinc-100">
+          <PieChartIcon className="h-4 w-4 sm:h-5 sm:w-5 text-zinc-400" />
+          <h3 className="font-semibold text-sm sm:text-base text-zinc-900 dark:text-zinc-100">
             Répartition du Portefeuille
           </h3>
         </div>
-        <div className="text-center py-12">
-          <PieChartIcon className="mx-auto h-12 w-12 text-zinc-400" />
-          <p className="mt-4 text-zinc-500 dark:text-zinc-400">
+        <div className="text-center py-8 sm:py-12">
+          <PieChartIcon className="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-zinc-400" />
+          <p className="mt-3 sm:mt-4 text-sm text-zinc-500 dark:text-zinc-400">
             Ajoutez des positions pour voir la répartition
           </p>
         </div>
@@ -64,10 +64,10 @@ export function AllocationChart({ positions, quotes }: AllocationChartProps) {
       const item = payload[0].payload;
       const percentage = (item.value / totalValue) * 100;
       return (
-        <div className="bg-white dark:bg-zinc-800 rounded-lg shadow-lg border border-zinc-200 dark:border-zinc-700 p-3">
-          <p className="font-semibold text-zinc-900 dark:text-zinc-100">{item.name}</p>
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">{item.fullName}</p>
-          <p className="font-medium text-zinc-900 dark:text-zinc-100 mt-1">
+        <div className="bg-white dark:bg-zinc-800 rounded-lg shadow-lg border border-zinc-200 dark:border-zinc-700 p-2 sm:p-3">
+          <p className="font-semibold text-sm text-zinc-900 dark:text-zinc-100">{item.name}</p>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">{item.fullName}</p>
+          <p className="font-medium text-sm text-zinc-900 dark:text-zinc-100 mt-1">
             {formatCurrency(item.value)} ({formatPercent(percentage).replace('+', '')})
           </p>
         </div>
@@ -77,22 +77,22 @@ export function AllocationChart({ positions, quotes }: AllocationChartProps) {
   };
 
   return (
-    <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-6">
-      <div className="flex items-center gap-2 mb-4">
-        <PieChartIcon className="h-5 w-5 text-blue-600" />
-        <h3 className="font-semibold text-zinc-900 dark:text-zinc-100">
+    <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-4 sm:p-6">
+      <div className="flex items-center gap-2 mb-3 sm:mb-4">
+        <PieChartIcon className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
+        <h3 className="font-semibold text-sm sm:text-base text-zinc-900 dark:text-zinc-100">
           Répartition du Portefeuille
         </h3>
       </div>
-      <div className="h-[300px]">
+      <div className="h-[250px] sm:h-[300px]">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
               data={data}
               cx="50%"
               cy="50%"
-              innerRadius={60}
-              outerRadius={100}
+              innerRadius={40}
+              outerRadius={70}
               paddingAngle={2}
               dataKey="value"
             >
@@ -103,8 +103,9 @@ export function AllocationChart({ positions, quotes }: AllocationChartProps) {
             <Tooltip content={<CustomTooltip />} />
             <Legend 
               formatter={(value) => (
-                <span className="text-sm text-zinc-600 dark:text-zinc-400">{value}</span>
+                <span className="text-xs sm:text-sm text-zinc-600 dark:text-zinc-400">{value}</span>
               )}
+              wrapperStyle={{ fontSize: '12px' }}
             />
           </PieChart>
         </ResponsiveContainer>
@@ -148,9 +149,9 @@ export function SectorAllocationChart({ positions, quotes }: SectorAllocationCha
       const item = payload[0].payload;
       const percentage = (item.value / totalValue) * 100;
       return (
-        <div className="bg-white dark:bg-zinc-800 rounded-lg shadow-lg border border-zinc-200 dark:border-zinc-700 p-3">
-          <p className="font-semibold text-zinc-900 dark:text-zinc-100">{item.name}</p>
-          <p className="font-medium text-zinc-900 dark:text-zinc-100 mt-1">
+        <div className="bg-white dark:bg-zinc-800 rounded-lg shadow-lg border border-zinc-200 dark:border-zinc-700 p-2 sm:p-3">
+          <p className="font-semibold text-sm text-zinc-900 dark:text-zinc-100">{item.name}</p>
+          <p className="font-medium text-sm text-zinc-900 dark:text-zinc-100 mt-1">
             {formatCurrency(item.value)} ({formatPercent(percentage).replace('+', '')})
           </p>
         </div>
@@ -160,22 +161,22 @@ export function SectorAllocationChart({ positions, quotes }: SectorAllocationCha
   };
 
   return (
-    <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-6">
-      <div className="flex items-center gap-2 mb-4">
-        <PieChartIcon className="h-5 w-5 text-emerald-600" />
-        <h3 className="font-semibold text-zinc-900 dark:text-zinc-100">
+    <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-4 sm:p-6">
+      <div className="flex items-center gap-2 mb-3 sm:mb-4">
+        <PieChartIcon className="h-4 w-4 sm:h-5 sm:w-5 text-emerald-600" />
+        <h3 className="font-semibold text-sm sm:text-base text-zinc-900 dark:text-zinc-100">
           Répartition par Secteur
         </h3>
       </div>
-      <div className="h-[300px]">
+      <div className="h-[250px] sm:h-[300px]">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
               data={data}
               cx="50%"
               cy="50%"
-              innerRadius={60}
-              outerRadius={100}
+              innerRadius={40}
+              outerRadius={70}
               paddingAngle={2}
               dataKey="value"
             >
@@ -186,8 +187,9 @@ export function SectorAllocationChart({ positions, quotes }: SectorAllocationCha
             <Tooltip content={<CustomTooltip />} />
             <Legend 
               formatter={(value) => (
-                <span className="text-sm text-zinc-600 dark:text-zinc-400">{value}</span>
+                <span className="text-xs sm:text-sm text-zinc-600 dark:text-zinc-400">{value}</span>
               )}
+              wrapperStyle={{ fontSize: '12px' }}
             />
           </PieChart>
         </ResponsiveContainer>
@@ -236,16 +238,16 @@ export function PortfolioHistoryChart({
 
   if (loading) {
     return (
-      <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-6">
-        <div className="flex items-center gap-2 mb-4">
-          <TrendingUp className="h-5 w-5 text-blue-600" />
-          <h3 className="font-semibold text-zinc-900 dark:text-zinc-100">
+      <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-4 sm:p-6">
+        <div className="flex items-center gap-2 mb-3 sm:mb-4">
+          <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
+          <h3 className="font-semibold text-sm sm:text-base text-zinc-900 dark:text-zinc-100">
             Évolution du Portefeuille
           </h3>
         </div>
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 text-blue-600 animate-spin" />
-          <span className="ml-2 text-zinc-500">Chargement des données...</span>
+        <div className="flex items-center justify-center py-8 sm:py-12">
+          <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600 animate-spin" />
+          <span className="ml-2 text-sm text-zinc-500">Chargement...</span>
         </div>
       </div>
     );
@@ -253,16 +255,16 @@ export function PortfolioHistoryChart({
 
   if (data.length === 0) {
     return (
-      <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-6">
-        <div className="flex items-center gap-2 mb-4">
-          <TrendingUp className="h-5 w-5 text-zinc-400" />
-          <h3 className="font-semibold text-zinc-900 dark:text-zinc-100">
+      <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-4 sm:p-6">
+        <div className="flex items-center gap-2 mb-3 sm:mb-4">
+          <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-zinc-400" />
+          <h3 className="font-semibold text-sm sm:text-base text-zinc-900 dark:text-zinc-100">
             Évolution du Portefeuille
           </h3>
         </div>
-        <div className="text-center py-12">
-          <TrendingUp className="mx-auto h-12 w-12 text-zinc-400" />
-          <p className="mt-4 text-zinc-500 dark:text-zinc-400">
+        <div className="text-center py-8 sm:py-12">
+          <TrendingUp className="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-zinc-400" />
+          <p className="mt-3 sm:mt-4 text-sm text-zinc-500 dark:text-zinc-400">
             Ajoutez des transactions pour voir l&apos;évolution
           </p>
         </div>
@@ -274,11 +276,11 @@ export function PortfolioHistoryChart({
   const maxValue = Math.max(...data.map(d => d.totalValue)) * 1.05;
 
   return (
-    <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-6">
-      <div className="flex items-center justify-between mb-4">
+    <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-4 sm:p-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-0 mb-3 sm:mb-4">
         <div className="flex items-center gap-2">
-          <TrendingUp className="h-5 w-5 text-blue-600" />
-          <h3 className="font-semibold text-zinc-900 dark:text-zinc-100">
+          <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
+          <h3 className="font-semibold text-sm sm:text-base text-zinc-900 dark:text-zinc-100">
             Évolution du Portefeuille
           </h3>
         </div>
@@ -290,7 +292,7 @@ export function PortfolioHistoryChart({
               <button
                 key={period.days}
                 onClick={() => onPeriodChange(period.days)}
-                className={`px-2 py-1 text-xs rounded transition-colors ${
+                className={`px-2 py-1 text-[10px] sm:text-xs rounded transition-colors ${
                   selectedPeriod === period.days
                     ? 'bg-blue-600 text-white'
                     : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'
@@ -304,7 +306,7 @@ export function PortfolioHistoryChart({
       </div>
 
       {/* Performance de la période */}
-      <div className="flex gap-4 mb-4 text-sm">
+      <div className="flex flex-wrap gap-2 sm:gap-4 mb-3 sm:mb-4 text-xs sm:text-sm">
         <div>
           <span className="text-zinc-500 dark:text-zinc-400">Début: </span>
           <span className="font-medium text-zinc-900 dark:text-zinc-100">
@@ -318,14 +320,14 @@ export function PortfolioHistoryChart({
           </span>
         </div>
         <div>
-          <span className="text-zinc-500 dark:text-zinc-400">Performance: </span>
+          <span className="text-zinc-500 dark:text-zinc-400 hidden sm:inline">Performance: </span>
           <span className={`font-medium ${periodChange >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
             {periodChange >= 0 ? '+' : ''}{formatCurrency(periodChange)} ({formatPercent(periodChangePercent)})
           </span>
         </div>
       </div>
 
-      <div className="h-[300px]">
+      <div className="h-[220px] sm:h-[300px]">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={data}>
             <defs>
@@ -341,14 +343,16 @@ export function PortfolioHistoryChart({
             <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
             <XAxis 
               dataKey="date" 
-              tick={{ fontSize: 12 }}
+              tick={{ fontSize: 10 }}
               stroke="#9ca3af"
+              interval="preserveStartEnd"
             />
             <YAxis 
               domain={[minValue, maxValue]}
               tickFormatter={(value) => value >= 1000 ? `${(value / 1000).toFixed(0)}k€` : `${value.toFixed(0)}€`}
-              tick={{ fontSize: 12 }}
+              tick={{ fontSize: 10 }}
               stroke="#9ca3af"
+              width={45}
             />
             <Tooltip 
               formatter={(value, name) => {

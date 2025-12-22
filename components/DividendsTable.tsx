@@ -143,19 +143,19 @@ export function DividendsTable({ transactions, positions, quotes }: DividendsTab
 
   if (dividendsByStock.length === 0) {
     return (
-      <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-6">
+      <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-4 sm:p-6">
         <div className="flex items-center gap-2 mb-4">
-          <Coins className="h-5 w-5 text-emerald-600" />
-          <h3 className="font-semibold text-zinc-900 dark:text-zinc-100">
+          <Coins className="h-4 w-4 sm:h-5 sm:w-5 text-emerald-600" />
+          <h3 className="text-sm sm:text-base font-semibold text-zinc-900 dark:text-zinc-100">
             Dividendes
           </h3>
         </div>
-        <div className="text-center py-8">
-          <Coins className="mx-auto h-12 w-12 text-zinc-400" />
-          <p className="mt-4 text-zinc-500 dark:text-zinc-400">
+        <div className="text-center py-6 sm:py-8">
+          <Coins className="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-zinc-400" />
+          <p className="mt-3 sm:mt-4 text-sm sm:text-base text-zinc-500 dark:text-zinc-400">
             Aucun dividende enregistré
           </p>
-          <p className="text-sm text-zinc-400 dark:text-zinc-500 mt-1">
+          <p className="text-xs sm:text-sm text-zinc-400 dark:text-zinc-500 mt-1">
             Ajoutez des transactions de type "Dividende" pour voir les statistiques
           </p>
         </div>
@@ -164,11 +164,11 @@ export function DividendsTable({ transactions, positions, quotes }: DividendsTab
   }
 
   return (
-    <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-6">
+    <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-4 sm:p-6">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <Coins className="h-5 w-5 text-emerald-600" />
-          <h3 className="font-semibold text-zinc-900 dark:text-zinc-100">
+          <Coins className="h-4 w-4 sm:h-5 sm:w-5 text-emerald-600" />
+          <h3 className="text-sm sm:text-base font-semibold text-zinc-900 dark:text-zinc-100">
             Dividendes
           </h3>
         </div>
@@ -177,7 +177,7 @@ export function DividendsTable({ transactions, positions, quotes }: DividendsTab
         <select
           value={selectedYear}
           onChange={(e) => setSelectedYear(e.target.value === 'all' ? 'all' : parseInt(e.target.value))}
-          className="text-sm px-2 py-1 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100"
+          className="text-xs sm:text-sm px-2 py-1 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100"
         >
           <option value="all">Toutes les années</option>
           {years.map(year => (
@@ -187,28 +187,28 @@ export function DividendsTable({ transactions, positions, quotes }: DividendsTab
       </div>
 
       {/* Résumé global */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <div className="bg-emerald-50 dark:bg-emerald-900/30 rounded-lg p-3">
-          <div className="text-sm text-emerald-600 dark:text-emerald-400">Total Dividendes</div>
-          <div className="text-xl font-bold text-emerald-700 dark:text-emerald-300">
+      <div className="grid grid-cols-2 gap-2 sm:gap-4 mb-4 sm:mb-6">
+        <div className="bg-emerald-50 dark:bg-emerald-900/30 rounded-lg p-2 sm:p-3">
+          <div className="text-xs sm:text-sm text-emerald-600 dark:text-emerald-400">Total Dividendes</div>
+          <div className="text-base sm:text-xl font-bold text-emerald-700 dark:text-emerald-300">
             {formatCurrency(totalDividends)}
           </div>
         </div>
-        <div className="bg-blue-50 dark:bg-blue-900/30 rounded-lg p-3">
-          <div className="text-sm text-blue-600 dark:text-blue-400">Nombre de versements</div>
-          <div className="text-xl font-bold text-blue-700 dark:text-blue-300">
+        <div className="bg-blue-50 dark:bg-blue-900/30 rounded-lg p-2 sm:p-3">
+          <div className="text-xs sm:text-sm text-blue-600 dark:text-blue-400">Versements</div>
+          <div className="text-base sm:text-xl font-bold text-blue-700 dark:text-blue-300">
             {filteredTransactions.length}
           </div>
         </div>
-        <div className="bg-violet-50 dark:bg-violet-900/30 rounded-lg p-3">
-          <div className="text-sm text-violet-600 dark:text-violet-400">Actions versant</div>
-          <div className="text-xl font-bold text-violet-700 dark:text-violet-300">
+        <div className="bg-violet-50 dark:bg-violet-900/30 rounded-lg p-2 sm:p-3">
+          <div className="text-xs sm:text-sm text-violet-600 dark:text-violet-400">Actions</div>
+          <div className="text-base sm:text-xl font-bold text-violet-700 dark:text-violet-300">
             {dividendsByStock.filter(d => d.symbol !== 'NON_ATTRIBUE').length}
           </div>
         </div>
-        <div className="bg-amber-50 dark:bg-amber-900/30 rounded-lg p-3">
-          <div className="text-sm text-amber-600 dark:text-amber-400">Moyenne/versement</div>
-          <div className="text-xl font-bold text-amber-700 dark:text-amber-300">
+        <div className="bg-amber-50 dark:bg-amber-900/30 rounded-lg p-2 sm:p-3">
+          <div className="text-xs sm:text-sm text-amber-600 dark:text-amber-400">Moyenne</div>
+          <div className="text-base sm:text-xl font-bold text-amber-700 dark:text-amber-300">
             {filteredTransactions.length > 0 
               ? formatCurrency(totalDividends / filteredTransactions.length)
               : '0 €'}
@@ -218,8 +218,8 @@ export function DividendsTable({ transactions, positions, quotes }: DividendsTab
 
       {/* Dividendes par année */}
       {years.length > 1 && selectedYear === 'all' && (
-        <div className="mb-6">
-          <h4 className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+        <div className="mb-4 sm:mb-6">
+          <h4 className="text-xs sm:text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
             Évolution par année
           </h4>
           <div className="flex gap-2 flex-wrap">
