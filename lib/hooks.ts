@@ -332,6 +332,92 @@ export function usePortfolioHistory(
 }
 
 /**
+ * Hook pour l'historique complet du portefeuille (pour la performance annuelle)
+ * Commence au 1er janvier de l'année de la première transaction
+ */
+export function useFullPortfolioHistory(
+  transactions: Transaction[],
+  accounts: Account[]
+) {
+  const [history, setHistory] = useState<PortfolioHistoryPoint[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Déterminer les dates et les symboles nécessaires
+  const { startDate, endDate, symbols } = useMemo(() => {
+    const end = new Date().toISOString().split('T')[0];
+    
+    // Trouver la première transaction
+    const firstTxDate = getFirstTransactionDate(transactions);
+    let start: string;
+    
+    if (firstTxDate) {
+      // Commencer au 1er janvier de l'année de la première transaction
+      const firstYear = new Date(firstTxDate).getFullYear();
+      start = `${firstYear}-01-01`;
+    } else {
+      // Fallback: 1er janvier de l'année en cours
+      const currentYear = new Date().getFullYear();
+      start = `${currentYear}-01-01`;
+    }
+
+    const syms = getUniqueSymbolsFromTransactions(transactions);
+
+    return { startDate: start, endDate: end, symbols: syms };
+  }, [transactions]);
+
+  // Récupérer les cours historiques et calculer l'historique
+  const fetchHistory = useCallback(async () => {
+    if (transactions.length === 0) {
+      setHistory([]);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      let historicalQuotes: Record<string, HistoricalQuote[]> = {};
+
+      if (symbols.length > 0) {
+        const response = await fetch(
+          `/api/stocks/history?symbols=${symbols.join(',')}&startDate=${startDate}&endDate=${endDate}&interval=1d`
+        );
+
+        if (!response.ok) {
+          throw new Error('Erreur lors de la récupération des cours historiques');
+        }
+
+        historicalQuotes = await response.json();
+      }
+
+      // Calculer l'historique avec intervalle hebdomadaire pour réduire le volume
+      const calculatedHistory = calculatePortfolioHistory(
+        transactions,
+        accounts,
+        historicalQuotes,
+        startDate,
+        endDate,
+        'weekly' // Hebdomadaire pour l'historique complet
+      );
+
+      setHistory(calculatedHistory);
+    } catch (err) {
+      console.error('Error calculating full portfolio history:', err);
+      setError(err instanceof Error ? err.message : 'Erreur');
+    } finally {
+      setLoading(false);
+    }
+  }, [transactions, accounts, symbols, startDate, endDate]);
+
+  useEffect(() => {
+    fetchHistory();
+  }, [fetchHistory]);
+
+  return { history, loading, error, refetch: fetchHistory };
+}
+
+/**
  * Compte enrichi avec les valeurs calculées
  */
 export interface EnrichedAccount extends Account {
@@ -410,18 +496,24 @@ export interface EnrichedPosition extends StockPosition {
 
 /**
  * Hook pour enrichir les positions avec les quantités calculées dynamiquement depuis les transactions
- * La quantité et le PRU sont recalculés depuis les transactions
+ * La quantité et le PRU sont recalculés depuis les transactions PAR COMPTE
+ * Évite le problème d'agrégation multi-comptes pour un même symbole
  */
 export function usePositionsWithCalculatedValues(
   positions: StockPosition[],
   transactions: Transaction[]
 ): EnrichedPosition[] {
   return useMemo(() => {
-    // Calculer les positions actuelles depuis les transactions
     const today = new Date().toISOString().split('T')[0];
-    const calculatedPositions = calculatePositionsAtDate(transactions, today);
 
     return positions.map(position => {
+      // Calculer les positions pour CE compte spécifiquement
+      const calculatedPositions = calculatePositionsAtDate(
+        transactions, 
+        today, 
+        position.account_id // Filtrer par account_id
+      );
+      
       const calculated = calculatedPositions.get(position.symbol.toUpperCase());
       
       if (calculated) {
@@ -436,7 +528,7 @@ export function usePositionsWithCalculatedValues(
         };
       }
 
-      // Si pas de transactions trouvées, garder les valeurs stockées
+      // Si pas de transactions trouvées pour ce compte, garder les valeurs stockées
       return {
         ...position,
         calculatedQuantity: position.quantity,

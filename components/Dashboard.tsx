@@ -17,7 +17,7 @@ import { AccountList } from './AccountList';
 import { PositionsTable } from './PositionsTable';
 import { TransactionsList } from './TransactionsList';
 import { DividendsTable } from './DividendsTable';
-import { AllocationChart, SectorAllocationChart, PortfolioHistoryChart } from './Charts';
+import { AllocationChart, SectorAllocationChart, AccountAllocationChart, PortfolioHistoryChart, PositionPerformanceChart, StockHistoryChart, PortfolioPerformanceChart } from './Charts';
 import { AddAccountModal } from './AddAccountModal';
 import { AddTransactionModal } from './AddTransactionModal';
 import { AddPositionModal } from './AddPositionModal';
@@ -28,6 +28,7 @@ import {
   useStockQuotes,
   usePortfolioSummary,
   usePortfolioHistory,
+  useFullPortfolioHistory,
   useAccountsWithCalculatedValues,
   usePositionsWithCalculatedValues
 } from '@/lib/hooks';
@@ -70,6 +71,12 @@ export function Dashboard() {
     transactions,
     accounts,
     historyPeriod
+  );
+
+  // Historique complet pour la performance annuelle (depuis la première transaction)
+  const { history: fullPortfolioHistory, loading: loadingFullHistory } = useFullPortfolioHistory(
+    transactions,
+    accounts
   );
 
   // Calculer le total épargne (comptes non-actions)
@@ -220,7 +227,7 @@ export function Dashboard() {
             {/* Charts - stack on mobile */}
             <div className="grid gap-4 sm:gap-6 md:grid-cols-2">
               <AllocationChart positions={enrichedPositions} quotes={quotes} />
-              <SectorAllocationChart positions={enrichedPositions} quotes={quotes} />
+              <AccountAllocationChart accounts={enrichedAccounts} />
             </div>
 
             {/* History Chart */}
@@ -287,8 +294,8 @@ export function Dashboard() {
         )}
 
         {activeTab === 'positions' && (
-          <div>
-            <div className="mb-4 sm:mb-6">
+          <div className="space-y-4 sm:space-y-6">
+            <div>
               <h2 className="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-zinc-100">
                 Mes Positions
               </h2>
@@ -296,6 +303,24 @@ export function Dashboard() {
                 Gérez vos positions via l'onglet Transactions
               </p>
             </div>
+            
+            {/* Graphique de performance des positions (détail par position) - EN PREMIER */}
+            <PositionPerformanceChart 
+              positions={enrichedPositions} 
+              quotes={quotes}
+              transactions={transactions}
+            />
+            
+            {/* Graphique de performance réelle du portefeuille (annuelle) */}
+            <PortfolioPerformanceChart 
+              transactions={transactions}
+              portfolioHistory={fullPortfolioHistory}
+              accounts={enrichedAccounts}
+              loading={loadingFullHistory}
+              currentPortfolioValue={portfolioSummary.totalValue}
+            />
+            
+            {/* Positions clôturées */}
             <PositionsTable 
               positions={enrichedPositions} 
               quotes={quotes} 

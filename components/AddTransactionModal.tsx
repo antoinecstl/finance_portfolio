@@ -175,14 +175,14 @@ export function AddTransactionModal({
         throw new Error('Veuillez sélectionner l\'action associée au dividende');
       }
 
-      // Pour une vente, vérifier qu'on a assez de titres À LA DATE de la transaction
+      // Pour une vente, vérifier qu'on a assez de titres À LA DATE de la transaction SUR CE COMPTE
       if (type === 'SELL') {
-        // Calculer les positions à la date de la transaction
-        const positionsAtDate = calculatePositionsAtDate(allTransactions, date);
+        // Calculer les positions à la date de la transaction pour ce compte uniquement
+        const positionsAtDate = calculatePositionsAtDate(allTransactions, date, accountId);
         const positionAtDate = positionsAtDate.get(stockSymbol.toUpperCase());
         
         if (!positionAtDate || positionAtDate.quantity < qty) {
-          throw new Error(`Position insuffisante à la date ${date}. Vous aviez ${positionAtDate?.quantity || 0} titres.`);
+          throw new Error(`Position insuffisante sur ce compte à la date ${date}. Vous aviez ${positionAtDate?.quantity || 0} titres.`);
         }
       }
 

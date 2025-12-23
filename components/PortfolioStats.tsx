@@ -110,14 +110,15 @@ export function PortfolioStats({
         title="Portefeuille Actions"
         value={formatCurrency(totalValue)}
         change={totalGainPercent}
-        changeLabel={`${formatCurrency(totalGain)} de gain`}
+        changeLabel={`${totalGain >= 0 ? '+' : ''}${formatCurrency(totalGain)} vs PRU`}
         icon="chart"
         variant={totalGain >= 0 ? 'success' : 'danger'}
       />
       <StatCard
-        title="Variation du Jour"
+        title="Variation Jour"
         value={formatCurrency(dayChange)}
         change={dayChangePercent}
+        changeLabel="vs clôture veille"
         icon="trending"
         variant={dayChange >= 0 ? 'success' : 'danger'}
       />
