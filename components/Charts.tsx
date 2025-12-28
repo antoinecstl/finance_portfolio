@@ -455,6 +455,12 @@ interface PositionPerformanceChartProps {
   positions: StockPosition[];
   quotes: Record<string, StockQuote>;
   transactions?: Transaction[];
+  // Valeurs actuelles du portefeuille (pour cohérence avec les autres composants)
+  portfolioTotalValue?: number;
+  portfolioTotalInvested?: number;
+  portfolioTotalGain?: number;
+  portfolioTotalGainPercent?: number;
+  portfolioDayChange?: number;
 }
 
 interface PositionMetrics {
@@ -473,7 +479,16 @@ interface PositionMetrics {
   color: string;
 }
 
-export function PositionPerformanceChart({ positions, quotes, transactions = [] }: PositionPerformanceChartProps) {
+export function PositionPerformanceChart({ 
+  positions, 
+  quotes, 
+  transactions = [],
+  portfolioTotalValue,
+  portfolioTotalInvested,
+  portfolioTotalGain,
+  portfolioTotalGainPercent,
+  portfolioDayChange
+}: PositionPerformanceChartProps) {
   // État pour les lignes étendues
   const [expandedSymbol, setExpandedSymbol] = useState<string | null>(null);
 
@@ -540,8 +555,9 @@ export function PositionPerformanceChart({ positions, quotes, transactions = [] 
     };
   });
 
-  // Calculer le poids de chaque position
-  const totalValue = metrics.reduce((sum, m) => sum + m.currentValue, 0);
+  // Calculer le poids de chaque position (utiliser props si fournis pour cohérence)
+  const calculatedTotalValue = metrics.reduce((sum, m) => sum + m.currentValue, 0);
+  const totalValue = portfolioTotalValue ?? calculatedTotalValue;
   metrics.forEach(m => {
     m.weight = totalValue > 0 ? (m.currentValue / totalValue) * 100 : 0;
   });
@@ -554,11 +570,15 @@ export function PositionPerformanceChart({ positions, quotes, transactions = [] 
   const bestPerformer = sortedByPerf[0];
   const worstPerformer = sortedByPerf[sortedByPerf.length - 1];
 
-  // Calculer les totaux
-  const totalInvested = metrics.reduce((sum, m) => sum + m.investedValue, 0);
-  const totalGain = metrics.reduce((sum, m) => sum + m.gainValue, 0);
-  const totalGainPercent = totalInvested > 0 ? (totalGain / totalInvested) * 100 : 0;
-  const totalDayChange = metrics.reduce((sum, m) => sum + (m.dayChange * m.quantity), 0);
+  // Utiliser les totaux passés en props pour cohérence avec les autres composants
+  const calculatedInvested = metrics.reduce((sum, m) => sum + m.investedValue, 0);
+  const calculatedGain = metrics.reduce((sum, m) => sum + m.gainValue, 0);
+  const calculatedDayChange = metrics.reduce((sum, m) => sum + (m.dayChange * m.quantity), 0);
+  
+  const totalInvested = portfolioTotalInvested ?? calculatedInvested;
+  const totalGain = portfolioTotalGain ?? calculatedGain;
+  const totalGainPercent = portfolioTotalGainPercent ?? (totalInvested > 0 ? (totalGain / totalInvested) * 100 : 0);
+  const totalDayChange = portfolioDayChange ?? calculatedDayChange;
 
   // Données pour le graphique de performance par position
   const perfChartData = sortedByPerf.map(m => ({
@@ -635,44 +655,6 @@ export function PositionPerformanceChart({ positions, quotes, transactions = [] 
             </p>
           </div>
         </div>
-
-        {/* Meilleure et pire performance */}
-        {metrics.length >= 2 && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-            <div className="flex items-center gap-3 p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg">
-              <div className="p-2 bg-emerald-100 dark:bg-emerald-800 rounded-lg">
-                <TrendingUp className="h-4 w-4 text-emerald-600" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-xs text-zinc-500 dark:text-zinc-400">Meilleure perf.</p>
-                <p className="font-semibold text-zinc-900 dark:text-zinc-100 truncate">{bestPerformer.symbol}</p>
-                <p className="text-sm font-bold text-emerald-600">
-                  {bestPerformer.gainPercent >= 0 ? '+' : ''}{formatPercent(bestPerformer.gainPercent)}
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="text-xs text-zinc-500">PV</p>
-                <p className="text-sm font-medium text-emerald-600">{formatCurrency(bestPerformer.gainValue)}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
-              <div className="p-2 bg-red-100 dark:bg-red-800 rounded-lg">
-                <TrendingDown className="h-4 w-4 text-red-600" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-xs text-zinc-500 dark:text-zinc-400">Pire perf.</p>
-                <p className="font-semibold text-zinc-900 dark:text-zinc-100 truncate">{worstPerformer.symbol}</p>
-                <p className="text-sm font-bold text-red-600">
-                  {worstPerformer.gainPercent >= 0 ? '+' : ''}{formatPercent(worstPerformer.gainPercent)}
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="text-xs text-zinc-500">MV</p>
-                <p className="text-sm font-medium text-red-600">{formatCurrency(worstPerformer.gainValue)}</p>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Graphiques côte à côte */}
@@ -846,14 +828,14 @@ export function PositionPerformanceChart({ positions, quotes, transactions = [] 
                   <div>
                     <p className="text-zinc-500">Var. jour</p>
                     <p className={`font-medium ${m.dayChangePercent >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                      {m.dayChangePercent >= 0 ? '+' : ''}{formatPercent(m.dayChangePercent)}
+                      {formatPercent(m.dayChangePercent)}
                     </p>
                   </div>
                 </div>
                 <div className="flex justify-between items-center pt-1 border-t border-zinc-100 dark:border-zinc-800">
                   <span className="text-xs text-zinc-500">+/- Value</span>
                   <span className={`font-semibold ${m.gainPercent >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                    {m.gainPercent >= 0 ? '+' : ''}{formatCurrency(m.gainValue)} ({formatPercent(m.gainPercent)})
+                    {m.gainValue >= 0 ? '+' : ''}{formatCurrency(m.gainValue)} ({formatPercent(m.gainPercent)})
                   </span>
                 </div>
                 
@@ -1124,6 +1106,347 @@ export function PositionPerformanceChart({ positions, quotes, transactions = [] 
               })}
             </tbody>
           </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ===== PORTFOLIO VALUE VS INVESTED CHART =====
+// Graphique comparant la valeur actuelle et la valeur investie dans le temps
+
+type PeriodOption = '1M' | '3M' | '6M' | '1Y' | 'MAX';
+
+interface PortfolioValueChartProps {
+  history: PortfolioHistoryPoint[];
+  transactions: Transaction[];
+  loading?: boolean;
+  // Valeurs actuelles du portefeuille (pour cohérence avec les autres composants)
+  currentTotalValue?: number;
+  currentTotalInvested?: number;
+}
+
+export function PortfolioValueChart({ 
+  history, 
+  transactions, 
+  loading = false,
+  currentTotalValue,
+  currentTotalInvested 
+}: PortfolioValueChartProps) {
+  const [selectedPeriod, setSelectedPeriod] = useState<PeriodOption>('MAX');
+
+  // Filtrer l'historique selon la période sélectionnée
+  const filteredHistory = useMemo(() => {
+    if (history.length === 0 || selectedPeriod === 'MAX') return history;
+    
+    const now = new Date();
+    let startDate: Date;
+    
+    switch (selectedPeriod) {
+      case '1M':
+        startDate = new Date(now.setMonth(now.getMonth() - 1));
+        break;
+      case '3M':
+        startDate = new Date(now.setMonth(now.getMonth() - 3));
+        break;
+      case '6M':
+        startDate = new Date(now.setMonth(now.getMonth() - 6));
+        break;
+      case '1Y':
+        startDate = new Date(now.setFullYear(now.getFullYear() - 1));
+        break;
+      default:
+        return history;
+    }
+    
+    return history.filter(point => new Date(point.date) >= startDate);
+  }, [history, selectedPeriod]);
+
+  // Calculer le coût d'acquisition cumulé (PRU * quantité) à chaque date
+  const chartData = useMemo(() => {
+    if (filteredHistory.length === 0) return [];
+
+    // Trier les transactions BUY/SELL par date pour calculer le coût d'acquisition
+    const sortedTx = [...transactions]
+      .filter(t => ['BUY', 'SELL'].includes(t.type) && t.stock_symbol)
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    // Calculer le coût d'acquisition par symbole à chaque date
+    // Le coût d'acquisition = somme des (quantité achetée * prix d'achat) - somme des (quantité vendue * prix d'achat moyen)
+    const costBasisBySymbol = new Map<string, { totalCost: number; totalQuantity: number }>();
+    const costBasisHistoryByDate = new Map<string, number>();
+    
+    // Initialiser
+    let lastCostBasis = 0;
+    
+    sortedTx.forEach(tx => {
+      const symbol = tx.stock_symbol!;
+      const current = costBasisBySymbol.get(symbol) || { totalCost: 0, totalQuantity: 0 };
+      
+      if (tx.type === 'BUY' && tx.quantity && tx.price_per_unit) {
+        // Achat: ajouter au coût total et à la quantité
+        current.totalCost += tx.quantity * tx.price_per_unit;
+        current.totalQuantity += tx.quantity;
+      } else if (tx.type === 'SELL' && tx.quantity && current.totalQuantity > 0) {
+        // Vente: retirer proportionnellement au PRU
+        const avgCost = current.totalCost / current.totalQuantity;
+        const soldCost = tx.quantity * avgCost;
+        current.totalCost -= soldCost;
+        current.totalQuantity -= tx.quantity;
+        
+        // S'assurer qu'on ne passe pas en négatif
+        if (current.totalQuantity <= 0) {
+          current.totalCost = 0;
+          current.totalQuantity = 0;
+        }
+      }
+      
+      costBasisBySymbol.set(symbol, current);
+      
+      // Calculer le total du coût d'acquisition à cette date
+      let totalCostBasis = 0;
+      costBasisBySymbol.forEach(data => {
+        totalCostBasis += data.totalCost;
+      });
+      
+      costBasisHistoryByDate.set(tx.date, totalCostBasis);
+      lastCostBasis = totalCostBasis;
+    });
+
+    // Pour chaque point d'historique, trouver le coût d'acquisition correspondant
+    let currentCostBasis = 0;
+    const data = filteredHistory.map((point, index) => {
+      // Trouver le dernier coût d'acquisition <= à cette date
+      for (const [date, cost] of costBasisHistoryByDate) {
+        if (date <= point.date) {
+          currentCostBasis = cost;
+        }
+      }
+
+      // Pour le dernier point, utiliser les valeurs passées en props (cohérence avec les autres composants)
+      const isLastPoint = index === filteredHistory.length - 1;
+      const valeurActuelle = isLastPoint && currentTotalValue !== undefined ? currentTotalValue : point.stocksValue;
+      const investissement = isLastPoint && currentTotalInvested !== undefined ? currentTotalInvested : currentCostBasis;
+      
+      const gain = valeurActuelle - investissement;
+      const gainPercent = investissement > 0 ? (gain / investissement) * 100 : 0;
+
+      return {
+        date: new Date(point.date).toLocaleDateString('fr-FR', { 
+          day: '2-digit', 
+          month: 'short',
+          year: '2-digit'
+        }),
+        fullDate: new Date(point.date).toLocaleDateString('fr-FR', {
+          day: '2-digit',
+          month: 'long',
+          year: 'numeric'
+        }),
+        valeurActuelle,
+        investissement,
+        plusValue: gain,
+        gainPercent,
+      };
+    });
+    
+    return data;
+  }, [filteredHistory, transactions, currentTotalValue, currentTotalInvested]);
+
+  // Calculer les statistiques
+  const stats = useMemo(() => {
+    if (chartData.length === 0) return null;
+    const last = chartData[chartData.length - 1];
+    const first = chartData[0];
+    return {
+      currentValue: last.valeurActuelle,
+      invested: last.investissement,
+      gain: last.plusValue,
+      gainPercent: last.gainPercent,
+      startValue: first.valeurActuelle,
+      startInvested: first.investissement,
+    };
+  }, [chartData]);
+
+  if (loading) {
+    return (
+      <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-4 sm:p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <LineChartIcon className="h-4 w-4 sm:h-5 sm:w-5 text-purple-600" />
+          <h3 className="font-semibold text-sm sm:text-base text-zinc-900 dark:text-zinc-100">
+            Évolution Valeur vs Investissement
+          </h3>
+        </div>
+        <div className="flex items-center justify-center py-8 sm:py-12">
+          <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 text-purple-600 animate-spin" />
+          <span className="ml-2 text-sm text-zinc-500">Chargement...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (chartData.length === 0) {
+    return (
+      <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-4 sm:p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <LineChartIcon className="h-4 w-4 sm:h-5 sm:w-5 text-zinc-400" />
+          <h3 className="font-semibold text-sm sm:text-base text-zinc-900 dark:text-zinc-100">
+            Évolution Valeur vs Investissement
+          </h3>
+        </div>
+        <div className="text-center py-8 sm:py-12">
+          <TrendingUp className="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-zinc-400" />
+          <p className="mt-3 sm:mt-4 text-sm text-zinc-500 dark:text-zinc-400">
+            Ajoutez des transactions pour voir l&apos;évolution
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const minValue = Math.min(
+    ...chartData.map(d => Math.min(d.valeurActuelle, d.investissement))
+  ) * 0.95;
+  const maxValue = Math.max(
+    ...chartData.map(d => Math.max(d.valeurActuelle, d.investissement))
+  ) * 1.05;
+
+  return (
+    <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-4 sm:p-6">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <LineChartIcon className="h-4 w-4 sm:h-5 sm:w-5 text-purple-600" />
+          <h3 className="font-semibold text-sm sm:text-base text-zinc-900 dark:text-zinc-100">
+            Valeur du Portefeuille vs Investissement
+          </h3>
+        </div>
+        {/* Sélecteur de période */}
+        <div className="flex gap-1">
+          {(['1M', '3M', '6M', '1Y', 'MAX'] as PeriodOption[]).map((period) => (
+            <button
+              key={period}
+              onClick={() => setSelectedPeriod(period)}
+              className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
+                selectedPeriod === period
+                  ? 'bg-purple-600 text-white'
+                  : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'
+              }`}
+            >
+              {period === '1Y' ? '1A' : period}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Statistiques actuelles */}
+      {stats && (
+        <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-4">
+          <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-2 sm:p-3">
+            <p className="text-[10px] sm:text-xs text-purple-600 dark:text-purple-400 font-medium">Valeur actuelle</p>
+            <p className="text-sm sm:text-lg font-bold text-purple-700 dark:text-purple-300">
+              {formatCurrency(stats.currentValue)}
+            </p>
+          </div>
+          <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-2 sm:p-3">
+            <p className="text-[10px] sm:text-xs text-blue-600 dark:text-blue-400 font-medium">Investi</p>
+            <p className="text-sm sm:text-lg font-bold text-blue-700 dark:text-blue-300">
+              {formatCurrency(stats.invested)}
+            </p>
+          </div>
+          <div className={`rounded-lg p-2 sm:p-3 ${stats.gain >= 0 ? 'bg-emerald-50 dark:bg-emerald-900/20' : 'bg-red-50 dark:bg-red-900/20'}`}>
+            <p className={`text-[10px] sm:text-xs font-medium ${stats.gain >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+              +/- Value
+            </p>
+            <p className={`text-sm sm:text-lg font-bold ${stats.gain >= 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-red-700 dark:text-red-300'}`}>
+              {stats.gain >= 0 ? '+' : ''}{formatCurrency(stats.gain)}
+            </p>
+            <p className={`text-[10px] sm:text-xs ${stats.gain >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+              ({stats.gainPercent >= 0 ? '+' : ''}{stats.gainPercent.toFixed(1)}%)
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Graphique */}
+      <div className="h-[220px] sm:h-[280px]">
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={chartData}>
+            <defs>
+              <linearGradient id="colorValeur" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#9333EA" stopOpacity={0.3}/>
+                <stop offset="95%" stopColor="#9333EA" stopOpacity={0}/>
+              </linearGradient>
+              <linearGradient id="colorInvesti" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.2}/>
+                <stop offset="95%" stopColor="#3B82F6" stopOpacity={0}/>
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+            <XAxis 
+              dataKey="date" 
+              tick={{ fontSize: 10 }}
+              stroke="#9ca3af"
+              tickLine={false}
+              interval="preserveStartEnd"
+            />
+            <YAxis 
+              tickFormatter={(value) => formatCurrency(value).replace('€', '').trim()}
+              tick={{ fontSize: 10 }}
+              stroke="#9ca3af"
+              width={60}
+              domain={[minValue, maxValue]}
+            />
+            <Tooltip 
+              formatter={(value, name) => {
+                const numValue = Number(value) || 0;
+                const label = name === 'valeurActuelle' ? 'Valeur actuelle' : 'Investi';
+                return [formatCurrency(numValue), label];
+              }}
+              labelFormatter={(_, payload) => {
+                if (payload && payload.length > 0) {
+                  const data = payload[0].payload;
+                  return `${data.fullDate}\n+/- Value: ${data.plusValue >= 0 ? '+' : ''}${formatCurrency(data.plusValue)} (${data.gainPercent >= 0 ? '+' : ''}${data.gainPercent.toFixed(1)}%)`;
+                }
+                return '';
+              }}
+              contentStyle={{
+                backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                border: '1px solid #e5e7eb',
+                borderRadius: '8px',
+                color: '#18181b',
+                whiteSpace: 'pre-line',
+              }}
+            />
+            {/* Zone entre les deux courbes pour visualiser le gain/perte */}
+            <Area 
+              type="monotone" 
+              dataKey="investissement" 
+              stroke="#3B82F6" 
+              strokeWidth={2}
+              fill="url(#colorInvesti)"
+              strokeDasharray="5 5"
+              name="investissement"
+            />
+            <Area 
+              type="monotone" 
+              dataKey="valeurActuelle" 
+              stroke="#9333EA" 
+              strokeWidth={2.5}
+              fill="url(#colorValeur)"
+              name="valeurActuelle"
+            />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* Légende */}
+      <div className="flex items-center justify-center gap-4 sm:gap-6 mt-3 text-xs sm:text-sm">
+        <div className="flex items-center gap-1.5">
+          <div className="w-3 h-0.5 bg-purple-600 rounded"></div>
+          <span className="text-zinc-600 dark:text-zinc-400">Valeur actuelle</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-3 h-0.5 bg-blue-500 rounded" style={{ borderStyle: 'dashed' }}></div>
+          <span className="text-zinc-600 dark:text-zinc-400">Montant investi</span>
         </div>
       </div>
     </div>

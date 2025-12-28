@@ -17,7 +17,7 @@ import { AccountList } from './AccountList';
 import { PositionsTable } from './PositionsTable';
 import { TransactionsList } from './TransactionsList';
 import { DividendsTable } from './DividendsTable';
-import { AllocationChart, SectorAllocationChart, AccountAllocationChart, PortfolioHistoryChart, PositionPerformanceChart, StockHistoryChart, PortfolioPerformanceChart } from './Charts';
+import { AllocationChart, SectorAllocationChart, AccountAllocationChart, PortfolioHistoryChart, PositionPerformanceChart, StockHistoryChart, PortfolioPerformanceChart, PortfolioValueChart } from './Charts';
 import { AddAccountModal } from './AddAccountModal';
 import { AddTransactionModal } from './AddTransactionModal';
 import { AddPositionModal } from './AddPositionModal';
@@ -309,6 +309,20 @@ export function Dashboard() {
               positions={enrichedPositions} 
               quotes={quotes}
               transactions={transactions}
+              portfolioTotalValue={portfolioSummary.totalValue}
+              portfolioTotalInvested={portfolioSummary.totalInvested}
+              portfolioTotalGain={portfolioSummary.totalGain}
+              portfolioTotalGainPercent={portfolioSummary.totalGainPercent}
+              portfolioDayChange={portfolioSummary.dayChange}
+            />
+            
+            {/* Graphique Valeur vs Investissement */}
+            <PortfolioValueChart 
+              history={fullPortfolioHistory}
+              transactions={transactions}
+              loading={loadingFullHistory}
+              currentTotalValue={portfolioSummary.totalValue}
+              currentTotalInvested={portfolioSummary.totalInvested}
             />
             
             {/* Graphique de performance réelle du portefeuille (annuelle) */}
