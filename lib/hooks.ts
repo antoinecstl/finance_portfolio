@@ -391,14 +391,14 @@ export function useFullPortfolioHistory(
         historicalQuotes = await response.json();
       }
 
-      // Calculer l'historique avec intervalle hebdomadaire pour réduire le volume
+      // Calculer l'historique avec intervalle quotidien pour plus de précision sur les graphiques
       const calculatedHistory = calculatePortfolioHistory(
         transactions,
         accounts,
         historicalQuotes,
         startDate,
         endDate,
-        'weekly' // Hebdomadaire pour l'historique complet
+        'daily' // Quotidien pour avoir plus de points sur les graphiques
       );
 
       setHistory(calculatedHistory);

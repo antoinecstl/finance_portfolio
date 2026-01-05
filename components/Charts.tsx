@@ -830,6 +830,9 @@ export function PositionPerformanceChart({
                     <p className={`font-medium ${m.dayChangePercent >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                       {formatPercent(m.dayChangePercent)}
                     </p>
+                    <p className={`text-[10px] ${m.dayChangePercent >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                      {m.dayChange * m.quantity >= 0 ? '+' : ''}{formatCurrency(m.dayChange * m.quantity)}
+                    </p>
                   </div>
                 </div>
                 <div className="flex justify-between items-center pt-1 border-t border-zinc-100 dark:border-zinc-800">
@@ -957,6 +960,9 @@ export function PositionPerformanceChart({
                           {m.dayChangePercent >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
                           {formatPercent(m.dayChangePercent)}
                         </span>
+                        <p className="text-xs font-normal">
+                          {m.dayChange * m.quantity >= 0 ? '+' : ''}{formatCurrency(m.dayChange * m.quantity)}
+                        </p>
                       </td>
                       <td className="py-2 px-3 text-right font-bold text-zinc-900 dark:text-zinc-100">
                         {formatCurrency(m.currentValue)}
