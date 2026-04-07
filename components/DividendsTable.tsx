@@ -165,7 +165,7 @@ export function DividendsTable({ transactions, positions, quotes }: DividendsTab
 
   return (
     <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-4 sm:p-6">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 mb-4">
         <div className="flex items-center gap-2">
           <Coins className="h-4 w-4 sm:h-5 sm:w-5 text-emerald-600" />
           <h3 className="text-sm sm:text-base font-semibold text-zinc-900 dark:text-zinc-100">
@@ -177,7 +177,7 @@ export function DividendsTable({ transactions, positions, quotes }: DividendsTab
         <select
           value={selectedYear}
           onChange={(e) => setSelectedYear(e.target.value === 'all' ? 'all' : parseInt(e.target.value))}
-          className="text-xs sm:text-sm px-2 py-1 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100"
+          className="w-full sm:w-auto text-xs sm:text-sm px-2 py-1.5 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100"
         >
           <option value="all">Toutes les années</option>
           {years.map(year => (
@@ -247,8 +247,8 @@ export function DividendsTable({ transactions, positions, quotes }: DividendsTab
         </div>
       )}
 
-      {/* Tableau par action */}
-      <div className="overflow-x-auto">
+      {/* Tableau par action - desktop/tablet */}
+      <div className="hidden sm:block overflow-x-auto">
         <table className="w-full">
           <thead>
             <tr className="border-b border-zinc-200 dark:border-zinc-700">
@@ -307,6 +307,44 @@ export function DividendsTable({ transactions, positions, quotes }: DividendsTab
         </table>
       </div>
 
+      {/* Liste par action - mobile */}
+      <div className="sm:hidden space-y-2">
+        {dividendsByStock.map((dividend) => (
+          <div key={dividend.symbol} className="rounded-lg border border-zinc-200 dark:border-zinc-800 p-3 bg-zinc-50 dark:bg-zinc-900/40">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <div className="font-semibold text-sm text-zinc-900 dark:text-zinc-100">
+                  {dividend.symbol === 'NON_ATTRIBUE' ? '(Non attribue)' : dividend.symbol}
+                </div>
+                <div className="text-xs text-zinc-500 truncate">
+                  {dividend.symbol === 'NON_ATTRIBUE' ? 'Dividendes sans action' : dividend.name}
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="font-semibold text-sm text-emerald-600 dark:text-emerald-400">
+                  {formatCurrency(dividend.totalDividends)}
+                </div>
+                <div className="text-xs text-zinc-500">{dividend.dividendCount} versements</div>
+              </div>
+            </div>
+            <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
+              <div>
+                <span className="text-zinc-500">Moy. €/action: </span>
+                <span className="font-medium text-violet-600 dark:text-violet-400">
+                  {dividend.avgDividendPerShare !== undefined ? `${dividend.avgDividendPerShare.toFixed(2)} €` : '-'}
+                </span>
+              </div>
+              <div>
+                <span className="text-zinc-500">Rdt/Coût: </span>
+                <span className="font-medium text-blue-600 dark:text-blue-400">
+                  {dividend.avgYieldOnCost !== undefined ? `${dividend.avgYieldOnCost.toFixed(2)}%` : '-'}
+                </span>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
       {/* Historique détaillé */}
       <div className="mt-4">
         <button
@@ -319,7 +357,7 @@ export function DividendsTable({ transactions, positions, quotes }: DividendsTab
         
         {showDetails && (
           <div className="mt-3 max-h-64 overflow-y-auto">
-            <table className="w-full text-sm">
+            <table className="hidden sm:table w-full text-sm">
               <thead className="sticky top-0 bg-white dark:bg-zinc-900">
                 <tr className="border-b border-zinc-200 dark:border-zinc-700">
                   <th className="text-left py-2 px-2 text-xs font-medium text-zinc-500">Date</th>
@@ -381,6 +419,58 @@ export function DividendsTable({ transactions, positions, quotes }: DividendsTab
                   })}
               </tbody>
             </table>
+
+            <div className="sm:hidden space-y-2">
+              {filteredTransactions
+                .sort((a, b) => b.date.localeCompare(a.date))
+                .map((t) => {
+                  const symbol = t.stock_symbol?.toUpperCase();
+                  let quantityAtDate = 0;
+                  let dividendPerShare = 0;
+                  let yieldOnCost = 0;
+
+                  if (symbol) {
+                    const positionsAtDate = calculatePositionsAtDate(transactions, t.date);
+                    const position = positionsAtDate.get(symbol);
+                    quantityAtDate = position?.quantity || 0;
+                    const averagePrice = position?.averagePrice || 0;
+
+                    if (quantityAtDate > 0) {
+                      dividendPerShare = t.amount / quantityAtDate;
+                      const costBasis = quantityAtDate * averagePrice;
+                      if (costBasis > 0) {
+                        yieldOnCost = (t.amount / costBasis) * 100;
+                      }
+                    }
+                  }
+
+                  return (
+                    <div key={t.id} className="rounded-lg border border-zinc-200 dark:border-zinc-800 p-3 bg-zinc-50 dark:bg-zinc-900/40">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="text-xs text-zinc-500">{formatDate(t.date)}</div>
+                        <div className="font-semibold text-sm text-emerald-600">{formatCurrency(t.amount)}</div>
+                      </div>
+                      <div className="mt-1 text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                        {t.stock_symbol || '(Non attribue)'}
+                      </div>
+                      <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
+                        <div>
+                          <span className="text-zinc-500">Qté: </span>
+                          <span className="text-zinc-700 dark:text-zinc-300">{quantityAtDate > 0 ? quantityAtDate : '-'}</span>
+                        </div>
+                        <div>
+                          <span className="text-zinc-500">€/action: </span>
+                          <span className="text-violet-600 dark:text-violet-400">{dividendPerShare > 0 ? `${dividendPerShare.toFixed(2)} €` : '-'}</span>
+                        </div>
+                        <div className="col-span-2">
+                          <span className="text-zinc-500">Rdt/Coût: </span>
+                          <span className="text-blue-600 dark:text-blue-400">{yieldOnCost > 0 ? `${yieldOnCost.toFixed(2)}%` : '-'}</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
           </div>
         )}
       </div>

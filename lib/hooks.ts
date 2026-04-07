@@ -12,6 +12,7 @@ import {
   calculateAccountTotalValue,
   AccountCalculatedValue,
   calculatePositionsAtDate,
+  calculateAllPositionsAtDate,
   CalculatedPosition,
 } from '@/lib/portfolio-calculator';
 
@@ -21,7 +22,7 @@ export function useAccounts() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchAccounts = useCallback(async () => {
+  const fetchAccounts = useCallback(async (): Promise<Account[]> => {
     try {
       setLoading(true);
       const { data, error } = await supabase
@@ -30,9 +31,12 @@ export function useAccounts() {
         .order('created_at', { ascending: true });
 
       if (error) throw error;
-      setAccounts(data || []);
+      const nextAccounts = data || [];
+      setAccounts(nextAccounts);
+      return nextAccounts;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur lors du chargement');
+      return [];
     } finally {
       setLoading(false);
     }
@@ -51,7 +55,7 @@ export function useTransactions(accountId?: string) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchTransactions = useCallback(async () => {
+  const fetchTransactions = useCallback(async (): Promise<Transaction[]> => {
     try {
       setLoading(true);
       let query = supabase
@@ -66,9 +70,12 @@ export function useTransactions(accountId?: string) {
       const { data, error } = await query;
 
       if (error) throw error;
-      setTransactions(data || []);
+      const nextTransactions = data || [];
+      setTransactions(nextTransactions);
+      return nextTransactions;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur lors du chargement');
+      return [];
     } finally {
       setLoading(false);
     }
@@ -87,7 +94,7 @@ export function usePositions(accountId?: string) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchPositions = useCallback(async () => {
+  const fetchPositions = useCallback(async (): Promise<StockPosition[]> => {
     try {
       setLoading(true);
       let query = supabase
@@ -102,9 +109,12 @@ export function usePositions(accountId?: string) {
       const { data, error } = await query;
 
       if (error) throw error;
-      setPositions(data || []);
+      const nextPositions = data || [];
+      setPositions(nextPositions);
+      return nextPositions;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur lors du chargement');
+      return [];
     } finally {
       setLoading(false);
     }
@@ -123,15 +133,17 @@ export function useStockQuotes(symbols: string[]) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchQuotes = useCallback(async () => {
-    if (symbols.length === 0) {
+  const fetchQuotes = useCallback(async (overrideSymbols?: string[]) => {
+    const targetSymbols = overrideSymbols ?? symbols;
+
+    if (targetSymbols.length === 0) {
       setQuotes({});
       return;
     }
 
     try {
       setLoading(true);
-      const response = await fetch(`/api/stocks/quotes?symbols=${symbols.join(',')}`);
+      const response = await fetch(`/api/stocks/quotes?symbols=${targetSymbols.join(',')}`);
       
       if (!response.ok) {
         throw new Error('Erreur lors de la récupération des cours');
@@ -150,7 +162,7 @@ export function useStockQuotes(symbols: string[]) {
     } finally {
       setLoading(false);
     }
-  }, [symbols.join(',')]);
+  }, [symbols]);
 
   useEffect(() => {
     fetchQuotes();
@@ -506,16 +518,14 @@ export function usePositionsWithCalculatedValues(
   return useMemo(() => {
     const today = new Date().toISOString().split('T')[0];
 
-    return positions.map(position => {
-      // Calculer les positions pour CE compte spécifiquement
-      const calculatedPositions = calculatePositionsAtDate(
-        transactions, 
-        today, 
-        position.account_id // Filtrer par account_id
-      );
-      
-      const calculated = calculatedPositions.get(position.symbol.toUpperCase());
-      
+    const calculatedByAccount = calculateAllPositionsAtDate(transactions, today);
+    const existingKeys = new Set<string>();
+
+    const enrichedFromStoredPositions = positions.map(position => {
+      const key = `${position.account_id}:${position.symbol.toUpperCase()}`;
+      existingKeys.add(key);
+      const calculated = calculatedByAccount.get(key);
+
       if (calculated) {
         return {
           ...position,
@@ -536,5 +546,31 @@ export function usePositionsWithCalculatedValues(
         calculatedTotalInvested: position.quantity * position.average_price,
       };
     });
+
+    // Ajouter les positions présentes dans les transactions mais absentes de stock_positions.
+    const derivedFromTransactions: EnrichedPosition[] = [];
+    calculatedByAccount.forEach((calculated, key) => {
+      if (existingKeys.has(key) || calculated.quantity <= 0) {
+        return;
+      }
+
+      derivedFromTransactions.push({
+        id: `derived-${calculated.accountId}-${calculated.symbol}`,
+        account_id: calculated.accountId,
+        symbol: calculated.symbol,
+        name: calculated.symbol,
+        quantity: calculated.quantity,
+        average_price: calculated.averagePrice,
+        current_price: calculated.averagePrice,
+        currency: 'EUR',
+        created_at: today,
+        updated_at: today,
+        calculatedQuantity: calculated.quantity,
+        calculatedAveragePrice: calculated.averagePrice,
+        calculatedTotalInvested: calculated.totalInvested,
+      });
+    });
+
+    return [...enrichedFromStoredPositions, ...derivedFromTransactions];
   }, [positions, transactions]);
 }

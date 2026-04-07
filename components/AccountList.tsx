@@ -46,7 +46,7 @@ export function AccountCard({ account, onClick }: AccountCardProps) {
   return (
     <button
       onClick={onClick}
-      className="w-full text-left bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-3 sm:p-4 lg:p-5 shadow-sm hover:shadow-md transition-all hover:border-blue-300 dark:hover:border-blue-700"
+      className="w-full max-w-full overflow-hidden text-left bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-3 sm:p-4 lg:p-5 shadow-sm hover:shadow-md transition-all hover:border-blue-300 dark:hover:border-blue-700"
     >
       <div className="flex items-center gap-3 sm:gap-4">
         <div className={`${bgColor} rounded-lg p-2 sm:p-3 text-white flex-shrink-0`}>
@@ -67,8 +67,8 @@ export function AccountCard({ account, onClick }: AccountCardProps) {
             </div>
           )}
         </div>
-        <div className="text-right flex-shrink-0">
-          <p className="font-bold text-sm sm:text-base lg:text-lg text-zinc-900 dark:text-zinc-100">
+        <div className="text-right flex-shrink-0 max-w-[42%]">
+          <p className="font-bold text-sm sm:text-base lg:text-lg text-zinc-900 dark:text-zinc-100 truncate">
             {formatCurrency(account.balance, account.currency)}
           </p>
           {isPeaCto && (
@@ -103,7 +103,7 @@ export function AccountList({ accounts, onAccountClick }: AccountListProps) {
   }
 
   return (
-    <div className="space-y-2 sm:space-y-3">
+    <div className="w-full max-w-full space-y-2 sm:space-y-3">
       {accounts.map((account) => (
         <AccountCard
           key={account.id}

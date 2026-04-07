@@ -12,7 +12,7 @@ import { calculatePositionsAtDate } from '@/lib/portfolio-calculator';
 interface AddTransactionModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: () => void | Promise<void>;
   accounts: Account[];
   defaultAccountId?: string;
 }
@@ -305,7 +305,7 @@ export function AddTransactionModal({
       setQuantity('');
       setPricePerUnit('');
       setSearchQuery('');
-      onSuccess();
+      await onSuccess();
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Une erreur est survenue');

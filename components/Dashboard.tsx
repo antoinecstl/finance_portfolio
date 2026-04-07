@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { 
   RefreshCw, 
   Plus, 
@@ -53,8 +53,24 @@ export function Dashboard() {
   const { positions, loading: loadingPositions, refetch: refetchPositions } = usePositions();
   const { transactions, loading: loadingTransactions, refetch: refetchTransactions } = useTransactions();
 
-  // Extraire les symboles pour les cotations
-  const symbols = useMemo(() => positions.map(p => p.symbol), [positions]);
+  // Extraire les symboles pour les cotations (positions + transactions)
+  const symbols = useMemo(() => {
+    const symbolSet = new Set<string>();
+
+    positions.forEach((position) => {
+      if (position.symbol) {
+        symbolSet.add(position.symbol.toUpperCase());
+      }
+    });
+
+    transactions.forEach((transaction) => {
+      if (transaction.stock_symbol) {
+        symbolSet.add(transaction.stock_symbol.toUpperCase());
+      }
+    });
+
+    return Array.from(symbolSet);
+  }, [positions, transactions]);
   const { quotes, refetch: refetchQuotes } = useStockQuotes(symbols);
 
   // Positions enrichies avec quantités calculées depuis les transactions
@@ -86,6 +102,23 @@ export function Dashboard() {
       .reduce((sum, a) => sum + a.balance, 0);
   }, [enrichedAccounts]);
 
+  // Cash disponible sur les comptes actions (PEA/CTO)
+  const stockCashTotal = useMemo(() => {
+    return enrichedAccounts
+      .filter(a => ['PEA', 'CTO'].includes(a.type))
+      .reduce((sum, a) => sum + (a.calculatedCash ?? 0), 0);
+  }, [enrichedAccounts]);
+
+  // Valeur globale du portefeuille = somme de tous les comptes (source de vérité unifiée)
+  const totalPortfolioValue = useMemo(() => {
+    return enrichedAccounts.reduce((sum, account) => sum + account.balance, 0);
+  }, [enrichedAccounts]);
+
+  // Valeur de l'univers actions = positions + cash PEA/CTO
+  const stockPortfolioValue = useMemo(() => {
+    return portfolioSummary.totalValue + stockCashTotal;
+  }, [portfolioSummary.totalValue, stockCashTotal]);
+
   // Rediriger vers login si non connecté
   useEffect(() => {
     if (!authLoading && !user) {
@@ -93,14 +126,28 @@ export function Dashboard() {
     }
   }, [user, authLoading, router]);
 
-  const handleRefresh = async () => {
-    await Promise.all([
+  const refreshAllData = useCallback(async () => {
+    const [nextAccounts, nextPositions, nextTransactions] = await Promise.all([
       refetchAccounts(),
       refetchPositions(),
       refetchTransactions(),
-      refetchQuotes(),
     ]);
+
+    // Force les quotes à utiliser les symboles fraîchement récupérés.
+    const nextSymbols = [...new Set([
+      ...nextPositions.map((position) => position.symbol.toUpperCase()),
+      ...nextTransactions
+        .map((transaction) => transaction.stock_symbol?.toUpperCase())
+        .filter((symbol): symbol is string => Boolean(symbol)),
+    ])];
+    await refetchQuotes(nextSymbols);
+
     setLastUpdate(new Date());
+    return { nextAccounts, nextPositions, nextTransactions };
+  }, [refetchAccounts, refetchPositions, refetchTransactions, refetchQuotes]);
+
+  const handleRefresh = async () => {
+    await refreshAllData();
   };
 
   const handleLogout = async () => {
@@ -112,10 +159,8 @@ export function Dashboard() {
     refetchAccounts();
   };
 
-  const handleTransactionSuccess = () => {
-    refetchTransactions();
-    refetchAccounts();
-    refetchPositions(); // Mettre à jour les positions aussi
+  const handleTransactionSuccess = async () => {
+    await refreshAllData();
   };
 
   const handlePositionSuccess = () => {
@@ -147,7 +192,7 @@ export function Dashboard() {
   ];
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
+    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 overflow-x-hidden">
       {/* Header */}
       <header className="bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
@@ -215,6 +260,7 @@ export function Dashboard() {
           <div className="space-y-4 sm:space-y-6 lg:space-y-8">
             {/* Stats */}
             <PortfolioStats
+              totalPortfolioValue={totalPortfolioValue}
               totalValue={portfolioSummary.totalValue}
               totalInvested={portfolioSummary.totalInvested}
               totalGain={portfolioSummary.totalGain}
@@ -239,37 +285,43 @@ export function Dashboard() {
             />
 
             {/* Quick Views - stack on mobile */}
-            <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
-              <div>
-                <div className="flex items-center justify-between mb-3 sm:mb-4">
-                  <h2 className="text-base sm:text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+            <div className="grid gap-4 sm:gap-6 lg:grid-cols-2 w-full max-w-full">
+              <div className="min-w-0 w-full max-w-full">
+                <div className="flex items-center justify-between gap-2 mb-3 sm:mb-4 min-w-0">
+                  <h2 className="text-base sm:text-lg font-semibold text-zinc-900 dark:text-zinc-100 truncate">
                     Mes Comptes
                   </h2>
                   <button
                     onClick={() => setShowAddAccount(true)}
-                    className="flex items-center gap-1 text-xs sm:text-sm text-blue-600 hover:text-blue-700"
+                    className="shrink-0 inline-flex items-center gap-1 px-2 py-1 sm:px-0 sm:py-0 rounded-md sm:rounded-none bg-blue-50 dark:bg-blue-900/30 sm:bg-transparent text-xs sm:text-sm text-blue-600 hover:text-blue-700"
+                    title="Ajouter un compte"
                   >
                     <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                    Ajouter
+                    <span className="hidden sm:inline">Ajouter</span>
                   </button>
                 </div>
-                <AccountList accounts={enrichedAccounts} />
+                <div className="w-full max-w-full overflow-hidden">
+                  <AccountList accounts={enrichedAccounts} />
+                </div>
               </div>
 
-              <div>
-                <div className="flex items-center justify-between mb-3 sm:mb-4">
-                  <h2 className="text-base sm:text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+              <div className="min-w-0 w-full max-w-full">
+                <div className="flex items-center justify-between gap-2 mb-3 sm:mb-4 min-w-0">
+                  <h2 className="text-base sm:text-lg font-semibold text-zinc-900 dark:text-zinc-100 truncate">
                     Dernières Transactions
                   </h2>
                   <button
                     onClick={() => setShowAddTransaction(true)}
-                    className="flex items-center gap-1 text-xs sm:text-sm text-blue-600 hover:text-blue-700"
+                    className="shrink-0 inline-flex items-center gap-1 px-2 py-1 sm:px-0 sm:py-0 rounded-md sm:rounded-none bg-blue-50 dark:bg-blue-900/30 sm:bg-transparent text-xs sm:text-sm text-blue-600 hover:text-blue-700"
+                    title="Ajouter une transaction"
                   >
                     <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                    Ajouter
+                    <span className="hidden sm:inline">Ajouter</span>
                   </button>
                 </div>
-                <TransactionsList transactions={transactions} limit={5} />
+                <div className="w-full max-w-full overflow-hidden">
+                  <TransactionsList transactions={transactions} limit={5} />
+                </div>
               </div>
             </div>
           </div>
@@ -309,7 +361,7 @@ export function Dashboard() {
               positions={enrichedPositions} 
               quotes={quotes}
               transactions={transactions}
-              portfolioTotalValue={portfolioSummary.totalValue}
+              portfolioTotalValue={stockPortfolioValue}
               portfolioTotalInvested={portfolioSummary.totalInvested}
               portfolioTotalGain={portfolioSummary.totalGain}
               portfolioTotalGainPercent={portfolioSummary.totalGainPercent}
@@ -331,7 +383,7 @@ export function Dashboard() {
               portfolioHistory={fullPortfolioHistory}
               accounts={enrichedAccounts}
               loading={loadingFullHistory}
-              currentPortfolioValue={portfolioSummary.totalValue}
+              currentPortfolioValue={stockPortfolioValue}
             />
             
             {/* Positions clôturées */}

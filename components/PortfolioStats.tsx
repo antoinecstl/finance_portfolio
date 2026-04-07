@@ -81,6 +81,7 @@ export function StatCard({
 }
 
 interface PortfolioStatsProps {
+  totalPortfolioValue: number;
   totalValue: number;
   totalInvested: number;
   totalGain: number;
@@ -91,6 +92,7 @@ interface PortfolioStatsProps {
 }
 
 export function PortfolioStats({
+  totalPortfolioValue,
   totalValue,
   totalInvested,
   totalGain,
@@ -103,7 +105,7 @@ export function PortfolioStats({
     <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
       <StatCard
         title="Valeur Totale"
-        value={formatCurrency(totalValue + savingsTotal)}
+        value={formatCurrency(totalPortfolioValue)}
         icon="wallet"
       />
       <StatCard

@@ -82,7 +82,7 @@ function TransactionRow({ transaction }: TransactionRowProps) {
           </p>
         )}
       </div>
-      <div className="text-right flex-shrink-0">
+      <div className="text-right flex-shrink-0 max-w-[38%]">
         <p className={`text-sm sm:text-base font-semibold ${colorClass}`}>
           {isDebit ? '-' : '+'}{formatCurrency(Math.abs(transaction.amount))}
         </p>
@@ -162,7 +162,7 @@ export function TransactionsList({
   }
 
   return (
-    <div className="space-y-3 sm:space-y-4">
+    <div className="w-full max-w-full space-y-3 sm:space-y-4">
       {/* Filtres */}
       {showFilters && (
         <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-3 sm:p-4">
@@ -191,7 +191,7 @@ export function TransactionsList({
           </div>
 
           {showFilterPanel && (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3 pt-3 border-t border-zinc-200 dark:border-zinc-700">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 sm:gap-3 pt-3 border-t border-zinc-200 dark:border-zinc-700">
               {/* Filtre par type */}
               <div>
                 <label className="block text-[10px] sm:text-xs font-medium text-zinc-500 mb-1">Type</label>
@@ -285,7 +285,7 @@ export function TransactionsList({
       )}
 
       {/* Liste des transactions */}
-      <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-4">
+      <div className="w-full max-w-full overflow-hidden bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-4">
         {displayedTransactions.length === 0 ? (
           <div className="text-center py-8 text-zinc-500">
             Aucune transaction ne correspond aux filtres

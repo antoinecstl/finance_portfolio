@@ -1229,9 +1229,13 @@ export function PortfolioValueChart({
         }
       }
 
-      // Pour le dernier point, utiliser les valeurs passées en props (cohérence avec les autres composants)
+      // Utiliser uniquement la valeur des actions (sans cash) pour rester cohérent
+      // avec la courbe d'investissement basée sur le coût des positions ouvertes.
+      const actionsValueAtDate = point.positions.reduce((sum, position) => sum + position.value, 0);
+
+      // Pour le dernier point, utiliser les valeurs passées en props (cohérence temps réel)
       const isLastPoint = index === filteredHistory.length - 1;
-      const valeurActuelle = isLastPoint && currentTotalValue !== undefined ? currentTotalValue : point.stocksValue;
+      const valeurActuelle = isLastPoint && currentTotalValue !== undefined ? currentTotalValue : actionsValueAtDate;
       const investissement = isLastPoint && currentTotalInvested !== undefined ? currentTotalInvested : currentCostBasis;
       
       const gain = valeurActuelle - investissement;
