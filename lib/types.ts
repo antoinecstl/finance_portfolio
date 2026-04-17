@@ -6,7 +6,6 @@ export interface Account {
   id: string;
   name: string;
   type: AccountType;
-  balance: number;
   currency: string;
   created_at: string;
   updated_at: string;
@@ -32,7 +31,6 @@ export interface StockPosition {
   name: string;
   quantity: number;
   average_price: number;
-  current_price: number;
   currency: string;
   sector?: string;
   created_at: string;

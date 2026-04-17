@@ -468,7 +468,7 @@ export interface AccountCalculatedValue {
 export function calculateAccountTotalValue(
   transactions: Transaction[],
   accountId: string,
-  positions: Array<{ symbol: string; quantity: number; current_price: number }>,
+  positions: Array<{ symbol: string; quantity: number; average_price: number }>,
   quotes: Record<string, { price: number }>
 ): AccountCalculatedValue {
   // Calculer le cash
@@ -478,7 +478,7 @@ export function calculateAccountTotalValue(
   let stocksValue = 0;
   for (const pos of positions) {
     const quote = quotes[pos.symbol];
-    const price = quote?.price || pos.current_price;
+    const price = quote?.price ?? pos.average_price;
     stocksValue += pos.quantity * price;
   }
 

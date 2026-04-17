@@ -99,7 +99,7 @@ export function Dashboard() {
   const savingsTotal = useMemo(() => {
     return enrichedAccounts
       .filter(a => !['PEA', 'CTO'].includes(a.type))
-      .reduce((sum, a) => sum + a.balance, 0);
+      .reduce((sum, a) => sum + a.calculatedTotalValue, 0);
   }, [enrichedAccounts]);
 
   // Cash disponible sur les comptes actions (PEA/CTO)
@@ -111,7 +111,7 @@ export function Dashboard() {
 
   // Valeur globale du portefeuille = somme de tous les comptes (source de vérité unifiée)
   const totalPortfolioValue = useMemo(() => {
-    return enrichedAccounts.reduce((sum, account) => sum + account.balance, 0);
+    return enrichedAccounts.reduce((sum, account) => sum + account.calculatedTotalValue, 0);
   }, [enrichedAccounts]);
 
   // Valeur de l'univers actions = positions + cash PEA/CTO

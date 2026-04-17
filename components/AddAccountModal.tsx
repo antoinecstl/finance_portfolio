@@ -47,7 +47,6 @@ export function AddAccountModal({ isOpen, onClose, onSuccess }: AddAccountModalP
         user_id: user.id,
         name,
         type,
-        balance: 0,
         currency: 'EUR',
       });
 

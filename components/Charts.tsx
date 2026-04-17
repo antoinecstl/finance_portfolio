@@ -33,7 +33,7 @@ interface AllocationChartProps {
 export function AllocationChart({ positions, quotes }: AllocationChartProps) {
   // Calculer la répartition par action
   const data = positions.map((position, index) => {
-    const currentPrice = quotes[position.symbol]?.price || position.current_price;
+    const currentPrice = quotes[position.symbol]?.price ?? position.average_price;
     const value = position.quantity * currentPrice;
     return {
       name: position.symbol,
@@ -124,14 +124,14 @@ export function SectorAllocationChart({ positions, quotes }: SectorAllocationCha
 // Nouveau composant pour la répartition par compte
 
 interface AccountAllocationChartProps {
-  accounts: Array<Account & { calculatedTotalValue?: number }>;
+  accounts: Array<Account & { calculatedTotalValue: number }>;
 }
 
 export function AccountAllocationChart({ accounts }: AccountAllocationChartProps) {
   // Calculer la répartition par compte
   const data = accounts
     .map((account, index) => {
-      const value = account.calculatedTotalValue ?? account.balance;
+      const value = account.calculatedTotalValue;
       return {
         name: account.name,
         type: account.type,
@@ -529,7 +529,7 @@ export function PositionPerformanceChart({
   // Calculer les métriques pour chaque position
   const metrics: PositionMetrics[] = positions.map((position, index) => {
     const quote = quotes[position.symbol];
-    const currentPrice = quote?.price || position.current_price;
+    const currentPrice = quote?.price ?? position.average_price;
     const dayChange = quote?.change || 0;
     const dayChangePercent = quote?.changePercent || 0;
     

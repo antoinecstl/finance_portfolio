@@ -72,7 +72,6 @@ export function AddPositionModal({
         name,
         quantity: parseFloat(quantity) || 0,
         average_price: parseFloat(averagePrice) || 0,
-        current_price: parseFloat(averagePrice) || 0,
         currency: 'EUR',
         sector: sector || null,
       });

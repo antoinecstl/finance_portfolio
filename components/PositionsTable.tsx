@@ -42,7 +42,7 @@ export function PositionsTable({
   const cashBalance = useMemo(() => {
     return accounts
       .filter(a => ['PEA', 'CTO'].includes(a.type))
-      .reduce((sum, a) => sum + (a.calculatedCash ?? a.balance), 0);
+      .reduce((sum, a) => sum + (a.calculatedCash ?? 0), 0);
   }, [accounts]);
 
   // Calculer les positions clôturées à partir des transactions
@@ -146,7 +146,7 @@ export function PositionsTable({
   let totalValue = 0;
   let totalCost = 0;
   positions.forEach((position) => {
-    const currentPrice = quotes[position.symbol]?.price || position.current_price;
+    const currentPrice = quotes[position.symbol]?.price ?? position.average_price;
     totalValue += position.quantity * currentPrice;
     totalCost += position.quantity * position.average_price;
   });

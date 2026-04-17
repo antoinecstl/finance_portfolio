@@ -193,7 +193,7 @@ export function usePortfolioSummary(positions: StockPosition[], quotes: Record<s
 
     positions.forEach((position) => {
       const quote = quotes[position.symbol];
-      const currentPrice = quote?.price || position.current_price;
+      const currentPrice = quote?.price ?? position.average_price;
       const previousClose = quote?.previousClose || currentPrice;
 
       const positionValue = position.quantity * currentPrice;
@@ -435,7 +435,7 @@ export function useFullPortfolioHistory(
 export interface EnrichedAccount extends Account {
   calculatedCash?: number;
   calculatedStocksValue?: number;
-  calculatedTotalValue?: number;
+  calculatedTotalValue: number;
 }
 
 /**
@@ -465,8 +465,6 @@ export function useAccountsWithCalculatedValues(
           calculatedCash: calculated.cash,
           calculatedStocksValue: calculated.stocksValue,
           calculatedTotalValue: calculated.totalValue,
-          // Remplacer balance par la valeur calculée
-          balance: calculated.totalValue,
         };
       }
 
@@ -491,7 +489,6 @@ export function useAccountsWithCalculatedValues(
       return {
         ...account,
         calculatedTotalValue: calculatedBalance,
-        balance: calculatedBalance,
       };
     });
   }, [accounts, transactions, positions, quotes]);
@@ -561,7 +558,6 @@ export function usePositionsWithCalculatedValues(
         name: calculated.symbol,
         quantity: calculated.quantity,
         average_price: calculated.averagePrice,
-        current_price: calculated.averagePrice,
         currency: 'EUR',
         created_at: today,
         updated_at: today,

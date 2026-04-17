@@ -220,21 +220,7 @@ export function AddTransactionModal({
       const { error: transactionError } = await supabase.from('transactions').insert(transactionData);
       if (transactionError) throw transactionError;
 
-      // 2. Mettre à jour le solde du compte
-      const account = accounts.find(a => a.id === accountId);
-      if (account) {
-        let balanceChange = totalAmount;
-        if (['WITHDRAWAL', 'BUY', 'FEE'].includes(type)) {
-          balanceChange = -balanceChange;
-        }
-
-        await supabase
-          .from('accounts')
-          .update({ balance: account.balance + balanceChange })
-          .eq('id', accountId);
-      }
-
-      // 3. Mettre à jour les positions pour les achats/ventes
+      // 2. Mettre à jour les positions pour les achats/ventes
       if (isStockTransaction) {
         const symbolUpper = stockSymbol.toUpperCase();
         
@@ -259,7 +245,6 @@ export function AddTransactionModal({
               .update({
                 quantity: newQuantity,
                 average_price: newAveragePrice,
-                current_price: price,
               })
               .eq('id', existingPos.id);
           } else {
@@ -271,7 +256,6 @@ export function AddTransactionModal({
               name: stockName || symbolUpper,
               quantity: qty,
               average_price: price,
-              current_price: price,
               currency: 'EUR',
             });
           }
@@ -290,7 +274,6 @@ export function AddTransactionModal({
               .from('stock_positions')
               .update({
                 quantity: newQuantity,
-                current_price: price,
               })
               .eq('id', existingPos.id);
           }

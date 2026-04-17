@@ -69,7 +69,7 @@ export function AccountCard({ account, onClick }: AccountCardProps) {
         </div>
         <div className="text-right flex-shrink-0 max-w-[42%]">
           <p className="font-bold text-sm sm:text-base lg:text-lg text-zinc-900 dark:text-zinc-100 truncate">
-            {formatCurrency(account.balance, account.currency)}
+            {formatCurrency(account.calculatedTotalValue, account.currency)}
           </p>
           {isPeaCto && (
             <p className="text-[10px] sm:text-xs text-zinc-500 dark:text-zinc-400">
