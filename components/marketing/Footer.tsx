@@ -7,7 +7,7 @@ export function Footer() {
         <div>
           <h4 className="font-semibold text-zinc-900 dark:text-zinc-100 mb-3">Produit</h4>
           <ul className="space-y-2 text-zinc-600 dark:text-zinc-400">
-            <li><Link href="/pricing" className="hover:text-zinc-900">Tarifs</Link></li>
+            <li><Link href="/#pricing" className="hover:text-zinc-900">Tarifs</Link></li>
             <li><Link href="/signup" className="hover:text-zinc-900">Créer un compte</Link></li>
             <li><Link href="/login" className="hover:text-zinc-900">Se connecter</Link></li>
           </ul>

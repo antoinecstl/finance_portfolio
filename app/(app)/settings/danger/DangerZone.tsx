@@ -34,7 +34,7 @@ export function DangerZone() {
 
   const handleDelete = async () => {
     if (confirmText !== 'SUPPRIMER') {
-      setError('Tape SUPPRIMER pour confirmer');
+      setError('Tapez SUPPRIMER pour confirmer.');
       return;
     }
     setDeleting(true);
@@ -55,31 +55,41 @@ export function DangerZone() {
   };
 
   return (
-    <div className="space-y-8">
-      <section>
-        <h3 className="font-medium mb-1">Exporter mes données</h3>
-        <p className="text-sm text-zinc-500 mb-3">
-          Téléchargez l&apos;intégralité de vos données (profil, comptes, transactions, positions) au format
-          JSON.
-        </p>
-        <button
-          onClick={handleExport}
-          disabled={exporting}
-          className="inline-flex items-center gap-2 py-2 px-4 border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800 rounded-lg text-sm font-medium"
-        >
-          {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-          Télécharger l&apos;export JSON
-        </button>
+    <div className="space-y-6">
+      <section className="rounded-lg border border-zinc-200 dark:border-zinc-800 p-5">
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div className="min-w-0">
+            <h3 className="font-medium text-zinc-900 dark:text-zinc-100">Exporter mes données</h3>
+            <p className="text-sm text-zinc-500 mt-1">
+              Téléchargez l&apos;intégralité de vos données (profil, comptes, transactions,
+              positions) au format JSON, conformément au RGPD.
+            </p>
+          </div>
+          <button
+            onClick={handleExport}
+            disabled={exporting}
+            className="inline-flex items-center gap-2 py-2 px-4 border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800 rounded-lg text-sm font-medium transition flex-shrink-0"
+          >
+            {exporting ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Download className="h-4 w-4" />
+            )}
+            Télécharger l&apos;export JSON
+          </button>
+        </div>
       </section>
 
-      <section className="pt-6 border-t border-red-200 dark:border-red-900/40">
-        <div className="flex items-start gap-2 mb-3">
-          <AlertTriangle className="h-5 w-5 text-red-600 mt-0.5" />
-          <div>
+      <section className="rounded-lg border border-red-200 dark:border-red-900/40 bg-red-50/30 dark:bg-red-950/10 p-5">
+        <div className="flex items-start gap-3 mb-4">
+          <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-red-100 dark:bg-red-900/30 text-red-600 flex items-center justify-center">
+            <AlertTriangle className="h-5 w-5" />
+          </div>
+          <div className="min-w-0">
             <h3 className="font-medium text-red-700 dark:text-red-400">Supprimer mon compte</h3>
-            <p className="text-sm text-zinc-500">
-              Action irréversible. Toutes vos données (comptes, transactions, positions) seront
-              définitivement supprimées.
+            <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">
+              Action <strong>irréversible</strong>. Toutes vos données (comptes, transactions,
+              positions) seront définitivement supprimées.
             </p>
           </div>
         </div>
@@ -88,16 +98,20 @@ export function DangerZone() {
             type="text"
             value={confirmText}
             onChange={(e) => setConfirmText(e.target.value)}
-            placeholder="Tape SUPPRIMER pour confirmer"
-            className="w-full px-3 py-2 border border-red-300 dark:border-red-900 rounded-lg bg-white dark:bg-zinc-800"
+            placeholder="Tapez SUPPRIMER pour confirmer"
+            className="w-full px-3 py-2.5 border border-red-300 dark:border-red-900/50 rounded-lg bg-white dark:bg-zinc-900 focus:ring-2 focus:ring-red-500 focus:border-transparent transition"
           />
           {error && <p className="text-sm text-red-600">{error}</p>}
           <button
             onClick={handleDelete}
             disabled={deleting || confirmText !== 'SUPPRIMER'}
-            className="inline-flex items-center gap-2 py-2 px-4 bg-red-600 hover:bg-red-700 disabled:bg-red-300 text-white rounded-lg text-sm font-medium"
+            className="inline-flex items-center gap-2 py-2.5 px-5 bg-red-600 hover:bg-red-700 disabled:bg-red-300 disabled:cursor-not-allowed text-white rounded-lg text-sm font-medium transition"
           >
-            {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+            {deleting ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Trash2 className="h-4 w-4" />
+            )}
             Supprimer définitivement
           </button>
         </div>

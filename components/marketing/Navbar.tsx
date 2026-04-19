@@ -13,7 +13,7 @@ export function Navbar() {
         </Link>
         <div className="flex items-center gap-1 sm:gap-4 text-sm">
           <Link
-            href="/pricing"
+            href="/#pricing"
             className="hidden sm:inline px-3 py-2 text-zinc-700 dark:text-zinc-300 hover:text-zinc-900"
           >
             Tarifs

@@ -61,7 +61,7 @@ export default function LandingPage() {
             Commencer gratuitement <ArrowRight className="w-4 h-4" />
           </Link>
           <Link
-            href="/pricing"
+            href="#pricing"
             className="inline-flex items-center px-6 py-3 border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-900 text-zinc-900 dark:text-zinc-100 font-medium rounded-lg"
           >
             Voir les tarifs
@@ -92,7 +92,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className="max-w-5xl mx-auto px-4 py-16">
+      <section id="pricing" className="max-w-5xl mx-auto px-4 py-16 scroll-mt-20">
         <h2 className="text-3xl font-bold text-center text-zinc-900 dark:text-zinc-100 mb-4">
           Tarifs simples
         </h2>

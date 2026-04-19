@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getUserSubscription } from '@/lib/subscription';
 import { SubscriptionProvider } from '@/lib/subscription-client';
 import { ToastProvider } from '@/components/Toast';
+import { Onboarding } from '@/components/Onboarding';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,6 +15,16 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   if (!user) {
     redirect('/login');
+  }
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('onboarded_at')
+    .eq('id', user.id)
+    .single();
+
+  if (!profile?.onboarded_at) {
+    return <Onboarding email={user.email ?? ''} />;
   }
 
   const sub = await getUserSubscription(user.id);
