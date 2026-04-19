@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { 
   RefreshCw, 
   Plus, 
@@ -9,15 +9,19 @@ import {
   History, 
   TrendingUp,
   LogOut,
-  Loader2,
+  Settings,
   Coins
 } from 'lucide-react';
+import Link from 'next/link';
 import { PortfolioStats } from './PortfolioStats';
 import { AccountList } from './AccountList';
 import { PositionsTable } from './PositionsTable';
 import { TransactionsList } from './TransactionsList';
 import { DividendsTable } from './DividendsTable';
 import { AllocationChart, SectorAllocationChart, AccountAllocationChart, PortfolioHistoryChart, PositionPerformanceChart, StockHistoryChart, PortfolioPerformanceChart, PortfolioValueChart } from './Charts';
+import { ProBlur } from './ProBlur';
+import { UsageMeter } from './UsageMeter';
+import { useSubscription } from '@/lib/subscription-client';
 import { AddAccountModal } from './AddAccountModal';
 import { AddTransactionModal } from './AddTransactionModal';
 import { AddPositionModal } from './AddPositionModal';
@@ -46,8 +50,9 @@ export function Dashboard() {
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
   const [historyPeriod, setHistoryPeriod] = useState(30);
 
-  const { user, loading: authLoading, signOut } = useAuth();
+  const { user, signOut } = useAuth();
   const router = useRouter();
+  const { isFree, limits } = useSubscription();
 
   const { accounts, loading: loadingAccounts, refetch: refetchAccounts } = useAccounts();
   const { positions, loading: loadingPositions, refetch: refetchPositions } = usePositions();
@@ -119,13 +124,6 @@ export function Dashboard() {
     return portfolioSummary.totalValue + stockCashTotal;
   }, [portfolioSummary.totalValue, stockCashTotal]);
 
-  // Rediriger vers login si non connecté
-  useEffect(() => {
-    if (!authLoading && !user) {
-      router.push('/login');
-    }
-  }, [user, authLoading, router]);
-
   const refreshAllData = useCallback(async () => {
     const [nextAccounts, nextPositions, nextTransactions] = await Promise.all([
       refetchAccounts(),
@@ -153,6 +151,7 @@ export function Dashboard() {
   const handleLogout = async () => {
     await signOut();
     router.push('/login');
+    router.refresh();
   };
 
   const handleAccountSuccess = () => {
@@ -166,20 +165,6 @@ export function Dashboard() {
   const handlePositionSuccess = () => {
     refetchPositions();
   };
-
-  // Afficher loader pendant le chargement auth
-  if (authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-950">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-      </div>
-    );
-  }
-
-  // Ne rien afficher si pas connecté (redirection en cours)
-  if (!user) {
-    return null;
-  }
 
   const isLoading = loadingAccounts || loadingPositions || loadingTransactions;
 
@@ -213,7 +198,7 @@ export function Dashboard() {
 
             <div className="flex items-center gap-1 sm:gap-3">
               <span className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 hidden md:inline truncate max-w-[150px]">
-                {user.email}
+                {user?.email}
               </span>
               <button
                 onClick={handleRefresh}
@@ -223,6 +208,13 @@ export function Dashboard() {
               >
                 <RefreshCw className={`h-4 w-4 sm:h-5 sm:w-5 text-zinc-600 dark:text-zinc-400 ${isLoading ? 'animate-spin' : ''}`} />
               </button>
+              <Link
+                href="/settings/profile"
+                className="p-1.5 sm:p-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors text-zinc-600 dark:text-zinc-400"
+                title="Paramètres"
+              >
+                <Settings className="h-4 w-4 sm:h-5 sm:w-5" />
+              </Link>
               <button
                 onClick={handleLogout}
                 className="p-1.5 sm:p-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors text-zinc-600 dark:text-zinc-400"
@@ -258,6 +250,13 @@ export function Dashboard() {
       <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
         {activeTab === 'dashboard' && (
           <div className="space-y-4 sm:space-y-6 lg:space-y-8">
+            {isFree && (
+              <div className="grid gap-2 sm:grid-cols-3">
+                <UsageMeter label="Comptes" current={accounts.length} max={limits.maxAccounts} />
+                <UsageMeter label="Transactions" current={transactions.length} max={limits.maxTransactions} />
+                <UsageMeter label="Positions" current={positions.length} max={limits.maxPositions} />
+              </div>
+            )}
             {/* Stats */}
             <PortfolioStats
               totalPortfolioValue={totalPortfolioValue}
@@ -272,17 +271,21 @@ export function Dashboard() {
 
             {/* Charts - stack on mobile */}
             <div className="grid gap-4 sm:gap-6 md:grid-cols-2">
-              <AllocationChart positions={enrichedPositions} quotes={quotes} />
+              <ProBlur feature="advanced_analytics" label="Répartition détaillée — Pro">
+                <AllocationChart positions={enrichedPositions} quotes={quotes} />
+              </ProBlur>
               <AccountAllocationChart accounts={enrichedAccounts} />
             </div>
 
             {/* History Chart */}
-            <PortfolioHistoryChart 
-              history={portfolioHistory}
-              loading={loadingHistory}
-              onPeriodChange={setHistoryPeriod}
-              selectedPeriod={historyPeriod}
-            />
+            <ProBlur feature="advanced_analytics" label="Évolution du portefeuille — Pro">
+              <PortfolioHistoryChart
+                history={portfolioHistory}
+                loading={loadingHistory}
+                onPeriodChange={setHistoryPeriod}
+                selectedPeriod={historyPeriod}
+              />
+            </ProBlur>
 
             {/* Quick Views - stack on mobile */}
             <div className="grid gap-4 sm:gap-6 lg:grid-cols-2 w-full max-w-full">
@@ -357,8 +360,8 @@ export function Dashboard() {
             </div>
             
             {/* Graphique de performance des positions (détail par position) - EN PREMIER */}
-            <PositionPerformanceChart 
-              positions={enrichedPositions} 
+            <PositionPerformanceChart
+              positions={enrichedPositions}
               quotes={quotes}
               transactions={transactions}
               portfolioTotalValue={stockPortfolioValue}
@@ -378,13 +381,15 @@ export function Dashboard() {
             />
             
             {/* Graphique de performance réelle du portefeuille (annuelle) */}
-            <PortfolioPerformanceChart 
-              transactions={transactions}
-              portfolioHistory={fullPortfolioHistory}
-              accounts={enrichedAccounts}
-              loading={loadingFullHistory}
-              currentPortfolioValue={stockPortfolioValue}
-            />
+            <ProBlur feature="advanced_analytics" partial label="Performance annuelle — Pro">
+              <PortfolioPerformanceChart
+                transactions={transactions}
+                portfolioHistory={fullPortfolioHistory}
+                accounts={enrichedAccounts}
+                loading={loadingFullHistory}
+                currentPortfolioValue={stockPortfolioValue}
+              />
+            </ProBlur>
             
             {/* Positions clôturées */}
             <PositionsTable 

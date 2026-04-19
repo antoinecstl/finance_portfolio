@@ -9,6 +9,8 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@paddle/paddle-node-sdk": "^3.7.0",
+    "@supabase/ssr": "^0.10.2",
     "@supabase/supabase-js": "^2.89.0",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",

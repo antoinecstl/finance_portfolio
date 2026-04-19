@@ -23,7 +23,9 @@ import {
 import { StockPosition, StockQuote, Transaction, Account } from '@/lib/types';
 import { PortfolioHistoryPoint, calculatePortfolioPerformance, PortfolioPerformanceData } from '@/lib/portfolio-calculator';
 import { formatCurrency, formatPercent, CHART_COLORS, getSectorColor } from '@/lib/utils';
-import { PieChart as PieChartIcon, TrendingUp, TrendingDown, Loader2, BarChart2, Target, Scale, Activity, ChevronDown, ChevronRight, ShoppingCart, DollarSign, Banknote, CircleDollarSign, Percent, Wallet, ArrowUpRight, ArrowDownRight, PiggyBank, LineChart as LineChartIcon } from 'lucide-react';
+import { PieChart as PieChartIcon, TrendingUp, TrendingDown, Loader2, BarChart2, Target, Scale, Activity, ChevronDown, ChevronRight, ShoppingCart, DollarSign, Banknote, CircleDollarSign, Percent, Wallet, ArrowUpRight, ArrowDownRight, PiggyBank, LineChart as LineChartIcon, Lock } from 'lucide-react';
+import { useSubscription } from '@/lib/subscription-client';
+import { ProBlur } from './ProBlur';
 
 interface AllocationChartProps {
   positions: StockPosition[];
@@ -491,6 +493,8 @@ export function PositionPerformanceChart({
 }: PositionPerformanceChartProps) {
   // État pour les lignes étendues
   const [expandedSymbol, setExpandedSymbol] = useState<string | null>(null);
+  const { hasFeature } = useSubscription();
+  const isProUser = hasFeature('advanced_analytics');
 
   // Filtrer les transactions par symbole
   const getTransactionsForSymbol = (symbol: string) => {
@@ -718,12 +722,13 @@ export function PositionPerformanceChart({
           </div>
         </div>
 
-        {/* Graphique des poids */}
+        {/* Répartition du portefeuille */}
+        <ProBlur feature="advanced_analytics" label="Répartition du portefeuille — Pro">
         <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-4 sm:p-6">
           <div className="flex items-center gap-2 mb-4">
             <Scale className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
             <h3 className="font-semibold text-sm sm:text-base text-zinc-900 dark:text-zinc-100">
-              Poids dans le Portefeuille
+              Répartition du portefeuille
             </h3>
           </div>
           <div className="h-[250px] sm:h-[300px]">
@@ -775,6 +780,7 @@ export function PositionPerformanceChart({
             </ResponsiveContainer>
           </div>
         </div>
+        </ProBlur>
       </div>
 
       {/* Tableau détaillé */}
@@ -811,7 +817,7 @@ export function PositionPerformanceChart({
                   </div>
                   <div className="text-right">
                     <p className="font-bold text-zinc-900 dark:text-zinc-100">{formatCurrency(m.currentValue)}</p>
-                    <p className="text-xs text-zinc-500">{m.weight.toFixed(1)}% du portefeuille</p>
+                    <p className={`text-xs text-zinc-500 ${isProUser ? '' : 'blur-sm select-none'}`}>{m.weight.toFixed(1)}% du portefeuille</p>
                   </div>
                 </div>
                 <div className="grid grid-cols-3 gap-2 text-xs">
@@ -918,7 +924,9 @@ export function PositionPerformanceChart({
                 <th className="py-2 px-3 text-right font-semibold text-zinc-600 dark:text-zinc-400">Cours</th>
                 <th className="py-2 px-3 text-right font-semibold text-zinc-600 dark:text-zinc-400">Var. Jour</th>
                 <th className="py-2 px-3 text-right font-semibold text-zinc-600 dark:text-zinc-400">Valeur</th>
-                <th className="py-2 px-3 text-right font-semibold text-zinc-600 dark:text-zinc-400">Poids</th>
+                <th className="py-2 px-3 text-right font-semibold text-zinc-600 dark:text-zinc-400">
+                  {isProUser ? 'Poids' : <span className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400"><Lock className="h-3 w-3" />Poids</span>}
+                </th>
                 <th className="py-2 px-3 text-right font-semibold text-zinc-600 dark:text-zinc-400">+/- Value</th>
               </tr>
             </thead>
@@ -968,9 +976,9 @@ export function PositionPerformanceChart({
                         {formatCurrency(m.currentValue)}
                       </td>
                       <td className="py-2 px-3 text-right">
-                        <div className="flex items-center justify-end gap-2">
+                        <div className={`flex items-center justify-end gap-2 ${isProUser ? '' : 'blur-sm select-none pointer-events-none'}`} aria-hidden={!isProUser}>
                           <div className="w-12 h-2 bg-zinc-200 dark:bg-zinc-700 rounded-full overflow-hidden">
-                            <div 
+                            <div
                               className="h-full rounded-full"
                               style={{ width: `${m.weight}%`, backgroundColor: m.color }}
                             />

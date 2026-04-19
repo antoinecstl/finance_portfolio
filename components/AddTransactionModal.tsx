@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase';
 import { Account, StockPosition, Transaction } from '@/lib/types';
 import { useAuth } from '@/lib/auth';
 import { useStockSearch } from '@/lib/hooks';
+import { useToast } from './Toast';
 import { POPULAR_FRENCH_STOCKS } from '@/lib/stock-api';
 import { calculatePositionsAtDate } from '@/lib/portfolio-calculator';
 
@@ -52,6 +53,7 @@ export function AddTransactionModal({
   const [allTransactions, setAllTransactions] = useState<Transaction[]>([]);
   const { user } = useAuth();
   const { results: searchResults, search } = useStockSearch();
+  const toast = useToast();
 
   // Calculer automatiquement le montant total
   useEffect(() => {
@@ -217,8 +219,31 @@ export function AddTransactionModal({
         transactionData.stock_symbol = stockSymbol.toUpperCase();
       }
 
-      const { error: transactionError } = await supabase.from('transactions').insert(transactionData);
-      if (transactionError) throw transactionError;
+      const res = await fetch('/api/transactions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          account_id: transactionData.account_id,
+          type: transactionData.type,
+          amount: transactionData.amount,
+          description: transactionData.description,
+          date: transactionData.date,
+          stock_symbol: transactionData.stock_symbol,
+          quantity: transactionData.quantity,
+          price_per_unit: transactionData.price_per_unit,
+        }),
+      });
+
+      if (res.status === 402) {
+        const data = await res.json().catch(() => ({}));
+        toast.showUpsell(data.message ?? 'Limite Free atteinte. Passez Pro pour continuer.');
+        throw new Error(data.message ?? 'Limite atteinte');
+      }
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error ?? 'Erreur lors de la création');
+      }
 
       // 2. Mettre à jour les positions pour les achats/ventes
       if (isStockTransaction) {

@@ -2,11 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { X, Search } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
 import { Account } from '@/lib/types';
 import { useStockSearch } from '@/lib/hooks';
 import { POPULAR_FRENCH_STOCKS } from '@/lib/stock-api';
 import { useAuth } from '@/lib/auth';
+import { useToast } from './Toast';
 
 interface AddPositionModalProps {
   isOpen: boolean;
@@ -34,6 +34,7 @@ export function AddPositionModal({
   const [searchQuery, setSearchQuery] = useState('');
   const { results: searchResults, search } = useStockSearch();
   const { user } = useAuth();
+  const toast = useToast();
 
   // Filtrer seulement les comptes PEA et CTO
   const stockAccounts = accounts.filter(a => ['PEA', 'CTO'].includes(a.type));
@@ -65,18 +66,30 @@ export function AddPositionModal({
     }
 
     try {
-      const { error } = await supabase.from('stock_positions').insert({
-        user_id: user.id,
-        account_id: accountId,
-        symbol: symbol.toUpperCase(),
-        name,
-        quantity: parseFloat(quantity) || 0,
-        average_price: parseFloat(averagePrice) || 0,
-        currency: 'EUR',
-        sector: sector || null,
+      const res = await fetch('/api/positions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          account_id: accountId,
+          symbol: symbol.toUpperCase(),
+          name,
+          quantity: parseFloat(quantity) || 0,
+          average_price: parseFloat(averagePrice) || 0,
+          currency: 'EUR',
+          sector: sector || null,
+        }),
       });
 
-      if (error) throw error;
+      if (res.status === 402) {
+        const data = await res.json().catch(() => ({}));
+        toast.showUpsell(data.message ?? 'Limite Free atteinte. Passez Pro pour continuer.');
+        throw new Error(data.message ?? 'Limite atteinte');
+      }
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error ?? 'Erreur lors de la création');
+      }
 
       // Reset form
       setSymbol('');

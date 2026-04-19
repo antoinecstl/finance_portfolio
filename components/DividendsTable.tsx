@@ -4,7 +4,9 @@ import { useMemo, useState } from 'react';
 import { Transaction, StockPosition, StockQuote } from '@/lib/types';
 import { formatCurrency, formatPercent, formatDate } from '@/lib/utils';
 import { calculatePositionsAtDate } from '@/lib/portfolio-calculator';
-import { Coins, TrendingUp, Calendar, ChevronDown, ChevronUp, PieChart } from 'lucide-react';
+import { Coins, TrendingUp, Calendar, ChevronDown, ChevronUp, PieChart, Lock } from 'lucide-react';
+import { useSubscription } from '@/lib/subscription-client';
+import { ProBlur } from './ProBlur';
 
 interface DividendSummary {
   symbol: string;
@@ -26,6 +28,8 @@ interface DividendsTableProps {
 export function DividendsTable({ transactions, positions, quotes }: DividendsTableProps) {
   const [showDetails, setShowDetails] = useState(false);
   const [selectedYear, setSelectedYear] = useState<number | 'all'>('all');
+  const { hasFeature } = useSubscription();
+  const isProUser = hasFeature('advanced_analytics');
 
   // Calculer les années disponibles et totaux par année
   const { dividendsByYear, years } = useMemo(() => {
@@ -218,6 +222,7 @@ export function DividendsTable({ transactions, positions, quotes }: DividendsTab
 
       {/* Dividendes par année */}
       {years.length > 1 && selectedYear === 'all' && (
+        <ProBlur feature="advanced_analytics" label="Évolution par année — Pro">
         <div className="mb-4 sm:mb-6">
           <h4 className="text-xs sm:text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
             Évolution par année
@@ -245,6 +250,7 @@ export function DividendsTable({ transactions, positions, quotes }: DividendsTab
             })}
           </div>
         </div>
+        </ProBlur>
       )}
 
       {/* Tableau par action - desktop/tablet */}
@@ -255,8 +261,12 @@ export function DividendsTable({ transactions, positions, quotes }: DividendsTab
               <th className="text-left py-2 px-2 text-sm font-medium text-zinc-500 dark:text-zinc-400">Action</th>
               <th className="text-right py-2 px-2 text-sm font-medium text-zinc-500 dark:text-zinc-400">Total reçu</th>
               <th className="text-right py-2 px-2 text-sm font-medium text-zinc-500 dark:text-zinc-400">Versements</th>
-              <th className="text-right py-2 px-2 text-sm font-medium text-zinc-500 dark:text-zinc-400 hidden md:table-cell">Moy. €/action</th>
-              <th className="text-right py-2 px-2 text-sm font-medium text-zinc-500 dark:text-zinc-400 hidden lg:table-cell">Moy. Rdt/Coût</th>
+              <th className="text-right py-2 px-2 text-sm font-medium text-zinc-500 dark:text-zinc-400 hidden md:table-cell">
+                {isProUser ? 'Moy. €/action' : <span className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400"><Lock className="h-3 w-3" />Moy. €/action</span>}
+              </th>
+              <th className="text-right py-2 px-2 text-sm font-medium text-zinc-500 dark:text-zinc-400 hidden lg:table-cell">
+                {isProUser ? 'Moy. Rdt/Coût' : <span className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400"><Lock className="h-3 w-3" />Moy. Rdt/Coût</span>}
+              </th>
               <th className="text-right py-2 px-2 text-sm font-medium text-zinc-500 dark:text-zinc-400 hidden xl:table-cell">Dernier</th>
             </tr>
           </thead>
@@ -281,7 +291,7 @@ export function DividendsTable({ transactions, positions, quotes }: DividendsTab
                 </td>
                 <td className="py-3 px-2 text-right hidden md:table-cell">
                   {dividend.avgDividendPerShare !== undefined ? (
-                    <span className="text-sm font-medium text-violet-600 dark:text-violet-400">
+                    <span className={`text-sm font-medium text-violet-600 dark:text-violet-400 ${isProUser ? '' : 'blur-sm select-none'}`}>
                       {dividend.avgDividendPerShare.toFixed(2)} €
                     </span>
                   ) : (
@@ -290,7 +300,7 @@ export function DividendsTable({ transactions, positions, quotes }: DividendsTab
                 </td>
                 <td className="py-3 px-2 text-right hidden lg:table-cell">
                   {dividend.avgYieldOnCost !== undefined ? (
-                    <span className="text-sm font-medium text-blue-600 dark:text-blue-400">
+                    <span className={`text-sm font-medium text-blue-600 dark:text-blue-400 ${isProUser ? '' : 'blur-sm select-none'}`}>
                       {dividend.avgYieldOnCost.toFixed(2)}%
                     </span>
                   ) : (
@@ -330,13 +340,13 @@ export function DividendsTable({ transactions, positions, quotes }: DividendsTab
             <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
               <div>
                 <span className="text-zinc-500">Moy. €/action: </span>
-                <span className="font-medium text-violet-600 dark:text-violet-400">
+                <span className={`font-medium text-violet-600 dark:text-violet-400 ${isProUser ? '' : 'blur-sm select-none'}`}>
                   {dividend.avgDividendPerShare !== undefined ? `${dividend.avgDividendPerShare.toFixed(2)} €` : '-'}
                 </span>
               </div>
               <div>
                 <span className="text-zinc-500">Rdt/Coût: </span>
-                <span className="font-medium text-blue-600 dark:text-blue-400">
+                <span className={`font-medium text-blue-600 dark:text-blue-400 ${isProUser ? '' : 'blur-sm select-none'}`}>
                   {dividend.avgYieldOnCost !== undefined ? `${dividend.avgYieldOnCost.toFixed(2)}%` : '-'}
                 </span>
               </div>

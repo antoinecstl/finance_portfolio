@@ -3,8 +3,8 @@ import "./globals.css";
 import { AuthProvider } from "@/lib/auth";
 
 export const metadata: Metadata = {
-  title: "Mon Portefeuille - Suivi Financier",
-  description: "Application de suivi de portefeuille financier - PEA, Livrets, Actions",
+  title: "Fi-Hub — Suivez votre patrimoine sans Excel",
+  description: "PEA, CTO, livrets, assurances-vie : un tableau de bord unique, valorisé en temps réel.",
 };
 
 export default function RootLayout({
@@ -15,9 +15,7 @@ export default function RootLayout({
   return (
     <html lang="fr">
       <body className="antialiased">
-        <AuthProvider>
-          {children}
-        </AuthProvider>
+        <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
   );

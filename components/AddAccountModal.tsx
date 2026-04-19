@@ -2,9 +2,9 @@
 
 import { useState } from 'react';
 import { X } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
 import { AccountType } from '@/lib/types';
 import { useAuth } from '@/lib/auth';
+import { useToast } from './Toast';
 
 interface AddAccountModalProps {
   isOpen: boolean;
@@ -28,6 +28,7 @@ export function AddAccountModal({ isOpen, onClose, onSuccess }: AddAccountModalP
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
+  const toast = useToast();
 
   if (!isOpen) return null;
 
@@ -43,14 +44,23 @@ export function AddAccountModal({ isOpen, onClose, onSuccess }: AddAccountModalP
     }
 
     try {
-      const { error } = await supabase.from('accounts').insert({
-        user_id: user.id,
-        name,
-        type,
-        currency: 'EUR',
+      const res = await fetch('/api/accounts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, type, currency: 'EUR' }),
       });
 
-      if (error) throw error;
+      if (res.status === 402) {
+        const data = await res.json().catch(() => ({}));
+        toast.showUpsell(data.message ?? 'Limite Free atteinte. Passez Pro pour continuer.');
+        setError(data.message ?? 'Limite atteinte');
+        return;
+      }
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error ?? 'Erreur lors de la création');
+      }
 
       setName('');
       setType('LIVRET_A');

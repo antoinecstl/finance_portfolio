@@ -113,9 +113,32 @@ L'application propose :
 - Un tableau détaillé des positions avec P&L
 - Un historique des transactions
 
-## 🤝 Contribution
+## 🚀 Déploiement production (Vercel)
 
-Les contributions sont les bienvenues !
+### 1. Projets Supabase séparés dev / prod
+
+Créez deux projets Supabase (`fi-hub-dev`, `fi-hub-prod`). Pour chacun :
+1. Exécutez les migrations dans l'ordre : `supabase/schema.sql` puis tous les fichiers de `supabase/migrations/` (par ordre chronologique).
+2. Dans **Auth > URL Configuration**, ajoutez votre domaine (Site URL + Redirect URLs incluant `/auth/callback`).
+3. Dans **Auth > Email Templates**, branchez SMTP Resend (domaine vérifié requis).
+
+### 2. Paddle
+
+1. Créez un compte Paddle (sandbox pour tests, live pour prod).
+2. Créez un produit « Fi-Hub Pro » avec un price mensuel à 4,99 € → notez `PADDLE_PRO_PRICE_ID`.
+3. Dans **Developer Tools > Notifications**, ajoutez l'endpoint `https://<votre-domaine>/api/webhooks/paddle` et copiez le secret → `PADDLE_WEBHOOK_SECRET`.
+4. Récupérez le client-side token dans **Authentication > Client-side tokens** → `NEXT_PUBLIC_PADDLE_CLIENT_TOKEN`.
+
+### 3. Resend
+
+1. Créez un domaine vérifié (`fi-hub.subleet.com`) avec les DNS SPF/DKIM.
+2. Générez une clé API → `RESEND_API_KEY`.
+
+### 4. Vercel
+
+1. Importez le repo, framework = Next.js.
+2. Renseignez toutes les variables de `.env.example` dans **Settings > Environment Variables**.
+3. Région recommandée pour la route webhook : `cdg1` (proximité Paddle EU).
 
 ## 📄 Licence
 

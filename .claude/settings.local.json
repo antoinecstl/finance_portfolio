@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install *)",
+      "Bash(npx tsc *)",
+      "Bash(npx eslint *)",
+      "Bash(node -e \"require\\('fs'\\).renameSync\\('app/\\(app\\)', 'app/app'\\)\")",
+      "Bash(tasklist)"
+    ]
+  }
+}
