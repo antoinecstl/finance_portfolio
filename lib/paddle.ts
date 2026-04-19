@@ -1,3 +1,4 @@
+import 'server-only';
 import { Paddle, Environment } from '@paddle/paddle-node-sdk';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 

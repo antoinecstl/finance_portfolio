@@ -33,9 +33,9 @@ export default function CGUPage() {
 
       <h2 className="text-xl font-semibold mt-8">5. Abonnement Pro</h2>
       <p>
-        Un abonnement payant « Pro » est proposé via Lemon Squeezy. Il est reconductible
-        mensuellement jusqu&apos;à résiliation par l&apos;utilisateur depuis son espace Paramètres. Les
-        montants sont prélevés TTC.
+        Un abonnement payant « Pro » est proposé via Paddle (Merchant of Record). Il est
+        reconductible mensuellement jusqu&apos;à résiliation par l&apos;utilisateur depuis son espace
+        Paramètres. Les montants sont prélevés TTC, la TVA applicable étant gérée par Paddle.
       </p>
 
       <h2 className="text-xl font-semibold mt-8">6. Résiliation</h2>

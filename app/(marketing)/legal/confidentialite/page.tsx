@@ -18,7 +18,7 @@ export default function PrivacyPage() {
         <li>Mot de passe (chiffré, jamais stocké en clair)</li>
         <li>Nom, URL d&apos;avatar (optionnels)</li>
         <li>Données patrimoniales saisies : comptes, transactions, positions</li>
-        <li>Données de facturation en cas d&apos;abonnement Pro, gérées par Lemon Squeezy</li>
+        <li>Données de facturation en cas d&apos;abonnement Pro, gérées par Paddle (Merchant of Record)</li>
       </ul>
 
       <h2 className="text-xl font-semibold mt-8">3. Finalités</h2>
@@ -36,7 +36,7 @@ export default function PrivacyPage() {
       <h2 className="text-xl font-semibold mt-8">5. Destinataires</h2>
       <ul className="list-disc pl-6 space-y-1">
         <li>Supabase (hébergement base de données, infrastructure UE)</li>
-        <li>Lemon Squeezy (paiement, Merchant of Record)</li>
+        <li>Paddle (paiement, Merchant of Record, gestion TVA UE)</li>
         <li>Resend (envoi d&apos;emails transactionnels)</li>
         <li>Vercel (hébergement de l&apos;application)</li>
       </ul>

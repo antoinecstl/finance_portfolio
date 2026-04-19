@@ -28,6 +28,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'invalid_payload' }, { status: 400 });
   }
 
+  // Verify the account belongs to the caller — RLS only guards user_id on insert,
+  // not the account_id FK, so an authenticated user could otherwise attach rows
+  // to another user's account.
+  const { data: account } = await supabase
+    .from('accounts')
+    .select('id')
+    .eq('id', body.account_id)
+    .eq('user_id', user.id)
+    .maybeSingle();
+  if (!account) {
+    return NextResponse.json({ error: 'invalid_account' }, { status: 403 });
+  }
+
   const limits = await getLimits(user.id);
 
   if (Number.isFinite(limits.maxTransactions)) {
@@ -37,7 +50,8 @@ export async function POST(request: Request) {
       .eq('user_id', user.id);
 
     if (countError) {
-      return NextResponse.json({ error: countError.message }, { status: 500 });
+      console.error('[api/transactions] count failed', countError);
+      return NextResponse.json({ error: 'internal_error' }, { status: 500 });
     }
 
     if ((count ?? 0) >= limits.maxTransactions) {
@@ -74,11 +88,16 @@ export async function POST(request: Request) {
   if (error) {
     if (error.message?.includes('FREE_TIER_LIMIT')) {
       return NextResponse.json(
-        { error: 'limit_reached', scope: 'transactions', message: error.message },
+        {
+          error: 'limit_reached',
+          scope: 'transactions',
+          message: 'Limite atteinte pour votre plan.',
+        },
         { status: 402 }
       );
     }
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('[api/transactions] insert failed', error);
+    return NextResponse.json({ error: 'internal_error' }, { status: 500 });
   }
 
   return NextResponse.json({ transaction: data }, { status: 201 });

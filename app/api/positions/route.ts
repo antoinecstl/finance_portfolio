@@ -27,6 +27,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'invalid_payload' }, { status: 400 });
   }
 
+  const { data: account } = await supabase
+    .from('accounts')
+    .select('id')
+    .eq('id', body.account_id)
+    .eq('user_id', user.id)
+    .maybeSingle();
+  if (!account) {
+    return NextResponse.json({ error: 'invalid_account' }, { status: 403 });
+  }
+
   const limits = await getLimits(user.id);
 
   if (Number.isFinite(limits.maxPositions)) {
@@ -36,7 +46,8 @@ export async function POST(request: Request) {
       .eq('user_id', user.id);
 
     if (countError) {
-      return NextResponse.json({ error: countError.message }, { status: 500 });
+      console.error('[api/positions] count failed', countError);
+      return NextResponse.json({ error: 'internal_error' }, { status: 500 });
     }
 
     if ((count ?? 0) >= limits.maxPositions) {
@@ -70,11 +81,16 @@ export async function POST(request: Request) {
   if (error) {
     if (error.message?.includes('FREE_TIER_LIMIT')) {
       return NextResponse.json(
-        { error: 'limit_reached', scope: 'positions', message: error.message },
+        {
+          error: 'limit_reached',
+          scope: 'positions',
+          message: 'Limite atteinte pour votre plan.',
+        },
         { status: 402 }
       );
     }
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('[api/positions] insert failed', error);
+    return NextResponse.json({ error: 'internal_error' }, { status: 500 });
   }
 
   return NextResponse.json({ position: data }, { status: 201 });

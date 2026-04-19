@@ -26,7 +26,8 @@ export async function POST(request: Request) {
       .eq('user_id', user.id);
 
     if (countError) {
-      return NextResponse.json({ error: countError.message }, { status: 500 });
+      console.error('[api/accounts] count failed', countError);
+      return NextResponse.json({ error: 'internal_error' }, { status: 500 });
     }
 
     if ((count ?? 0) >= limits.maxAccounts) {
@@ -56,11 +57,16 @@ export async function POST(request: Request) {
   if (error) {
     if (error.message?.includes('FREE_TIER_LIMIT')) {
       return NextResponse.json(
-        { error: 'limit_reached', scope: 'accounts', message: error.message },
+        {
+          error: 'limit_reached',
+          scope: 'accounts',
+          message: 'Limite atteinte pour votre plan.',
+        },
         { status: 402 }
       );
     }
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('[api/accounts] insert failed', error);
+    return NextResponse.json({ error: 'internal_error' }, { status: 500 });
   }
 
   return NextResponse.json({ account: data }, { status: 201 });

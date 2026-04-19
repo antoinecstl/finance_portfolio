@@ -296,7 +296,7 @@ export function Dashboard() {
                   </h2>
                   <button
                     onClick={() => setShowAddAccount(true)}
-                    className="shrink-0 inline-flex items-center gap-1 px-2 py-1 sm:px-0 sm:py-0 rounded-md sm:rounded-none bg-blue-50 dark:bg-blue-900/30 sm:bg-transparent text-xs sm:text-sm text-blue-600 hover:text-blue-700"
+                    className="shrink-0 inline-flex items-center gap-1 text-xs sm:text-sm text-blue-600 hover:text-blue-700"
                     title="Ajouter un compte"
                   >
                     <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
@@ -315,7 +315,7 @@ export function Dashboard() {
                   </h2>
                   <button
                     onClick={() => setShowAddTransaction(true)}
-                    className="shrink-0 inline-flex items-center gap-1 px-2 py-1 sm:px-0 sm:py-0 rounded-md sm:rounded-none bg-blue-50 dark:bg-blue-900/30 sm:bg-transparent text-xs sm:text-sm text-blue-600 hover:text-blue-700"
+                    className="shrink-0 inline-flex items-center gap-1 text-xs sm:text-sm text-blue-600 hover:text-blue-700"
                     title="Ajouter une transaction"
                   >
                     <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />

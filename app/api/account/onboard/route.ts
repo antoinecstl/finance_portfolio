@@ -27,17 +27,22 @@ export async function POST(request: Request) {
 
   const alreadyDone = Boolean(current?.onboarded_at);
 
+  const now = new Date().toISOString();
   const { error } = await supabase
     .from('profiles')
     .update({
       full_name: body.fullName?.trim() || null,
       marketing_opt_in: Boolean(body.marketingOptIn),
-      onboarded_at: new Date().toISOString(),
+      onboarded_at: now,
+      // Signup enforces the CGU checkbox; we persist consent server-side at onboarding
+      // so we keep a verifiable trace (RGPD — preuve de consentement).
+      terms_accepted_at: now,
     })
     .eq('id', user.id);
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('[api/account/onboard] update failed', error);
+    return NextResponse.json({ error: 'internal_error' }, { status: 500 });
   }
 
   if (!alreadyDone && user.email) {

@@ -37,11 +37,14 @@ export async function POST(request: Request) {
 
   const admin = await createAdminClient();
 
-  // Idempotence
-  const { error: dupErr } = await admin
+  // Idempotence check first (does not commit yet — we mark as processed only after success).
+  const { data: seen } = await admin
     .from('webhook_events')
-    .insert({ provider: 'paddle', event_id: event.event_id });
-  if (dupErr && dupErr.code === '23505') {
+    .select('event_id')
+    .eq('provider', 'paddle')
+    .eq('event_id', event.event_id)
+    .maybeSingle();
+  if (seen) {
     return NextResponse.json({ ok: true, duplicate: true });
   }
 
@@ -110,6 +113,12 @@ export async function POST(request: Request) {
       // ignore (transaction.*, address.*, etc.)
       break;
   }
+
+  // Mark event as processed only after successful handling — a crash above
+  // means Paddle will retry and we will reprocess instead of silently skipping.
+  await admin
+    .from('webhook_events')
+    .insert({ provider: 'paddle', event_id: event.event_id });
 
   return NextResponse.json({ ok: true });
 }

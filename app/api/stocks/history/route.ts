@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getHistoricalQuotes, getMultipleHistoricalQuotes } from '@/lib/stock-api';
+import { createClient } from '@/lib/supabase/server';
 
 export async function GET(request: NextRequest) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+
   const searchParams = request.nextUrl.searchParams;
   const symbols = searchParams.get('symbols');
   const startDate = searchParams.get('startDate');
