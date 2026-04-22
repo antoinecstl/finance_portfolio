@@ -1,5 +1,26 @@
 import { StockQuote } from './types';
 
+const YAHOO_TIMEOUT_MS = 5_000;
+const YAHOO_HEADERS = {
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+  'Accept': 'application/json',
+  'Accept-Language': 'en-US,en;q=0.9',
+};
+
+async function fetchWithTimeout(url: string, ms = YAHOO_TIMEOUT_MS): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), ms);
+  try {
+    return await fetch(url, {
+      headers: YAHOO_HEADERS,
+      signal: controller.signal,
+      next: { revalidate: 60 },
+    });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 /**
  * Récupère les cours d'actions depuis Yahoo Finance via l'endpoint chart (plus fiable)
  * Note: Pour les actions françaises, ajoutez .PA (ex: MC.PA pour LVMH)
@@ -8,21 +29,18 @@ import { StockQuote } from './types';
 export async function getStockQuotes(symbols: string[]): Promise<StockQuote[]> {
   if (symbols.length === 0) return [];
 
-  const quotes: StockQuote[] = [];
-
-  // Utiliser l'endpoint chart pour chaque symbole (plus fiable que v7/quote)
-  for (const symbol of symbols) {
-    try {
-      const quote = await getStockQuoteFromChart(symbol);
-      if (quote) {
-        quotes.push(quote);
+  const results = await Promise.all(
+    symbols.map(async symbol => {
+      try {
+        return await getStockQuoteFromChart(symbol);
+      } catch (error) {
+        console.error(`Error fetching quote for ${symbol}:`, error);
+        return null;
       }
-    } catch (error) {
-      console.error(`Error fetching quote for ${symbol}:`, error);
-    }
-  }
+    })
+  );
 
-  return quotes;
+  return results.filter((q): q is StockQuote => q !== null);
 }
 
 /**
@@ -30,16 +48,8 @@ export async function getStockQuotes(symbols: string[]): Promise<StockQuote[]> {
  */
 async function getStockQuoteFromChart(symbol: string): Promise<StockQuote | null> {
   try {
-    const response = await fetch(
-      `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=2d`,
-      {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-          'Accept': 'application/json',
-          'Accept-Language': 'en-US,en;q=0.9',
-        },
-        cache: 'no-store',
-      }
+    const response = await fetchWithTimeout(
+      `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=2d`
     );
 
     if (!response.ok) {
@@ -102,16 +112,8 @@ export async function searchStocks(query: string): Promise<Array<{ symbol: strin
   if (!query || query.length < 2) return [];
 
   try {
-    const response = await fetch(
-      `https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(query)}&quotesCount=10&newsCount=0&enableFuzzyQuery=false`,
-      {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-          'Accept': 'application/json',
-          'Accept-Language': 'en-US,en;q=0.9',
-        },
-        cache: 'no-store',
-      }
+    const response = await fetchWithTimeout(
+      `https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(query)}&quotesCount=10&newsCount=0&enableFuzzyQuery=false`
     );
 
     if (!response.ok) {
@@ -213,16 +215,9 @@ export async function getHistoricalQuotes(
     const period1 = Math.floor(new Date(startDate).getTime() / 1000);
     const period2 = Math.floor(new Date(endDate).getTime() / 1000);
 
-    const response = await fetch(
+    const response = await fetchWithTimeout(
       `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?period1=${period1}&period2=${period2}&interval=${interval}`,
-      {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-          'Accept': 'application/json',
-          'Accept-Language': 'en-US,en;q=0.9',
-        },
-        cache: 'no-store',
-      }
+      10_000
     );
 
     if (!response.ok) {

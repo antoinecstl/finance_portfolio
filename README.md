@@ -1,144 +1,147 @@
-# 💼 Mon Portefeuille - Suivi Financier
+# 💼 Fi-Hub — Suivi de patrimoine
 
-Application web de suivi de portefeuille financier personnel avec :
-- 📊 **Dashboard** avec vue d'ensemble de vos finances
-- 💰 **Gestion des comptes** (PEA, Livret A, LDDS, CTO, etc.)
-- 📈 **Suivi des actions** en temps réel via Yahoo Finance
-- 📉 **Graphiques de répartition** (par action et par secteur)
-- 📝 **Historique des transactions**
+Plateforme SaaS de suivi de patrimoine personnel :
 
-## 🚀 Technologies
+- 📊 **Dashboard** — vue d'ensemble (valorisation totale, P&L, répartition)
+- 💰 **Comptes multiples** — PEA, CTO, Livret A, LDDS, Assurance-Vie, PEL, autres
+- 📈 **Cours en temps réel** — Yahoo Finance (cache 60s)
+- 📉 **Graphiques** — répartition par position, par secteur, historique
+- 📝 **Transactions & dividendes** — historique complet
+- 🔐 **Authentification Supabase** — session + RLS côté DB
+- 💳 **Abonnement Pro** — Paddle (Merchant of Record)
+- ✉️ **Emails transactionnels** — Resend
 
-- **Next.js 16** - Framework React
-- **TypeScript** - Typage statique
-- **Tailwind CSS 4** - Styles
-- **Supabase** - Base de données PostgreSQL
-- **Recharts** - Graphiques
-- **Yahoo Finance API** - Cours boursiers en temps réel
+## 🚀 Stack
 
-## 📦 Installation
+- **Next.js 16** (App Router, route groups)
+- **TypeScript** + **Tailwind CSS 4**
+- **Supabase** — PostgreSQL + Auth (+ RLS)
+- **Paddle** — checkout & abonnements
+- **Resend** — emails
+- **Recharts** — graphiques
 
-```bash
-npm install
-```
-
-## ⚙️ Configuration
-
-### 1. Créer un projet Supabase
-
-1. Allez sur [supabase.com](https://supabase.com) et créez un compte
-2. Créez un nouveau projet
-3. Récupérez votre URL et clé anonyme dans **Settings > API**
-
-### 2. Configurer les variables d'environnement
-
-Créez un fichier `.env.local` à la racine :
-
-```env
-NEXT_PUBLIC_SUPABASE_URL=https://votre-projet.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=votre-cle-anonyme
-```
-
-### 3. Créer les tables dans Supabase
-
-Allez dans l'**éditeur SQL** de Supabase et exécutez le contenu du fichier `supabase/schema.sql`
-
-## 🏃 Lancement
-
-```bash
-npm run dev
-```
-
-Ouvrez [http://localhost:3000](http://localhost:3000)
-
-## 📁 Structure du projet
+## 📁 Architecture
 
 ```
 finance_portfolio/
 ├── app/
-│   ├── api/stocks/        # API routes pour les cours boursiers
-│   ├── globals.css
+│   ├── (app)/                # routes authentifiées (session requise)
+│   │   ├── dashboard/
+│   │   ├── settings/         # profile, security, billing, danger
+│   │   └── layout.tsx
+│   ├── (auth)/               # login, signup, forgot/reset-password
+│   ├── (marketing)/          # landing publique + legal
+│   ├── api/
+│   │   ├── account/          # delete, export, onboard
+│   │   ├── accounts/         # CRUD comptes
+│   │   ├── positions/
+│   │   ├── transactions/
+│   │   ├── stocks/           # quotes, search, history (Yahoo)
+│   │   ├── billing/portal/   # Paddle customer portal
+│   │   └── webhooks/paddle/  # webhook signé Paddle
+│   ├── auth/callback/        # callback OAuth Supabase
 │   ├── layout.tsx
-│   └── page.tsx
-├── components/
-│   ├── Dashboard.tsx      # Composant principal
-│   ├── PortfolioStats.tsx # Statistiques du portefeuille
-│   ├── AccountList.tsx    # Liste des comptes
-│   ├── PositionsTable.tsx # Tableau des positions
-│   ├── TransactionsList.tsx
-│   ├── Charts.tsx         # Graphiques
-│   ├── AddAccountModal.tsx
-│   ├── AddTransactionModal.tsx
-│   └── AddPositionModal.tsx
+│   ├── robots.ts
+│   └── sitemap.ts
+├── components/               # UI, modals, tableaux, marketing/
 ├── lib/
-│   ├── types.ts          # Types TypeScript
-│   ├── supabase.ts       # Client Supabase
-│   ├── stock-api.ts      # API Yahoo Finance
-│   ├── hooks.ts          # Hooks React
-│   └── utils.ts          # Utilitaires
+│   ├── auth.tsx              # AuthProvider (contexte session)
+│   ├── supabase/             # clients server + middleware
+│   ├── stock-api.ts          # Yahoo Finance (fetch timeout + cache)
+│   ├── rate-limit.ts         # rate limiter in-memory
+│   ├── paddle.ts
+│   ├── plans.ts              # FREE / PRO (limites d'usage)
+│   ├── portfolio-calculator.ts
+│   ├── subscription.ts / subscription-client.tsx
+│   ├── transaction-validation.ts
+│   ├── email.ts
+│   ├── hooks.ts / types.ts / utils.ts
+│   └── theme.ts (côté Subleet)
+├── middleware.ts             # refresh session Supabase
 └── supabase/
-    └── schema.sql        # Schéma de base de données
+    ├── schema.sql
+    └── migrations/           # à exécuter dans l'ordre chronologique
 ```
 
-## 🔧 Fonctionnalités
+## ⚙️ Installation
 
-### Comptes supportés
-- PEA (Plan d'Épargne en Actions)
-- Livret A
-- LDDS (Livret de Développement Durable)
-- CTO (Compte-Titres Ordinaire)
-- Assurance Vie
-- PEL
-- Autre
+```bash
+npm install
+cp .env.example .env.local    # puis remplir les valeurs
+npm run dev
+```
 
-### Types de transactions
-- Dépôt / Retrait
-- Achat / Vente d'actions
-- Dividendes
-- Intérêts
-- Frais
+Ouvrez [http://localhost:3000](http://localhost:3000).
 
-### Cours boursiers
-Les cours sont récupérés via Yahoo Finance. Pour les actions françaises, utilisez le suffixe `.PA` :
-- `MC.PA` - LVMH
-- `OR.PA` - L'Oréal
-- `TTE.PA` - TotalEnergies
-- `AIR.PA` - Airbus
+## 🔑 Variables d'environnement
 
-## 📱 Captures d'écran
+Voir [.env.example](./.env.example). En résumé :
 
-L'application propose :
-- Un dashboard avec les statistiques principales
-- Des graphiques en camembert pour la répartition
-- Un tableau détaillé des positions avec P&L
-- Un historique des transactions
+| Variable | Usage |
+|---|---|
+| `NEXT_PUBLIC_APP_URL` | URL publique (redirects, emails) |
+| `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Client Supabase browser |
+| `SUPABASE_SERVICE_ROLE_KEY` | Opérations privilégiées côté serveur |
+| `PADDLE_API_KEY` / `PADDLE_WEBHOOK_SECRET` | Paddle server-side |
+| `PADDLE_PRO_PRICE_ID` | Prix plan Pro (matché dans le webhook) |
+| `NEXT_PUBLIC_PADDLE_ENV` | `sandbox` ou `production` |
+| `NEXT_PUBLIC_PADDLE_CLIENT_TOKEN` | Token Paddle.js browser |
+| `NEXT_PUBLIC_PADDLE_PRO_PRICE_ID` | Même prix, exposé browser |
+| `RESEND_API_KEY` / `RESEND_FROM` | Emails transactionnels |
 
-## 🚀 Déploiement production (Vercel)
+## 🗄️ Base de données
+
+1. Créez un projet Supabase.
+2. Dans l'**éditeur SQL**, exécutez dans l'ordre :
+   1. `supabase/schema.sql`
+   2. `supabase/migration_add_rls.sql` (si pas déjà dans schema)
+   3. Tous les fichiers de `supabase/migrations/` par ordre chronologique
+3. Dans **Auth > URL Configuration** : ajoutez Site URL + Redirect URLs (incluant `/auth/callback`).
+4. Dans **Auth > Email Templates** : branchez SMTP Resend (domaine vérifié requis).
+
+## 📈 Cours boursiers
+
+Récupérés via Yahoo Finance. Les routes `/api/stocks/*` :
+
+- sont **authentifiées** (401 sans session)
+- ont un **rate limit** par utilisateur (60 quotes/min, 30 search/min, 20 history/min)
+- utilisent **`next: { revalidate: 60 }`** côté fetch → cache 60s Yahoo par symbole
+- ont un **timeout** réseau (5s quotes/search, 10s history)
+
+Pour les actions françaises, suffixe `.PA` : `MC.PA` (LVMH), `OR.PA` (L'Oréal), `TTE.PA` (TotalEnergies), `AIR.PA` (Airbus)…
+
+## 🔐 Sécurité
+
+- RLS activé sur toutes les tables portefeuille (`accounts`, `positions`, `transactions`) → un user ne voit que ses données.
+- Webhook Paddle signé (`PADDLE_WEBHOOK_SECRET`), exclu du middleware de session.
+- Rate limiting in-memory sur `/api/stocks/*` (par user) et pourra être migré vers Upstash/Redis si besoin distribué.
+
+## 🚀 Déploiement (Vercel)
 
 ### 1. Projets Supabase séparés dev / prod
 
-Créez deux projets Supabase (`fi-hub-dev`, `fi-hub-prod`). Pour chacun :
-1. Exécutez les migrations dans l'ordre : `supabase/schema.sql` puis tous les fichiers de `supabase/migrations/` (par ordre chronologique).
-2. Dans **Auth > URL Configuration**, ajoutez votre domaine (Site URL + Redirect URLs incluant `/auth/callback`).
-3. Dans **Auth > Email Templates**, branchez SMTP Resend (domaine vérifié requis).
+`fi-hub-dev` et `fi-hub-prod`. Pour chacun :
+1. Migrations dans l'ordre.
+2. Auth > URL Configuration : domaine + `/auth/callback`.
+3. Auth > Email Templates : SMTP Resend.
 
 ### 2. Paddle
 
-1. Créez un compte Paddle (sandbox pour tests, live pour prod).
-2. Créez un produit « Fi-Hub Pro » avec un price mensuel à 4,99 € → notez `PADDLE_PRO_PRICE_ID`.
-3. Dans **Developer Tools > Notifications**, ajoutez l'endpoint `https://<votre-domaine>/api/webhooks/paddle` et copiez le secret → `PADDLE_WEBHOOK_SECRET`.
-4. Récupérez le client-side token dans **Authentication > Client-side tokens** → `NEXT_PUBLIC_PADDLE_CLIENT_TOKEN`.
+1. Compte Paddle (sandbox pour tests, live pour prod).
+2. Produit « Fi-Hub Pro » — prix mensuel → `PADDLE_PRO_PRICE_ID`.
+3. Developer Tools > Notifications : endpoint `https://<domaine>/api/webhooks/paddle` → `PADDLE_WEBHOOK_SECRET`.
+4. Authentication > Client-side tokens → `NEXT_PUBLIC_PADDLE_CLIENT_TOKEN`.
 
 ### 3. Resend
 
-1. Créez un domaine vérifié (`fi-hub.subleet.com`) avec les DNS SPF/DKIM.
-2. Générez une clé API → `RESEND_API_KEY`.
+1. Domaine vérifié (`fi-hub.subleet.com`) — SPF + DKIM.
+2. Clé API → `RESEND_API_KEY`.
 
 ### 4. Vercel
 
-1. Importez le repo, framework = Next.js.
-2. Renseignez toutes les variables de `.env.example` dans **Settings > Environment Variables**.
-3. Région recommandée pour la route webhook : `cdg1` (proximité Paddle EU).
+1. Import du repo, framework = Next.js.
+2. Toutes les variables de `.env.example` dans Settings > Environment Variables.
+3. Région recommandée : `cdg1` (proximité Paddle EU + latence utilisateurs FR).
 
 ## 📄 Licence
 
