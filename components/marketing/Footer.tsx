@@ -19,6 +19,7 @@ export function Footer() {
             <li><Link href="/legal/confidentialite" className="hover:text-zinc-900">Confidentialité</Link></li>
             <li><Link href="/legal/mentions-legales" className="hover:text-zinc-900">Mentions légales</Link></li>
             <li><Link href="/legal/cookies" className="hover:text-zinc-900">Cookies</Link></li>
+            <li><Link href="https://fi-hub.subleet.com/legal/remboursement" className="hover:text-zinc-900">Remboursement</Link></li>
           </ul>
         </div>
         <div className="col-span-2">
