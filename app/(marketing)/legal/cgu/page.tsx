@@ -9,7 +9,7 @@ export default function CGUPage() {
       <h2 className="text-xl font-semibold mt-8">1. Objet</h2>
       <p>
         Les présentes CGU régissent l&apos;utilisation du service Fi-Hub (ci-après « le Service »),
-        application de suivi de patrimoine personnel accessible à l&apos;adresse fi-hub.fr.
+        application de suivi de patrimoine personnel accessible à l&apos;adresse fi-hub.subleet.com.
       </p>
 
       <h2 className="text-xl font-semibold mt-8">2. Acceptation</h2>

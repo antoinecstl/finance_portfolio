@@ -337,16 +337,12 @@ export function calculateAccountCashAtDate(
       case 'DEPOSIT':
       case 'DIVIDEND':
       case 'INTEREST':
-        cash += tx.amount;
-        break;
       case 'SELL':
         cash += tx.amount;
         break;
       case 'WITHDRAWAL':
-      case 'FEE':
-        cash -= tx.amount;
-        break;
       case 'BUY':
+      case 'FEE':
         cash -= tx.amount;
         break;
     }
@@ -420,7 +416,7 @@ export function calculateAccountCashFromTransactions(
   accountId: string
 ): number {
   const accountTransactions = transactions.filter(t => t.account_id === accountId);
-  
+
   let cash = 0;
 
   for (const tx of accountTransactions) {
@@ -428,18 +424,12 @@ export function calculateAccountCashFromTransactions(
       case 'DEPOSIT':
       case 'DIVIDEND':
       case 'INTEREST':
-        cash += tx.amount;
-        break;
       case 'SELL':
-        // Pour une vente, amount = quantity * price
         cash += tx.amount;
         break;
       case 'WITHDRAWAL':
-      case 'FEE':
-        cash -= tx.amount;
-        break;
       case 'BUY':
-        // Pour un achat, amount = quantity * price
+      case 'FEE':
         cash -= tx.amount;
         break;
     }

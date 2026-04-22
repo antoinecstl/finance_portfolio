@@ -12,7 +12,33 @@ type ProBlurProps = {
   partial?: boolean;
   label?: string;
   className?: string;
+  fallback?: ReactNode;
 };
+
+// Fake placeholder rendered in place of real content for Free users.
+// Real children are never sent to the client so DevTools can't bypass the blur.
+function DefaultPlaceholder({ partial }: { partial?: boolean }) {
+  const height = partial ? 'h-64 sm:h-80' : 'h-80 sm:h-96';
+  return (
+    <div
+      className={`bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-4 sm:p-6 ${height}`}
+    >
+      <div className="flex items-center gap-2 mb-4">
+        <div className="h-4 w-4 rounded bg-zinc-200 dark:bg-zinc-700" />
+        <div className="h-4 w-40 rounded bg-zinc-200 dark:bg-zinc-700" />
+      </div>
+      <div className="h-[calc(100%-2rem)] flex items-end gap-2">
+        {[40, 65, 35, 80, 55, 70, 45, 90, 60, 50, 75, 40].map((h, i) => (
+          <div
+            key={i}
+            className="flex-1 rounded-t bg-gradient-to-t from-blue-200 to-blue-100 dark:from-blue-900/40 dark:to-blue-900/20"
+            style={{ height: `${h}%` }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export function ProBlur({
   children,
@@ -20,6 +46,7 @@ export function ProBlur({
   partial = false,
   label = 'Passez Pro pour débloquer',
   className = '',
+  fallback,
 }: ProBlurProps) {
   const { hasFeature } = useSubscription();
 
@@ -28,6 +55,7 @@ export function ProBlur({
   }
 
   const blurClass = partial ? 'blur-sm' : 'blur-md';
+  const placeholder = fallback ?? <DefaultPlaceholder partial={partial} />;
 
   return (
     <div className={`relative ${className}`}>
@@ -35,7 +63,7 @@ export function ProBlur({
         className={`${blurClass} select-none pointer-events-none transition`}
         aria-hidden="true"
       >
-        {children}
+        {placeholder}
       </div>
 
       <div className="absolute inset-0 flex items-center justify-center p-4">
@@ -74,10 +102,11 @@ export function ProCellBlur({
     return <>{children}</>;
   }
 
+  // Replace real content with a neutral dash so DevTools can't reveal the value.
   return (
     <span className="inline-flex items-center gap-1 relative">
-      <span className="blur-sm select-none" aria-hidden="true">
-        {children}
+      <span className="blur-sm select-none text-zinc-400" aria-hidden="true">
+        ———
       </span>
       <span
         className="absolute inset-0 flex items-center justify-center text-[10px] font-medium text-blue-600 dark:text-blue-400"

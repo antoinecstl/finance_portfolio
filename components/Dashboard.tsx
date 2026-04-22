@@ -304,7 +304,7 @@ export function Dashboard() {
                   </button>
                 </div>
                 <div className="w-full max-w-full overflow-hidden">
-                  <AccountList accounts={enrichedAccounts} />
+                  <AccountList accounts={enrichedAccounts} onDeleted={() => { refreshAllData(); }} />
                 </div>
               </div>
 
@@ -323,7 +323,7 @@ export function Dashboard() {
                   </button>
                 </div>
                 <div className="w-full max-w-full overflow-hidden">
-                  <TransactionsList transactions={transactions} limit={5} />
+                  <TransactionsList transactions={transactions} limit={5} onDeleted={() => { refreshAllData(); }} />
                 </div>
               </div>
             </div>
@@ -344,7 +344,7 @@ export function Dashboard() {
                 <span>Ajouter un compte</span>
               </button>
             </div>
-            <AccountList accounts={enrichedAccounts} />
+            <AccountList accounts={enrichedAccounts} onDeleted={() => { refreshAllData(); }} />
           </div>
         )}
 
@@ -415,10 +415,11 @@ export function Dashboard() {
                 <span>Ajouter une transaction</span>
               </button>
             </div>
-            <TransactionsList 
-              transactions={transactions} 
+            <TransactionsList
+              transactions={transactions}
               accounts={accounts}
               showFilters={true}
+              onDeleted={() => { refreshAllData(); }}
             />
           </div>
         )}

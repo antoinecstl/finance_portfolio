@@ -44,6 +44,7 @@ export function AddTransactionModal({
   const [stockName, setStockName] = useState('');
   const [quantity, setQuantity] = useState('');
   const [pricePerUnit, setPricePerUnit] = useState('');
+  const [fees, setFees] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -158,6 +159,7 @@ export function AddTransactionModal({
       const qty = parseFloat(quantity) || 0;
       const price = parseFloat(pricePerUnit) || 0;
       const totalAmount = parseFloat(amount) || 0;
+      const feesAmount = Math.max(0, parseFloat(fees) || 0);
 
       // Validation pour les transactions d'actions
       if (isStockTransaction) {
@@ -226,6 +228,7 @@ export function AddTransactionModal({
           account_id: transactionData.account_id,
           type: transactionData.type,
           amount: transactionData.amount,
+          fees: feesAmount,
           description: transactionData.description,
           date: transactionData.date,
           stock_symbol: transactionData.stock_symbol,
@@ -312,6 +315,7 @@ export function AddTransactionModal({
       setStockName('');
       setQuantity('');
       setPricePerUnit('');
+      setFees('');
       setSearchQuery('');
       await onSuccess();
       onClose();
@@ -579,6 +583,28 @@ export function AddTransactionModal({
               className={`w-full px-3 py-2 text-sm sm:text-base border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent ${isStockTransaction ? 'bg-zinc-50 dark:bg-zinc-900' : ''}`}
             />
           </div>
+
+          {type !== 'FEE' && (
+            <div>
+              <label className="block text-xs sm:text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                Frais (€) <span className="text-zinc-400 text-[10px] sm:text-xs">optionnel</span>
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={fees}
+                onChange={(e) => setFees(e.target.value)}
+                placeholder="0.00"
+                className="w-full px-3 py-2 text-sm sm:text-base border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+              <p className="mt-1 text-[10px] sm:text-xs text-zinc-500 dark:text-zinc-400">
+                {type === 'BUY' || type === 'WITHDRAWAL'
+                  ? 'Débités en plus du montant.'
+                  : 'Retenus sur le montant encaissé.'}
+              </p>
+            </div>
+          )}
 
           <div>
             <label className="block text-xs sm:text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">

@@ -69,15 +69,15 @@ export function getTransactionTypeLabel(type: string): string {
 
 export function getTransactionColor(type: string): string {
   const colors: Record<string, string> = {
-    DEPOSIT: 'text-green-600',
+    DEPOSIT: 'text-emerald-600',
     WITHDRAWAL: 'text-red-600',
     BUY: 'text-blue-600',
-    SELL: 'text-orange-600',
-    DIVIDEND: 'text-green-600',
-    INTEREST: 'text-green-600',
+    SELL: 'text-violet-600',
+    DIVIDEND: 'text-emerald-600',
+    INTEREST: 'text-emerald-600',
     FEE: 'text-red-600',
   };
-  return colors[type] || 'text-gray-600';
+  return colors[type] || 'text-zinc-600';
 }
 
 // Couleurs pour les graphiques de répartition

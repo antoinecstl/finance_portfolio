@@ -471,7 +471,7 @@ export function useAccountsWithCalculatedValues(
       // Pour les autres comptes (épargne), calculer le solde depuis les transactions
       const accountTransactions = transactions.filter(t => t.account_id === account.id);
       let calculatedBalance = 0;
-      
+
       for (const tx of accountTransactions) {
         switch (tx.type) {
           case 'DEPOSIT':

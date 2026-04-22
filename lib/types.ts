@@ -11,11 +11,14 @@ export interface Account {
   updated_at: string;
 }
 
+export type TransactionType = 'DEPOSIT' | 'WITHDRAWAL' | 'BUY' | 'SELL' | 'DIVIDEND' | 'INTEREST' | 'FEE';
+
 export interface Transaction {
   id: string;
   account_id: string;
-  type: 'DEPOSIT' | 'WITHDRAWAL' | 'BUY' | 'SELL' | 'DIVIDEND' | 'INTEREST' | 'FEE';
+  type: TransactionType;
   amount: number;
+  fee_transaction_id?: string | null;
   description: string;
   date: string;
   stock_symbol?: string;

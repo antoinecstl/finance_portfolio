@@ -7,15 +7,13 @@ export default function MentionsLegalesPage() {
 
       <h2 className="text-xl font-semibold mt-8">Éditeur</h2>
       <p>
-        Fi-Hub est édité par <strong>[À RENSEIGNER — nom / raison sociale]</strong>
+        Fi-Hub est édité par <strong>Subleet</strong> (personne physique, immatriculation en cours)
         <br />
-        Adresse : [À RENSEIGNER]
+        Adresse : 173 rue de Courcelles, 75017 Paris, France
         <br />
-        SIREN / SIRET : [À RENSEIGNER]
+        Directeur de la publication : Antoine Castel
         <br />
-        Directeur de la publication : [À RENSEIGNER]
-        <br />
-        Contact : contact@fi-hub.fr
+        Contact : contact@subleet.com
       </p>
 
       <h2 className="text-xl font-semibold mt-8">Hébergeur</h2>

@@ -9,7 +9,7 @@ export default function PrivacyPage() {
       <h2 className="text-xl font-semibold mt-8">1. Responsable du traitement</h2>
       <p>
         Le responsable du traitement est l&apos;éditeur de Fi-Hub (voir Mentions légales). Contact :
-        contact@fi-hub.fr.
+        contact@subleet.com.
       </p>
 
       <h2 className="text-xl font-semibold mt-8">2. Données collectées</h2>
@@ -52,7 +52,7 @@ export default function PrivacyPage() {
       <p>
         Conformément au RGPD, vous disposez d&apos;un droit d&apos;accès, de rectification, d&apos;effacement, de
         portabilité et d&apos;opposition. Vous pouvez exercer ces droits depuis votre espace Paramètres
-        ou en écrivant à contact@fi-hub.fr. Vous pouvez également introduire une réclamation auprès
+        ou en écrivant à contact@subleet.com. Vous pouvez également introduire une réclamation auprès
         de la CNIL (www.cnil.fr).
       </p>
 

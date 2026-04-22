@@ -2,33 +2,66 @@
 
 import { useState, useMemo } from 'react';
 import { Transaction, Account } from '@/lib/types';
-import { 
-  formatCurrency, 
-  formatDate, 
-  getTransactionTypeLabel, 
-  getTransactionColor 
+import {
+  formatCurrency,
+  formatDate,
+  getTransactionTypeLabel,
 } from '@/lib/utils';
-import { 
-  ArrowDownLeft, 
-  ArrowUpRight, 
-  ShoppingCart, 
-  Banknote, 
+import {
+  ArrowDownLeft,
+  ArrowUpRight,
+  ShoppingCart,
+  Banknote,
   Coins,
   Receipt,
   History,
   Filter,
-  X
+  X,
+  Percent,
+  Trash2,
+  AlertTriangle,
 } from 'lucide-react';
+import { useToast } from './Toast';
 
-const transactionIcons: Record<string, typeof ArrowDownLeft> = {
-  DEPOSIT: ArrowDownLeft,
-  WITHDRAWAL: ArrowUpRight,
-  BUY: ShoppingCart,
-  SELL: Banknote,
-  DIVIDEND: Coins,
-  INTEREST: Coins,
-  FEE: Receipt,
+type TxStyle = {
+  Icon: typeof ArrowDownLeft;
+  tone: string;
+  sign: '+' | '-';
 };
+
+const TX_STYLE: Record<string, TxStyle> = {
+  DEPOSIT:    { Icon: ArrowDownLeft, tone: 'emerald', sign: '+' },
+  WITHDRAWAL: { Icon: ArrowUpRight,  tone: 'red',     sign: '-' },
+  BUY:        { Icon: ShoppingCart,  tone: 'blue',    sign: '-' },
+  SELL:       { Icon: Banknote,      tone: 'violet',  sign: '+' },
+  DIVIDEND:   { Icon: Coins,         tone: 'emerald', sign: '+' },
+  INTEREST:   { Icon: Percent,       tone: 'emerald', sign: '+' },
+  FEE:        { Icon: Receipt,       tone: 'red',     sign: '-' },
+};
+
+// Static Tailwind classes per tone (JIT needs literal strings).
+const TONE_CLASSES: Record<string, { chip: string; amount: string }> = {
+  emerald: {
+    chip: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600',
+    amount: 'text-emerald-600',
+  },
+  red: {
+    chip: 'bg-red-100 dark:bg-red-900/30 text-red-600',
+    amount: 'text-red-600',
+  },
+  blue: {
+    chip: 'bg-blue-100 dark:bg-blue-900/30 text-blue-600',
+    amount: 'text-blue-600',
+  },
+  violet: {
+    chip: 'bg-violet-100 dark:bg-violet-900/30 text-violet-600',
+    amount: 'text-violet-600',
+  },
+};
+
+function getTxStyle(type: string): TxStyle {
+  return TX_STYLE[type] ?? { Icon: Receipt, tone: 'red', sign: '-' };
+}
 
 const transactionTypes = [
   { value: 'DEPOSIT', label: 'Dépôt' },
@@ -42,34 +75,60 @@ const transactionTypes = [
 
 interface TransactionRowProps {
   transaction: Transaction;
+  feesAmount?: number;
+  isSelected: boolean;
+  canDelete: boolean;
+  onToggleSelect: (id: string) => void;
+  onDeleteClick: (tx: Transaction) => void;
 }
 
-function TransactionRow({ transaction }: TransactionRowProps) {
-  const Icon = transactionIcons[transaction.type] || Receipt;
-  const colorClass = getTransactionColor(transaction.type);
-  const isDebit = ['WITHDRAWAL', 'BUY', 'FEE'].includes(transaction.type);
+function TransactionRow({
+  transaction,
+  feesAmount = 0,
+  isSelected,
+  canDelete,
+  onToggleSelect,
+  onDeleteClick,
+}: TransactionRowProps) {
+  const { Icon, tone, sign } = getTxStyle(transaction.type);
+  const classes = TONE_CLASSES[tone];
 
   return (
-    <div className="flex items-center gap-2 sm:gap-4 py-3 sm:py-4 border-b border-zinc-100 dark:border-zinc-800 last:border-0">
-      <div className={`rounded-full p-1.5 sm:p-2 flex-shrink-0 ${
-        isDebit 
-          ? 'bg-red-100 dark:bg-red-900/30 text-red-600' 
-          : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600'
-      }`}>
+    <div
+      role={canDelete ? 'button' : undefined}
+      tabIndex={canDelete ? 0 : undefined}
+      onClick={canDelete ? () => onToggleSelect(transaction.id) : undefined}
+      onKeyDown={
+        canDelete
+          ? (e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onToggleSelect(transaction.id);
+              }
+            }
+          : undefined
+      }
+      className={`flex items-center gap-2 sm:gap-4 py-3 sm:py-4 px-2 -mx-2 rounded-lg border-b border-zinc-100 dark:border-zinc-800 last:border-0 transition-colors ${
+        canDelete ? 'cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800/50' : ''
+      } ${isSelected ? 'bg-zinc-50 dark:bg-zinc-800/60' : ''}`}
+    >
+      <div className={`rounded-full p-1.5 sm:p-2 flex-shrink-0 ${classes.chip}`}>
         <Icon className="h-3 w-3 sm:h-4 sm:w-4" />
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
-          <span className={`text-[10px] sm:text-xs font-medium px-1.5 sm:px-2 py-0.5 rounded-full ${
-            isDebit 
-              ? 'bg-red-100 dark:bg-red-900/30 text-red-600' 
-              : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600'
-          }`}>
+          <span className={`text-[10px] sm:text-xs font-medium px-1.5 sm:px-2 py-0.5 rounded-full ${classes.chip}`}>
             {getTransactionTypeLabel(transaction.type)}
           </span>
           {transaction.stock_symbol && (
-            <span className="text-[10px] sm:text-xs font-medium text-blue-600 bg-blue-100 dark:bg-blue-900/30 px-1.5 sm:px-2 py-0.5 rounded-full">
+            <span className="text-[10px] sm:text-xs font-medium text-zinc-700 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-800 px-1.5 sm:px-2 py-0.5 rounded-full">
               {transaction.stock_symbol}
+            </span>
+          )}
+          {feesAmount > 0 && (
+            <span className="text-[10px] sm:text-xs font-medium text-zinc-500 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-1.5 sm:px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+              <Receipt className="h-2.5 w-2.5" />
+              Frais {formatCurrency(feesAmount)}
             </span>
           )}
         </div>
@@ -83,12 +142,91 @@ function TransactionRow({ transaction }: TransactionRowProps) {
         )}
       </div>
       <div className="text-right flex-shrink-0 max-w-[38%]">
-        <p className={`text-sm sm:text-base font-semibold ${colorClass}`}>
-          {isDebit ? '-' : '+'}{formatCurrency(Math.abs(transaction.amount))}
+        <p className={`text-sm sm:text-base font-semibold ${classes.amount}`}>
+          {sign}{formatCurrency(Math.abs(transaction.amount))}
         </p>
         <p className="text-[10px] sm:text-xs text-zinc-500 dark:text-zinc-400">
           {formatDate(transaction.date)}
         </p>
+      </div>
+      {canDelete && isSelected && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDeleteClick(transaction);
+          }}
+          className="flex-shrink-0 p-1.5 rounded-md text-red-600 bg-red-50 hover:bg-red-100 dark:bg-red-900/30 dark:hover:bg-red-900/50 transition-colors"
+          aria-label="Supprimer la transaction"
+          title="Supprimer"
+        >
+          <Trash2 className="h-4 w-4" />
+        </button>
+      )}
+    </div>
+  );
+}
+
+function DeleteConfirmDialog({
+  transaction,
+  busy,
+  error,
+  onCancel,
+  onConfirm,
+}: {
+  transaction: Transaction;
+  busy: boolean;
+  error: string | null;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+      <div className="absolute inset-0 bg-black/50" onClick={busy ? undefined : onCancel} />
+      <div className="relative bg-white dark:bg-zinc-900 rounded-t-xl sm:rounded-xl shadow-xl w-full sm:max-w-md mx-0 sm:mx-4 p-4 sm:p-6">
+        <div className="flex items-start gap-3 mb-4">
+          <div className="rounded-full p-2 bg-red-100 dark:bg-red-900/30 text-red-600 flex-shrink-0">
+            <AlertTriangle className="h-5 w-5" />
+          </div>
+          <div className="min-w-0">
+            <h3 className="text-base sm:text-lg font-bold text-zinc-900 dark:text-zinc-100">
+              Supprimer cette transaction ?
+            </h3>
+            <p className="mt-1 text-xs sm:text-sm text-zinc-500 dark:text-zinc-400">
+              {getTransactionTypeLabel(transaction.type)} du {formatDate(transaction.date)} — {formatCurrency(transaction.amount)}
+              {transaction.stock_symbol ? ` · ${transaction.stock_symbol}` : ''}
+            </p>
+            <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+              La suppression est refusée si elle rend invalide une transaction ultérieure
+              (ex. vente sans titres disponibles, solde négatif).
+            </p>
+          </div>
+        </div>
+
+        {error && (
+          <div className="mb-3 p-2 rounded-lg bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-xs sm:text-sm text-red-700 dark:text-red-300">
+            {error}
+          </div>
+        )}
+
+        <div className="flex gap-2 sm:gap-3">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={busy}
+            className="flex-1 px-3 sm:px-4 py-2 text-sm sm:text-base border border-zinc-300 dark:border-zinc-700 rounded-lg text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-50 transition-colors"
+          >
+            Annuler
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={busy}
+            className="flex-1 px-3 sm:px-4 py-2 text-sm sm:text-base bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors"
+          >
+            {busy ? 'Suppression…' : 'Supprimer'}
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -99,13 +237,15 @@ interface TransactionsListProps {
   accounts?: Account[];
   limit?: number;
   showFilters?: boolean;
+  onDeleted?: () => void | Promise<void>;
 }
 
-export function TransactionsList({ 
-  transactions, 
+export function TransactionsList({
+  transactions,
   accounts = [],
-  limit, 
-  showFilters = false 
+  limit,
+  showFilters = false,
+  onDeleted,
 }: TransactionsListProps) {
   const [filterType, setFilterType] = useState<string>('');
   const [filterAccount, setFilterAccount] = useState<string>('');
@@ -113,6 +253,76 @@ export function TransactionsList({
   const [filterDateFrom, setFilterDateFrom] = useState<string>('');
   const [filterDateTo, setFilterDateTo] = useState<string>('');
   const [showFilterPanel, setShowFilterPanel] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<Transaction | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const toast = useToast();
+
+  // IDs des lignes FEE référencées par une autre transaction : on les masque
+  // de la liste (elles apparaissent comme chip "Frais X €" sur leur parent).
+  // Map inverse feeId → montant pour afficher le chip sur la transaction principale.
+  const { linkedFeeIds, feesByParentId } = useMemo(() => {
+    const linked = new Set<string>();
+    const amountByFeeId = new Map<string, number>();
+    for (const t of transactions) {
+      if (t.fee_transaction_id) linked.add(t.fee_transaction_id);
+    }
+    for (const t of transactions) {
+      if (linked.has(t.id)) amountByFeeId.set(t.id, Number(t.amount) || 0);
+    }
+    const byParent = new Map<string, number>();
+    for (const t of transactions) {
+      if (t.fee_transaction_id && amountByFeeId.has(t.fee_transaction_id)) {
+        byParent.set(t.id, amountByFeeId.get(t.fee_transaction_id) ?? 0);
+      }
+    }
+    return { linkedFeeIds: linked, feesByParentId: byParent };
+  }, [transactions]);
+
+  const handleToggleSelect = (id: string) => {
+    setSelectedId((prev) => (prev === id ? null : id));
+  };
+
+  const handleRequestDelete = (tx: Transaction) => {
+    setPendingDelete(tx);
+    setDeleteError(null);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!pendingDelete) return;
+    setDeleteBusy(true);
+    setDeleteError(null);
+    try {
+      const res = await fetch(`/api/transactions/${pendingDelete.id}`, {
+        method: 'DELETE',
+      });
+      if (res.status === 409) {
+        const data = await res.json().catch(() => ({}));
+        setDeleteError(data.reason ?? 'Suppression impossible : elle créerait un état invalide.');
+        return;
+      }
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setDeleteError(data.error ?? 'Erreur lors de la suppression.');
+        return;
+      }
+      toast.show({ kind: 'success', message: 'Transaction supprimée.' });
+      setPendingDelete(null);
+      setSelectedId(null);
+      await onDeleted?.();
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : 'Erreur inattendue.');
+    } finally {
+      setDeleteBusy(false);
+    }
+  };
+
+  const handleCancelDelete = () => {
+    if (deleteBusy) return;
+    setPendingDelete(null);
+    setDeleteError(null);
+  };
 
   // Extraire les symboles uniques
   const uniqueSymbols = useMemo(() => {
@@ -123,9 +333,11 @@ export function TransactionsList({
     return Array.from(symbols).sort();
   }, [transactions]);
 
-  // Filtrer les transactions
+  // Filtrer les transactions — on masque les lignes FEE rattachées à une autre
+  // transaction (affichées à la place comme chip "Frais X €" sur la principale).
   const filteredTransactions = useMemo(() => {
     return transactions.filter(t => {
+      if (linkedFeeIds.has(t.id)) return false;
       if (filterType && t.type !== filterType) return false;
       if (filterAccount && t.account_id !== filterAccount) return false;
       if (filterSymbol && t.stock_symbol?.toUpperCase() !== filterSymbol) return false;
@@ -133,7 +345,7 @@ export function TransactionsList({
       if (filterDateTo && t.date > filterDateTo) return false;
       return true;
     });
-  }, [transactions, filterType, filterAccount, filterSymbol, filterDateFrom, filterDateTo]);
+  }, [transactions, linkedFeeIds, filterType, filterAccount, filterSymbol, filterDateFrom, filterDateTo]);
 
   const displayedTransactions = limit ? filteredTransactions.slice(0, limit) : filteredTransactions;
 
@@ -273,8 +485,8 @@ export function TransactionsList({
                 <span className="ml-2">
                   • Total: {formatCurrency(
                     filteredTransactions.reduce((sum, t) => {
-                      const isDebit = ['WITHDRAWAL', 'BUY', 'FEE'].includes(t.type);
-                      return sum + (isDebit ? -t.amount : t.amount);
+                      const { sign } = getTxStyle(t.type);
+                      return sum + (sign === '-' ? -Math.abs(t.amount) : Math.abs(t.amount));
                     }, 0)
                   )}
                 </span>
@@ -282,6 +494,16 @@ export function TransactionsList({
             </div>
           )}
         </div>
+      )}
+
+      {pendingDelete && (
+        <DeleteConfirmDialog
+          transaction={pendingDelete}
+          busy={deleteBusy}
+          error={deleteError}
+          onCancel={handleCancelDelete}
+          onConfirm={handleConfirmDelete}
+        />
       )}
 
       {/* Liste des transactions */}
@@ -293,7 +515,15 @@ export function TransactionsList({
         ) : (
           <>
             {displayedTransactions.map((transaction) => (
-              <TransactionRow key={transaction.id} transaction={transaction} />
+              <TransactionRow
+                key={transaction.id}
+                transaction={transaction}
+                feesAmount={feesByParentId.get(transaction.id) ?? 0}
+                isSelected={selectedId === transaction.id}
+                canDelete={Boolean(onDeleted)}
+                onToggleSelect={handleToggleSelect}
+                onDeleteClick={handleRequestDelete}
+              />
             ))}
             {limit && filteredTransactions.length > limit && (
               <p className="text-center text-sm text-zinc-500 dark:text-zinc-400 pt-4">
