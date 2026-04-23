@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getLimits } from '@/lib/subscription';
+import { createAccountSchema, formatZodError } from '@/lib/schemas';
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -12,10 +13,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 
-  const body = await request.json().catch(() => null);
-  if (!body || typeof body.name !== 'string' || typeof body.type !== 'string') {
-    return NextResponse.json({ error: 'invalid_payload' }, { status: 400 });
+  const raw = await request.json().catch(() => null);
+  const parsed = createAccountSchema.safeParse(raw);
+  if (!parsed.success) {
+    return NextResponse.json(formatZodError(parsed.error), { status: 400 });
   }
+  const body = parsed.data;
 
   const limits = await getLimits(user.id);
 

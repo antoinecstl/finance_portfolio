@@ -2,11 +2,14 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Download, Trash2, Loader2, AlertTriangle } from 'lucide-react';
+import { Download, Trash2, Loader2, AlertTriangle, FileText } from 'lucide-react';
 import { supabase } from '@/lib/supabase/client';
+
+type PdfPeriod = 'month' | 'quarter' | 'year' | 'all';
 
 export function DangerZone() {
   const [exporting, setExporting] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState<PdfPeriod | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [confirmText, setConfirmText] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -29,6 +32,26 @@ export function DangerZone() {
       setError(e instanceof Error ? e.message : 'Erreur export');
     } finally {
       setExporting(false);
+    }
+  };
+
+  const handleExportPdf = async (period: PdfPeriod) => {
+    setExportingPdf(period);
+    setError(null);
+    try {
+      const res = await fetch(`/api/account/export/pdf?period=${period}`);
+      if (!res.ok) throw new Error('Export PDF échoué');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `fi-hub-rapport-${period}-${new Date().toISOString().slice(0, 10)}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Erreur export PDF');
+    } finally {
+      setExportingPdf(null);
     }
   };
 
@@ -77,6 +100,39 @@ export function DangerZone() {
             )}
             Télécharger l&apos;export JSON
           </button>
+        </div>
+      </section>
+
+      <section className="rounded-lg border border-zinc-200 dark:border-zinc-800 p-5">
+        <div className="min-w-0 mb-4">
+          <h3 className="font-medium text-zinc-900 dark:text-zinc-100">Rapport patrimonial (PDF)</h3>
+          <p className="text-sm text-zinc-500 mt-1">
+            Générez un rapport PDF synthétique avec votre patrimoine, la liste des comptes,
+            vos positions actuelles et l&apos;activité sur la période choisie.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {([
+            { key: 'month', label: 'Mois' },
+            { key: 'quarter', label: 'Trimestre' },
+            { key: 'year', label: 'Année' },
+            { key: 'all', label: 'Depuis le début' },
+          ] as Array<{ key: PdfPeriod; label: string }>).map(({ key, label }) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => handleExportPdf(key)}
+              disabled={exportingPdf !== null}
+              className="inline-flex items-center gap-2 py-2 px-3 border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-50 rounded-lg text-sm font-medium transition"
+            >
+              {exportingPdf === key ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <FileText className="h-4 w-4" />
+              )}
+              {label}
+            </button>
+          ))}
         </div>
       </section>
 

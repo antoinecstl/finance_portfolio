@@ -15,6 +15,7 @@ import {
   calculateAllPositionsAtDate,
   CalculatedPosition,
 } from '@/lib/portfolio-calculator';
+import { readSnapshots, upsertSnapshots } from '@/lib/portfolio-snapshots';
 
 // Hook pour récupérer les comptes
 export function useAccounts() {
@@ -47,6 +48,51 @@ export function useAccounts() {
   }, [fetchAccounts]);
 
   return { accounts, loading, error, refetch: fetchAccounts };
+}
+
+// Hook pour la pagination cursor-based côté client.
+// Alternative à useTransactions pour les vues "Historique complet" sur gros volumes.
+// Utilise l'endpoint GET /api/transactions.
+export function usePaginatedTransactions(opts: { accountId?: string; pageSize?: number } = {}) {
+  const { accountId, pageSize = 50 } = opts;
+  const [pages, setPages] = useState<Transaction[][]>([]);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [initialLoaded, setInitialLoaded] = useState(false);
+
+  const loadPage = useCallback(async (cursor: string | null, reset: boolean) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const params = new URLSearchParams({ limit: String(pageSize) });
+      if (cursor) params.set('cursor', cursor);
+      if (accountId) params.set('accountId', accountId);
+      const res = await fetch(`/api/transactions?${params.toString()}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      setPages((prev) => (reset ? [data.items] : [...prev, data.items]));
+      setNextCursor(data.nextCursor ?? null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Erreur');
+    } finally {
+      setLoading(false);
+    }
+  }, [accountId, pageSize]);
+
+  useEffect(() => {
+    setInitialLoaded(false);
+    loadPage(null, true).finally(() => setInitialLoaded(true));
+  }, [loadPage]);
+
+  const loadMore = useCallback(() => {
+    if (nextCursor && !loading) {
+      loadPage(nextCursor, false);
+    }
+  }, [nextCursor, loading, loadPage]);
+
+  const transactions = useMemo(() => pages.flat(), [pages]);
+  return { transactions, loadMore, hasMore: nextCursor !== null, loading, error, initialLoaded };
 }
 
 // Hook pour récupérer les transactions
@@ -302,6 +348,25 @@ export function usePortfolioHistory(
     setError(null);
 
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+
+      // 1) Tentative de lecture du cache snapshots. Si on a couvert toute la plage,
+      // on évite l'appel Yahoo Finance et le recalcul complet.
+      if (user) {
+        const cached = await readSnapshots(user.id, startDate, endDate);
+        if (cached.length > 0) {
+          const cachedPoints: PortfolioHistoryPoint[] = cached.map((s) => ({
+            date: s.date,
+            totalValue: Number(s.total_value),
+            stocksValue: Number(s.stocks_value),
+            savingsValue: Number(s.savings_value),
+            positions: (s.breakdown as { positions?: PortfolioHistoryPoint['positions'] } | null)?.positions ?? [],
+          }));
+          // On affiche tout de suite les points cachés pour que l'UI soit réactive.
+          setHistory(cachedPoints);
+        }
+      }
+
       let historicalQuotes: Record<string, HistoricalQuote[]> = {};
 
       if (symbols.length > 0) {
@@ -328,6 +393,14 @@ export function usePortfolioHistory(
       );
 
       setHistory(calculatedHistory);
+
+      // 2) Upsert du cache (non bloquant). Le trigger DB invalide automatiquement
+      // quand une transaction est ajoutée/modifiée/supprimée.
+      if (user) {
+        upsertSnapshots(user.id, calculatedHistory).catch(() => {
+          /* non bloquant, déjà loggué */
+        });
+      }
     } catch (err) {
       console.error('Error calculating portfolio history:', err);
       setError(err instanceof Error ? err.message : 'Erreur');

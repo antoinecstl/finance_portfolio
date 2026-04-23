@@ -1,16 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getLimits } from '@/lib/subscription';
-
-type PositionPayload = {
-  account_id: string;
-  symbol: string;
-  name: string;
-  quantity: number;
-  average_price: number;
-  currency?: string;
-  sector?: string | null;
-};
+import { createPositionSchema, formatZodError } from '@/lib/schemas';
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -22,10 +13,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 
-  const body = (await request.json().catch(() => null)) as PositionPayload | null;
-  if (!body || !body.account_id || !body.symbol) {
-    return NextResponse.json({ error: 'invalid_payload' }, { status: 400 });
+  const raw = await request.json().catch(() => null);
+  const parsed = createPositionSchema.safeParse(raw);
+  if (!parsed.success) {
+    return NextResponse.json(formatZodError(parsed.error), { status: 400 });
   }
+  const body = parsed.data;
 
   const { data: account } = await supabase
     .from('accounts')
@@ -68,7 +61,7 @@ export async function POST(request: Request) {
     .insert({
       user_id: user.id,
       account_id: body.account_id,
-      symbol: body.symbol.toUpperCase(),
+      symbol: body.symbol,
       name: body.name,
       quantity: body.quantity,
       average_price: body.average_price,

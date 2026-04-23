@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { deleteAccountSchema, formatZodError } from '@/lib/schemas';
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -31,8 +32,12 @@ export async function DELETE(request: Request, { params }: RouteContext) {
 
   // Confirmation by name retyped in body — guardrail against accidental deletion
   // of an account with attached transactions/positions (all cascade on FK).
-  const body = (await request.json().catch(() => ({}))) as { confirmName?: string };
-  if (typeof body.confirmName !== 'string' || body.confirmName.trim() !== account.name) {
+  const raw = await request.json().catch(() => ({}));
+  const parsed = deleteAccountSchema.safeParse(raw);
+  if (!parsed.success) {
+    return NextResponse.json(formatZodError(parsed.error), { status: 400 });
+  }
+  if (parsed.data.confirmName !== account.name) {
     return NextResponse.json(
       { error: 'confirm_mismatch', reason: 'Le nom saisi ne correspond pas au compte.' },
       { status: 400 }

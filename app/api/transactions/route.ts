@@ -1,18 +1,66 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getLimits } from '@/lib/subscription';
+import { createTransactionSchema, paginationSchema, formatZodError } from '@/lib/schemas';
+import { decodeCursor, encodeCursor } from '@/lib/pagination';
 
-type TransactionPayload = {
-  account_id: string;
-  type: string;
-  amount: number;
-  fees?: number;
-  description?: string;
-  date: string;
-  stock_symbol?: string;
-  quantity?: number;
-  price_per_unit?: number;
-};
+// GET /api/transactions?cursor=<opaque>&limit=50&accountId=<uuid>
+// Pagination cursor-based sur (date DESC, id DESC) pour rester stable
+// même quand de nouvelles transactions sont insérées en tête.
+export async function GET(request: NextRequest) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  }
+
+  const params = request.nextUrl.searchParams;
+  const parsed = paginationSchema.safeParse({
+    cursor: params.get('cursor') ?? undefined,
+    limit: params.get('limit') ?? undefined,
+  });
+  if (!parsed.success) {
+    return NextResponse.json(formatZodError(parsed.error), { status: 400 });
+  }
+  const { cursor: rawCursor, limit } = parsed.data;
+  const cursor = decodeCursor(rawCursor);
+  const accountId = params.get('accountId');
+
+  let query = supabase
+    .from('transactions')
+    .select('*')
+    .eq('user_id', user.id)
+    .order('date', { ascending: false })
+    .order('id', { ascending: false })
+    .limit(limit + 1); // +1 pour savoir s'il y a encore des pages
+
+  if (accountId) {
+    query = query.eq('account_id', accountId);
+  }
+
+  if (cursor) {
+    // (date, id) < (cursor.date, cursor.id) en lexicographie ordre desc.
+    // Supabase/PostgREST n'a pas d'opérateur tuple natif : on utilise .or().
+    query = query.or(
+      `date.lt.${cursor.date},and(date.eq.${cursor.date},id.lt.${cursor.id})`
+    );
+  }
+
+  const { data, error } = await query;
+  if (error) {
+    console.error('[api/transactions] GET failed', error);
+    return NextResponse.json({ error: 'internal_error' }, { status: 500 });
+  }
+
+  const rows = data ?? [];
+  const hasMore = rows.length > limit;
+  const items = hasMore ? rows.slice(0, limit) : rows;
+  const last = items[items.length - 1];
+  const nextCursor =
+    hasMore && last ? encodeCursor({ date: last.date, id: last.id }) : null;
+
+  return NextResponse.json({ items, nextCursor });
+}
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -24,14 +72,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 
-  const body = (await request.json().catch(() => null)) as TransactionPayload | null;
-  if (!body || !body.account_id || !body.type || typeof body.amount !== 'number' || !body.date) {
-    return NextResponse.json({ error: 'invalid_payload' }, { status: 400 });
+  const raw = await request.json().catch(() => null);
+  const parsed = createTransactionSchema.safeParse(raw);
+  if (!parsed.success) {
+    return NextResponse.json(formatZodError(parsed.error), { status: 400 });
   }
+  const body = parsed.data;
 
-  // Verify the account belongs to the caller — RLS only guards user_id on insert,
-  // not the account_id FK, so an authenticated user could otherwise attach rows
-  // to another user's account.
+  // Vérifie que le compte appartient au caller AVANT d'appeler le RPC.
+  // (Le RPC revérifie, mais on gagne un round-trip en cas d'accès interdit.)
   const { data: account } = await supabase
     .from('accounts')
     .select('id')
@@ -42,14 +91,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'invalid_account' }, { status: 403 });
   }
 
-  // Si la transaction principale n'est pas de type FEE et qu'un montant de frais > 0
-  // est fourni, une ligne FEE liée sera créée et référencée via fee_transaction_id.
-  const feesAmount =
-    body.type !== 'FEE' && typeof body.fees === 'number' && body.fees > 0 ? body.fees : 0;
+  const feesAmount = body.type !== 'FEE' && body.fees && body.fees > 0 ? body.fees : 0;
   const slotsNeeded = feesAmount > 0 ? 2 : 1;
 
   const limits = await getLimits(user.id);
-
   if (Number.isFinite(limits.maxTransactions)) {
     const { count, error: countError } = await supabase
       .from('transactions')
@@ -77,86 +122,35 @@ export async function POST(request: Request) {
     }
   }
 
-  // Étape 1 : si frais, insérer d'abord la ligne FEE (son id sera référencé par la principale).
-  let feeTransactionId: string | null = null;
-  if (feesAmount > 0) {
-    const feeDescription =
-      body.stock_symbol
-        ? `Frais ${body.type} ${body.stock_symbol.toUpperCase()}`
-        : `Frais ${body.type}`;
-    const { data: feeRow, error: feeError } = await supabase
-      .from('transactions')
-      .insert({
-        user_id: user.id,
-        account_id: body.account_id,
-        type: 'FEE',
-        amount: feesAmount,
-        description: feeDescription,
-        date: body.date,
-        stock_symbol: null,
-        quantity: null,
-        price_per_unit: null,
-      })
-      .select('id')
-      .single();
-
-    if (feeError || !feeRow) {
-      if (feeError?.message?.includes('FREE_TIER_LIMIT')) {
-        return NextResponse.json(
-          {
-            error: 'limit_reached',
-            scope: 'transactions',
-            message: 'Limite atteinte pour votre plan.',
-          },
-          { status: 402 }
-        );
-      }
-      console.error('[api/transactions] fee insert failed', feeError);
-      return NextResponse.json({ error: 'internal_error' }, { status: 500 });
-    }
-    feeTransactionId = feeRow.id;
-  }
-
-  // Étape 2 : insertion de la transaction principale, avec lien vers la FEE si créée.
-  const insertData = {
-    user_id: user.id,
-    account_id: body.account_id,
-    type: body.type,
-    amount: body.amount,
-    fee_transaction_id: feeTransactionId,
-    description: body.description ?? '',
-    date: body.date,
-    stock_symbol: body.stock_symbol ?? null,
-    quantity: body.quantity ?? null,
-    price_per_unit: body.price_per_unit ?? null,
-  };
-
-  const { data, error } = await supabase
-    .from('transactions')
-    .insert(insertData)
-    .select()
-    .single();
+  // Insertion atomique via RPC : si l'insert principal échoue après la FEE,
+  // PostgreSQL rollback automatiquement. Plus de code de rollback manuel.
+  const { data, error } = await supabase.rpc('insert_transaction_with_fee', {
+    p_account_id: body.account_id,
+    p_type: body.type,
+    p_amount: body.amount,
+    p_description: body.description ?? '',
+    p_date: body.date,
+    p_stock_symbol: body.stock_symbol ?? null,
+    p_quantity: body.quantity ?? null,
+    p_price_per_unit: body.price_per_unit ?? null,
+    p_fees: feesAmount > 0 ? feesAmount : null,
+  });
 
   if (error) {
-    // Rollback manuel de la FEE si la principale échoue — pas de transaction atomique côté Supabase JS.
-    if (feeTransactionId) {
-      await supabase
-        .from('transactions')
-        .delete()
-        .eq('id', feeTransactionId)
-        .eq('user_id', user.id);
-    }
-    if (error.message?.includes('FREE_TIER_LIMIT')) {
+    const msg = error.message ?? '';
+    if (msg.includes('FREE_TIER_LIMIT')) {
       return NextResponse.json(
-        {
-          error: 'limit_reached',
-          scope: 'transactions',
-          message: 'Limite atteinte pour votre plan.',
-        },
+        { error: 'limit_reached', scope: 'transactions', message: 'Limite atteinte pour votre plan.' },
         { status: 402 }
       );
     }
-    console.error('[api/transactions] insert failed', error);
+    if (msg.includes('invalid_account')) {
+      return NextResponse.json({ error: 'invalid_account' }, { status: 403 });
+    }
+    if (msg.includes('unauthorized')) {
+      return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+    }
+    console.error('[api/transactions] rpc failed', error);
     return NextResponse.json({ error: 'internal_error' }, { status: 500 });
   }
 

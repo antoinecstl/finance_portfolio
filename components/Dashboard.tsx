@@ -17,10 +17,13 @@ import { PortfolioStats } from './PortfolioStats';
 import { AccountList } from './AccountList';
 import { PositionsTable } from './PositionsTable';
 import { TransactionsList } from './TransactionsList';
+import { PaginatedTransactionsList } from './PaginatedTransactionsList';
 import { DividendsTable } from './DividendsTable';
 import { AllocationChart, SectorAllocationChart, AccountAllocationChart, PortfolioHistoryChart, PositionPerformanceChart, StockHistoryChart, PortfolioPerformanceChart, PortfolioValueChart } from './Charts';
 import { ProBlur } from './ProBlur';
 import { UsageMeter } from './UsageMeter';
+import { ErrorBoundary } from './ErrorBoundary';
+import { BenchmarkComparisonChart } from './BenchmarkComparisonChart';
 import { useSubscription } from '@/lib/subscription-client';
 import { AddAccountModal } from './AddAccountModal';
 import { AddTransactionModal } from './AddTransactionModal';
@@ -258,34 +261,42 @@ export function Dashboard() {
               </div>
             )}
             {/* Stats */}
-            <PortfolioStats
-              totalPortfolioValue={totalPortfolioValue}
-              totalValue={portfolioSummary.totalValue}
-              totalInvested={portfolioSummary.totalInvested}
-              totalGain={portfolioSummary.totalGain}
-              totalGainPercent={portfolioSummary.totalGainPercent}
-              dayChange={portfolioSummary.dayChange}
-              dayChangePercent={portfolioSummary.dayChangePercent}
-              savingsTotal={savingsTotal}
-            />
+            <ErrorBoundary label="Résumé du portefeuille">
+              <PortfolioStats
+                totalPortfolioValue={totalPortfolioValue}
+                totalValue={portfolioSummary.totalValue}
+                totalInvested={portfolioSummary.totalInvested}
+                totalGain={portfolioSummary.totalGain}
+                totalGainPercent={portfolioSummary.totalGainPercent}
+                dayChange={portfolioSummary.dayChange}
+                dayChangePercent={portfolioSummary.dayChangePercent}
+                savingsTotal={savingsTotal}
+              />
+            </ErrorBoundary>
 
             {/* Charts - stack on mobile */}
             <div className="grid gap-4 sm:gap-6 md:grid-cols-2">
-              <ProBlur feature="advanced_analytics" label="Répartition détaillée — Pro">
-                <AllocationChart positions={enrichedPositions} quotes={quotes} />
-              </ProBlur>
-              <AccountAllocationChart accounts={enrichedAccounts} />
+              <ErrorBoundary label="Répartition">
+                <ProBlur feature="advanced_analytics" label="Répartition détaillée — Pro">
+                  <AllocationChart positions={enrichedPositions} quotes={quotes} />
+                </ProBlur>
+              </ErrorBoundary>
+              <ErrorBoundary label="Allocation par compte">
+                <AccountAllocationChart accounts={enrichedAccounts} />
+              </ErrorBoundary>
             </div>
 
             {/* History Chart */}
-            <ProBlur feature="advanced_analytics" label="Évolution du portefeuille — Pro">
-              <PortfolioHistoryChart
-                history={portfolioHistory}
-                loading={loadingHistory}
-                onPeriodChange={setHistoryPeriod}
-                selectedPeriod={historyPeriod}
-              />
-            </ProBlur>
+            <ErrorBoundary label="Évolution du portefeuille">
+              <ProBlur feature="advanced_analytics" label="Évolution du portefeuille — Pro">
+                <PortfolioHistoryChart
+                  history={portfolioHistory}
+                  loading={loadingHistory}
+                  onPeriodChange={setHistoryPeriod}
+                  selectedPeriod={historyPeriod}
+                />
+              </ProBlur>
+            </ErrorBoundary>
 
             {/* Quick Views - stack on mobile */}
             <div className="grid gap-4 sm:gap-6 lg:grid-cols-2 w-full max-w-full">
@@ -304,7 +315,9 @@ export function Dashboard() {
                   </button>
                 </div>
                 <div className="w-full max-w-full overflow-hidden">
-                  <AccountList accounts={enrichedAccounts} onDeleted={() => { refreshAllData(); }} />
+                  <ErrorBoundary label="Comptes">
+                    <AccountList accounts={enrichedAccounts} onDeleted={() => { refreshAllData(); }} />
+                  </ErrorBoundary>
                 </div>
               </div>
 
@@ -323,7 +336,9 @@ export function Dashboard() {
                   </button>
                 </div>
                 <div className="w-full max-w-full overflow-hidden">
-                  <TransactionsList transactions={transactions} limit={5} onDeleted={() => { refreshAllData(); }} />
+                  <ErrorBoundary label="Dernières transactions">
+                    <TransactionsList transactions={transactions} limit={5} onDeleted={() => { refreshAllData(); }} />
+                  </ErrorBoundary>
                 </div>
               </div>
             </div>
@@ -358,46 +373,59 @@ export function Dashboard() {
                 Gérez vos positions via l'onglet Transactions
               </p>
             </div>
-            
-            {/* Graphique de performance des positions (détail par position) - EN PREMIER */}
-            <PositionPerformanceChart
-              positions={enrichedPositions}
-              quotes={quotes}
-              transactions={transactions}
-              portfolioTotalValue={stockPortfolioValue}
-              portfolioTotalInvested={portfolioSummary.totalInvested}
-              portfolioTotalGain={portfolioSummary.totalGain}
-              portfolioTotalGainPercent={portfolioSummary.totalGainPercent}
-              portfolioDayChange={portfolioSummary.dayChange}
-            />
-            
-            {/* Graphique Valeur vs Investissement */}
-            <PortfolioValueChart 
-              history={fullPortfolioHistory}
-              transactions={transactions}
-              loading={loadingFullHistory}
-              currentTotalValue={portfolioSummary.totalValue}
-              currentTotalInvested={portfolioSummary.totalInvested}
-            />
-            
-            {/* Graphique de performance réelle du portefeuille (annuelle) */}
-            <ProBlur feature="advanced_analytics" partial label="Performance annuelle — Pro">
-              <PortfolioPerformanceChart
+
+            <ErrorBoundary label="Performance par position">
+              <PositionPerformanceChart
+                positions={enrichedPositions}
+                quotes={quotes}
                 transactions={transactions}
-                portfolioHistory={fullPortfolioHistory}
-                accounts={enrichedAccounts}
-                loading={loadingFullHistory}
-                currentPortfolioValue={stockPortfolioValue}
+                portfolioTotalValue={stockPortfolioValue}
+                portfolioTotalInvested={portfolioSummary.totalInvested}
+                portfolioTotalGain={portfolioSummary.totalGain}
+                portfolioTotalGainPercent={portfolioSummary.totalGainPercent}
+                portfolioDayChange={portfolioSummary.dayChange}
               />
-            </ProBlur>
-            
-            {/* Positions clôturées */}
-            <PositionsTable 
-              positions={enrichedPositions} 
-              quotes={quotes} 
-              accounts={enrichedAccounts}
-              transactions={transactions}
-            />
+            </ErrorBoundary>
+
+            <ErrorBoundary label="Valeur vs Investissement">
+              <PortfolioValueChart
+                history={fullPortfolioHistory}
+                transactions={transactions}
+                loading={loadingFullHistory}
+                currentTotalValue={portfolioSummary.totalValue}
+                currentTotalInvested={portfolioSummary.totalInvested}
+              />
+            </ErrorBoundary>
+
+            <ErrorBoundary label="Performance annuelle">
+              <ProBlur feature="advanced_analytics" partial label="Performance annuelle — Pro">
+                <PortfolioPerformanceChart
+                  transactions={transactions}
+                  portfolioHistory={fullPortfolioHistory}
+                  accounts={enrichedAccounts}
+                  loading={loadingFullHistory}
+                  currentPortfolioValue={stockPortfolioValue}
+                />
+              </ProBlur>
+            </ErrorBoundary>
+
+            <ErrorBoundary label="Comparaison benchmark">
+              <ProBlur feature="advanced_analytics" partial label="Comparaison benchmark — Pro">
+                <BenchmarkComparisonChart
+                  portfolioHistory={fullPortfolioHistory}
+                  loading={loadingFullHistory}
+                />
+              </ProBlur>
+            </ErrorBoundary>
+
+            <ErrorBoundary label="Tableau des positions">
+              <PositionsTable
+                positions={enrichedPositions}
+                quotes={quotes}
+                accounts={enrichedAccounts}
+                transactions={transactions}
+              />
+            </ErrorBoundary>
           </div>
         )}
 
@@ -415,10 +443,9 @@ export function Dashboard() {
                 <span>Ajouter une transaction</span>
               </button>
             </div>
-            <TransactionsList
-              transactions={transactions}
+            <PaginatedTransactionsList
               accounts={accounts}
-              showFilters={true}
+              pageSize={50}
               onDeleted={() => { refreshAllData(); }}
             />
           </div>
