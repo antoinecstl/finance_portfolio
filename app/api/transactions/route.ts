@@ -95,7 +95,9 @@ export async function POST(request: Request) {
   const slotsNeeded = feesAmount > 0 ? 2 : 1;
 
   const limits = await getLimits(user.id);
-  if (Number.isFinite(limits.maxTransactions)) {
+  const enforceLimit = Number.isFinite(limits.maxTransactions);
+  let currentCount = 0;
+  if (enforceLimit) {
     const { count, error: countError } = await supabase
       .from('transactions')
       .select('id', { count: 'exact', head: true })
@@ -106,12 +108,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'internal_error' }, { status: 500 });
     }
 
-    if ((count ?? 0) + slotsNeeded > limits.maxTransactions) {
+    currentCount = count ?? 0;
+
+    if (currentCount + slotsNeeded > limits.maxTransactions) {
       return NextResponse.json(
         {
           error: 'limit_reached',
           scope: 'transactions',
           limit: limits.maxTransactions,
+          current: currentCount,
           message:
             slotsNeeded === 2
               ? `Votre plan Free est limité à ${limits.maxTransactions} transactions. Ajouter des frais crée une ligne supplémentaire — plus de place disponible.`
@@ -154,5 +159,20 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'internal_error' }, { status: 500 });
   }
 
-  return NextResponse.json({ transaction: data }, { status: 201 });
+  const atCap = enforceLimit && currentCount + slotsNeeded >= limits.maxTransactions;
+
+  return NextResponse.json(
+    {
+      transaction: data,
+      ...(atCap
+        ? {
+            at_cap: true,
+            scope: 'transactions',
+            current: currentCount + slotsNeeded,
+            limit: limits.maxTransactions,
+          }
+        : {}),
+    },
+    { status: 201 }
+  );
 }

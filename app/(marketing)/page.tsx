@@ -1,8 +1,7 @@
 import Link from 'next/link';
 import { ArrowRight, TrendingUp, PieChart, Wallet, ShieldCheck, BarChart2, Coins } from 'lucide-react';
-import { PricingCard } from '@/components/marketing/PricingCard';
+import { PricingSection } from '@/components/marketing/PricingSection';
 import { FAQ } from '@/components/marketing/FAQ';
-import { PLANS } from '@/lib/plans';
 
 const features = [
   {
@@ -92,18 +91,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section id="pricing" className="max-w-5xl mx-auto px-4 py-16 scroll-mt-20">
-        <h2 className="text-3xl font-bold text-center text-zinc-900 dark:text-zinc-100 mb-4">
-          Tarifs simples
-        </h2>
-        <p className="text-center text-zinc-600 dark:text-zinc-400 mb-10">
-          Commencez gratuitement, passez Pro quand vous voulez.
-        </p>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
-          <PricingCard plan={PLANS.free} />
-          <PricingCard plan={PLANS.pro} highlight />
-        </div>
-      </section>
+      <PricingSection />
 
       <FAQ />
 

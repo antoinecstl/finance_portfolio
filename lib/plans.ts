@@ -1,4 +1,5 @@
 export type PlanId = 'free' | 'pro';
+export type BillingInterval = 'month' | 'year';
 export type Feature =
   | 'basic_charts'
   | 'advanced_analytics'
@@ -10,6 +11,7 @@ export type Plan = {
   id: PlanId;
   name: string;
   priceCents: number;
+  priceCentsYearly: number | null;
   currency: string;
   interval: 'month' | 'year' | null;
   maxAccounts: number;
@@ -27,6 +29,7 @@ export const PLANS: Record<PlanId, Plan> = {
     id: 'free',
     name: 'Free',
     priceCents: 0,
+    priceCentsYearly: null,
     currency: 'EUR',
     interval: null,
     maxAccounts: 1,
@@ -46,6 +49,7 @@ export const PLANS: Record<PlanId, Plan> = {
     id: 'pro',
     name: 'Pro',
     priceCents: 499,
+    priceCentsYearly: 4999,
     currency: 'EUR',
     interval: 'month',
     maxAccounts: INF,
@@ -64,11 +68,32 @@ export const PLANS: Record<PlanId, Plan> = {
   },
 };
 
+function formatAmount(cents: number): string {
+  return (cents / 100).toFixed(2).replace('.', ',');
+}
+
 export function formatPrice(plan: Plan): string {
   if (plan.priceCents === 0) return 'Gratuit';
-  const amount = (plan.priceCents / 100).toFixed(2).replace('.', ',');
   const suffix = plan.interval === 'month' ? ' / mois' : plan.interval === 'year' ? ' / an' : '';
-  return `${amount} € ${suffix}`.trim();
+  return `${formatAmount(plan.priceCents)} €${suffix}`;
+}
+
+export function formatPriceFor(plan: Plan, interval: BillingInterval): string {
+  if (plan.priceCents === 0) return 'Gratuit';
+  if (interval === 'year') {
+    const yearly = plan.priceCentsYearly ?? plan.priceCents * 12;
+    return `${formatAmount(yearly)} € / an`;
+  }
+  return `${formatAmount(plan.priceCents)} € / mois`;
+}
+
+export function getYearlySavingsPercent(plan: Plan): number | null {
+  if (!plan.priceCentsYearly || plan.priceCents === 0) return null;
+  const yearlyFull = plan.priceCents * 12;
+  if (yearlyFull === 0) return null;
+  const saved = yearlyFull - plan.priceCentsYearly;
+  if (saved <= 0) return null;
+  return Math.round((saved / yearlyFull) * 100);
 }
 
 export function hasFeature(plan: Plan, feature: Feature): boolean {

@@ -6,7 +6,7 @@ import { Account } from '@/lib/types';
 import { useStockSearch } from '@/lib/hooks';
 import { POPULAR_FRENCH_STOCKS } from '@/lib/stock-api';
 import { useAuth } from '@/lib/auth';
-import { useToast } from './Toast';
+import { useLimitReached } from './LimitReachedModal';
 
 interface AddPositionModalProps {
   isOpen: boolean;
@@ -34,7 +34,7 @@ export function AddPositionModal({
   const [searchQuery, setSearchQuery] = useState('');
   const { results: searchResults, search } = useStockSearch();
   const { user } = useAuth();
-  const toast = useToast();
+  const limitReached = useLimitReached();
 
   // Filtrer seulement les comptes PEA et CTO
   const stockAccounts = accounts.filter(a => ['PEA', 'CTO'].includes(a.type));
@@ -82,7 +82,12 @@ export function AddPositionModal({
 
       if (res.status === 402) {
         const data = await res.json().catch(() => ({}));
-        toast.showUpsell(data.message ?? 'Limite Free atteinte. Passez Pro pour continuer.');
+        limitReached.show({
+          scope: 'positions',
+          current: data.current,
+          max: data.limit,
+          reason: 'blocked',
+        });
         throw new Error(data.message ?? 'Limite atteinte');
       }
 
@@ -90,6 +95,8 @@ export function AddPositionModal({
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error ?? 'Erreur lors de la création');
       }
+
+      const payload = await res.json().catch(() => ({}));
 
       // Reset form
       setSymbol('');
@@ -99,6 +106,15 @@ export function AddPositionModal({
       setSector('');
       onSuccess();
       onClose();
+
+      if (payload.at_cap) {
+        limitReached.show({
+          scope: 'positions',
+          current: payload.current,
+          max: payload.limit,
+          reason: 'reached',
+        });
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Une erreur est survenue');
     } finally {

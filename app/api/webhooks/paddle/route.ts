@@ -62,10 +62,14 @@ export async function POST(request: Request) {
       const periodEnd = event.data.current_billing_period?.ends_at ?? null;
       const cancelAtPeriodEnd = event.data.scheduled_change?.action === 'cancel';
 
-      // Determine plan from Paddle price_id match
+      // Determine plan from Paddle price_id match (monthly or yearly Pro).
       const paddlePriceId = event.data.items?.[0]?.price?.id ?? null;
+      const proPriceIds = [
+        process.env.PADDLE_PRO_PRICE_ID,
+        process.env.PADDLE_PRO_YEARLY_PRICE_ID,
+      ].filter((v): v is string => Boolean(v));
       const planId =
-        paddlePriceId && paddlePriceId === process.env.PADDLE_PRO_PRICE_ID ? 'pro' : 'free';
+        paddlePriceId && proPriceIds.includes(paddlePriceId) ? 'pro' : 'free';
 
       await admin.from('subscriptions').upsert(
         {

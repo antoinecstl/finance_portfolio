@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase';
 import { Account, StockPosition, Transaction } from '@/lib/types';
 import { useAuth } from '@/lib/auth';
 import { useStockSearch } from '@/lib/hooks';
-import { useToast } from './Toast';
+import { useLimitReached } from './LimitReachedModal';
 import { POPULAR_FRENCH_STOCKS } from '@/lib/stock-api';
 import { calculatePositionsAtDate } from '@/lib/portfolio-calculator';
 
@@ -54,7 +54,7 @@ export function AddTransactionModal({
   const [allTransactions, setAllTransactions] = useState<Transaction[]>([]);
   const { user } = useAuth();
   const { results: searchResults, search } = useStockSearch();
-  const toast = useToast();
+  const limitReached = useLimitReached();
 
   // Calculer automatiquement le montant total
   useEffect(() => {
@@ -239,7 +239,12 @@ export function AddTransactionModal({
 
       if (res.status === 402) {
         const data = await res.json().catch(() => ({}));
-        toast.showUpsell(data.message ?? 'Limite Free atteinte. Passez Pro pour continuer.');
+        limitReached.show({
+          scope: 'transactions',
+          current: data.current,
+          max: data.limit,
+          reason: 'blocked',
+        });
         throw new Error(data.message ?? 'Limite atteinte');
       }
 
@@ -247,6 +252,8 @@ export function AddTransactionModal({
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error ?? 'Erreur lors de la création');
       }
+
+      const txPayload = await res.json().catch(() => ({}));
 
       // 2. Mettre à jour les positions pour les achats/ventes
       if (isStockTransaction) {
@@ -319,6 +326,15 @@ export function AddTransactionModal({
       setSearchQuery('');
       await onSuccess();
       onClose();
+
+      if (txPayload.at_cap) {
+        limitReached.show({
+          scope: 'transactions',
+          current: txPayload.current,
+          max: txPayload.limit,
+          reason: 'reached',
+        });
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Une erreur est survenue');
     } finally {

@@ -31,8 +31,10 @@ export async function POST(request: Request) {
   }
 
   const limits = await getLimits(user.id);
+  let currentCount = 0;
+  const enforceLimit = Number.isFinite(limits.maxPositions);
 
-  if (Number.isFinite(limits.maxPositions)) {
+  if (enforceLimit) {
     const { count, error: countError } = await supabase
       .from('stock_positions')
       .select('id', { count: 'exact', head: true })
@@ -43,12 +45,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'internal_error' }, { status: 500 });
     }
 
-    if ((count ?? 0) >= limits.maxPositions) {
+    currentCount = count ?? 0;
+
+    if (currentCount >= limits.maxPositions) {
       return NextResponse.json(
         {
           error: 'limit_reached',
           scope: 'positions',
           limit: limits.maxPositions,
+          current: currentCount,
           message: `Votre plan Free est limité à ${limits.maxPositions} positions boursières. Passez Pro pour en ajouter plus.`,
         },
         { status: 402 }
@@ -86,5 +91,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'internal_error' }, { status: 500 });
   }
 
-  return NextResponse.json({ position: data }, { status: 201 });
+  const atCap = enforceLimit && currentCount + 1 >= limits.maxPositions;
+
+  return NextResponse.json(
+    {
+      position: data,
+      ...(atCap
+        ? { at_cap: true, scope: 'positions', current: currentCount + 1, limit: limits.maxPositions }
+        : {}),
+    },
+    { status: 201 }
+  );
 }

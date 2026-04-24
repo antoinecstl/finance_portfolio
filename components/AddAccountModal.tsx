@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { X } from 'lucide-react';
 import { AccountType } from '@/lib/types';
 import { useAuth } from '@/lib/auth';
-import { useToast } from './Toast';
+import { useLimitReached } from './LimitReachedModal';
 
 interface AddAccountModalProps {
   isOpen: boolean;
@@ -28,7 +28,7 @@ export function AddAccountModal({ isOpen, onClose, onSuccess }: AddAccountModalP
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
-  const toast = useToast();
+  const limitReached = useLimitReached();
 
   if (!isOpen) return null;
 
@@ -52,7 +52,12 @@ export function AddAccountModal({ isOpen, onClose, onSuccess }: AddAccountModalP
 
       if (res.status === 402) {
         const data = await res.json().catch(() => ({}));
-        toast.showUpsell(data.message ?? 'Limite Free atteinte. Passez Pro pour continuer.');
+        limitReached.show({
+          scope: 'accounts',
+          current: data.current,
+          max: data.limit,
+          reason: 'blocked',
+        });
         setError(data.message ?? 'Limite atteinte');
         return;
       }
@@ -62,10 +67,21 @@ export function AddAccountModal({ isOpen, onClose, onSuccess }: AddAccountModalP
         throw new Error(data.error ?? 'Erreur lors de la création');
       }
 
+      const payload = await res.json().catch(() => ({}));
+
       setName('');
       setType('LIVRET_A');
       onSuccess();
       onClose();
+
+      if (payload.at_cap) {
+        limitReached.show({
+          scope: 'accounts',
+          current: payload.current,
+          max: payload.limit,
+          reason: 'reached',
+        });
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Une erreur est survenue');
     } finally {

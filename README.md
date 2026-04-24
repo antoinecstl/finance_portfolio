@@ -83,10 +83,12 @@ Voir [.env.example](./.env.example). En résumé :
 | `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Client Supabase browser |
 | `SUPABASE_SERVICE_ROLE_KEY` | Opérations privilégiées côté serveur |
 | `PADDLE_API_KEY` / `PADDLE_WEBHOOK_SECRET` | Paddle server-side |
-| `PADDLE_PRO_PRICE_ID` | Prix plan Pro (matché dans le webhook) |
+| `PADDLE_PRO_PRICE_ID` | Prix Pro mensuel (matché dans le webhook) |
+| `PADDLE_PRO_YEARLY_PRICE_ID` | Prix Pro annuel (matché dans le webhook) |
 | `NEXT_PUBLIC_PADDLE_ENV` | `sandbox` ou `production` |
 | `NEXT_PUBLIC_PADDLE_CLIENT_TOKEN` | Token Paddle.js browser |
-| `NEXT_PUBLIC_PADDLE_PRO_PRICE_ID` | Même prix, exposé browser |
+| `NEXT_PUBLIC_PADDLE_PRO_PRICE_ID` | Prix mensuel, exposé browser |
+| `NEXT_PUBLIC_PADDLE_PRO_YEARLY_PRICE_ID` | Prix annuel, exposé browser |
 | `RESEND_API_KEY` / `RESEND_FROM` | Emails transactionnels |
 
 ## 🗄️ Base de données
@@ -128,7 +130,7 @@ Pour les actions françaises, suffixe `.PA` : `MC.PA` (LVMH), `OR.PA` (L'Oréal)
 ### 2. Paddle
 
 1. Compte Paddle (sandbox pour tests, live pour prod).
-2. Produit « Fi-Hub Pro » — prix mensuel → `PADDLE_PRO_PRICE_ID`.
+2. Produit « Fi-Hub Pro » — prix mensuel → `PADDLE_PRO_PRICE_ID` + prix annuel → `PADDLE_PRO_YEARLY_PRICE_ID`.
 3. Developer Tools > Notifications : endpoint `https://<domaine>/api/webhooks/paddle` → `PADDLE_WEBHOOK_SECRET`.
 4. Authentication > Client-side tokens → `NEXT_PUBLIC_PADDLE_CLIENT_TOKEN`.
 

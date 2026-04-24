@@ -1,8 +1,24 @@
 import Link from 'next/link';
 import { Check } from 'lucide-react';
-import { type Plan, formatPrice } from '@/lib/plans';
+import { type Plan, type BillingInterval, formatPrice, formatPriceFor, getYearlySavingsPercent } from '@/lib/plans';
 
-export function PricingCard({ plan, highlight = false }: { plan: Plan; highlight?: boolean }) {
+export function PricingCard({
+  plan,
+  highlight = false,
+  interval = 'month',
+}: {
+  plan: Plan;
+  highlight?: boolean;
+  interval?: BillingInterval;
+}) {
+  const isPro = plan.id === 'pro';
+  const priceLabel = isPro ? formatPriceFor(plan, interval) : formatPrice(plan);
+  const savings = isPro && interval === 'year' ? getYearlySavingsPercent(plan) : null;
+  const monthlyEquivalent =
+    isPro && interval === 'year' && plan.priceCentsYearly
+      ? (plan.priceCentsYearly / 12 / 100).toFixed(2).replace('.', ',')
+      : null;
+
   return (
     <div
       className={`rounded-2xl border p-6 flex flex-col ${
@@ -16,7 +32,19 @@ export function PricingCard({ plan, highlight = false }: { plan: Plan; highlight
         <p className="text-sm text-zinc-500 dark:text-zinc-400">{plan.tagline}</p>
       </div>
       <div className="mb-6">
-        <span className="text-3xl font-bold text-zinc-900 dark:text-zinc-100">{formatPrice(plan)}</span>
+        <div className="flex items-baseline gap-2 flex-wrap">
+          <span className="text-3xl font-bold text-zinc-900 dark:text-zinc-100">{priceLabel}</span>
+          {savings !== null && (
+            <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300">
+              -{savings}%
+            </span>
+          )}
+        </div>
+        {monthlyEquivalent && (
+          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+            Soit {monthlyEquivalent} € / mois facturés annuellement
+          </p>
+        )}
       </div>
       <ul className="space-y-2 mb-6 flex-1">
         {plan.highlights.map((h) => (

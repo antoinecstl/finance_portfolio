@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getUserSubscription } from '@/lib/subscription';
 import { SubscriptionProvider } from '@/lib/subscription-client';
 import { ToastProvider } from '@/components/Toast';
+import { LimitReachedProvider } from '@/components/LimitReachedModal';
 import { Onboarding } from '@/components/Onboarding';
 
 export const dynamic = 'force-dynamic';
@@ -39,7 +40,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         isFounder: sub.isFounder,
       }}
     >
-      <ToastProvider>{children}</ToastProvider>
+      <ToastProvider>
+        <LimitReachedProvider>{children}</LimitReachedProvider>
+      </ToastProvider>
     </SubscriptionProvider>
   );
 }

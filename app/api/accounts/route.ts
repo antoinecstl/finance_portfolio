@@ -21,8 +21,10 @@ export async function POST(request: Request) {
   const body = parsed.data;
 
   const limits = await getLimits(user.id);
+  let currentCount = 0;
+  const enforceLimit = Number.isFinite(limits.maxAccounts);
 
-  if (Number.isFinite(limits.maxAccounts)) {
+  if (enforceLimit) {
     const { count, error: countError } = await supabase
       .from('accounts')
       .select('id', { count: 'exact', head: true })
@@ -33,12 +35,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'internal_error' }, { status: 500 });
     }
 
-    if ((count ?? 0) >= limits.maxAccounts) {
+    currentCount = count ?? 0;
+
+    if (currentCount >= limits.maxAccounts) {
       return NextResponse.json(
         {
           error: 'limit_reached',
           scope: 'accounts',
           limit: limits.maxAccounts,
+          current: currentCount,
           message: `Votre plan Free est limité à ${limits.maxAccounts} compte. Passez Pro pour en ajouter plus.`,
         },
         { status: 402 }
@@ -72,5 +77,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'internal_error' }, { status: 500 });
   }
 
-  return NextResponse.json({ account: data }, { status: 201 });
+  const atCap = enforceLimit && currentCount + 1 >= limits.maxAccounts;
+
+  return NextResponse.json(
+    {
+      account: data,
+      ...(atCap
+        ? { at_cap: true, scope: 'accounts', current: currentCount + 1, limit: limits.maxAccounts }
+        : {}),
+    },
+    { status: 201 }
+  );
 }
