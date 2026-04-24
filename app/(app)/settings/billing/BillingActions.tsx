@@ -6,7 +6,7 @@ import { Loader2, ExternalLink } from 'lucide-react';
 
 type PaddleCheckoutOpen = (opts: {
   items: { priceId: string; quantity: number }[];
-  customer?: { id?: string; email?: string };
+  customer?: { email: string };
   customData?: Record<string, string>;
   settings?: { displayMode?: 'overlay' | 'inline'; theme?: 'light' | 'dark' };
 }) => void;
@@ -54,27 +54,16 @@ export function BillingActions({
     window.Paddle.Initialize({ token: clientToken });
   }, [paddleReady, clientToken, env]);
 
-  const handleUpgrade = async () => {
+  const handleUpgrade = () => {
     if (!window.Paddle || !priceId) {
       setError('Paddle non configuré (NEXT_PUBLIC_PADDLE_CLIENT_TOKEN / PRICE_ID manquants)');
       return;
     }
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch('/api/billing/customer', { method: 'POST' });
-      if (!res.ok) throw new Error((await res.json()).error ?? 'customer_error');
-      const { customerId } = (await res.json()) as { customerId: string };
-      window.Paddle.Checkout.open({
-        items: [{ priceId, quantity: 1 }],
-        customer: { id: customerId },
-        customData: { user_id: userId },
-      });
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Erreur');
-    } finally {
-      setLoading(false);
-    }
+    window.Paddle.Checkout.open({
+      items: [{ priceId, quantity: 1 }],
+      customer: { email },
+      customData: { user_id: userId },
+    });
   };
 
   const handleManage = async () => {
@@ -110,14 +99,19 @@ export function BillingActions({
       />
       <div className="flex gap-3 flex-wrap">
         {planId === 'free' ? (
-          <button
-            onClick={handleUpgrade}
-            disabled={!paddleReady || loading}
-            className="inline-flex items-center gap-2 py-2.5 px-5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium rounded-lg"
-          >
-            {(!paddleReady || loading) && <Loader2 className="h-4 w-4 animate-spin" />}
-            Passer Pro
-          </button>
+          <div className="flex flex-col gap-2">
+            <button
+              onClick={handleUpgrade}
+              disabled={!paddleReady}
+              className="inline-flex items-center gap-2 py-2.5 px-5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium rounded-lg w-fit"
+            >
+              {!paddleReady && <Loader2 className="h-4 w-4 animate-spin" />}
+              Passer Pro
+            </button>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+              Les factures seront envoyées à l&apos;adresse email indiquée lors du paiement.
+            </p>
+          </div>
         ) : (
           <button
             onClick={handleManage}
