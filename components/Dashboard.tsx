@@ -52,6 +52,7 @@ export function Dashboard() {
   const [showAddPosition, setShowAddPosition] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
   const [historyPeriod, setHistoryPeriod] = useState(30);
+  const [txVersion, setTxVersion] = useState(0);
 
   const { user, signOut } = useAuth();
   const router = useRouter();
@@ -162,6 +163,7 @@ export function Dashboard() {
   };
 
   const handleTransactionSuccess = async () => {
+    setTxVersion(v => v + 1);
     await refreshAllData();
   };
 
@@ -447,7 +449,8 @@ export function Dashboard() {
             <PaginatedTransactionsList
               accounts={accounts}
               pageSize={50}
-              onDeleted={() => { refreshAllData(); }}
+              version={txVersion}
+              onDeleted={() => { setTxVersion(v => v + 1); refreshAllData(); }}
             />
           </div>
         )}

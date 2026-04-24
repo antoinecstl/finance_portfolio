@@ -53,8 +53,8 @@ export function useAccounts() {
 // Hook pour la pagination cursor-based côté client.
 // Alternative à useTransactions pour les vues "Historique complet" sur gros volumes.
 // Utilise l'endpoint GET /api/transactions.
-export function usePaginatedTransactions(opts: { accountId?: string; pageSize?: number } = {}) {
-  const { accountId, pageSize = 50 } = opts;
+export function usePaginatedTransactions(opts: { accountId?: string; pageSize?: number; version?: number } = {}) {
+  const { accountId, pageSize = 50, version = 0 } = opts;
   const [pages, setPages] = useState<Transaction[][]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -78,7 +78,7 @@ export function usePaginatedTransactions(opts: { accountId?: string; pageSize?: 
     } finally {
       setLoading(false);
     }
-  }, [accountId, pageSize]);
+  }, [accountId, pageSize, version]);
 
   useEffect(() => {
     setInitialLoaded(false);

@@ -11,15 +11,17 @@ export function PaginatedTransactionsList({
   accounts,
   accountId,
   pageSize = 50,
+  version = 0,
   onDeleted,
 }: {
   accounts?: Account[];
   accountId?: string;
   pageSize?: number;
+  version?: number;
   onDeleted?: () => void | Promise<void>;
 }) {
   const { transactions, loadMore, hasMore, loading, error, initialLoaded } =
-    usePaginatedTransactions({ accountId, pageSize });
+    usePaginatedTransactions({ accountId, pageSize, version });
 
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
