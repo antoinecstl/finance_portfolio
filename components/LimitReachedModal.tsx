@@ -158,9 +158,6 @@ function LimitReachedOverlay({
                 <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">
                   Fi-Hub Pro
                 </h3>
-                <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
-                  Recommandé
-                </span>
               </div>
               <p className="text-xs text-zinc-500 dark:text-zinc-400">{pro.tagline}</p>
             </div>
@@ -199,6 +196,9 @@ function LimitReachedOverlay({
                 }`}
               >
                 Annuel
+                <span className="text-[9px] font-semibold px-1 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
+                  Recommandé
+                </span>
                 {savings !== null && (
                   <span className="text-[9px] font-semibold px-1 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300">
                     -{savings}%
