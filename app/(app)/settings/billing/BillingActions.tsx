@@ -6,7 +6,7 @@ import { Loader2, ExternalLink } from 'lucide-react';
 
 type PaddleCheckoutOpen = (opts: {
   items: { priceId: string; quantity: number }[];
-  customer?: { email: string };
+  customer?: { id?: string; email?: string };
   customData?: Record<string, string>;
   settings?: { displayMode?: 'overlay' | 'inline'; theme?: 'light' | 'dark' };
 }) => void;
@@ -54,16 +54,27 @@ export function BillingActions({
     window.Paddle.Initialize({ token: clientToken });
   }, [paddleReady, clientToken, env]);
 
-  const handleUpgrade = () => {
+  const handleUpgrade = async () => {
     if (!window.Paddle || !priceId) {
       setError('Paddle non configuré (NEXT_PUBLIC_PADDLE_CLIENT_TOKEN / PRICE_ID manquants)');
       return;
     }
-    window.Paddle.Checkout.open({
-      items: [{ priceId, quantity: 1 }],
-      customer: { email },
-      customData: { user_id: userId },
-    });
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/billing/customer', { method: 'POST' });
+      if (!res.ok) throw new Error((await res.json()).error ?? 'customer_error');
+      const { customerId } = (await res.json()) as { customerId: string };
+      window.Paddle.Checkout.open({
+        items: [{ priceId, quantity: 1 }],
+        customer: { id: customerId },
+        customData: { user_id: userId },
+      });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Erreur');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleManage = async () => {
@@ -101,10 +112,10 @@ export function BillingActions({
         {planId === 'free' ? (
           <button
             onClick={handleUpgrade}
-            disabled={!paddleReady}
+            disabled={!paddleReady || loading}
             className="inline-flex items-center gap-2 py-2.5 px-5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium rounded-lg"
           >
-            {!paddleReady && <Loader2 className="h-4 w-4 animate-spin" />}
+            {(!paddleReady || loading) && <Loader2 className="h-4 w-4 animate-spin" />}
             Passer Pro
           </button>
         ) : (
