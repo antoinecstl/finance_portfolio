@@ -107,6 +107,27 @@ export function AddTransactionModal({
     }
   }, [searchQuery, search]);
 
+  // Escape pour fermer + scroll-lock du body tant que le modal est ouvert
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !loading) {
+        resetForm();
+        onClose();
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, loading]);
+
   // Positions dérivées du state parent (source de vérité unique).
   // Pour les ventes : positions du compte sélectionné uniquement.
   // Pour les dividendes : toutes les positions de l'utilisateur, dédupliquées par symbole.
@@ -265,19 +286,37 @@ export function AddTransactionModal({
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
       <div className="absolute inset-0 bg-black/50" onClick={handleClose} />
-      <div className="relative bg-white dark:bg-zinc-900 rounded-t-xl sm:rounded-xl shadow-xl w-full sm:max-w-md mx-0 sm:mx-4 p-4 sm:p-6 max-h-[90vh] overflow-y-auto">
-        <button
-          onClick={handleClose}
-          className="absolute top-3 sm:top-4 right-3 sm:right-4 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="add-tx-title"
+        className="relative flex flex-col bg-white dark:bg-zinc-900 rounded-t-2xl sm:rounded-2xl shadow-xl w-full sm:max-w-lg mx-0 sm:mx-4 max-h-[92vh] sm:max-h-[88vh] overflow-hidden"
+      >
+        {/* Drag handle : affordance bottom-sheet sur mobile */}
+        <div className="sm:hidden flex justify-center pt-2 pb-1">
+          <div className="h-1 w-10 rounded-full bg-zinc-300 dark:bg-zinc-700" aria-hidden="true" />
+        </div>
+
+        {/* Header sticky : titre + close, pas d'absolute (pas de chevauchement) */}
+        <div className="flex items-center justify-between px-4 sm:px-6 pt-2 sm:pt-5 pb-3 sm:pb-4 border-b border-zinc-100 dark:border-zinc-800">
+          <h2 id="add-tx-title" className="text-base sm:text-xl font-bold text-zinc-900 dark:text-zinc-100 pr-2">
+            Ajouter une transaction
+          </h2>
+          <button
+            type="button"
+            onClick={handleClose}
+            aria-label="Fermer"
+            className="shrink-0 p-1.5 -mr-1.5 rounded-lg text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100 dark:hover:bg-zinc-800 dark:hover:text-zinc-300 transition-colors"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <form
+          id="add-tx-form"
+          onSubmit={handleSubmit}
+          className="flex-1 overflow-y-auto overscroll-contain px-4 sm:px-6 py-4 space-y-3 sm:space-y-4"
         >
-          <X className="h-5 w-5" />
-        </button>
-
-        <h2 className="text-lg sm:text-xl font-bold text-zinc-900 dark:text-zinc-100 mb-4 sm:mb-6">
-          Ajouter une transaction
-        </h2>
-
-        <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
           <div>
             <label className="block text-xs sm:text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
               Compte
@@ -332,33 +371,34 @@ export function AddTransactionModal({
               <label className="block text-xs sm:text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
                 Action concernée
               </label>
-              <div className="grid grid-cols-2 gap-2 max-h-28 sm:max-h-32 overflow-y-auto">
+              <div className="grid grid-cols-2 gap-2 max-h-40 sm:max-h-48 overflow-y-auto pr-1">
                 {dividendPositions.map((pos) => (
                   <button
                     key={pos.id}
                     type="button"
                     onClick={() => handleSelectExistingPosition(pos)}
-                    className={`text-left p-2 rounded-lg border text-xs sm:text-sm transition-colors ${
+                    className={`text-left p-2 rounded-lg border text-xs sm:text-sm transition-colors min-w-0 ${
                       stockSymbol.toUpperCase() === pos.symbol.toUpperCase()
                         ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/30'
                         : 'border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800'
                     }`}
                   >
-                    <div className="font-medium text-zinc-900 dark:text-zinc-100">{pos.symbol}</div>
+                    <div className="font-medium text-zinc-900 dark:text-zinc-100 truncate">{pos.symbol}</div>
                     <div className="text-xs text-zinc-500 truncate">{pos.name}</div>
                   </button>
                 ))}
               </div>
               {stockSymbol && (
                 <div className="mt-2 p-2 bg-emerald-50 dark:bg-emerald-900/30 rounded-lg border border-emerald-200 dark:border-emerald-800">
-                  <div className="flex justify-between items-center">
-                    <div className="text-xs sm:text-sm text-emerald-700 dark:text-emerald-300">
+                  <div className="flex justify-between items-center gap-2">
+                    <div className="flex-1 min-w-0 text-xs sm:text-sm text-emerald-700 dark:text-emerald-300 truncate">
                       Dividende pour <span className="font-semibold">{stockSymbol}</span>
                     </div>
                     <button
                       type="button"
                       onClick={() => { setStockSymbol(''); setStockName(''); }}
-                      className="text-emerald-500 hover:text-emerald-700"
+                      aria-label="Retirer la sélection"
+                      className="shrink-0 p-1 rounded text-emerald-500 hover:text-emerald-700 hover:bg-emerald-100 dark:hover:bg-emerald-900/50"
                     >
                       <X className="h-4 w-4" />
                     </button>
@@ -375,20 +415,20 @@ export function AddTransactionModal({
                   <label className="block text-xs sm:text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
                     Position à vendre
                   </label>
-                  <div className="grid grid-cols-2 gap-2 max-h-28 sm:max-h-32 overflow-y-auto">
+                  <div className="grid grid-cols-2 gap-2 max-h-40 sm:max-h-48 overflow-y-auto pr-1">
                     {sellablePositions.map((pos) => (
                       <button
                         key={pos.id}
                         type="button"
                         onClick={() => handleSelectExistingPosition(pos)}
-                        className={`text-left p-2 rounded-lg border text-xs sm:text-sm transition-colors ${
+                        className={`text-left p-2 rounded-lg border text-xs sm:text-sm transition-colors min-w-0 ${
                           stockSymbol.toUpperCase() === pos.symbol.toUpperCase()
                             ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30'
                             : 'border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800'
                         }`}
                       >
-                        <div className="font-medium text-zinc-900 dark:text-zinc-100">{pos.symbol}</div>
-                        <div className="text-xs text-zinc-500">{pos.quantity} titres</div>
+                        <div className="font-medium text-zinc-900 dark:text-zinc-100 truncate">{pos.symbol}</div>
+                        <div className="text-xs text-zinc-500 truncate">{pos.quantity} titres</div>
                       </button>
                     ))}
                   </div>
@@ -415,7 +455,7 @@ export function AddTransactionModal({
                     />
                   </div>
                   {showSearchDropdown && searchResults.length > 0 && (
-                    <div className="absolute z-10 w-full mt-1 bg-white dark:bg-zinc-800 rounded-lg shadow-lg border border-zinc-200 dark:border-zinc-700 max-h-40 sm:max-h-48 overflow-y-auto">
+                    <div className="absolute z-20 left-0 right-0 mt-1 bg-white dark:bg-zinc-800 rounded-lg shadow-lg border border-zinc-200 dark:border-zinc-700 max-h-48 overflow-y-auto overscroll-contain">
                       {searchResults.map((result) => (
                         <button
                           key={result.symbol}
@@ -423,7 +463,7 @@ export function AddTransactionModal({
                           onClick={() => handleSelectStock(result.symbol, result.name)}
                           className="w-full text-left px-3 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-700 border-b border-zinc-100 dark:border-zinc-700 last:border-0"
                         >
-                          <div className="font-medium text-sm text-zinc-900 dark:text-zinc-100">{result.symbol}</div>
+                          <div className="font-medium text-sm text-zinc-900 dark:text-zinc-100 truncate">{result.symbol}</div>
                           <div className="text-xs text-zinc-500 truncate">{result.name}</div>
                         </button>
                       ))}
@@ -452,15 +492,16 @@ export function AddTransactionModal({
 
               {stockSymbol && (
                 <div className="p-2 sm:p-3 bg-blue-50 dark:bg-blue-900/30 rounded-lg border border-blue-200 dark:border-blue-800">
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <div className="font-medium text-sm text-blue-900 dark:text-blue-100">{stockSymbol}</div>
-                      <div className="text-xs text-blue-700 dark:text-blue-300 truncate max-w-[200px]">{stockName}</div>
+                  <div className="flex justify-between items-center gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-sm text-blue-900 dark:text-blue-100 truncate">{stockSymbol}</div>
+                      <div className="text-xs text-blue-700 dark:text-blue-300 truncate">{stockName}</div>
                     </div>
                     <button
                       type="button"
                       onClick={() => { setStockSymbol(''); setStockName(''); }}
-                      className="text-blue-500 hover:text-blue-700"
+                      aria-label="Retirer la sélection"
+                      className="shrink-0 p-1 rounded text-blue-500 hover:text-blue-700 hover:bg-blue-100 dark:hover:bg-blue-900/50"
                     >
                       <X className="h-4 w-4" />
                     </button>
@@ -501,7 +542,7 @@ export function AddTransactionModal({
 
           <div>
             <label className="block text-xs sm:text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-              Montant (€) {isStockTransaction && <span className="text-zinc-400 text-[10px] sm:text-xs">(auto)</span>}
+              Montant (€) {isStockTransaction && <span className="text-zinc-400 text-xs">(auto)</span>}
             </label>
             <input
               type="number"
@@ -518,7 +559,7 @@ export function AddTransactionModal({
           {type !== 'FEE' && (
             <div>
               <label className="block text-xs sm:text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-                Frais (€) <span className="text-zinc-400 text-[10px] sm:text-xs">optionnel</span>
+                Frais (€) <span className="text-zinc-400 text-xs">optionnel</span>
               </label>
               <input
                 type="number"
@@ -529,7 +570,7 @@ export function AddTransactionModal({
                 placeholder="0.00"
                 className="w-full px-3 py-2 text-sm sm:text-base border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
-              <p className="mt-1 text-[10px] sm:text-xs text-zinc-500 dark:text-zinc-400">
+              <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
                 {type === 'BUY' || type === 'WITHDRAWAL'
                   ? 'Débités en plus du montant.'
                   : 'Retenus sur le montant encaissé.'}
@@ -551,26 +592,31 @@ export function AddTransactionModal({
           </div>
 
           {error && (
-            <p className="text-xs sm:text-sm text-red-600">{error}</p>
+            <div role="alert" className="rounded-lg bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 px-3 py-2 text-xs sm:text-sm text-red-700 dark:text-red-300">
+              {error}
+            </div>
           )}
-
-          <div className="flex gap-2 sm:gap-3 pt-2">
-            <button
-              type="button"
-              onClick={handleClose}
-              className="flex-1 px-3 sm:px-4 py-2 text-sm sm:text-base border border-zinc-300 dark:border-zinc-700 rounded-lg text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
-            >
-              Annuler
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="flex-1 px-3 sm:px-4 py-2 text-sm sm:text-base bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
-            >
-              {loading ? 'Ajout...' : 'Ajouter'}
-            </button>
-          </div>
         </form>
+
+        {/* Footer sticky : boutons toujours visibles, safe-area iOS */}
+        <div className="shrink-0 border-t border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 sm:px-6 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] flex gap-2 sm:gap-3">
+          <button
+            type="button"
+            onClick={handleClose}
+            disabled={loading}
+            className="flex-1 px-3 sm:px-4 py-2.5 text-sm sm:text-base border border-zinc-300 dark:border-zinc-700 rounded-lg text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-50 transition-colors"
+          >
+            Annuler
+          </button>
+          <button
+            type="submit"
+            form="add-tx-form"
+            disabled={loading}
+            className="flex-1 px-3 sm:px-4 py-2.5 text-sm sm:text-base font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+          >
+            {loading ? 'Ajout…' : 'Ajouter'}
+          </button>
+        </div>
       </div>
     </div>
   );
