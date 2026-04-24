@@ -179,8 +179,12 @@ export function useStockQuotes(symbols: string[]) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Clé stable : évite les re-fetch quand `symbols` change de référence mais pas de contenu
+  // (sinon refetch(nextSymbols) + useEffect déclenchent deux appels consécutifs).
+  const symbolsKey = useMemo(() => [...symbols].map(s => s.toUpperCase()).sort().join(','), [symbols]);
+
   const fetchQuotes = useCallback(async (overrideSymbols?: string[]) => {
-    const targetSymbols = overrideSymbols ?? symbols;
+    const targetSymbols = overrideSymbols ?? (symbolsKey ? symbolsKey.split(',') : []);
 
     if (targetSymbols.length === 0) {
       setQuotes({});
@@ -190,14 +194,14 @@ export function useStockQuotes(symbols: string[]) {
     try {
       setLoading(true);
       const response = await fetch(`/api/stocks/quotes?symbols=${targetSymbols.join(',')}`);
-      
+
       if (!response.ok) {
         throw new Error('Erreur lors de la récupération des cours');
       }
 
       const data = await response.json();
       const quotesMap: Record<string, StockQuote> = {};
-      
+
       data.quotes.forEach((quote: StockQuote) => {
         quotesMap[quote.symbol] = quote;
       });
@@ -208,13 +212,13 @@ export function useStockQuotes(symbols: string[]) {
     } finally {
       setLoading(false);
     }
-  }, [symbols]);
+  }, [symbolsKey]);
 
   useEffect(() => {
     fetchQuotes();
-    
+
     // Rafraîchir toutes les 60 secondes
-    const interval = setInterval(fetchQuotes, 60000);
+    const interval = setInterval(() => { fetchQuotes(); }, 60000);
     return () => clearInterval(interval);
   }, [fetchQuotes]);
 

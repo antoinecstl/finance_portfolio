@@ -3,6 +3,8 @@ import { createClient } from '@/lib/supabase/server';
 import { getLimits } from '@/lib/subscription';
 import { createTransactionSchema, paginationSchema, formatZodError } from '@/lib/schemas';
 import { decodeCursor, encodeCursor } from '@/lib/pagination';
+import { simulateAccountSequence } from '@/lib/transaction-validation';
+import type { Transaction } from '@/lib/types';
 
 // GET /api/transactions?cursor=<opaque>&limit=50&accountId=<uuid>
 // Pagination cursor-based sur (date DESC, id DESC) pour rester stable
@@ -125,6 +127,58 @@ export async function POST(request: Request) {
         { status: 402 }
       );
     }
+  }
+
+  // Validation cash/shares avant insert : on simule la séquence du compte avec
+  // la transaction (et sa FEE liée) ajoutée pour refuser tout état impossible.
+  const { data: existingTxs, error: existingErr } = await supabase
+    .from('transactions')
+    .select('*')
+    .eq('account_id', body.account_id)
+    .eq('user_id', user.id);
+
+  if (existingErr) {
+    console.error('[api/transactions] fetch existing failed', existingErr);
+    return NextResponse.json({ error: 'internal_error' }, { status: 500 });
+  }
+
+  const now = new Date().toISOString();
+  const proposed: Transaction[] = [...((existingTxs ?? []) as Transaction[])];
+  if (feesAmount > 0) {
+    proposed.push({
+      id: '__pending_fee__',
+      account_id: body.account_id,
+      type: 'FEE',
+      amount: feesAmount,
+      description: '',
+      date: body.date,
+      created_at: now,
+    });
+  }
+  proposed.push({
+    id: '__pending_tx__',
+    account_id: body.account_id,
+    type: body.type,
+    amount: body.amount,
+    description: body.description ?? '',
+    date: body.date,
+    stock_symbol: body.stock_symbol,
+    quantity: body.quantity,
+    price_per_unit: body.price_per_unit,
+    created_at: now,
+  });
+
+  const sim = simulateAccountSequence(proposed);
+  if (!sim.ok) {
+    return NextResponse.json(
+      {
+        error: 'invalid_state',
+        code: sim.code,
+        reason: sim.reason,
+        offendingDate: sim.offendingDate,
+      },
+      { status: 409 }
+    );
   }
 
   // Insertion atomique via RPC : si l'insert principal échoue après la FEE,

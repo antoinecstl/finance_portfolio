@@ -158,18 +158,12 @@ export function Dashboard() {
     router.refresh();
   };
 
-  const handleAccountSuccess = () => {
-    refetchAccounts();
-  };
-
-  const handleTransactionSuccess = async () => {
+  // Unique point d'entrée post-mutation : refetch tout + bump txVersion pour
+  // que la liste paginée (cursor-based, state local) reparte du curseur initial.
+  const handleMutationSuccess = useCallback(async () => {
     setTxVersion(v => v + 1);
     await refreshAllData();
-  };
-
-  const handlePositionSuccess = () => {
-    refetchPositions();
-  };
+  }, [refreshAllData]);
 
   const isLoading = loadingAccounts || loadingPositions || loadingTransactions;
 
@@ -318,7 +312,7 @@ export function Dashboard() {
                 </div>
                 <div className="w-full max-w-full overflow-hidden">
                   <ErrorBoundary label="Comptes">
-                    <AccountList accounts={enrichedAccounts} onDeleted={() => { refreshAllData(); }} />
+                    <AccountList accounts={enrichedAccounts} onDeleted={handleMutationSuccess} />
                   </ErrorBoundary>
                 </div>
               </div>
@@ -339,7 +333,7 @@ export function Dashboard() {
                 </div>
                 <div className="w-full max-w-full overflow-hidden">
                   <ErrorBoundary label="Dernières transactions">
-                    <TransactionsList transactions={transactions} limit={5} onDeleted={() => { refreshAllData(); }} />
+                    <TransactionsList transactions={transactions} limit={5} onDeleted={handleMutationSuccess} />
                   </ErrorBoundary>
                 </div>
               </div>
@@ -361,7 +355,7 @@ export function Dashboard() {
                 <span>Ajouter un compte</span>
               </button>
             </div>
-            <AccountList accounts={enrichedAccounts} onDeleted={() => { refreshAllData(); }} />
+            <AccountList accounts={enrichedAccounts} onDeleted={handleMutationSuccess} />
           </div>
         )}
 
@@ -450,7 +444,7 @@ export function Dashboard() {
               accounts={accounts}
               pageSize={50}
               version={txVersion}
-              onDeleted={() => { setTxVersion(v => v + 1); refreshAllData(); }}
+              onDeleted={handleMutationSuccess}
             />
           </div>
         )}
@@ -478,20 +472,22 @@ export function Dashboard() {
       <AddAccountModal
         isOpen={showAddAccount}
         onClose={() => setShowAddAccount(false)}
-        onSuccess={handleAccountSuccess}
+        onSuccess={handleMutationSuccess}
       />
-      
+
       <AddTransactionModal
         isOpen={showAddTransaction}
         onClose={() => setShowAddTransaction(false)}
-        onSuccess={handleTransactionSuccess}
+        onSuccess={handleMutationSuccess}
         accounts={accounts}
+        positions={positions}
+        transactions={transactions}
       />
 
       <AddPositionModal
         isOpen={showAddPosition}
         onClose={() => setShowAddPosition(false)}
-        onSuccess={handlePositionSuccess}
+        onSuccess={handleMutationSuccess}
         accounts={accounts}
       />
     </div>
