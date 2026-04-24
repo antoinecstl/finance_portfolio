@@ -92,34 +92,16 @@ export async function POST(request: Request) {
   }
 
   const feesAmount = body.type !== 'FEE' && body.fees && body.fees > 0 ? body.fees : 0;
-  // Fee rows linked to a parent transaction don't count toward the limit.
-  const slotsNeeded = 1;
+  const slotsNeeded = feesAmount > 0 ? 2 : 1;
 
   const limits = await getLimits(user.id);
   const enforceLimit = Number.isFinite(limits.maxTransactions);
   let currentCount = 0;
   if (enforceLimit) {
-    // Fetch IDs of fee rows that are attached to a parent transaction.
-    const { data: feeRefs } = await supabase
-      .from('transactions')
-      .select('fee_transaction_id')
-      .eq('user_id', user.id)
-      .not('fee_transaction_id', 'is', null);
-
-    const linkedFeeIds = (feeRefs ?? [])
-      .map((r) => (r as { fee_transaction_id: string | null }).fee_transaction_id)
-      .filter((id): id is string => Boolean(id));
-
-    let countQuery = supabase
+    const { count, error: countError } = await supabase
       .from('transactions')
       .select('id', { count: 'exact', head: true })
       .eq('user_id', user.id);
-
-    if (linkedFeeIds.length > 0) {
-      countQuery = countQuery.not('id', 'in', `(${linkedFeeIds.join(',')})`);
-    }
-
-    const { count, error: countError } = await countQuery;
 
     if (countError) {
       console.error('[api/transactions] count failed', countError);
@@ -135,7 +117,10 @@ export async function POST(request: Request) {
           scope: 'transactions',
           limit: limits.maxTransactions,
           current: currentCount,
-          message: `Votre plan Free est limité à ${limits.maxTransactions} transactions. Passez Pro pour en ajouter plus.`,
+          message:
+            slotsNeeded === 2
+              ? `Votre plan Free est limité à ${limits.maxTransactions} transactions. Ajouter des frais crée une ligne supplémentaire — plus de place disponible.`
+              : `Votre plan Free est limité à ${limits.maxTransactions} transactions. Passez Pro pour en ajouter plus.`,
         },
         { status: 402 }
       );

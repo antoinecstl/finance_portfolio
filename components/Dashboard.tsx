@@ -62,15 +62,6 @@ export function Dashboard() {
   const { positions, loading: loadingPositions, refetch: refetchPositions } = usePositions();
   const { transactions, loading: loadingTransactions, refetch: refetchTransactions } = useTransactions();
 
-  // Fee rows linked to a parent transaction are hidden from the list and don't count toward the limit.
-  const billableTransactionCount = useMemo(() => {
-    const linkedFeeIds = new Set<string>();
-    for (const t of transactions) {
-      if (t.fee_transaction_id) linkedFeeIds.add(t.fee_transaction_id);
-    }
-    return transactions.length - linkedFeeIds.size;
-  }, [transactions]);
-
   // Extraire les symboles pour les cotations (positions + transactions)
   const symbols = useMemo(() => {
     const symbolSet = new Set<string>();
@@ -267,7 +258,7 @@ export function Dashboard() {
             {isFree && (
               <div className="grid gap-2 sm:grid-cols-3">
                 <UsageMeter label="Comptes" current={accounts.length} max={limits.maxAccounts} />
-                <UsageMeter label="Transactions" current={billableTransactionCount} max={limits.maxTransactions} />
+                <UsageMeter label="Transactions" current={transactions.length} max={limits.maxTransactions} />
                 <UsageMeter label="Positions" current={positions.length} max={limits.maxPositions} />
               </div>
             )}
