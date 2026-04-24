@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { createClient } from '@/lib/supabase/server';
 import { getUserSubscription } from '@/lib/subscription';
 import { formatPrice, PLANS } from '@/lib/plans';
@@ -122,12 +123,14 @@ export default async function BillingPage() {
         </div>
       )}
 
-      <BillingActions
-        planId={ctx.planId}
-        userId={user!.id}
-        email={user!.email ?? ''}
-        isFounder={ctx.isFounder}
-      />
+      <Suspense fallback={null}>
+        <BillingActions
+          planId={ctx.planId}
+          userId={user!.id}
+          email={user!.email ?? ''}
+          isFounder={ctx.isFounder}
+        />
+      </Suspense>
     </div>
   );
 }

@@ -1,7 +1,8 @@
 'use client';
 
 import Script from 'next/script';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Loader2, ExternalLink } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Confetti } from '@/components/Confetti';
@@ -40,10 +41,15 @@ export function BillingActions({
   isFounder: boolean;
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const initialInterval = useMemo<BillingInterval>(() => {
+    return searchParams.get('interval') === 'year' ? 'year' : 'month';
+  }, [searchParams]);
+
   const [paddleReady, setPaddleReady] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [interval, setInterval] = useState<BillingInterval>('month');
+  const [interval, setInterval] = useState<BillingInterval>(initialInterval);
   const [celebrating, setCelebrating] = useState(false);
 
   const clientToken = process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN;

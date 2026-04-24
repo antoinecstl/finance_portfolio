@@ -174,37 +174,39 @@ function LimitReachedOverlay({
           </div>
 
           <div className="flex justify-center mb-4">
-            <div className="inline-flex items-center gap-1 p-1 rounded-full border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800">
-              <button
-                type="button"
-                onClick={() => onIntervalChange('month')}
-                className={`px-3 py-1 text-xs font-medium rounded-full transition-colors ${
-                  interval === 'month'
-                    ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-sm'
-                    : 'text-zinc-600 dark:text-zinc-400'
-                }`}
-              >
-                Mensuel
-              </button>
-              <button
-                type="button"
-                onClick={() => onIntervalChange('year')}
-                className={`px-3 py-1 text-xs font-medium rounded-full transition-colors inline-flex items-center gap-1 ${
-                  interval === 'year'
-                    ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-sm'
-                    : 'text-zinc-600 dark:text-zinc-400'
-                }`}
-              >
-                Annuel
-                <span className="text-[9px] font-semibold px-1 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
-                  Recommandé
-                </span>
-                {savings !== null && (
-                  <span className="text-[9px] font-semibold px-1 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300">
-                    -{savings}%
-                  </span>
-                )}
-              </button>
+            <div className="relative">
+              <span className="absolute -top-3 right-0 translate-x-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-blue-600 text-white shadow-sm whitespace-nowrap">
+                Recommandé
+              </span>
+              <div className="inline-flex items-center gap-1 p-1 rounded-full border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800">
+                <button
+                  type="button"
+                  onClick={() => onIntervalChange('month')}
+                  className={`px-3 py-1 text-xs font-medium rounded-full transition-colors ${
+                    interval === 'month'
+                      ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-sm'
+                      : 'text-zinc-600 dark:text-zinc-400'
+                  }`}
+                >
+                  Mensuel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onIntervalChange('year')}
+                  className={`px-3 py-1 text-xs font-medium rounded-full transition-colors inline-flex items-center gap-1 ${
+                    interval === 'year'
+                      ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-sm'
+                      : 'text-zinc-600 dark:text-zinc-400'
+                  }`}
+                >
+                  Annuel
+                  {savings !== null && (
+                    <span className="text-[9px] font-semibold px-1 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300">
+                      -{savings}%
+                    </span>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
 
