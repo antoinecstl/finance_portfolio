@@ -243,10 +243,12 @@ export function PortfolioHistoryChart({
   onPeriodChange,
   selectedPeriod = 30
 }: PortfolioHistoryChartProps) {
+  const ytdDays = Math.ceil((Date.now() - new Date(new Date().getFullYear(), 0, 1).getTime()) / 86400000);
   const periods = [
     { label: '1M', days: 30 },
     { label: '3M', days: 90 },
     { label: '6M', days: 180 },
+    { label: 'YTD', days: ytdDays },
     { label: '1A', days: 365 },
     { label: 'Max', days: 3650 },
   ];
@@ -1129,7 +1131,7 @@ export function PositionPerformanceChart({
 // ===== PORTFOLIO VALUE VS INVESTED CHART =====
 // Graphique comparant la valeur actuelle et la valeur investie dans le temps
 
-type PeriodOption = '1M' | '3M' | '6M' | '1Y' | 'MAX';
+type PeriodOption = '1M' | '3M' | '6M' | 'YTD' | '1Y' | 'MAX';
 
 interface PortfolioValueChartProps {
   history: PortfolioHistoryPoint[];
@@ -1165,6 +1167,9 @@ export function PortfolioValueChart({
         break;
       case '6M':
         startDate = new Date(now.setMonth(now.getMonth() - 6));
+        break;
+      case 'YTD':
+        startDate = new Date(now.getFullYear(), 0, 1);
         break;
       case '1Y':
         startDate = new Date(now.setFullYear(now.getFullYear() - 1));
@@ -1339,7 +1344,7 @@ export function PortfolioValueChart({
         </div>
         {/* Sélecteur de période */}
         <div className="flex gap-1">
-          {(['1M', '3M', '6M', '1Y', 'MAX'] as PeriodOption[]).map((period) => (
+          {(['1M', '3M', '6M', 'YTD', '1Y', 'MAX'] as PeriodOption[]).map((period) => (
             <button
               key={period}
               onClick={() => setSelectedPeriod(period)}
@@ -1503,10 +1508,12 @@ export function StockHistoryChart({
   onPeriodChange,
   selectedPeriod = 30
 }: StockHistoryChartProps) {
+  const ytdDays = Math.ceil((Date.now() - new Date(new Date().getFullYear(), 0, 1).getTime()) / 86400000);
   const periods = [
     { label: '1M', days: 30 },
     { label: '3M', days: 90 },
     { label: '6M', days: 180 },
+    { label: 'YTD', days: ytdDays },
     { label: '1A', days: 365 },
     { label: 'Max', days: 3650 },
   ];

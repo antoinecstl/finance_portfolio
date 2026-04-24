@@ -43,6 +43,12 @@ export function BillingActions({
   const env = process.env.NEXT_PUBLIC_PADDLE_ENV ?? 'sandbox';
 
   useEffect(() => {
+    if (typeof window !== 'undefined' && window.Paddle) {
+      setPaddleReady(true);
+    }
+  }, []);
+
+  useEffect(() => {
     if (!paddleReady || !window.Paddle || !clientToken) return;
     if (env !== 'production') window.Paddle.Environment.set('sandbox');
     window.Paddle.Initialize({ token: clientToken });
@@ -88,6 +94,8 @@ export function BillingActions({
         src="https://cdn.paddle.com/paddle/v2/paddle.js"
         strategy="afterInteractive"
         onLoad={() => setPaddleReady(true)}
+        onReady={() => setPaddleReady(true)}
+        onError={() => setError('Impossible de charger Paddle (bloqueur de pub ?)')}
       />
       <div className="flex gap-3 flex-wrap">
         {planId === 'free' ? (

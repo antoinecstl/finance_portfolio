@@ -413,6 +413,7 @@ export function Dashboard() {
               <ProBlur feature="advanced_analytics" partial label="Comparaison benchmark — Pro">
                 <BenchmarkComparisonChart
                   portfolioHistory={fullPortfolioHistory}
+                  transactions={transactions}
                   loading={loadingFullHistory}
                 />
               </ProBlur>

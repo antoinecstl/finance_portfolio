@@ -120,7 +120,7 @@ export function Onboarding({ email }: { email: string }) {
                       1. Ajoutez vos comptes
                     </p>
                     <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                      PEA, CTO, Livret A, LDDS, assurance-vie… Regroupez tous vos enveloppes.
+                      PEA, CTO, Livret A, LDDS, assurance-vie… Regroupez toutes vos enveloppes.
                     </p>
                   </div>
                 </li>
