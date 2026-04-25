@@ -21,6 +21,34 @@ export const stockSymbolSchema = z
   .regex(/^[A-Za-z0-9.\-]+$/, 'Symbole invalide (A-Z, 0-9, . et - uniquement)')
   .transform((s) => s.toUpperCase());
 
+export const stockHistoryIntervalSchema = z.enum(['1d', '1wk', '1mo']);
+
+export function parseStockSymbolList(
+  value: string,
+  max = 50
+): { success: true; symbols: string[] } | { success: false; error: string } {
+  const rawSymbols = value.split(',').map((s) => s.trim()).filter(Boolean);
+
+  if (rawSymbols.length === 0) {
+    return { success: false, error: 'At least one symbol is required' };
+  }
+
+  if (rawSymbols.length > max) {
+    return { success: false, error: `Maximum ${max} symbols allowed per request` };
+  }
+
+  const symbols: string[] = [];
+  for (const raw of rawSymbols) {
+    const parsed = stockSymbolSchema.safeParse(raw);
+    if (!parsed.success) {
+      return { success: false, error: `Invalid symbol: ${raw}` };
+    }
+    symbols.push(parsed.data);
+  }
+
+  return { success: true, symbols: Array.from(new Set(symbols)) };
+}
+
 // ISO date YYYY-MM-DD. Refuse les dates du futur lointain et antérieures à 1970.
 export const isoDateSchema = z
   .string()
@@ -66,6 +94,13 @@ export const createTransactionSchema = z
       : true,
     {
       message: 'BUY/SELL requièrent stock_symbol, quantity, et price_per_unit',
+      path: ['stock_symbol'],
+    }
+  )
+  .refine(
+    (v) => v.type === 'DIVIDEND' ? Boolean(v.stock_symbol) : true,
+    {
+      message: 'DIVIDEND requiert stock_symbol',
       path: ['stock_symbol'],
     }
   );

@@ -18,11 +18,15 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     redirect('/login');
   }
 
-  const { data: profile } = await supabase
+  const { data: profile, error: profileError } = await supabase
     .from('profiles')
     .select('onboarded_at')
     .eq('id', user.id)
-    .single();
+    .maybeSingle();
+
+  if (profileError) {
+    console.error('[app/layout] profile fetch failed', profileError);
+  }
 
   if (!profile?.onboarded_at) {
     return <Onboarding email={user.email ?? ''} />;

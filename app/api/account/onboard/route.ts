@@ -19,29 +19,35 @@ export async function POST(request: Request) {
     marketingOptIn?: boolean;
   };
 
-  const { data: current } = await supabase
+  const { data: current, error: currentError } = await supabase
     .from('profiles')
     .select('onboarded_at')
     .eq('id', user.id)
-    .single();
+    .maybeSingle();
+
+  if (currentError) {
+    console.error('[api/account/onboard] fetch profile failed', currentError);
+    return NextResponse.json({ error: 'internal_error' }, { status: 500 });
+  }
 
   const alreadyDone = Boolean(current?.onboarded_at);
-
   const now = new Date().toISOString();
+
   const { error } = await supabase
     .from('profiles')
-    .update({
-      full_name: body.fullName?.trim() || null,
-      marketing_opt_in: Boolean(body.marketingOptIn),
-      onboarded_at: now,
-      // Signup enforces the CGU checkbox; we persist consent server-side at onboarding
-      // so we keep a verifiable trace (RGPD — preuve de consentement).
-      terms_accepted_at: now,
-    })
-    .eq('id', user.id);
+    .upsert(
+      {
+        id: user.id,
+        full_name: body.fullName?.trim() || null,
+        marketing_opt_in: Boolean(body.marketingOptIn),
+        onboarded_at: now,
+        terms_accepted_at: now,
+      },
+      { onConflict: 'id' }
+    );
 
   if (error) {
-    console.error('[api/account/onboard] update failed', error);
+    console.error('[api/account/onboard] upsert failed', error);
     return NextResponse.json({ error: 'internal_error' }, { status: 500 });
   }
 

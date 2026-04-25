@@ -10,10 +10,7 @@ import {
   getFirstTransactionDate,
   PortfolioHistoryPoint,
   calculateAccountTotalValue,
-  AccountCalculatedValue,
-  calculatePositionsAtDate,
   calculateAllPositionsAtDate,
-  CalculatedPosition,
 } from '@/lib/portfolio-calculator';
 import { readSnapshots, upsertSnapshots } from '@/lib/portfolio-snapshots';
 
@@ -78,12 +75,12 @@ export function usePaginatedTransactions(opts: { accountId?: string; pageSize?: 
     } finally {
       setLoading(false);
     }
-  }, [accountId, pageSize, version]);
+  }, [accountId, pageSize]);
 
   useEffect(() => {
     setInitialLoaded(false);
     loadPage(null, true).finally(() => setInitialLoaded(true));
-  }, [loadPage]);
+  }, [loadPage, version]);
 
   const loadMore = useCallback(() => {
     if (nextCursor && !loading) {
@@ -227,16 +224,7 @@ export function useStockQuotes(symbols: string[]) {
 
 // Hook pour calculer le résumé du portefeuille
 export function usePortfolioSummary(positions: StockPosition[], quotes: Record<string, StockQuote>): PortfolioSummary {
-  const [summary, setSummary] = useState<PortfolioSummary>({
-    totalValue: 0,
-    totalInvested: 0,
-    totalGain: 0,
-    totalGainPercent: 0,
-    dayChange: 0,
-    dayChangePercent: 0,
-  });
-
-  useEffect(() => {
+  return useMemo(() => {
     let totalValue = 0;
     let totalInvested = 0;
     let dayChange = 0;
@@ -260,17 +248,15 @@ export function usePortfolioSummary(positions: StockPosition[], quotes: Record<s
       ? (dayChange / (totalValue - dayChange)) * 100 
       : 0;
 
-    setSummary({
+    return {
       totalValue,
       totalInvested,
       totalGain,
       totalGainPercent,
       dayChange,
       dayChangePercent,
-    });
+    };
   }, [positions, quotes]);
-
-  return summary;
 }
 
 // Hook pour la recherche d'actions

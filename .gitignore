@@ -10,7 +10,10 @@
 !.yarn/releases
 !.yarn/versions
 
-/supabase
+/supabase/*
+!/supabase/*.sql
+!/supabase/migrations/
+!/supabase/migrations/*.sql
 
 # testing
 /coverage

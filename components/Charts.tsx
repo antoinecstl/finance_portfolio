@@ -1,13 +1,10 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { 
-  PieChart, 
-  Pie, 
   Cell, 
   ResponsiveContainer, 
   Tooltip, 
-  Legend,
   LineChart,
   Line,
   XAxis,
@@ -21,11 +18,17 @@ import {
   ComposedChart
 } from 'recharts';
 import { StockPosition, StockQuote, Transaction, Account } from '@/lib/types';
-import { PortfolioHistoryPoint, calculatePortfolioPerformance, PortfolioPerformanceData } from '@/lib/portfolio-calculator';
-import { formatCurrency, formatPercent, CHART_COLORS, getSectorColor } from '@/lib/utils';
-import { PieChart as PieChartIcon, TrendingUp, TrendingDown, Loader2, BarChart2, Target, Scale, Activity, ChevronDown, ChevronRight, ShoppingCart, DollarSign, Banknote, CircleDollarSign, Percent, Wallet, ArrowUpRight, ArrowDownRight, PiggyBank, LineChart as LineChartIcon, Lock } from 'lucide-react';
+import { PortfolioHistoryPoint, calculatePortfolioPerformance } from '@/lib/portfolio-calculator';
+import { formatCurrency, formatPercent, getSectorColor } from '@/lib/utils';
+import { PieChart as PieChartIcon, TrendingUp, TrendingDown, Loader2, BarChart2, Target, Scale, Activity, ChevronDown, ChevronRight, ShoppingCart, DollarSign, Banknote, Percent, Wallet, LineChart as LineChartIcon, Lock } from 'lucide-react';
 import { useSubscription } from '@/lib/subscription-client';
 import { ProBlur } from './ProBlur';
+
+const MS_PER_DAY = 86_400_000;
+const DEFAULT_YTD_DAYS = (() => {
+  const now = new Date();
+  return Math.ceil((now.getTime() - new Date(now.getFullYear(), 0, 1).getTime()) / MS_PER_DAY);
+})();
 
 interface AllocationChartProps {
   positions: StockPosition[];
@@ -81,7 +84,7 @@ export function AllocationChart({ positions, quotes }: AllocationChartProps) {
         </h3>
       </div>
       <div className="space-y-2">
-        {barData.map((item, index) => (
+        {barData.map((item) => (
           <div key={item.name} className="space-y-1">
             <div className="flex justify-between text-xs sm:text-sm">
               <span className="font-medium text-zinc-900 dark:text-zinc-100 truncate max-w-[120px]" title={item.fullName}>
@@ -113,12 +116,7 @@ export function AllocationChart({ positions, quotes }: AllocationChartProps) {
   );
 }
 
-interface SectorAllocationChartProps {
-  positions: StockPosition[];
-  quotes: Record<string, StockQuote>;
-}
-
-export function SectorAllocationChart({ positions, quotes }: SectorAllocationChartProps) {
+export function SectorAllocationChart() {
   // Gardé pour compatibilité mais non utilisé
   return null;
 }
@@ -193,7 +191,7 @@ export function AccountAllocationChart({ accounts }: AccountAllocationChartProps
         </h3>
       </div>
       <div className="space-y-2">
-        {barData.map((item, index) => (
+        {barData.map((item) => (
           <div key={item.name} className="space-y-1">
             <div className="flex justify-between text-xs sm:text-sm">
               <div className="flex items-center gap-2 min-w-0">
@@ -243,12 +241,11 @@ export function PortfolioHistoryChart({
   onPeriodChange,
   selectedPeriod = 30
 }: PortfolioHistoryChartProps) {
-  const ytdDays = Math.ceil((Date.now() - new Date(new Date().getFullYear(), 0, 1).getTime()) / 86400000);
   const periods = [
     { label: '1M', days: 30 },
     { label: '3M', days: 90 },
     { label: '6M', days: 180 },
-    { label: 'YTD', days: ytdDays },
+    { label: 'YTD', days: DEFAULT_YTD_DAYS },
     { label: '1A', days: 365 },
     { label: 'Max', days: 3650 },
   ];
@@ -570,11 +567,7 @@ export function PositionPerformanceChart({
 
   // Trier par valeur décroissante
   const sortedByValue = [...metrics].sort((a, b) => b.currentValue - a.currentValue);
-  
-  // Trier par performance
   const sortedByPerf = [...metrics].sort((a, b) => b.gainPercent - a.gainPercent);
-  const bestPerformer = sortedByPerf[0];
-  const worstPerformer = sortedByPerf[sortedByPerf.length - 1];
 
   // Utiliser les totaux passés en props pour cohérence avec les autres composants
   const calculatedInvested = metrics.reduce((sum, m) => sum + m.investedValue, 0);
@@ -627,7 +620,7 @@ export function PositionPerformanceChart({
         <div className="flex items-center gap-2 mb-4">
           <Activity className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
           <h3 className="font-semibold text-sm sm:text-base text-zinc-900 dark:text-zinc-100">
-            Vue d'ensemble des Performances
+            Vue d&apos;ensemble des Performances
           </h3>
         </div>
         
@@ -1195,9 +1188,6 @@ export function PortfolioValueChart({
     const costBasisBySymbol = new Map<string, { totalCost: number; totalQuantity: number }>();
     const costBasisHistoryByDate = new Map<string, number>();
     
-    // Initialiser
-    let lastCostBasis = 0;
-    
     sortedTx.forEach(tx => {
       const symbol = tx.stock_symbol!;
       const current = costBasisBySymbol.get(symbol) || { totalCost: 0, totalQuantity: 0 };
@@ -1229,7 +1219,6 @@ export function PortfolioValueChart({
       });
       
       costBasisHistoryByDate.set(tx.date, totalCostBasis);
-      lastCostBasis = totalCostBasis;
     });
 
     // Pour chaque point d'historique, trouver le coût d'acquisition correspondant
@@ -1508,12 +1497,11 @@ export function StockHistoryChart({
   onPeriodChange,
   selectedPeriod = 30
 }: StockHistoryChartProps) {
-  const ytdDays = Math.ceil((Date.now() - new Date(new Date().getFullYear(), 0, 1).getTime()) / 86400000);
   const periods = [
     { label: '1M', days: 30 },
     { label: '3M', days: 90 },
     { label: '6M', days: 180 },
-    { label: 'YTD', days: ytdDays },
+    { label: 'YTD', days: DEFAULT_YTD_DAYS },
     { label: '1A', days: 365 },
     { label: 'Max', days: 3650 },
   ];
@@ -1528,15 +1516,16 @@ export function StockHistoryChart({
   }, [history]);
 
   // État pour les symboles sélectionnés (tous sélectionnés par défaut + Total)
-  const [selectedSymbols, setSelectedSymbols] = useState<Set<string>>(new Set(['__TOTAL__', ...symbols]));
+  const [selectedSymbols, setSelectedSymbols] = useState<Set<string>>(new Set(['__TOTAL__']));
   
   // Mettre à jour les symboles sélectionnés quand les symboles changent
-  useMemo(() => {
-    setSelectedSymbols(prev => {
+  useEffect(() => {
+    const id = window.setTimeout(() => {
+      setSelectedSymbols(prev => {
       const newSet = new Set(prev);
       // Ajouter les nouveaux symboles
       symbols.forEach(s => {
-        if (!prev.has(s) && prev.size === 0) {
+        if (!prev.has(s) && (prev.size === 0 || (prev.size === 1 && prev.has('__TOTAL__')))) {
           newSet.add(s);
         }
       });
@@ -1545,7 +1534,9 @@ export function StockHistoryChart({
         newSet.add('__TOTAL__');
       }
       return newSet;
-    });
+      });
+    }, 0);
+    return () => window.clearTimeout(id);
   }, [symbols]);
 
   // Toggle un symbole
@@ -1834,9 +1825,8 @@ export function StockHistoryChart({
               style={{ 
                 backgroundColor: isSelected ? color : '#e5e7eb',
                 color: isSelected ? 'white' : '#6b7280',
-                // @ts-ignore - ringColor via CSS custom property
                 '--tw-ring-color': color
-              } as React.CSSProperties}
+              } as React.CSSProperties & { '--tw-ring-color': string }}
               title="Clic: afficher/masquer • Double-clic: isoler"
             >
               <span className="font-medium">{symbol}</span>

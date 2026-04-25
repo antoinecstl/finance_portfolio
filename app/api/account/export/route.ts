@@ -12,11 +12,17 @@ export async function GET() {
   }
 
   const [profile, accounts, transactions, positions] = await Promise.all([
-    supabase.from('profiles').select('*').eq('id', user.id).single(),
+    supabase.from('profiles').select('*').eq('id', user.id).maybeSingle(),
     supabase.from('accounts').select('*').eq('user_id', user.id),
     supabase.from('transactions').select('*').eq('user_id', user.id),
     supabase.from('stock_positions').select('*').eq('user_id', user.id),
   ]);
+
+  const failed = [profile, accounts, transactions, positions].find((res) => res.error);
+  if (failed?.error) {
+    console.error('[api/account/export] fetch failed', failed.error);
+    return NextResponse.json({ error: 'internal_error' }, { status: 500 });
+  }
 
   const payload = {
     exported_at: new Date().toISOString(),

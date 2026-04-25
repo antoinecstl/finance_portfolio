@@ -3,7 +3,6 @@
 import { 
   Wallet, 
   TrendingUp, 
-  TrendingDown, 
   PiggyBank,
   BarChart3,
   ArrowUpRight,
@@ -83,7 +82,6 @@ export function StatCard({
 interface PortfolioStatsProps {
   totalPortfolioValue: number;
   totalValue: number;
-  totalInvested: number;
   totalGain: number;
   totalGainPercent: number;
   dayChange: number;
@@ -94,7 +92,6 @@ interface PortfolioStatsProps {
 export function PortfolioStats({
   totalPortfolioValue,
   totalValue,
-  totalInvested,
   totalGain,
   totalGainPercent,
   dayChange,

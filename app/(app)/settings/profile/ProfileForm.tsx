@@ -25,7 +25,11 @@ export function ProfileForm({ initial }: { initial: Profile }) {
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!user) {
+      setSaving(false);
+      setMessage({ type: 'err', text: 'Session expiree. Reconnectez-vous.' });
+      return;
+    }
     const { error } = await supabase
       .from('profiles')
       .update({

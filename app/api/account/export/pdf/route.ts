@@ -56,6 +56,11 @@ export async function GET(request: NextRequest) {
     supabase.from('transactions').select('*').eq('user_id', user.id).order('date', { ascending: false }),
   ]);
 
+  if (accountsRes.error || txRes.error) {
+    console.error('[api/account/export/pdf] fetch failed', accountsRes.error ?? txRes.error);
+    return NextResponse.json({ error: 'internal_error' }, { status: 500 });
+  }
+
   const accounts: Account[] = accountsRes.data ?? [];
   const allTransactions: Transaction[] = txRes.data ?? [];
 

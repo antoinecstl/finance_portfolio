@@ -48,8 +48,9 @@ export async function getStockQuotes(symbols: string[]): Promise<StockQuote[]> {
  */
 async function getStockQuoteFromChart(symbol: string): Promise<StockQuote | null> {
   try {
+    const encodedSymbol = encodeURIComponent(symbol);
     const response = await fetchWithTimeout(
-      `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=2d`
+      `https://query1.finance.yahoo.com/v8/finance/chart/${encodedSymbol}?interval=1d&range=2d`
     );
 
     if (!response.ok) {
@@ -211,12 +212,13 @@ export async function getHistoricalQuotes(
   interval: '1d' | '1wk' | '1mo' = '1d'
 ): Promise<HistoricalQuote[]> {
   try {
+    const encodedSymbol = encodeURIComponent(symbol);
     // Convertir les dates en timestamps Unix
     const period1 = Math.floor(new Date(startDate).getTime() / 1000);
     const period2 = Math.floor(new Date(endDate).getTime() / 1000);
 
     const response = await fetchWithTimeout(
-      `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?period1=${period1}&period2=${period2}&interval=${interval}`,
+      `https://query1.finance.yahoo.com/v8/finance/chart/${encodedSymbol}?period1=${period1}&period2=${period2}&interval=${interval}`,
       10_000
     );
 

@@ -2,9 +2,9 @@
 
 import { useMemo, useState } from 'react';
 import { Transaction, StockPosition, StockQuote } from '@/lib/types';
-import { formatCurrency, formatPercent, formatDate } from '@/lib/utils';
+import { formatCurrency, formatDate } from '@/lib/utils';
 import { calculatePositionsAtDate } from '@/lib/portfolio-calculator';
-import { Coins, TrendingUp, Calendar, ChevronDown, ChevronUp, PieChart, Lock } from 'lucide-react';
+import { Coins, ChevronDown, ChevronUp, Lock } from 'lucide-react';
 import { useSubscription } from '@/lib/subscription-client';
 import { ProBlur } from './ProBlur';
 
@@ -25,7 +25,7 @@ interface DividendsTableProps {
   quotes: Record<string, StockQuote>;
 }
 
-export function DividendsTable({ transactions, positions, quotes }: DividendsTableProps) {
+export function DividendsTable({ transactions, positions }: DividendsTableProps) {
   const [showDetails, setShowDetails] = useState(false);
   const [selectedYear, setSelectedYear] = useState<number | 'all'>('all');
   const { hasFeature } = useSubscription();
@@ -136,7 +136,7 @@ export function DividendsTable({ transactions, positions, quotes }: DividendsTab
       dividendsByStock: Array.from(byStock.values()).sort((a, b) => b.totalDividends - a.totalDividends),
       totalDividends: total,
     };
-  }, [transactions, positions, quotes, selectedYear]);
+  }, [transactions, positions, selectedYear]);
 
   // Filtrer par année si sélectionné (pour l'historique détaillé)
   const filteredTransactions = useMemo(() => {
@@ -160,7 +160,7 @@ export function DividendsTable({ transactions, positions, quotes }: DividendsTab
             Aucun dividende enregistré
           </p>
           <p className="text-xs sm:text-sm text-zinc-400 dark:text-zinc-500 mt-1">
-            Ajoutez des transactions de type "Dividende" pour voir les statistiques
+            Ajoutez des transactions de type &quot;Dividende&quot; pour voir les statistiques
           </p>
         </div>
       </div>
@@ -362,7 +362,7 @@ export function DividendsTable({ transactions, positions, quotes }: DividendsTab
           className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100"
         >
           {showDetails ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-          {showDetails ? 'Masquer' : 'Voir'} l'historique détaillé
+          {showDetails ? 'Masquer' : 'Voir'} l&apos;historique détaillé
         </button>
         
         {showDetails && (

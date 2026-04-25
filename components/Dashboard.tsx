@@ -19,7 +19,7 @@ import { PositionsTable } from './PositionsTable';
 import { TransactionsList } from './TransactionsList';
 import { PaginatedTransactionsList } from './PaginatedTransactionsList';
 import { DividendsTable } from './DividendsTable';
-import { AllocationChart, SectorAllocationChart, AccountAllocationChart, PortfolioHistoryChart, PositionPerformanceChart, StockHistoryChart, PortfolioPerformanceChart, PortfolioValueChart } from './Charts';
+import { AllocationChart, AccountAllocationChart, PortfolioHistoryChart, PositionPerformanceChart, PortfolioPerformanceChart, PortfolioValueChart } from './Charts';
 import { ProBlur } from './ProBlur';
 import { UsageMeter } from './UsageMeter';
 import { ErrorBoundary } from './ErrorBoundary';
@@ -261,7 +261,6 @@ export function Dashboard() {
               <PortfolioStats
                 totalPortfolioValue={totalPortfolioValue}
                 totalValue={portfolioSummary.totalValue}
-                totalInvested={portfolioSummary.totalInvested}
                 totalGain={portfolioSummary.totalGain}
                 totalGainPercent={portfolioSummary.totalGainPercent}
                 dayChange={portfolioSummary.dayChange}
@@ -366,7 +365,7 @@ export function Dashboard() {
                 Mes Positions
               </h2>
               <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 mt-1">
-                Gérez vos positions via l'onglet Transactions
+                Gérez vos positions via l&apos;onglet Transactions
               </p>
             </div>
 
@@ -456,7 +455,7 @@ export function Dashboard() {
                 Mes Dividendes
               </h2>
               <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 mt-1">
-                Ajoutez vos dividendes via l'onglet Transactions
+                Ajoutez vos dividendes via l&apos;onglet Transactions
               </p>
             </div>
             <DividendsTable 

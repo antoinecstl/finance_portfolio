@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react';
 import { StockPosition, StockQuote, Transaction } from '@/lib/types';
 import { EnrichedAccount } from '@/lib/hooks';
 import { formatCurrency, formatNumber, formatPercent } from '@/lib/utils';
-import { TrendingUp, TrendingDown, Wallet, History, ChevronDown, ChevronUp, BarChart2 } from 'lucide-react';
+import { Wallet, History, ChevronDown, ChevronUp, BarChart2 } from 'lucide-react';
 
 // Type pour les positions clôturées (vendues)
 interface ClosedPosition {
@@ -144,14 +144,10 @@ export function PositionsTable({
 
   // Calculer les totaux
   let totalValue = 0;
-  let totalCost = 0;
   positions.forEach((position) => {
     const currentPrice = quotes[position.symbol]?.price ?? position.average_price;
     totalValue += position.quantity * currentPrice;
-    totalCost += position.quantity * position.average_price;
   });
-  const totalGain = totalValue - totalCost;
-  const totalGainPercent = totalCost > 0 ? (totalGain / totalCost) * 100 : 0;
 
   // Total avec cash
   const totalWithCash = totalValue + (showCash ? cashBalance : 0);

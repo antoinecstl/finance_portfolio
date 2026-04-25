@@ -642,9 +642,6 @@ function calculateYearlyPerformance(
 
     // Déterminer les bornes de l'année
     const yearStart = `${year}-01-01`;
-    const yearEnd = `${year}-12-31`;
-    const daysInYear = isLeapYear(year) ? 366 : 365;
-
     // Valeur de début d'année
     let startValue: number;
     let effectiveStartDate: string;
@@ -747,6 +744,3 @@ function calculateYearlyPerformance(
 /**
  * Vérifie si une année est bissextile
  */
-function isLeapYear(year: number): boolean {
-  return (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
-}

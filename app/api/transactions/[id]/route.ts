@@ -66,61 +66,11 @@ export async function DELETE(_request: Request, { params }: RouteContext) {
   }
 
   const { error: delError } = await supabase
-    .from('transactions')
-    .delete()
-    .in('id', Array.from(idsToDelete))
-    .eq('user_id', user.id);
+    .rpc('delete_transaction_with_rebuild', { p_transaction_id: id });
 
   if (delError) {
     console.error('[api/transactions/:id] delete failed', delError);
     return NextResponse.json({ error: 'internal_error' }, { status: 500 });
-  }
-
-  // Rebuild the denormalized stock_positions row for that (account, symbol)
-  // from the remaining transactions so cached quantity/PRU stay coherent.
-  if (target.stock_symbol) {
-    const symbol = target.stock_symbol.toUpperCase();
-    const remaining = remainingAll.filter((t) => t.stock_symbol?.toUpperCase() === symbol);
-
-    let qty = 0;
-    let totalInvested = 0;
-    for (const tx of remaining) {
-      const q = Number(tx.quantity) || 0;
-      const p = Number(tx.price_per_unit) || 0;
-      if (tx.type === 'BUY') {
-        qty += q;
-        totalInvested += q * p;
-      } else if (tx.type === 'SELL') {
-        // PRU unchanged on sells; invested amount shrinks proportionally.
-        const pru = qty > 0 ? totalInvested / qty : 0;
-        qty -= q;
-        totalInvested = Math.max(0, qty) * pru;
-      }
-    }
-
-    if (qty <= 0) {
-      await supabase
-        .from('stock_positions')
-        .delete()
-        .eq('account_id', target.account_id)
-        .eq('user_id', user.id)
-        .eq('symbol', symbol);
-    } else {
-      const averagePrice = totalInvested / qty;
-      const { data: existing } = await supabase
-        .from('stock_positions')
-        .select('id')
-        .eq('account_id', target.account_id)
-        .eq('user_id', user.id)
-        .eq('symbol', symbol)
-        .maybeSingle();
-      if (existing) {
-        await supabase
-          .from('stock_positions')
-          .update({ quantity: qty, average_price: averagePrice })
-          .eq('id', existing.id);
-      }
-    }
   }
 
   return NextResponse.json({ ok: true });

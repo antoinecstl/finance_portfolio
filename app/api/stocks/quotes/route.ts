@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getStockQuotes } from '@/lib/stock-api';
 import { createClient } from '@/lib/supabase/server';
 import { rateLimit, clientKey } from '@/lib/rate-limit';
+import { parseStockSymbolList } from '@/lib/schemas';
 
 export async function GET(request: Request) {
   const supabase = await createClient();
@@ -28,24 +29,17 @@ export async function GET(request: Request) {
     );
   }
 
-  const symbolList = symbols.split(',').map(s => s.trim()).filter(Boolean);
-  
-  if (symbolList.length === 0) {
-    return NextResponse.json(
-      { error: 'At least one symbol is required' },
-      { status: 400 }
-    );
-  }
+  const parsedSymbols = parseStockSymbolList(symbols);
 
-  if (symbolList.length > 50) {
+  if (!parsedSymbols.success) {
     return NextResponse.json(
-      { error: 'Maximum 50 symbols allowed per request' },
+      { error: parsedSymbols.error },
       { status: 400 }
     );
   }
 
   try {
-    const quotes = await getStockQuotes(symbolList);
+    const quotes = await getStockQuotes(parsedSymbols.symbols);
     return NextResponse.json({ quotes });
   } catch (error) {
     console.error('Stock quotes API error:', error);

@@ -5,6 +5,7 @@ import { useAuth } from '@/lib/auth';
 import { Mail, Lock, Eye, EyeOff, Loader2, TrendingUp } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { safeInternalRedirect } from '@/lib/redirects';
 
 export default function LoginPage() {
   return (
@@ -23,7 +24,7 @@ function LoginForm() {
   const { signIn } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const next = searchParams.get('next') || '/dashboard';
+  const next = safeInternalRedirect(searchParams.get('next'));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
