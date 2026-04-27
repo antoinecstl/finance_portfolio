@@ -44,7 +44,13 @@ export async function upsertSnapshots(
 ): Promise<void> {
   if (points.length === 0) return;
 
-  const rows = points.map((p) => ({
+  // Dedupe par date — un payload avec deux fois la même clé (user_id, date)
+  // fait échouer l'upsert avec "ON CONFLICT DO UPDATE command cannot affect
+  // row a second time". Le dernier point gagne (les snapshots sont idempotents).
+  const byDate = new Map<string, PortfolioHistoryPoint>();
+  for (const p of points) byDate.set(p.date, p);
+
+  const rows = Array.from(byDate.values()).map((p) => ({
     user_id: userId,
     date: p.date,
     total_value: p.totalValue,
@@ -78,9 +84,11 @@ export function missingDates(
 
   while (current <= end) {
     all.push(current.toISOString().split('T')[0]);
-    if (interval === 'daily') current.setDate(current.getDate() + 1);
-    else if (interval === 'weekly') current.setDate(current.getDate() + 7);
-    else current.setMonth(current.getMonth() + 1);
+    // UTC-only stepping: setDate/getDate are local-time, which collides with
+    // toISOString (UTC) around DST transitions and produces duplicate dates.
+    if (interval === 'daily') current.setUTCDate(current.getUTCDate() + 1);
+    else if (interval === 'weekly') current.setUTCDate(current.getUTCDate() + 7);
+    else current.setUTCMonth(current.getUTCMonth() + 1);
   }
 
   return all.filter((d) => !existingSet.has(d));

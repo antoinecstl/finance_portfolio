@@ -13,12 +13,25 @@ export const transactionTypeSchema = z.enum([
 
 // Un symbole Yahoo Finance est alphanumérique + points/tirets (ex. "AAPL", "MC.PA", "BRK-B").
 // Limite à 15 char pour laisser de la marge (symboles européens ~6-7 char).
+// Volontairement strict (mirror des contraintes DB transactions_stock_symbol_format /
+// stock_positions_symbol_format) : pas de `^` ici car on ne stocke pas d'indices.
 export const stockSymbolSchema = z
   .string()
   .trim()
   .min(1, 'Symbole requis')
   .max(15, 'Symbole trop long')
   .regex(/^[A-Za-z0-9.\-]+$/, 'Symbole invalide (A-Z, 0-9, . et - uniquement)')
+  .transform((s) => s.toUpperCase());
+
+// Schéma plus permissif réservé aux lookups Yahoo (cours, historique, benchmarks).
+// Accepte un préfixe `^` optionnel pour les indices (^FCHI, ^GSPC, ^NDX, ...).
+// À NE PAS utiliser pour les transactions/positions persistées en BDD.
+export const stockLookupSymbolSchema = z
+  .string()
+  .trim()
+  .min(1, 'Symbole requis')
+  .max(15, 'Symbole trop long')
+  .regex(/^\^?[A-Za-z0-9.\-]+$/, 'Symbole invalide (A-Z, 0-9, ^ en tête, . et - autorisés)')
   .transform((s) => s.toUpperCase());
 
 export const stockHistoryIntervalSchema = z.enum(['1d', '1wk', '1mo']);
@@ -39,7 +52,7 @@ export function parseStockSymbolList(
 
   const symbols: string[] = [];
   for (const raw of rawSymbols) {
-    const parsed = stockSymbolSchema.safeParse(raw);
+    const parsed = stockLookupSymbolSchema.safeParse(raw);
     if (!parsed.success) {
       return { success: false, error: `Invalid symbol: ${raw}` };
     }

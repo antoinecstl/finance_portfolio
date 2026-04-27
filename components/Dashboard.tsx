@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { 
   RefreshCw, 
   Plus, 
@@ -50,7 +50,12 @@ export function Dashboard() {
   const [showAddAccount, setShowAddAccount] = useState(false);
   const [showAddTransaction, setShowAddTransaction] = useState(false);
   const [showAddPosition, setShowAddPosition] = useState(false);
-  const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
+  // Initialisé null pour éviter un mismatch d'hydration : `new Date()` côté
+  // serveur ≠ côté client (horloge + fuseau). Renseigné après mount.
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+  useEffect(() => {
+    setLastUpdate(new Date());
+  }, []);
   const [historyPeriod, setHistoryPeriod] = useState(30);
   const [txVersion, setTxVersion] = useState(0);
 
@@ -190,7 +195,7 @@ export function Dashboard() {
                   Mon Portefeuille
                 </h1>
                 <p className="text-[10px] sm:text-xs text-zinc-500 dark:text-zinc-400 hidden sm:block">
-                  Mis à jour: {formatDateTime(lastUpdate)}
+                  Mis à jour: {lastUpdate ? formatDateTime(lastUpdate) : '—'}
                 </p>
               </div>
             </div>

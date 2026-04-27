@@ -105,6 +105,10 @@ export function BenchmarkComparisonChart({
   const [benchmarkQuotes, setBenchmarkQuotes] = useState<Record<string, HistoricalQuote[]>>({});
   const [benchmarkLoading, setBenchmarkLoading] = useState(false);
   const [benchmarkError, setBenchmarkError] = useState<string | null>(null);
+  // Évite le warning Recharts width(-1)/height(-1) au rendu SSR : on attend
+  // que le DOM soit monté pour que ResponsiveContainer puisse mesurer.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
 
   const filteredHistory = useMemo(() => {
     const cutoff = periodCutoff(selectedPeriod);
@@ -275,7 +279,7 @@ export function BenchmarkComparisonChart({
       )}
 
       <div className="h-60 sm:h-72 w-full">
-        {isLoading ? (
+        {!mounted || isLoading ? (
           <div className="flex h-full items-center justify-center text-xs sm:text-sm text-zinc-500 dark:text-zinc-400">
             Chargement…
           </div>
@@ -284,7 +288,7 @@ export function BenchmarkComparisonChart({
             Pas encore assez de données pour comparer.
           </div>
         ) : (
-          <ResponsiveContainer>
+          <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
               <XAxis

@@ -366,15 +366,17 @@ function generateDateRange(
   while (current <= end) {
     dates.push(current.toISOString().split('T')[0]);
 
+    // UTC arithmetic only: mixing setDate/getDate (local) with toISOString (UTC)
+    // duplicates a date around DST transitions in non-UTC zones.
     switch (interval) {
       case 'daily':
-        current.setDate(current.getDate() + 1);
+        current.setUTCDate(current.getUTCDate() + 1);
         break;
       case 'weekly':
-        current.setDate(current.getDate() + 7);
+        current.setUTCDate(current.getUTCDate() + 7);
         break;
       case 'monthly':
-        current.setMonth(current.getMonth() + 1);
+        current.setUTCMonth(current.getUTCMonth() + 1);
         break;
     }
   }
