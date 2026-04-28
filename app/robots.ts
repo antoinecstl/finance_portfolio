@@ -1,11 +1,26 @@
 import type { MetadataRoute } from 'next';
 
+const BASE = process.env.NEXT_PUBLIC_APP_URL ?? 'https://fi-hub.subleet.com';
+
 export default function robots(): MetadataRoute.Robots {
-  const base = process.env.NEXT_PUBLIC_APP_URL;
   return {
     rules: [
-      { userAgent: '*', allow: '/', disallow: ['/app/', '/api/', '/auth/'] },
+      {
+        userAgent: '*',
+        allow: '/',
+        disallow: [
+          '/api/',
+          '/auth/',
+          '/dashboard',
+          '/dashboard/',
+          '/settings',
+          '/settings/',
+          '/reset-password',
+          '/forgot-password',
+        ],
+      },
     ],
-    sitemap: `${base}/sitemap.xml`,
+    sitemap: `${BASE}/sitemap.xml`,
+    host: BASE,
   };
 }

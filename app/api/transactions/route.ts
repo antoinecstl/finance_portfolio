@@ -198,8 +198,19 @@ export async function POST(request: Request) {
   if (error) {
     const msg = error.message ?? '';
     if (msg.includes('FREE_TIER_LIMIT')) {
+      // Le RPC peut buter sur la limite transactions OU positions (un BUY qui
+      // crée une nouvelle ligne via rebuild_stock_position). On distingue via
+      // le wording du message du trigger pour afficher la bonne modal.
+      const isPositionsLimit = msg.toLowerCase().includes('position');
       return NextResponse.json(
-        { error: 'limit_reached', scope: 'transactions', message: 'Limite atteinte pour votre plan.' },
+        {
+          error: 'limit_reached',
+          scope: isPositionsLimit ? 'positions' : 'transactions',
+          limit: isPositionsLimit ? limits.maxPositions : limits.maxTransactions,
+          message: isPositionsLimit
+            ? `Votre plan Free est limité à ${limits.maxPositions} positions. Passez Pro pour suivre autant de lignes que vous voulez.`
+            : 'Limite atteinte pour votre plan.',
+        },
         { status: 402 }
       );
     }

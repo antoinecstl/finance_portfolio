@@ -243,8 +243,12 @@ export function AddTransactionModal({
 
       if (res.status === 402) {
         const data = await res.json().catch(() => ({}));
+        // Le scope vient du backend : un BUY peut buter sur la limite
+        // positions (cap 5) plutôt que transactions (cap 50).
+        const scope: 'transactions' | 'positions' =
+          data.scope === 'positions' ? 'positions' : 'transactions';
         limitReached.show({
-          scope: 'transactions',
+          scope,
           current: data.current,
           max: data.limit,
           reason: 'blocked',
