@@ -1,0 +1,112 @@
+name: CI/CD
+
+on:
+  pull_request:
+    branches:
+      - main
+      - master
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  NEXT_TELEMETRY_DISABLED: "1"
+  NEXT_PUBLIC_APP_URL: "https://ci.local"
+  NEXT_PUBLIC_SUPABASE_URL: "https://example.supabase.co"
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: "ci-anon-key"
+  SUPABASE_SERVICE_ROLE_KEY: "ci-service-role-key"
+  PADDLE_API_KEY: "ci-paddle-api-key"
+  PADDLE_WEBHOOK_SECRET: "ci-paddle-webhook-secret"
+  PADDLE_PRO_PRICE_ID: "pri_ci_monthly"
+  PADDLE_PRO_YEARLY_PRICE_ID: "pri_ci_yearly"
+  NEXT_PUBLIC_PADDLE_ENV: "sandbox"
+  NEXT_PUBLIC_PADDLE_CLIENT_TOKEN: "ci-paddle-client-token"
+  NEXT_PUBLIC_PADDLE_PRO_PRICE_ID: "pri_ci_monthly"
+  NEXT_PUBLIC_PADDLE_PRO_YEARLY_PRICE_ID: "pri_ci_yearly"
+  RESEND_API_KEY: "re_ci_key"
+  RESEND_FROM: "Fi-Hub <noreply@example.com>"
+
+jobs:
+  ci:
+    name: Lint, Test, Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+  deploy-production:
+    name: Deploy Production (Vercel)
+    runs-on: ubuntu-latest
+    needs: ci
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    environment: production
+
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Check Vercel secrets
+        id: vercel-secrets
+        shell: bash
+        run: |
+          if [ -n "$VERCEL_TOKEN" ] && [ -n "$VERCEL_ORG_ID" ] && [ -n "$VERCEL_PROJECT_ID" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Vercel deploy skipped. Configure VERCEL_TOKEN, VERCEL_ORG_ID and VERCEL_PROJECT_ID repository secrets."
+          fi
+
+      - name: Install dependencies
+        if: steps.vercel-secrets.outputs.configured == 'true'
+        run: npm ci
+
+      - name: Pull Vercel environment
+        if: steps.vercel-secrets.outputs.configured == 'true'
+        run: npx --yes vercel@latest pull --yes --environment=production --token="$VERCEL_TOKEN"
+
+      - name: Build Vercel artifact
+        if: steps.vercel-secrets.outputs.configured == 'true'
+        run: npx --yes vercel@latest build --prod --token="$VERCEL_TOKEN"
+
+      - name: Deploy to Vercel
+        if: steps.vercel-secrets.outputs.configured == 'true'
+        run: npx --yes vercel@latest deploy --prebuilt --prod --token="$VERCEL_TOKEN"
