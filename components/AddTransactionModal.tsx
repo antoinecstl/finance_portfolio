@@ -1,13 +1,14 @@
 'use client';
 
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { X, Search } from 'lucide-react';
+import { X, Search, Copy } from 'lucide-react';
 import { Account, StockPosition, Transaction } from '@/lib/types';
 import { useStockSearch } from '@/lib/hooks';
 import { useLimitReached } from './LimitReachedModal';
 import { POPULAR_FRENCH_STOCKS } from '@/lib/stock-api';
 import { calculatePositionsAtDate } from '@/lib/portfolio-calculator';
-import { accountSupportsPositions } from '@/lib/utils';
+import { accountSupportsPositions, formatDate, formatCurrency } from '@/lib/utils';
+import { findDuplicateTransaction } from '@/lib/transaction-duplicates';
 
 interface AddTransactionModalProps {
   isOpen: boolean;
@@ -154,6 +155,29 @@ export function AddTransactionModal({
     }
     return Array.from(seen.values());
   }, [positions]);
+
+  // Détection en temps réel d'une transaction quasi-identique déjà en base.
+  // Non-bloquante : on affiche un warning, l'utilisateur peut soumettre quand même.
+  const duplicateMatch = useMemo(() => {
+    if (!accountId) return null;
+    const numAmount = parseFloat(amount);
+    if (!Number.isFinite(numAmount) || numAmount <= 0) return null;
+    if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
+    const numQty = parseFloat(quantity);
+    const numPrice = parseFloat(pricePerUnit);
+    return findDuplicateTransaction(
+      {
+        type: type as Transaction['type'],
+        date,
+        amount: numAmount,
+        stock_symbol: stockSymbol ? stockSymbol.toUpperCase() : null,
+        quantity: Number.isFinite(numQty) ? numQty : null,
+        price_per_unit: Number.isFinite(numPrice) ? numPrice : null,
+      },
+      transactions,
+      { accountId }
+    );
+  }, [accountId, type, date, amount, stockSymbol, quantity, pricePerUnit, transactions]);
 
   if (!isOpen) return null;
 
@@ -614,6 +638,23 @@ export function AddTransactionModal({
               className="w-full px-3 py-2 text-sm sm:text-base border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
+
+          {duplicateMatch && (
+            <div className="rounded-lg bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 px-3 py-2 text-xs sm:text-sm text-amber-800 dark:text-amber-200">
+              <div className="flex items-start gap-2">
+                <Copy className="h-4 w-4 shrink-0 mt-0.5" />
+                <div className="min-w-0">
+                  <div className="font-medium">Doublon possible</div>
+                  <div className="mt-0.5 text-[11px] sm:text-xs">
+                    Une transaction très similaire existe déjà : {duplicateMatch.type}
+                    {duplicateMatch.stock_symbol ? ` ${duplicateMatch.stock_symbol}` : ''} de{' '}
+                    {formatCurrency(Number(duplicateMatch.amount))} le {formatDate(duplicateMatch.date)}.
+                    Vérifiez qu&apos;il ne s&apos;agit pas d&apos;une saisie en double.
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {error && (
             <div role="alert" className="rounded-lg bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 px-3 py-2 text-xs sm:text-sm text-red-700 dark:text-red-300">

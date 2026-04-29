@@ -2,11 +2,12 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Upload, FileText, ClipboardPaste, Loader2, CheckCircle2, AlertTriangle, Trash2, Info, Search } from 'lucide-react';
-import { useAccounts, useStockSearch } from '@/lib/hooks';
+import { ArrowLeft, Upload, FileText, ClipboardPaste, Loader2, CheckCircle2, AlertTriangle, Trash2, Info, Search, Copy } from 'lucide-react';
+import { useAccounts, useStockSearch, useTransactions } from '@/lib/hooks';
 import type { ProposedTransaction, ImportNote } from '@/lib/import/types';
-import type { TransactionType } from '@/lib/types';
-import { accountSupportsPositions } from '@/lib/utils';
+import type { Transaction, TransactionType } from '@/lib/types';
+import { accountSupportsPositions, formatDate } from '@/lib/utils';
+import { findDuplicateTransaction } from '@/lib/transaction-duplicates';
 
 type Step = 'upload' | 'preview' | 'done';
 
@@ -152,6 +153,10 @@ export function ImportWizard() {
   const { accounts, loading: accountsLoading } = useAccounts();
   const [step, setStep] = useState<Step>('upload');
   const [accountId, setAccountId] = useState('');
+  // Transactions existantes du compte cible : alimentent la détection de
+  // doublons lors du preview. Filtré côté hook par accountId pour éviter
+  // de charger l'historique d'autres comptes.
+  const { transactions: existingTxs } = useTransactions(accountId || undefined);
   const [mode, setMode] = useState<'file' | 'text'>('file');
   const [file, setFile] = useState<File | null>(null);
   const [pastedText, setPastedText] = useState('');
@@ -341,6 +346,33 @@ export function ImportWizard() {
   function removeRow(idx: number) {
     setRows((prev) => prev.filter((_, i) => i !== idx));
   }
+
+  // Doublons potentiels : pour chaque ligne du preview, on cherche une tx
+  // existante du même compte qui correspond (même date, même type, même
+  // montant, même ticker, ± précision raisonnable). C'est un AVERTISSEMENT —
+  // on ne bloque pas l'import car un utilisateur peut légitimement avoir
+  // deux ordres identiques le même jour. Charge à lui de supprimer la ligne.
+  const duplicatesByRow = useMemo(() => {
+    const map = new Map<number, Transaction>();
+    if (!accountId || rows.length === 0 || existingTxs.length === 0) return map;
+    rows.forEach((r, i) => {
+      if (!r.date || !Number.isFinite(r.amount)) return;
+      const dup = findDuplicateTransaction(
+        {
+          type: r.type,
+          date: r.date,
+          amount: r.amount,
+          stock_symbol: r.stock_symbol ?? null,
+          quantity: r.quantity ?? null,
+          price_per_unit: r.price_per_unit ?? null,
+        },
+        existingTxs,
+        { accountId }
+      );
+      if (dup) map.set(i, dup);
+    });
+    return map;
+  }, [rows, existingTxs, accountId]);
 
   // Validation locale rapide pour griser le bouton commit s'il y a des lignes invalides.
   // Inclut la vérification du ticker contre Yahoo : BUY/SELL/DIVIDEND avec un
@@ -532,6 +564,12 @@ export function ImportWizard() {
                       {detectedFormat ?? 'inconnu'}
                     </code>
                   </div>
+                  {duplicatesByRow.size > 0 && (
+                    <div className="mt-1.5 inline-flex items-center gap-1 text-xs text-amber-700 dark:text-amber-400">
+                      <Copy className="h-3.5 w-3.5" />
+                      {duplicatesByRow.size} doublon(s) potentiel(s) détecté(s)
+                    </div>
+                  )}
                 </div>
                 <button
                   onClick={() => { setStep('upload'); setRows([]); setNotes([]); setJobId(null); }}
@@ -579,15 +617,30 @@ export function ImportWizard() {
                       const invalid = invalidRows.includes(idx);
                       const isStock = r.type === 'BUY' || r.type === 'SELL';
                       const isDividend = r.type === 'DIVIDEND';
+                      const duplicate = duplicatesByRow.get(idx);
+                      const rowBg = invalid
+                        ? 'bg-red-50/50 dark:bg-red-900/10'
+                        : duplicate
+                          ? 'bg-amber-50/50 dark:bg-amber-900/10'
+                          : '';
                       return (
-                        <tr key={idx} className={`border-t border-zinc-100 dark:border-zinc-800 ${invalid ? 'bg-red-50/50 dark:bg-red-900/10' : ''}`}>
-                          <td className="px-2 py-1.5">
+                        <tr key={idx} className={`border-t border-zinc-100 dark:border-zinc-800 ${rowBg}`}>
+                          <td className="px-2 py-1.5 align-top">
                             <input
                               type="date"
                               value={r.date}
                               onChange={(e) => updateRow(idx, { date: e.target.value })}
                               className="w-32 px-1.5 py-1 text-xs border border-zinc-200 dark:border-zinc-700 rounded bg-white dark:bg-zinc-800"
                             />
+                            {duplicate && (
+                              <p
+                                className="mt-1 max-w-[8rem] text-[10px] text-amber-700 dark:text-amber-400 inline-flex items-start gap-1"
+                                title={`Existante : ${duplicate.type} ${duplicate.amount}€ le ${formatDate(duplicate.date)}${duplicate.stock_symbol ? ` · ${duplicate.stock_symbol}` : ''}`}
+                              >
+                                <Copy className="h-2.5 w-2.5 mt-0.5 shrink-0" />
+                                Doublon possible
+                              </p>
+                            )}
                           </td>
                           <td className="px-2 py-1.5">
                             <select
