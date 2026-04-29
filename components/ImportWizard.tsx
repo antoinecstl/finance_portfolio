@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Upload, FileText, ClipboardPaste, Loader2, CheckCircle2, AlertTriangle, Trash2, Info, Search } from 'lucide-react';
 import { useAccounts, useStockSearch } from '@/lib/hooks';
@@ -30,21 +30,29 @@ function buildSymbolSearchHint(description?: string): string {
     .slice(0, 60);
 }
 
+type TickerStatus = 'valid' | 'invalid' | 'pending' | 'unknown';
+
 function ImportSymbolCell({
   value,
   description,
   disabled,
+  status,
   onChange,
 }: {
   value: string | null | undefined;
   description?: string;
   disabled: boolean;
+  status: TickerStatus;
   onChange: (symbol: string | null) => void;
 }) {
   const [showDropdown, setShowDropdown] = useState(false);
   const { results, loading, search } = useStockSearch();
   const query = value ?? '';
   const hint = useMemo(() => buildSymbolSearchHint(description), [description]);
+  const inputBorder =
+    status === 'invalid'
+      ? 'border-red-400 dark:border-red-500'
+      : 'border-zinc-200 dark:border-zinc-700';
 
   useEffect(() => {
     if (!showDropdown || disabled) return;
@@ -79,8 +87,18 @@ function ImportSymbolCell({
         onFocus={() => setShowDropdown(true)}
         disabled={disabled}
         placeholder={disabled ? '-' : 'Symbole ou nom'}
-        className="w-36 pl-6 pr-2 py-1 text-xs border border-zinc-200 dark:border-zinc-700 rounded bg-white dark:bg-zinc-800 disabled:opacity-40"
+        className={`w-36 pl-6 pr-2 py-1 text-xs border rounded bg-white dark:bg-zinc-800 disabled:opacity-40 ${inputBorder}`}
       />
+      {!disabled && status === 'invalid' && (
+        <p className="mt-1 text-[10px] text-red-600 dark:text-red-400">
+          Ticker introuvable — choisissez-en un dans la liste.
+        </p>
+      )}
+      {!disabled && status === 'pending' && query.trim().length > 0 && (
+        <p className="mt-1 text-[10px] text-zinc-500 dark:text-zinc-400 inline-flex items-center gap-1">
+          <Loader2 className="h-2.5 w-2.5 animate-spin" /> Vérification…
+        </p>
+      )}
 
       {canShowSuggestions && (
         <div className="absolute z-30 left-0 top-full mt-1 w-72 bg-white dark:bg-zinc-800 rounded-lg shadow-lg border border-zinc-200 dark:border-zinc-700 max-h-56 overflow-y-auto">
@@ -145,6 +163,14 @@ export function ImportWizard() {
   const [rows, setRows] = useState<ProposedTransaction[]>([]);
   const [notes, setNotes] = useState<ImportNote[]>([]);
   const [committedSummary, setCommittedSummary] = useState<{ inserted: number; total: number } | null>(null);
+  // Statut de vérification par ticker (uppercase). 'pending' = vérification
+  // en cours, 'valid' = résolu via /api/stocks/quotes, 'invalid' = pas de
+  // cours retourné. Une ligne BUY/SELL/DIVIDEND avec un ticker non-'valid'
+  // est marquée invalide (interdit le commit tant que l'utilisateur n'en a
+  // pas sélectionné un dans la liste).
+  const [tickerStatus, setTickerStatus] = useState<Map<string, 'valid' | 'invalid' | 'pending'>>(
+    new Map()
+  );
 
   // Compte sélectionné par défaut : le premier compte trouvé.
   useEffect(() => {
@@ -156,6 +182,77 @@ export function ImportWizard() {
     [accounts, accountId]
   );
   const accountAcceptsPositions = selectedAccount ? accountSupportsPositions(selectedAccount) : false;
+
+  // Vérifie un lot de tickers contre Yahoo via /api/stocks/quotes.
+  // Marque comme 'pending' immédiatement, puis 'valid'/'invalid' selon réponse.
+  const verifyTickers = useCallback(async (symbols: string[]) => {
+    const cleaned = Array.from(
+      new Set(symbols.map((s) => s.trim().toUpperCase()).filter(Boolean))
+    );
+    if (cleaned.length === 0) return;
+
+    setTickerStatus((prev) => {
+      const next = new Map(prev);
+      for (const s of cleaned) {
+        if (next.get(s) !== 'valid') next.set(s, 'pending');
+      }
+      return next;
+    });
+
+    try {
+      const res = await fetch(`/api/stocks/quotes?symbols=${cleaned.map(encodeURIComponent).join(',')}`);
+      if (!res.ok) {
+        // Sur erreur réseau / serveur, on ne bloque pas l'utilisateur :
+        // on enlève le 'pending' (les tickers redeviennent inconnus).
+        setTickerStatus((prev) => {
+          const next = new Map(prev);
+          for (const s of cleaned) {
+            if (next.get(s) === 'pending') next.delete(s);
+          }
+          return next;
+        });
+        return;
+      }
+      const data = await res.json();
+      const returned = new Set<string>(
+        ((data.quotes ?? []) as Array<{ symbol: string }>).map((q) => q.symbol.toUpperCase())
+      );
+      setTickerStatus((prev) => {
+        const next = new Map(prev);
+        for (const s of cleaned) {
+          next.set(s, returned.has(s) ? 'valid' : 'invalid');
+        }
+        return next;
+      });
+    } catch {
+      setTickerStatus((prev) => {
+        const next = new Map(prev);
+        for (const s of cleaned) {
+          if (next.get(s) === 'pending') next.delete(s);
+        }
+        return next;
+      });
+    }
+  }, []);
+
+  // Auto-vérifie tout ticker des rows qui n'a pas encore de statut connu.
+  // Debounced pour éviter un appel API à chaque keystroke quand l'utilisateur
+  // tape un symbole à la main. Les tickers déjà 'valid'/'invalid'/'pending'
+  // ne sont pas re-vérifiés.
+  useEffect(() => {
+    if (rows.length === 0) return;
+    const handle = setTimeout(() => {
+      const toVerify: string[] = [];
+      for (const r of rows) {
+        if (r.type !== 'BUY' && r.type !== 'SELL' && r.type !== 'DIVIDEND') continue;
+        if (!r.stock_symbol) continue;
+        const sym = r.stock_symbol.toUpperCase();
+        if (!tickerStatus.has(sym)) toVerify.push(sym);
+      }
+      if (toVerify.length > 0) verifyTickers(toVerify);
+    }, 400);
+    return () => clearTimeout(handle);
+  }, [rows, tickerStatus, verifyTickers]);
 
   async function handleParse() {
     setError(null);
@@ -219,9 +316,18 @@ export function ImportWizard() {
       const data = await res.json();
       setJobId(data.import_job_id);
       setDetectedFormat(data.detected_format ?? null);
-      setRows(data.transactions ?? []);
+      const proposed: ProposedTransaction[] = data.transactions ?? [];
+      setRows(proposed);
       setNotes(data.notes ?? []);
+      setTickerStatus(new Map());
       setStep('preview');
+      // Vérification immédiate (sans attendre le debounce de l'effet) des
+      // tickers extraits par le LLM pour BUY/SELL/DIVIDEND.
+      const extracted = proposed
+        .filter((r) => r.type === 'BUY' || r.type === 'SELL' || r.type === 'DIVIDEND')
+        .map((r) => r.stock_symbol)
+        .filter((s): s is string => Boolean(s));
+      if (extracted.length > 0) verifyTickers(extracted);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur réseau');
     } finally {
@@ -237,6 +343,8 @@ export function ImportWizard() {
   }
 
   // Validation locale rapide pour griser le bouton commit s'il y a des lignes invalides.
+  // Inclut la vérification du ticker contre Yahoo : BUY/SELL/DIVIDEND avec un
+  // symbole non 'valid' (inconnu OU vérification en cours) bloque le commit.
   const invalidRows = useMemo(() => {
     const errors: number[] = [];
     rows.forEach((r, i) => {
@@ -244,9 +352,16 @@ export function ImportWizard() {
       else if (!Number.isFinite(r.amount) || r.amount <= 0) errors.push(i);
       else if ((r.type === 'BUY' || r.type === 'SELL') && (!r.stock_symbol || !r.quantity || !r.price_per_unit)) errors.push(i);
       else if (r.type === 'DIVIDEND' && !r.stock_symbol) errors.push(i);
+      else if (
+        (r.type === 'BUY' || r.type === 'SELL' || r.type === 'DIVIDEND') &&
+        r.stock_symbol &&
+        tickerStatus.get(r.stock_symbol.toUpperCase()) !== 'valid'
+      ) {
+        errors.push(i);
+      }
     });
     return errors;
-  }, [rows]);
+  }, [rows, tickerStatus]);
 
   async function handleCommit() {
     setError(null);
@@ -490,6 +605,11 @@ export function ImportWizard() {
                               value={r.stock_symbol ?? ''}
                               disabled={!isStock && !isDividend}
                               description={r.description}
+                              status={
+                                !r.stock_symbol
+                                  ? 'unknown'
+                                  : (tickerStatus.get(r.stock_symbol.toUpperCase()) ?? 'pending')
+                              }
                               onChange={(symbol) => updateRow(idx, { stock_symbol: symbol })}
                             />
                           </td>

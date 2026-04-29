@@ -70,6 +70,9 @@ export const metadata: Metadata = {
   },
   icons: { icon: "/icon.png", apple: "/icon.png" },
   formatDetection: { telephone: false, email: false, address: false },
+  verification: {
+    google: "H4-TUj5dMXFozw0CkqiEt2cFSG41tGhFHaY1kkFqu9g",
+  },
 };
 
 export const viewport: Viewport = {
