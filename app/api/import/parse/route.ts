@@ -110,27 +110,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'invalid_account' }, { status: 403 });
   }
 
-  // Idempotency : un même fichier sur le même compte renvoie le même job.
+  // Idempotency : (user, idempotency_key) est unique. On bloque uniquement les
+  // re-imports d'un fichier déjà committed — c'est le seul cas qui crée des
+  // doublons en base. Les jobs en previewing/failed/cancelled sont éphémères
+  // (transactions non persistées) : on les re-parse et on remplace le job.
   const idempotencyKey = buildIdempotencyKey(accountId, sourceType, buffer ?? text ?? '');
   const { data: existing } = await supabase
     .from('import_jobs')
-    .select('*')
+    .select('id, status')
     .eq('user_id', user.id)
     .eq('idempotency_key', idempotencyKey)
     .maybeSingle();
 
-  if (existing && existing.status === 'previewing') {
-    // Renvoie le job existant : utile en cas de double-clic ou rechargement.
-    // On ne refait pas le parsing.
-    return NextResponse.json({
-      import_job_id: existing.id,
-      transactions: [],
-      notes: existing.notes ?? [],
-      detected_format: existing.detected_format,
-      raw_excerpt: existing.raw_excerpt,
-      reused: true,
-    });
-  }
   if (existing && existing.status === 'committed') {
     return NextResponse.json(
       { error: 'already_committed', message: 'Ce fichier a déjà été importé.' },
@@ -155,25 +146,36 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { data: job, error: insertError } = await supabase
-    .from('import_jobs')
-    .insert({
-      user_id: user.id,
-      account_id: accountId,
-      source_type: sourceType,
-      source_filename: filename ?? null,
-      status: 'previewing',
-      rows_total: pipelineResult.transactions.length,
-      idempotency_key: idempotencyKey,
-      raw_excerpt: pipelineResult.rawExcerpt,
-      detected_format: pipelineResult.detectedFormat,
-      notes: pipelineResult.notes,
-    })
-    .select('id')
-    .single();
+  const jobPayload = {
+    user_id: user.id,
+    account_id: accountId,
+    source_type: sourceType,
+    source_filename: filename ?? null,
+    status: 'previewing' as const,
+    rows_total: pipelineResult.transactions.length,
+    rows_imported: 0,
+    idempotency_key: idempotencyKey,
+    raw_excerpt: pipelineResult.rawExcerpt,
+    detected_format: pipelineResult.detectedFormat,
+    notes: pipelineResult.notes,
+  };
 
-  if (insertError || !job) {
-    console.error('[api/import/parse] insert job failed', insertError);
+  const { data: job, error: upsertError } = existing
+    ? await supabase
+        .from('import_jobs')
+        .update(jobPayload)
+        .eq('id', existing.id)
+        .eq('user_id', user.id)
+        .select('id')
+        .single()
+    : await supabase
+        .from('import_jobs')
+        .insert(jobPayload)
+        .select('id')
+        .single();
+
+  if (upsertError || !job) {
+    console.error('[api/import/parse] persist job failed', upsertError);
     return NextResponse.json({ error: 'internal_error' }, { status: 500 });
   }
 
@@ -183,6 +185,6 @@ export async function POST(request: NextRequest) {
     notes: pipelineResult.notes,
     detected_format: pipelineResult.detectedFormat,
     raw_excerpt: pipelineResult.rawExcerpt,
-    reused: false,
+    reused: Boolean(existing),
   });
 }
