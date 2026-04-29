@@ -8,6 +8,8 @@ import { createClient } from '@/lib/supabase/server';
 import { createTransactionSchema, formatZodError } from '@/lib/schemas';
 import { commitRequestSchema } from '@/lib/import/types';
 import { getLimits, hasUserFeature } from '@/lib/subscription';
+import { getStockQuotes } from '@/lib/stock-api';
+import { accountSupportsPositions } from '@/lib/utils';
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -53,6 +55,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'account_mismatch' }, { status: 400 });
   }
 
+  const { data: account } = await supabase
+    .from('accounts')
+    .select('id,type,supports_positions')
+    .eq('id', account_id)
+    .eq('user_id', user.id)
+    .maybeSingle();
+  if (!account) {
+    return NextResponse.json({ error: 'invalid_account' }, { status: 403 });
+  }
+
   // Re-validation stricte de chaque ligne via le schéma de transactions classique.
   // Le payload peut différer de ce qu'on a renvoyé au client (édition manuelle).
   const validated: typeof transactions = [];
@@ -75,11 +87,66 @@ export async function POST(request: Request) {
       });
       return;
     }
-    validated.push(tx);
+    validated.push({
+      type: tCheck.data.type,
+      amount: tCheck.data.amount,
+      fees: tCheck.data.fees ?? 0,
+      description: tCheck.data.description ?? '',
+      date: tCheck.data.date,
+      stock_symbol: tCheck.data.stock_symbol ?? null,
+      quantity: tCheck.data.quantity ?? null,
+      price_per_unit: tCheck.data.price_per_unit ?? null,
+    });
   });
 
   if (issues.length > 0) {
     return NextResponse.json({ error: 'invalid_rows', issues }, { status: 400 });
+  }
+
+  const positionRows = validated
+    .map((tx, row) => ({ tx, row }))
+    .filter(({ tx }) => tx.type === 'BUY' || tx.type === 'SELL' || tx.type === 'DIVIDEND');
+
+  if (positionRows.length > 0 && !accountSupportsPositions(account)) {
+    return NextResponse.json(
+      {
+        error: 'account_does_not_support_positions',
+        message: 'Ce compte ne supporte pas les positions boursieres. Importez uniquement des transactions cash ou choisissez un PEA/CTO/Assurance Vie.',
+      },
+      { status: 403 }
+    );
+  }
+
+  const symbolsToCheck = Array.from(
+    new Set(
+      positionRows
+        .map(({ tx }) => tx.stock_symbol?.toUpperCase())
+        .filter((symbol): symbol is string => Boolean(symbol))
+    )
+  );
+
+  if (symbolsToCheck.length > 0) {
+    const quotes = await getStockQuotes(symbolsToCheck);
+    const knownSymbols = new Set(quotes.map((quote) => quote.symbol.toUpperCase()));
+    const unknownSymbols = symbolsToCheck.filter((symbol) => !knownSymbols.has(symbol));
+
+    if (unknownSymbols.length > 0) {
+      return NextResponse.json(
+        {
+          error: 'unknown_symbols',
+          symbols: unknownSymbols,
+          issues: positionRows
+            .filter(({ tx }) => tx.stock_symbol && unknownSymbols.includes(tx.stock_symbol.toUpperCase()))
+            .map(({ tx, row }) => ({
+              row,
+              path: 'stock_symbol',
+              message: `Ticker non reconnu par Yahoo Finance : ${tx.stock_symbol}`,
+            })),
+          message: `Ticker non reconnu : ${unknownSymbols.join(', ')}. Corrigez le symbole avant de valider l'import.`,
+        },
+        { status: 422 }
+      );
+    }
   }
 
   // Pré-check plan limit pour message clair (le RPC re-vérifie de toute façon).
@@ -138,6 +205,12 @@ export async function POST(request: Request) {
     }
     if (msg.includes('invalid_account')) {
       return NextResponse.json({ error: 'invalid_account' }, { status: 403 });
+    }
+    if (msg.includes('account_does_not_support_positions')) {
+      return NextResponse.json({ error: 'account_does_not_support_positions' }, { status: 403 });
+    }
+    if (msg.includes('INVALID_ACCOUNT_SEQUENCE')) {
+      return NextResponse.json({ error: 'invalid_state', message: msg }, { status: 409 });
     }
     if (msg.includes('unauthorized')) {
       return NextResponse.json({ error: 'unauthorized' }, { status: 401 });

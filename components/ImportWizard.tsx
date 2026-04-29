@@ -2,8 +2,8 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Upload, FileText, ClipboardPaste, Loader2, CheckCircle2, AlertTriangle, Trash2, Info } from 'lucide-react';
-import { useAccounts } from '@/lib/hooks';
+import { ArrowLeft, Upload, FileText, ClipboardPaste, Loader2, CheckCircle2, AlertTriangle, Trash2, Info, Search } from 'lucide-react';
+import { useAccounts, useStockSearch } from '@/lib/hooks';
 import type { ProposedTransaction, ImportNote } from '@/lib/import/types';
 import type { TransactionType } from '@/lib/types';
 import { accountSupportsPositions } from '@/lib/utils';
@@ -19,6 +19,114 @@ const TX_TYPES: Array<{ value: TransactionType; label: string }> = [
   { value: 'INTEREST', label: 'Intérêts' },
   { value: 'FEE', label: 'Frais' },
 ];
+
+function buildSymbolSearchHint(description?: string): string {
+  if (!description) return '';
+  return description
+    .replace(/\b(achat|vente|dividende|coupon|frais|courtage|buy|sell|dividend|fee)\b/gi, ' ')
+    .replace(/[0-9.,;:()[\]\-_/+]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 60);
+}
+
+function ImportSymbolCell({
+  value,
+  description,
+  disabled,
+  onChange,
+}: {
+  value: string | null | undefined;
+  description?: string;
+  disabled: boolean;
+  onChange: (symbol: string | null) => void;
+}) {
+  const [showDropdown, setShowDropdown] = useState(false);
+  const { results, loading, search } = useStockSearch();
+  const query = value ?? '';
+  const hint = useMemo(() => buildSymbolSearchHint(description), [description]);
+
+  useEffect(() => {
+    if (!showDropdown || disabled) return;
+
+    const searchTerm = query.trim() || hint;
+    if (searchTerm.length < 2) return;
+
+    const timer = setTimeout(() => search(searchTerm), 250);
+    return () => clearTimeout(timer);
+  }, [disabled, hint, query, search, showDropdown]);
+
+  const canShowSuggestions = showDropdown && !disabled && (loading || results.length > 0 || query.trim().length >= 2 || hint.length >= 2);
+
+  return (
+    <div
+      className="relative"
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+          setShowDropdown(false);
+        }
+      }}
+    >
+      <Search className="absolute left-1.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-400 pointer-events-none" />
+      <input
+        type="text"
+        value={query}
+        onChange={(e) => {
+          const next = e.target.value.toUpperCase();
+          setShowDropdown(true);
+          onChange(next || null);
+        }}
+        onFocus={() => setShowDropdown(true)}
+        disabled={disabled}
+        placeholder={disabled ? '-' : 'Symbole ou nom'}
+        className="w-36 pl-6 pr-2 py-1 text-xs border border-zinc-200 dark:border-zinc-700 rounded bg-white dark:bg-zinc-800 disabled:opacity-40"
+      />
+
+      {canShowSuggestions && (
+        <div className="absolute z-30 left-0 top-full mt-1 w-72 bg-white dark:bg-zinc-800 rounded-lg shadow-lg border border-zinc-200 dark:border-zinc-700 max-h-56 overflow-y-auto">
+          {!query.trim() && hint.length >= 2 && (
+            <div className="px-3 py-1.5 text-[11px] text-zinc-500 dark:text-zinc-400 border-b border-zinc-100 dark:border-zinc-700">
+              Suggestions depuis le libelle
+            </div>
+          )}
+
+          {loading && (
+            <div className="px-3 py-2 text-xs text-zinc-500 dark:text-zinc-400 inline-flex items-center gap-2">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              Recherche...
+            </div>
+          )}
+
+          {!loading && results.map((result) => (
+            <button
+              key={`${result.symbol}-${result.exchange}`}
+              type="button"
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => {
+                const next = result.symbol.toUpperCase();
+                onChange(next);
+                setShowDropdown(false);
+              }}
+              className="w-full text-left px-3 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-700 border-b border-zinc-100 dark:border-zinc-700 last:border-0"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-medium text-xs text-zinc-900 dark:text-zinc-100">{result.symbol}</span>
+                {result.exchange && <span className="text-[10px] text-zinc-400">{result.exchange}</span>}
+              </div>
+              <div className="text-[11px] text-zinc-500 truncate">{result.name}</div>
+            </button>
+          ))}
+
+          {!loading && results.length === 0 && (
+            <div className="px-3 py-2 text-xs text-zinc-500 dark:text-zinc-400">
+              Aucun ticker trouve
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 // Le wizard tient en local (pas de persist Zustand/Redux) : la state vit le temps
 // de la session UI. Recharger la page = repartir de zéro, c'est volontaire.
@@ -378,13 +486,11 @@ export function ImportWizard() {
                             </select>
                           </td>
                           <td className="px-2 py-1.5">
-                            <input
-                              type="text"
+                            <ImportSymbolCell
                               value={r.stock_symbol ?? ''}
-                              onChange={(e) => updateRow(idx, { stock_symbol: e.target.value.toUpperCase() || null })}
                               disabled={!isStock && !isDividend}
-                              placeholder={isStock || isDividend ? 'AAPL' : '—'}
-                              className="w-24 px-1.5 py-1 text-xs border border-zinc-200 dark:border-zinc-700 rounded bg-white dark:bg-zinc-800 disabled:opacity-40"
+                              description={r.description}
+                              onChange={(symbol) => updateRow(idx, { stock_symbol: symbol })}
                             />
                           </td>
                           <td className="px-2 py-1.5 text-right">

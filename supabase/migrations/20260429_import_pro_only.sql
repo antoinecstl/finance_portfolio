@@ -34,7 +34,7 @@ set search_path = public
 as $$
 declare
   v_user uuid := auth.uid();
-  v_account_id uuid;
+  v_account record;
   v_total int := jsonb_array_length(coalesce(p_transactions, '[]'::jsonb));
   v_inserted int := 0;
   v_tx jsonb;
@@ -56,9 +56,9 @@ begin
     return jsonb_build_object('inserted', 0, 'total', 0);
   end if;
 
-  select id into v_account_id from public.accounts
+  select id, type, supports_positions into v_account from public.accounts
   where id = p_account_id and user_id = v_user;
-  if v_account_id is null then
+  if not found then
     raise exception 'invalid_account' using errcode = 'P0001';
   end if;
 
@@ -66,8 +66,14 @@ begin
   loop
     v_type := v_tx->>'type';
     v_fees := coalesce((v_tx->>'fees')::numeric, 0);
-    v_stock_symbol := nullif(v_tx->>'stock_symbol', '');
+    v_stock_symbol := nullif(upper(trim(v_tx->>'stock_symbol')), '');
     v_fee_id := null;
+
+    if v_type in ('BUY', 'SELL', 'DIVIDEND')
+       and not public.account_supports_positions(v_account.type, v_account.supports_positions)
+    then
+      raise exception 'account_does_not_support_positions' using errcode = 'P0001';
+    end if;
 
     if v_type <> 'FEE' and v_fees > 0 then
       v_fee_description := case
