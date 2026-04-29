@@ -14,6 +14,7 @@
 !/supabase/*.sql
 !/supabase/migrations/
 !/supabase/migrations/*.sql
+/samples
 
 # testing
 /coverage

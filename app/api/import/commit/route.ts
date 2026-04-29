@@ -7,13 +7,23 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createTransactionSchema, formatZodError } from '@/lib/schemas';
 import { commitRequestSchema } from '@/lib/import/types';
-import { getLimits } from '@/lib/subscription';
+import { getLimits, hasUserFeature } from '@/lib/subscription';
 
 export async function POST(request: Request) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  }
+
+  if (!(await hasUserFeature(user.id, 'import_transactions'))) {
+    return NextResponse.json(
+      {
+        error: 'pro_required',
+        message: 'L\'import de transactions est reserve aux utilisateurs Pro.',
+      },
+      { status: 402 }
+    );
   }
 
   const raw = await request.json().catch(() => null);
@@ -113,6 +123,15 @@ export async function POST(request: Request) {
           error: 'limit_reached',
           scope: 'transactions',
           message: msg,
+        },
+        { status: 402 }
+      );
+    }
+    if (msg.includes('PRO_REQUIRED')) {
+      return NextResponse.json(
+        {
+          error: 'pro_required',
+          message: 'L\'import de transactions est reserve aux utilisateurs Pro.',
         },
         { status: 402 }
       );

@@ -11,7 +11,8 @@ import {
   LogOut,
   Settings,
   Coins,
-  Upload
+  Upload,
+  Lock
 } from 'lucide-react';
 import Link from 'next/link';
 import { PortfolioStats } from './PortfolioStats';
@@ -59,7 +60,8 @@ export function Dashboard() {
 
   const { user, signOut } = useAuth();
   const router = useRouter();
-  const { isFree, limits } = useSubscription();
+  const { isFree, hasFeature, limits } = useSubscription();
+  const canImportTransactions = hasFeature('import_transactions');
 
   const { accounts, loading: loadingAccounts, refetch: refetchAccounts } = useAccounts();
   const { positions, loading: loadingPositions, refetch: refetchPositions } = usePositions();
@@ -505,13 +507,24 @@ export function Dashboard() {
                 Historique des Transactions
               </h2>
               <div className="flex flex-col sm:flex-row gap-2">
-                <Link
-                  href="/dashboard/import"
-                  className="flex items-center justify-center gap-2 px-4 py-2 border border-zinc-300 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors text-sm sm:text-base"
-                >
-                  <Upload className="h-4 w-4" />
-                  <span>Importer</span>
-                </Link>
+                {canImportTransactions ? (
+                  <Link
+                    href="/dashboard/import"
+                    className="flex items-center justify-center gap-2 px-4 py-2 border border-zinc-300 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors text-sm sm:text-base"
+                  >
+                    <Upload className="h-4 w-4" />
+                    <span>Importer</span>
+                  </Link>
+                ) : (
+                  <Link
+                    href="/settings/billing"
+                    className="flex items-center justify-center gap-2 px-4 py-2 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors text-sm sm:text-base"
+                    title="Import reserve aux utilisateurs Pro"
+                  >
+                    <Lock className="h-4 w-4" />
+                    <span>Importer Pro</span>
+                  </Link>
+                )}
                 <button
                   onClick={() => setShowAddTransaction(true)}
                   className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm sm:text-base"

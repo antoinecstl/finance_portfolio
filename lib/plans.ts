@@ -5,7 +5,8 @@ export type Feature =
   | 'advanced_analytics'
   | 'csv_export'
   | 'full_history'
-  | 'dividends_module';
+  | 'dividends_module'
+  | 'import_transactions';
 
 export type Plan = {
   id: PlanId;
@@ -55,7 +56,14 @@ export const PLANS: Record<PlanId, Plan> = {
     maxAccounts: INF,
     maxTransactions: INF,
     maxPositions: INF,
-    features: ['basic_charts', 'advanced_analytics', 'csv_export', 'full_history', 'dividends_module'],
+    features: [
+      'basic_charts',
+      'advanced_analytics',
+      'csv_export',
+      'full_history',
+      'dividends_module',
+      'import_transactions',
+    ],
     tagline: 'Pour un suivi complet et sans limite',
     highlights: [
       'Comptes illimités (PEA, CTO, livrets, AV)',
@@ -63,6 +71,7 @@ export const PLANS: Record<PlanId, Plan> = {
       'Analyses avancées & performance annuelle',
       'Historique complet du portefeuille',
       'Module dividendes',
+      'Import de transactions',
       'Export CSV',
     ],
   },

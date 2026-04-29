@@ -11,6 +11,7 @@ import { createClient } from '@/lib/supabase/server';
 import { rateLimit, clientKey } from '@/lib/rate-limit';
 import { runImportPipeline, buildIdempotencyKey } from '@/lib/import/orchestrator';
 import type { ImportSourceType } from '@/lib/import/types';
+import { hasUserFeature } from '@/lib/subscription';
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024;       // 10 MB hard cap
 const MAX_TEXT_CHARS = 200_000;
@@ -28,6 +29,16 @@ export async function POST(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  }
+
+  if (!(await hasUserFeature(user.id, 'import_transactions'))) {
+    return NextResponse.json(
+      {
+        error: 'pro_required',
+        message: 'L\'import de transactions est reserve aux utilisateurs Pro.',
+      },
+      { status: 402 }
+    );
   }
 
   // Rate limit : 10 imports / heure / user (l'import déclenche potentiellement un appel LLM).

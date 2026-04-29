@@ -145,9 +145,9 @@ Pour les actions françaises, suffixe `.PA` : `MC.PA` (LVMH), `OR.PA` (L'Oréal)
 2. Toutes les variables de `.env.example` dans Settings > Environment Variables.
 3. Région recommandée : `cdg1` (proximité Paddle EU + latence utilisateurs FR).
 
-## CI/CD GitHub Actions
+## CI GitHub Actions
 
-Le workflow principal est dans `.github/workflows/pipeline.yml`.
+Le workflow est dans `.github/workflows/pipeline.yml`.
 
 Sur `pull_request` et `push` vers `main` ou `master`, la CI exécute :
 
@@ -156,15 +156,9 @@ Sur `pull_request` et `push` vers `main` ou `master`, la CI exécute :
 3. `npm test`
 4. `npm run build`
 
-Sur `push` vers `main` ou `master`, le job `Deploy Production (Vercel)` déploie ensuite en production si les secrets GitHub suivants sont configurés :
+La CI utilise des valeurs factices d'environnement uniquement pour compiler et tester.
 
-| Secret GitHub | Usage |
-|---|---|
-| `VERCEL_TOKEN` | Token Vercel utilisé par la CLI |
-| `VERCEL_ORG_ID` | Identifiant de l'équipe ou du compte Vercel |
-| `VERCEL_PROJECT_ID` | Identifiant du projet Vercel |
-
-Les variables applicatives restent gérées dans Vercel (`NEXT_PUBLIC_SUPABASE_URL`, `PADDLE_API_KEY`, `RESEND_API_KEY`, etc.). La CI utilise des valeurs factices uniquement pour compiler et tester.
+Le déploiement en production est délégué à l'**intégration GitHub native de Vercel** : à chaque push sur la branche de production, Vercel build et deploy automatiquement avec les variables d'environnement définies dans Settings > Environment Variables.
 
 ## 📄 Licence
 

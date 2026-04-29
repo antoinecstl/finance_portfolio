@@ -80,6 +80,11 @@ export function ImportWizard() {
         });
       }
 
+      if (res.status === 402) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.message ?? 'L\'import de transactions est reserve aux utilisateurs Pro.');
+        return;
+      }
       if (res.status === 429) {
         setError('Trop d\'imports récents. Réessayez dans une heure.');
         return;
@@ -155,7 +160,7 @@ export function ImportWizard() {
       });
       if (res.status === 402) {
         const data = await res.json().catch(() => ({}));
-        setError(data.message ?? 'Plan limite atteinte.');
+        setError(data.message ?? 'L\'import de transactions est reserve aux utilisateurs Pro.');
         return;
       }
       if (!res.ok) {
