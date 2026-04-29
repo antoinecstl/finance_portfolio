@@ -1,11 +1,11 @@
 'use client';
 
 import Script from 'next/script';
-import { useEffect, useState, useMemo } from 'react';
+import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Loader2, ExternalLink } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { Confetti } from '@/components/Confetti';
+import { ProOnboarding } from '@/components/ProOnboarding';
 import { PLANS, formatPriceFor, getYearlySavingsPercent, type BillingInterval } from '@/lib/plans';
 
 type PaddleCheckoutOpen = (opts: {
@@ -29,6 +29,9 @@ declare global {
   }
 }
 
+const POLL_INTERVAL_MS = 3000;
+const POLL_MAX_DURATION_MS = 10 * 60 * 1000;
+
 export function BillingActions({
   planId,
   userId,
@@ -51,6 +54,8 @@ export function BillingActions({
   const [error, setError] = useState<string | null>(null);
   const [interval, setInterval] = useState<BillingInterval>(initialInterval);
   const [celebrating, setCelebrating] = useState(false);
+  const [polling, setPolling] = useState(false);
+  const celebratingRef = useRef(false);
 
   const clientToken = process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN;
   const monthlyPriceId = process.env.NEXT_PUBLIC_PADDLE_PRO_PRICE_ID;
@@ -58,6 +63,21 @@ export function BillingActions({
   const env = process.env.NEXT_PUBLIC_PADDLE_ENV ?? 'sandbox';
 
   const savings = getYearlySavingsPercent(PLANS.pro);
+
+  const startCelebration = useCallback(() => {
+    if (celebratingRef.current) return;
+    celebratingRef.current = true;
+    try {
+      window.Paddle?.Checkout?.close?.();
+    } catch {
+      /* noop */
+    }
+    setPolling(false);
+    setCelebrating(true);
+    // Refresh server-rendered subscription state in the background so when the
+    // onboarding closes, the page already reflects the Pro plan.
+    router.refresh();
+  }, [router]);
 
   useEffect(() => {
     if (typeof window !== 'undefined' && window.Paddle) {
@@ -72,18 +92,48 @@ export function BillingActions({
       token: clientToken,
       eventCallback: (ev) => {
         if (ev.name === 'checkout.completed') {
-          // Close Paddle overlay if open, then celebrate and hard-reload so
-          // the server-rendered subscription picks up the webhook update.
-          try {
-            window.Paddle?.Checkout?.close?.();
-          } catch {
-            /* noop */
-          }
-          setCelebrating(true);
+          startCelebration();
         }
       },
     });
-  }, [paddleReady, clientToken, env]);
+  }, [paddleReady, clientToken, env, startCelebration]);
+
+  // Polling fallback: once a checkout is opened, poll the server until the
+  // subscription flips to 'pro'. This guarantees the celebration triggers even
+  // if Paddle's checkout.completed event is missed (ad-blockers, network, etc.).
+  useEffect(() => {
+    if (!polling) return;
+    let cancelled = false;
+    const startedAt = Date.now();
+
+    const tick = async () => {
+      if (cancelled) return;
+      try {
+        const res = await fetch('/api/billing/status', { cache: 'no-store' });
+        if (res.ok) {
+          const data = (await res.json()) as { planId?: string };
+          if (data.planId === 'pro') {
+            startCelebration();
+            return;
+          }
+        }
+      } catch {
+        /* swallow transient errors and retry */
+      }
+      if (cancelled) return;
+      if (Date.now() - startedAt > POLL_MAX_DURATION_MS) {
+        setPolling(false);
+        return;
+      }
+      timer = window.setTimeout(tick, POLL_INTERVAL_MS);
+    };
+
+    let timer = window.setTimeout(tick, POLL_INTERVAL_MS);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [polling, startCelebration]);
 
   const handleUpgrade = () => {
     const priceId = interval === 'year' ? yearlyPriceId : monthlyPriceId;
@@ -100,6 +150,7 @@ export function BillingActions({
       customer: { email },
       customData: { user_id: userId },
     });
+    setPolling(true);
   };
 
   const handleManage = async () => {
@@ -116,14 +167,11 @@ export function BillingActions({
     }
   };
 
-  const finishCelebration = () => {
-    // Give the Paddle webhook a moment to land, then refresh the server-rendered
-    // subscription state. router.refresh() is enough since the page is dynamic.
-    setTimeout(() => {
-      router.refresh();
-      // Fallback full reload if something is cached elsewhere.
-      window.location.reload();
-    }, 400);
+  const handleOnboardingClose = () => {
+    setCelebrating(false);
+    // Hard reload as a fallback in case anything is cached and the user stays
+    // on the billing page after closing the onboarding.
+    setTimeout(() => router.refresh(), 100);
   };
 
   if (isFounder) {
@@ -144,28 +192,7 @@ export function BillingActions({
         onError={() => setError('Impossible de charger Paddle (bloqueur de pub ?)')}
       />
 
-      {celebrating && (
-        <>
-          <div className="fixed inset-0 z-[99] bg-black/40 backdrop-blur-sm flex items-center justify-center pointer-events-none">
-            <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl p-8 max-w-sm w-[90%] text-center animate-[popIn_0.4s_ease-out]">
-              <div className="text-5xl mb-2">🎉</div>
-              <h3 className="text-xl font-bold text-zinc-900 dark:text-zinc-100 mb-1">
-                Bienvenue dans Fi-Hub Pro !
-              </h3>
-              <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                On active votre abonnement et on recharge la page…
-              </p>
-            </div>
-          </div>
-          <Confetti onDone={finishCelebration} />
-          <style>{`
-            @keyframes popIn {
-              0% { transform: scale(0.8); opacity: 0; }
-              100% { transform: scale(1); opacity: 1; }
-            }
-          `}</style>
-        </>
-      )}
+      {celebrating && <ProOnboarding onClose={handleOnboardingClose} />}
 
       <div className="space-y-4">
         {planId === 'free' && (

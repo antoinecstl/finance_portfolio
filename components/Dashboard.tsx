@@ -232,6 +232,17 @@ export function Dashboard() {
               <span className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 hidden md:inline truncate max-w-[150px]">
                 {user?.email}
               </span>
+              {isFree && (
+                <Link
+                  href="/settings/billing"
+                  className="inline-flex shrink-0 items-center justify-center rounded-lg bg-blue-600 px-2.5 py-1.5 text-xs font-medium text-white transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-zinc-900 sm:px-3 sm:py-2 sm:text-sm"
+                  title="Passer pro"
+                  aria-label="Passer pro"
+                >
+                  <span className="sm:hidden">Pro</span>
+                  <span className="hidden sm:inline">Passer pro</span>
+                </Link>
+              )}
               <button
                 onClick={handleRefresh}
                 disabled={isLoading}
@@ -522,7 +533,7 @@ export function Dashboard() {
                     title="Import reserve aux utilisateurs Pro"
                   >
                     <Lock className="h-4 w-4" />
-                    <span>Importer Pro</span>
+                    <span>Importer vos données</span>
                   </Link>
                 )}
                 <button
