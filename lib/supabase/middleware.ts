@@ -12,7 +12,9 @@ export async function updateSession(request: NextRequest) {
   // templates often have `redirect_to=<site>/dashboard` baked in). Any URL
   // carrying `?code=` (PKCE) or `?token_hash=&type=` (OTP) is rerouted to
   // /auth/callback so the code can be exchanged for a session.
-  if (pathname !== '/auth/callback') {
+  // /auth/confirm intentionally holds the token without consuming it (the
+  // user clicks a button that POSTs to /auth/callback) — never reroute it.
+  if (pathname !== '/auth/callback' && pathname !== '/auth/confirm') {
     const code = searchParams.get('code');
     const tokenHash = searchParams.get('token_hash');
     const type = searchParams.get('type');
