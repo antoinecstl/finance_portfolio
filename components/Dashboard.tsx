@@ -381,6 +381,7 @@ export function Dashboard() {
                       accounts={accounts}
                       limit={5}
                       onDeleted={handleMutationSuccess}
+                      onEdited={handleMutationSuccess}
                     />
                   </ErrorBoundary>
                 </div>
@@ -550,6 +551,7 @@ export function Dashboard() {
               pageSize={50}
               version={txVersion}
               onDeleted={handleMutationSuccess}
+              onEdited={handleMutationSuccess}
             />
           </div>
         )}

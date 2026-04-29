@@ -13,12 +13,14 @@ export function PaginatedTransactionsList({
   pageSize = 50,
   version = 0,
   onDeleted,
+  onEdited,
 }: {
   accounts?: Account[];
   accountId?: string;
   pageSize?: number;
   version?: number;
   onDeleted?: () => void | Promise<void>;
+  onEdited?: () => void | Promise<void>;
 }) {
   const { transactions, loadMore, hasMore, loading, error, initialLoaded } =
     usePaginatedTransactions({ accountId, pageSize, version });
@@ -47,6 +49,7 @@ export function PaginatedTransactionsList({
         accounts={accounts}
         showFilters
         onDeleted={onDeleted}
+        onEdited={onEdited}
       />
       {error && (
         <div className="text-sm text-red-600 dark:text-red-400 text-center">

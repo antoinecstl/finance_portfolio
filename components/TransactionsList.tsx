@@ -20,10 +20,12 @@ import {
   X,
   Percent,
   Trash2,
+  Pencil,
   AlertTriangle,
   Wallet,
 } from 'lucide-react';
 import { useToast } from './Toast';
+import { EditTransactionModal } from './EditTransactionModal';
 
 type TxStyle = {
   Icon: typeof ArrowDownLeft;
@@ -80,9 +82,11 @@ interface TransactionRowProps {
   account?: Account;
   feesAmount?: number;
   isSelected: boolean;
-  canDelete: boolean;
+  canMutate: boolean;
+  canEdit: boolean;
   onToggleSelect: (id: string) => void;
   onDeleteClick: (tx: Transaction) => void;
+  onEditClick: (tx: Transaction) => void;
 }
 
 function TransactionRow({
@@ -90,20 +94,22 @@ function TransactionRow({
   account,
   feesAmount = 0,
   isSelected,
-  canDelete,
+  canMutate,
+  canEdit,
   onToggleSelect,
   onDeleteClick,
+  onEditClick,
 }: TransactionRowProps) {
   const { Icon, tone, sign } = getTxStyle(transaction.type);
   const classes = TONE_CLASSES[tone];
 
   return (
     <div
-      role={canDelete ? 'button' : undefined}
-      tabIndex={canDelete ? 0 : undefined}
-      onClick={canDelete ? () => onToggleSelect(transaction.id) : undefined}
+      role={canMutate ? 'button' : undefined}
+      tabIndex={canMutate ? 0 : undefined}
+      onClick={canMutate ? () => onToggleSelect(transaction.id) : undefined}
       onKeyDown={
-        canDelete
+        canMutate
           ? (e) => {
               if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
@@ -113,7 +119,7 @@ function TransactionRow({
           : undefined
       }
       className={`flex items-center gap-2 sm:gap-4 py-3 sm:py-4 px-2 -mx-2 rounded-lg border-b border-zinc-100 dark:border-zinc-800 last:border-0 transition-colors ${
-        canDelete ? 'cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800/50' : ''
+        canMutate ? 'cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800/50' : ''
       } ${isSelected ? 'bg-zinc-50 dark:bg-zinc-800/60' : ''}`}
     >
       <div className={`rounded-full p-1.5 sm:p-2 flex-shrink-0 ${classes.chip}`}>
@@ -165,19 +171,35 @@ function TransactionRow({
           {formatDate(transaction.date)}
         </p>
       </div>
-      {canDelete && isSelected && (
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onDeleteClick(transaction);
-          }}
-          className="flex-shrink-0 p-1.5 rounded-md text-red-600 bg-red-50 hover:bg-red-100 dark:bg-red-900/30 dark:hover:bg-red-900/50 transition-colors"
-          aria-label="Supprimer la transaction"
-          title="Supprimer"
-        >
-          <Trash2 className="h-4 w-4" />
-        </button>
+      {canMutate && isSelected && (
+        <div className="flex-shrink-0 flex items-center gap-1.5">
+          {canEdit && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onEditClick(transaction);
+              }}
+              className="p-1.5 rounded-md text-blue-600 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 transition-colors"
+              aria-label="Modifier la transaction"
+              title="Modifier"
+            >
+              <Pencil className="h-4 w-4" />
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDeleteClick(transaction);
+            }}
+            className="p-1.5 rounded-md text-red-600 bg-red-50 hover:bg-red-100 dark:bg-red-900/30 dark:hover:bg-red-900/50 transition-colors"
+            aria-label="Supprimer la transaction"
+            title="Supprimer"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </div>
       )}
     </div>
   );
@@ -254,6 +276,7 @@ interface TransactionsListProps {
   limit?: number;
   showFilters?: boolean;
   onDeleted?: () => void | Promise<void>;
+  onEdited?: () => void | Promise<void>;
 }
 
 export function TransactionsList({
@@ -262,6 +285,7 @@ export function TransactionsList({
   limit,
   showFilters = false,
   onDeleted,
+  onEdited,
 }: TransactionsListProps) {
   const [filterType, setFilterType] = useState<string>('');
   const [filterAccount, setFilterAccount] = useState<string>('');
@@ -273,7 +297,9 @@ export function TransactionsList({
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const toast = useToast();
+  const canEdit = Boolean(onEdited);
 
   // IDs des lignes FEE référencées par une autre transaction : on les masque
   // de la liste (elles apparaissent comme chip "Frais X €" sur leur parent).
@@ -311,6 +337,17 @@ export function TransactionsList({
   const handleRequestDelete = (tx: Transaction) => {
     setPendingDelete(tx);
     setDeleteError(null);
+  };
+
+  const handleRequestEdit = (tx: Transaction) => {
+    setEditingTransaction(tx);
+  };
+
+  const handleEditSuccess = async () => {
+    toast.show({ kind: 'success', message: 'Transaction modifiée.' });
+    setEditingTransaction(null);
+    setSelectedId(null);
+    await onEdited?.();
   };
 
   const handleConfirmDelete = async () => {
@@ -530,6 +567,17 @@ export function TransactionsList({
         />
       )}
 
+      {canEdit && (
+        <EditTransactionModal
+          isOpen={editingTransaction !== null}
+          onClose={() => setEditingTransaction(null)}
+          onSuccess={handleEditSuccess}
+          accounts={accounts}
+          transactions={transactions}
+          transaction={editingTransaction}
+        />
+      )}
+
       {/* Liste des transactions */}
       <div className="w-full max-w-full overflow-hidden bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-4">
         {displayedTransactions.length === 0 ? (
@@ -545,9 +593,11 @@ export function TransactionsList({
                 account={accountsById.get(transaction.account_id)}
                 feesAmount={feesByParentId.get(transaction.id) ?? 0}
                 isSelected={selectedId === transaction.id}
-                canDelete={Boolean(onDeleted)}
+                canMutate={Boolean(onDeleted) || canEdit}
+                canEdit={canEdit}
                 onToggleSelect={handleToggleSelect}
                 onDeleteClick={handleRequestDelete}
+                onEditClick={handleRequestEdit}
               />
             ))}
             {limit && filteredTransactions.length > limit && (
