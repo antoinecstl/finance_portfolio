@@ -1,16 +1,17 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
-import { 
-  RefreshCw, 
-  Plus, 
-  Wallet, 
-  BarChart2, 
-  History, 
+import {
+  RefreshCw,
+  Plus,
+  Wallet,
+  BarChart2,
+  History,
   TrendingUp,
   LogOut,
   Settings,
-  Coins
+  Coins,
+  Upload
 } from 'lucide-react';
 import Link from 'next/link';
 import { PortfolioStats } from './PortfolioStats';
@@ -503,13 +504,22 @@ export function Dashboard() {
               <h2 className="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-zinc-100">
                 Historique des Transactions
               </h2>
-              <button
-                onClick={() => setShowAddTransaction(true)}
-                className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm sm:text-base"
-              >
-                <Plus className="h-4 w-4" />
-                <span>Ajouter une transaction</span>
-              </button>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Link
+                  href="/dashboard/import"
+                  className="flex items-center justify-center gap-2 px-4 py-2 border border-zinc-300 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors text-sm sm:text-base"
+                >
+                  <Upload className="h-4 w-4" />
+                  <span>Importer</span>
+                </Link>
+                <button
+                  onClick={() => setShowAddTransaction(true)}
+                  className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm sm:text-base"
+                >
+                  <Plus className="h-4 w-4" />
+                  <span>Ajouter une transaction</span>
+                </button>
+              </div>
             </div>
             <PaginatedTransactionsList
               accounts={accounts}

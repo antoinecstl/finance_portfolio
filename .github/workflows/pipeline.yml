@@ -20,25 +20,27 @@ permissions:
 
 env:
   NEXT_TELEMETRY_DISABLED: "1"
-  NEXT_PUBLIC_APP_URL: "https://ci.local"
-  NEXT_PUBLIC_SUPABASE_URL: "https://example.supabase.co"
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: "ci-anon-key"
-  SUPABASE_SERVICE_ROLE_KEY: "ci-service-role-key"
-  PADDLE_API_KEY: "ci-paddle-api-key"
-  PADDLE_WEBHOOK_SECRET: "ci-paddle-webhook-secret"
-  PADDLE_PRO_PRICE_ID: "pri_ci_monthly"
-  PADDLE_PRO_YEARLY_PRICE_ID: "pri_ci_yearly"
-  NEXT_PUBLIC_PADDLE_ENV: "sandbox"
-  NEXT_PUBLIC_PADDLE_CLIENT_TOKEN: "ci-paddle-client-token"
-  NEXT_PUBLIC_PADDLE_PRO_PRICE_ID: "pri_ci_monthly"
-  NEXT_PUBLIC_PADDLE_PRO_YEARLY_PRICE_ID: "pri_ci_yearly"
-  RESEND_API_KEY: "re_ci_key"
-  RESEND_FROM: "Fi-Hub <noreply@example.com>"
 
 jobs:
   ci:
     name: Lint, Test, Build
     runs-on: ubuntu-latest
+
+    env:
+      NEXT_PUBLIC_APP_URL: "https://ci.local"
+      NEXT_PUBLIC_SUPABASE_URL: "https://example.supabase.co"
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: "ci-anon-key"
+      SUPABASE_SERVICE_ROLE_KEY: "ci-service-role-key"
+      PADDLE_API_KEY: "ci-paddle-api-key"
+      PADDLE_WEBHOOK_SECRET: "ci-paddle-webhook-secret"
+      PADDLE_PRO_PRICE_ID: "pri_ci_monthly"
+      PADDLE_PRO_YEARLY_PRICE_ID: "pri_ci_yearly"
+      NEXT_PUBLIC_PADDLE_ENV: "sandbox"
+      NEXT_PUBLIC_PADDLE_CLIENT_TOKEN: "ci-paddle-client-token"
+      NEXT_PUBLIC_PADDLE_PRO_PRICE_ID: "pri_ci_monthly"
+      NEXT_PUBLIC_PADDLE_PRO_YEARLY_PRICE_ID: "pri_ci_yearly"
+      RESEND_API_KEY: "re_ci_key"
+      RESEND_FROM: "Fi-Hub <noreply@example.com>"
 
     steps:
       - name: Checkout
