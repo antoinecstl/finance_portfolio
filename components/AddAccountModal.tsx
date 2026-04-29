@@ -25,6 +25,7 @@ const accountTypes: { value: AccountType; label: string }[] = [
 export function AddAccountModal({ isOpen, onClose, onSuccess }: AddAccountModalProps) {
   const [name, setName] = useState('');
   const [type, setType] = useState<AccountType>('LIVRET_A');
+  const [autreSupportsPositions, setAutreSupportsPositions] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
@@ -33,6 +34,7 @@ export function AddAccountModal({ isOpen, onClose, onSuccess }: AddAccountModalP
   const resetForm = () => {
     setName('');
     setType('LIVRET_A');
+    setAutreSupportsPositions(false);
     setError(null);
   };
 
@@ -56,10 +58,16 @@ export function AddAccountModal({ isOpen, onClose, onSuccess }: AddAccountModalP
     }
 
     try {
+      // On n'envoie supports_positions que pour AUTRE (surcharge explicite).
+      // Pour les autres types, le défaut du type s'applique côté lecture.
+      const payloadBody: Record<string, unknown> = { name, type, currency: 'EUR' };
+      if (type === 'AUTRE') {
+        payloadBody.supports_positions = autreSupportsPositions;
+      }
       const res = await fetch('/api/accounts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, type, currency: 'EUR' }),
+        body: JSON.stringify(payloadBody),
       });
 
       if (res.status === 402) {
@@ -146,6 +154,25 @@ export function AddAccountModal({ isOpen, onClose, onSuccess }: AddAccountModalP
               ))}
             </select>
           </div>
+
+          {type === 'AUTRE' && (
+            <label className="flex items-start gap-3 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 p-3 text-xs sm:text-sm text-zinc-700 dark:text-zinc-300">
+              <input
+                type="checkbox"
+                checked={autreSupportsPositions}
+                onChange={(e) => setAutreSupportsPositions(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-zinc-300 text-blue-600 focus:ring-blue-500"
+              />
+              <span>
+                <span className="block font-medium text-zinc-900 dark:text-zinc-100">
+                  Ce compte peut détenir des positions
+                </span>
+                <span className="block mt-0.5 text-zinc-500 dark:text-zinc-400">
+                  Activez cette option pour un compte titres non standard, un PER, ou une enveloppe similaire.
+                </span>
+              </span>
+            </label>
+          )}
 
           <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 bg-zinc-50 dark:bg-zinc-800 p-2 sm:p-3 rounded-lg">
             💡 Le solde sera calculé à partir des transactions. Ajoutez un dépôt après création.

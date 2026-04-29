@@ -5,6 +5,7 @@ import { Transaction, Account } from '@/lib/types';
 import {
   formatCurrency,
   formatDate,
+  getAccountTypeLabel,
   getTransactionTypeLabel,
 } from '@/lib/utils';
 import {
@@ -20,6 +21,7 @@ import {
   Percent,
   Trash2,
   AlertTriangle,
+  Wallet,
 } from 'lucide-react';
 import { useToast } from './Toast';
 
@@ -75,6 +77,7 @@ const transactionTypes = [
 
 interface TransactionRowProps {
   transaction: Transaction;
+  account?: Account;
   feesAmount?: number;
   isSelected: boolean;
   canDelete: boolean;
@@ -84,6 +87,7 @@ interface TransactionRowProps {
 
 function TransactionRow({
   transaction,
+  account,
   feesAmount = 0,
   isSelected,
   canDelete,
@@ -123,6 +127,18 @@ function TransactionRow({
           {transaction.stock_symbol && (
             <span className="text-[10px] sm:text-xs font-medium text-zinc-700 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-800 px-1.5 sm:px-2 py-0.5 rounded-full">
               {transaction.stock_symbol}
+            </span>
+          )}
+          {account && (
+            <span
+              className="inline-flex max-w-[12rem] sm:max-w-[16rem] items-center gap-1 text-[10px] sm:text-xs font-medium text-zinc-600 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-800 px-1.5 sm:px-2 py-0.5 rounded-full"
+              title={`${account.name} - ${getAccountTypeLabel(account.type)}`}
+            >
+              <Wallet className="h-2.5 w-2.5 flex-shrink-0" />
+              <span className="truncate">{account.name}</span>
+              <span className="hidden sm:inline text-zinc-400 dark:text-zinc-500 flex-shrink-0">
+                {getAccountTypeLabel(account.type)}
+              </span>
             </span>
           )}
           {feesAmount > 0 && (
@@ -279,6 +295,14 @@ export function TransactionsList({
     }
     return { linkedFeeIds: linked, feesByParentId: byParent };
   }, [transactions]);
+
+  const accountsById = useMemo(() => {
+    const map = new Map<string, Account>();
+    for (const account of accounts) {
+      map.set(account.id, account);
+    }
+    return map;
+  }, [accounts]);
 
   const handleToggleSelect = (id: string) => {
     setSelectedId((prev) => (prev === id ? null : id));
@@ -518,6 +542,7 @@ export function TransactionsList({
               <TransactionRow
                 key={transaction.id}
                 transaction={transaction}
+                account={accountsById.get(transaction.account_id)}
                 feesAmount={feesByParentId.get(transaction.id) ?? 0}
                 isSelected={selectedId === transaction.id}
                 canDelete={Boolean(onDeleted)}

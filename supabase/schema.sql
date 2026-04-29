@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS accounts (
   type VARCHAR(50) NOT NULL CHECK (type IN ('PEA', 'LIVRET_A', 'LDDS', 'CTO', 'ASSURANCE_VIE', 'PEL', 'AUTRE')),
   balance DECIMAL(15, 2) DEFAULT 0,
   currency VARCHAR(3) DEFAULT 'EUR',
+  supports_positions BOOLEAN,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );

@@ -36,17 +36,26 @@ interface AllocationChartProps {
 }
 
 export function AllocationChart({ positions, quotes }: AllocationChartProps) {
-  // Calculer la répartition par action
-  const data = positions.map((position, index) => {
+  // Agréger par symbole (somme entre comptes pour une exposition globale)
+  const aggregated = new Map<string, { name: string; fullName: string; value: number }>();
+  positions.forEach((position) => {
     const currentPrice = quotes[position.symbol]?.price ?? position.average_price;
     const value = position.quantity * currentPrice;
-    return {
-      name: position.symbol,
-      fullName: position.name,
-      value,
-      color: getSectorColor(index),
-    };
-  }).sort((a, b) => b.value - a.value);
+    const existing = aggregated.get(position.symbol);
+    if (existing) {
+      existing.value += value;
+    } else {
+      aggregated.set(position.symbol, {
+        name: position.symbol,
+        fullName: position.name,
+        value,
+      });
+    }
+  });
+
+  const data = Array.from(aggregated.values())
+    .map((item, index) => ({ ...item, color: getSectorColor(index) }))
+    .sort((a, b) => b.value - a.value);
 
   const totalValue = data.reduce((sum, item) => sum + item.value, 0);
 
@@ -394,7 +403,7 @@ export function PortfolioHistoryChart({
             <Tooltip 
               formatter={(value, name) => {
                 const label = name === 'totalValue' ? 'Total' : 
-                             name === 'stocksValue' ? 'PEA/CTO' : 'Épargne';
+                             name === 'stocksValue' ? 'Positions' : 'Épargne';
                 return [formatCurrency(Number(value) || 0), label];
               }}
               labelFormatter={(_, payload) => {
@@ -443,7 +452,7 @@ export function PortfolioHistoryChart({
         </div>
         <div className="flex items-center gap-1">
           <div className="w-3 h-3 rounded bg-emerald-500"></div>
-          <span className="text-zinc-600 dark:text-zinc-400">PEA/CTO</span>
+          <span className="text-zinc-600 dark:text-zinc-400">Positions</span>
         </div>
       </div>
     </div>
@@ -456,6 +465,8 @@ interface PositionPerformanceChartProps {
   positions: StockPosition[];
   quotes: Record<string, StockQuote>;
   transactions?: Transaction[];
+  accounts?: Account[];
+  groupByAccount?: boolean;
   // Valeurs actuelles du portefeuille (pour cohérence avec les autres composants)
   portfolioTotalValue?: number;
   portfolioTotalInvested?: number;
@@ -465,8 +476,13 @@ interface PositionPerformanceChartProps {
 }
 
 interface PositionMetrics {
+  key: string;
   symbol: string;
+  displayLabel: string;
   name: string;
+  accountId: string;
+  accountName: string;
+  accountType: string;
   currentValue: number;
   investedValue: number;
   gainValue: number;
@@ -480,31 +496,39 @@ interface PositionMetrics {
   color: string;
 }
 
-export function PositionPerformanceChart({ 
-  positions, 
-  quotes, 
+export function PositionPerformanceChart({
+  positions,
+  quotes,
   transactions = [],
+  accounts = [],
+  groupByAccount = false,
   portfolioTotalValue,
   portfolioTotalInvested,
   portfolioTotalGain,
   portfolioTotalGainPercent,
   portfolioDayChange
 }: PositionPerformanceChartProps) {
-  // État pour les lignes étendues
-  const [expandedSymbol, setExpandedSymbol] = useState<string | null>(null);
+  // État pour les lignes étendues (clé composite accountId:symbol)
+  const [expandedKey, setExpandedKey] = useState<string | null>(null);
   const { hasFeature } = useSubscription();
   const isProUser = hasFeature('advanced_analytics');
 
-  // Filtrer les transactions par symbole
-  const getTransactionsForSymbol = (symbol: string) => {
+  const accountById = useMemo(() => {
+    const map = new Map<string, Account>();
+    accounts.forEach(a => map.set(a.id, a));
+    return map;
+  }, [accounts]);
+
+  // Filtrer les transactions pour un symbole+compte
+  const getTransactionsForPosition = (symbol: string, accountId: string) => {
     return transactions
-      .filter(t => t.stock_symbol === symbol)
+      .filter(t => t.stock_symbol === symbol && t.account_id === accountId)
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   };
 
-  // Calculer les statistiques de transactions pour un symbole
-  const getTransactionStats = (symbol: string) => {
-    const symbolTransactions = getTransactionsForSymbol(symbol);
+  // Calculer les statistiques de transactions pour un symbole+compte
+  const getTransactionStats = (symbol: string, accountId: string) => {
+    const symbolTransactions = getTransactionsForPosition(symbol, accountId);
     
     const buys = symbolTransactions.filter(t => t.type === 'BUY');
     const sells = symbolTransactions.filter(t => t.type === 'SELL');
@@ -529,21 +553,50 @@ export function PositionPerformanceChart({
     };
   };
 
-  // Calculer les métriques pour chaque position
+  // Détecter les symboles présents sur plusieurs comptes pour disambiguer le label
+  const symbolAccountCounts = useMemo(() => {
+    const counts = new Map<string, Set<string>>();
+    positions.forEach(p => {
+      const set = counts.get(p.symbol) ?? new Set<string>();
+      set.add(p.account_id);
+      counts.set(p.symbol, set);
+    });
+    return counts;
+  }, [positions]);
+
+  // Comptes distincts présents dans le scope actuel
+  const uniqueAccountIdsInPositions = useMemo(() => {
+    return new Set(positions.map(p => p.account_id));
+  }, [positions]);
+
+  // Calculer les métriques pour chaque position (clé composite accountId:symbol)
   const metrics: PositionMetrics[] = positions.map((position, index) => {
     const quote = quotes[position.symbol];
     const currentPrice = quote?.price ?? position.average_price;
     const dayChange = quote?.change || 0;
     const dayChangePercent = quote?.changePercent || 0;
-    
+
     const currentValue = position.quantity * currentPrice;
     const investedValue = position.quantity * position.average_price;
     const gainValue = currentValue - investedValue;
     const gainPercent = investedValue > 0 ? (gainValue / investedValue) * 100 : 0;
-    
+
+    const account = accountById.get(position.account_id);
+    const accountName = account?.name ?? '—';
+    const accountType = account?.type ?? '';
+    const isShared = (symbolAccountCounts.get(position.symbol)?.size ?? 0) > 1;
+    const displayLabel = isShared && accountType
+      ? `${position.symbol} (${accountType})`
+      : position.symbol;
+
     return {
+      key: `${position.account_id}:${position.symbol}`,
       symbol: position.symbol,
+      displayLabel,
       name: position.name,
+      accountId: position.account_id,
+      accountName,
+      accountType,
       currentValue,
       investedValue,
       gainValue,
@@ -581,14 +634,14 @@ export function PositionPerformanceChart({
 
   // Données pour le graphique de performance par position
   const perfChartData = sortedByPerf.map(m => ({
-    symbol: m.symbol,
+    symbol: m.displayLabel,
     gainPercent: m.gainPercent,
     fill: m.gainPercent >= 0 ? '#10b981' : '#ef4444',
   }));
 
   // Données pour le graphique de répartition par poids
   const weightChartData = sortedByValue.map(m => ({
-    symbol: m.symbol,
+    symbol: m.displayLabel,
     weight: m.weight,
     value: m.currentValue,
     color: m.color,
@@ -786,126 +839,154 @@ export function PositionPerformanceChart({
             Détail par Position
           </h3>
         </div>
-        
+
         {/* Version mobile: cartes */}
         <div className="sm:hidden divide-y divide-zinc-100 dark:divide-zinc-800">
-          {sortedByValue.map((m) => {
-            const isExpanded = expandedSymbol === m.symbol;
-            const stats = getTransactionStats(m.symbol);
-            
-            return (
-              <div key={m.symbol} className="p-3 space-y-2">
-                <div 
-                  className="flex justify-between items-start cursor-pointer"
-                  onClick={() => setExpandedSymbol(isExpanded ? null : m.symbol)}
-                >
-                  <div className="flex items-center gap-2">
-                    {isExpanded ? (
-                      <ChevronDown className="h-4 w-4 text-zinc-400" />
-                    ) : (
-                      <ChevronRight className="h-4 w-4 text-zinc-400" />
-                    )}
-                    <div>
-                      <p className="font-semibold text-zinc-900 dark:text-zinc-100">{m.symbol}</p>
-                      <p className="text-xs text-zinc-500 truncate max-w-[150px]">{m.name}</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-bold text-zinc-900 dark:text-zinc-100">{formatCurrency(m.currentValue)}</p>
-                    <p className={`text-xs text-zinc-500 ${isProUser ? '' : 'blur-sm select-none'}`}>{m.weight.toFixed(1)}% du portefeuille</p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-3 gap-2 text-xs">
-                  <div>
-                    <p className="text-zinc-500">Qté × PRU</p>
-                    <p className="font-medium text-zinc-900 dark:text-zinc-100">
-                      {m.quantity.toFixed(m.quantity % 1 === 0 ? 0 : 2)} × {formatCurrency(m.avgPrice)}
+          {(() => {
+            const groups: Array<{ accountId: string | null; accountName: string; accountType: string; items: PositionMetrics[] }> = [];
+            if (groupByAccount) {
+              const byAcc = new Map<string, PositionMetrics[]>();
+              sortedByValue.forEach(m => {
+                const arr = byAcc.get(m.accountId) ?? [];
+                arr.push(m);
+                byAcc.set(m.accountId, arr);
+              });
+              byAcc.forEach((items, accId) => {
+                groups.push({ accountId: accId, accountName: items[0].accountName, accountType: items[0].accountType, items });
+              });
+            } else {
+              groups.push({ accountId: null, accountName: '', accountType: '', items: sortedByValue });
+            }
+
+            return groups.map((group) => (
+              <React.Fragment key={`grp-m-${group.accountId ?? 'all'}`}>
+                {group.accountId && (
+                  <div className="px-3 py-2 bg-zinc-50 dark:bg-zinc-800/50 border-b border-zinc-200 dark:border-zinc-800">
+                    <p className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 uppercase tracking-wide">
+                      {group.accountName} <span className="text-[10px] opacity-70">({group.accountType})</span>
                     </p>
-                  </div>
-                  <div>
-                    <p className="text-zinc-500">Cours actuel</p>
-                    <p className="font-medium text-zinc-900 dark:text-zinc-100">{formatCurrency(m.currentPrice)}</p>
-                  </div>
-                  <div>
-                    <p className="text-zinc-500">Var. jour</p>
-                    <p className={`font-medium ${m.dayChangePercent >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                      {formatPercent(m.dayChangePercent)}
-                    </p>
-                    <p className={`text-[10px] ${m.dayChangePercent >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                      {m.dayChange * m.quantity >= 0 ? '+' : ''}{formatCurrency(m.dayChange * m.quantity)}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex justify-between items-center pt-1 border-t border-zinc-100 dark:border-zinc-800">
-                  <span className="text-xs text-zinc-500">+/- Value</span>
-                  <span className={`font-semibold ${m.gainPercent >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                    {m.gainValue >= 0 ? '+' : ''}{formatCurrency(m.gainValue)} ({formatPercent(m.gainPercent)})
-                  </span>
-                </div>
-                
-                {/* Détails des transactions (version mobile) */}
-                {isExpanded && (
-                  <div className="mt-3 pt-3 border-t border-zinc-200 dark:border-zinc-700 space-y-3">
-                    {/* Statistiques résumées */}
-                    <div className="grid grid-cols-2 gap-2 text-xs">
-                      <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded p-2">
-                        <p className="text-emerald-600 dark:text-emerald-400 font-medium">Achats</p>
-                        <p className="text-zinc-900 dark:text-zinc-100">{stats.buys.length} ordres • {stats.totalBought.toFixed(2)} titres</p>
-                        <p className="text-zinc-600 dark:text-zinc-400">{formatCurrency(stats.totalBuyAmount)}</p>
-                      </div>
-                      {stats.sells.length > 0 && (
-                        <div className="bg-red-50 dark:bg-red-900/20 rounded p-2">
-                          <p className="text-red-600 dark:text-red-400 font-medium">Ventes</p>
-                          <p className="text-zinc-900 dark:text-zinc-100">{stats.sells.length} ordres • {stats.totalSold.toFixed(2)} titres</p>
-                          <p className="text-zinc-600 dark:text-zinc-400">{formatCurrency(stats.totalSellAmount)}</p>
-                        </div>
-                      )}
-                      {stats.totalDividends > 0 && (
-                        <div className="bg-blue-50 dark:bg-blue-900/20 rounded p-2">
-                          <p className="text-blue-600 dark:text-blue-400 font-medium">Dividendes</p>
-                          <p className="text-zinc-900 dark:text-zinc-100">{stats.dividends.length} versements</p>
-                          <p className="text-zinc-600 dark:text-zinc-400">{formatCurrency(stats.totalDividends)}</p>
-                        </div>
-                      )}
-                    </div>
-                    
-                    {/* Liste des transactions */}
-                    <div className="space-y-1 max-h-48 overflow-y-auto">
-                      <p className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">Historique</p>
-                      {stats.allTransactions.slice(0, 10).map((t) => (
-                        <div key={t.id} className="flex justify-between items-center text-xs py-1 border-b border-zinc-100 dark:border-zinc-800 last:border-0">
-                          <div className="flex items-center gap-2">
-                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
-                              t.type === 'BUY' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' :
-                              t.type === 'SELL' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
-                              t.type === 'DIVIDEND' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
-                              'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-400'
-                            }`}>
-                              {t.type === 'BUY' ? 'Achat' : t.type === 'SELL' ? 'Vente' : t.type === 'DIVIDEND' ? 'Div.' : t.type}
-                            </span>
-                            <span className="text-zinc-500">{new Date(t.date).toLocaleDateString('fr-FR')}</span>
-                          </div>
-                          <div className="text-right">
-                            {t.quantity && t.price_per_unit && (
-                              <span className="text-zinc-600 dark:text-zinc-400 mr-2">{t.quantity} × {formatCurrency(t.price_per_unit)}</span>
-                            )}
-                            <span className={`font-medium ${t.type === 'SELL' || t.type === 'DIVIDEND' ? 'text-emerald-600' : 'text-zinc-900 dark:text-zinc-100'}`}>
-                              {t.type === 'SELL' || t.type === 'DIVIDEND' ? '+' : '-'}{formatCurrency(Math.abs(t.amount))}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                      {stats.allTransactions.length > 10 && (
-                        <p className="text-[10px] text-zinc-400 text-center pt-1">
-                          +{stats.allTransactions.length - 10} autres transactions
-                        </p>
-                      )}
-                    </div>
                   </div>
                 )}
-              </div>
-            );
-          })}
+                {group.items.map((m) => {
+                  const isExpanded = expandedKey === m.key;
+                  const stats = getTransactionStats(m.symbol, m.accountId);
+                  return (
+                    <div key={m.key} className="p-3 space-y-2">
+                      <div
+                        className="flex justify-between items-start cursor-pointer"
+                        onClick={() => setExpandedKey(isExpanded ? null : m.key)}
+                      >
+                        <div className="flex items-center gap-2">
+                          {isExpanded ? (
+                            <ChevronDown className="h-4 w-4 text-zinc-400" />
+                          ) : (
+                            <ChevronRight className="h-4 w-4 text-zinc-400" />
+                          )}
+                          <div>
+                            <p className="font-semibold text-zinc-900 dark:text-zinc-100">{m.symbol}</p>
+                            <p className="text-xs text-zinc-500 truncate max-w-[150px]">{m.name}</p>
+                            {!groupByAccount && uniqueAccountIdsInPositions.size > 1 && m.accountName && (
+                              <p className="text-[10px] text-zinc-500 mt-0.5">
+                                {m.accountName} <span className="opacity-70">({m.accountType})</span>
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-bold text-zinc-900 dark:text-zinc-100">{formatCurrency(m.currentValue)}</p>
+                          <p className={`text-xs text-zinc-500 ${isProUser ? '' : 'blur-sm select-none'}`}>{m.weight.toFixed(1)}% du portefeuille</p>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 text-xs">
+                        <div>
+                          <p className="text-zinc-500">Qté × PRU</p>
+                          <p className="font-medium text-zinc-900 dark:text-zinc-100">
+                            {m.quantity.toFixed(m.quantity % 1 === 0 ? 0 : 2)} × {formatCurrency(m.avgPrice)}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-zinc-500">Cours actuel</p>
+                          <p className="font-medium text-zinc-900 dark:text-zinc-100">{formatCurrency(m.currentPrice)}</p>
+                        </div>
+                        <div>
+                          <p className="text-zinc-500">Var. jour</p>
+                          <p className={`font-medium ${m.dayChangePercent >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                            {formatPercent(m.dayChangePercent)}
+                          </p>
+                          <p className={`text-[10px] ${m.dayChangePercent >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                            {m.dayChange * m.quantity >= 0 ? '+' : ''}{formatCurrency(m.dayChange * m.quantity)}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex justify-between items-center pt-1 border-t border-zinc-100 dark:border-zinc-800">
+                        <span className="text-xs text-zinc-500">+/- Value</span>
+                        <span className={`font-semibold ${m.gainPercent >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                          {m.gainValue >= 0 ? '+' : ''}{formatCurrency(m.gainValue)} ({formatPercent(m.gainPercent)})
+                        </span>
+                      </div>
+
+                      {isExpanded && (
+                        <div className="mt-3 pt-3 border-t border-zinc-200 dark:border-zinc-700 space-y-3">
+                          <div className="grid grid-cols-2 gap-2 text-xs">
+                            <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded p-2">
+                              <p className="text-emerald-600 dark:text-emerald-400 font-medium">Achats</p>
+                              <p className="text-zinc-900 dark:text-zinc-100">{stats.buys.length} ordres • {stats.totalBought.toFixed(2)} titres</p>
+                              <p className="text-zinc-600 dark:text-zinc-400">{formatCurrency(stats.totalBuyAmount)}</p>
+                            </div>
+                            {stats.sells.length > 0 && (
+                              <div className="bg-red-50 dark:bg-red-900/20 rounded p-2">
+                                <p className="text-red-600 dark:text-red-400 font-medium">Ventes</p>
+                                <p className="text-zinc-900 dark:text-zinc-100">{stats.sells.length} ordres • {stats.totalSold.toFixed(2)} titres</p>
+                                <p className="text-zinc-600 dark:text-zinc-400">{formatCurrency(stats.totalSellAmount)}</p>
+                              </div>
+                            )}
+                            {stats.totalDividends > 0 && (
+                              <div className="bg-blue-50 dark:bg-blue-900/20 rounded p-2">
+                                <p className="text-blue-600 dark:text-blue-400 font-medium">Dividendes</p>
+                                <p className="text-zinc-900 dark:text-zinc-100">{stats.dividends.length} versements</p>
+                                <p className="text-zinc-600 dark:text-zinc-400">{formatCurrency(stats.totalDividends)}</p>
+                              </div>
+                            )}
+                          </div>
+                          <div className="space-y-1 max-h-48 overflow-y-auto">
+                            <p className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">Historique</p>
+                            {stats.allTransactions.slice(0, 10).map((t) => (
+                              <div key={t.id} className="flex justify-between items-center text-xs py-1 border-b border-zinc-100 dark:border-zinc-800 last:border-0">
+                                <div className="flex items-center gap-2">
+                                  <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                                    t.type === 'BUY' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' :
+                                    t.type === 'SELL' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
+                                    t.type === 'DIVIDEND' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
+                                    'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-400'
+                                  }`}>
+                                    {t.type === 'BUY' ? 'Achat' : t.type === 'SELL' ? 'Vente' : t.type === 'DIVIDEND' ? 'Div.' : t.type}
+                                  </span>
+                                  <span className="text-zinc-500">{new Date(t.date).toLocaleDateString('fr-FR')}</span>
+                                </div>
+                                <div className="text-right">
+                                  {t.quantity && t.price_per_unit && (
+                                    <span className="text-zinc-600 dark:text-zinc-400 mr-2">{t.quantity} × {formatCurrency(t.price_per_unit)}</span>
+                                  )}
+                                  <span className={`font-medium ${t.type === 'SELL' || t.type === 'DIVIDEND' ? 'text-emerald-600' : 'text-zinc-900 dark:text-zinc-100'}`}>
+                                    {t.type === 'SELL' || t.type === 'DIVIDEND' ? '+' : '-'}{formatCurrency(Math.abs(t.amount))}
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
+                            {stats.allTransactions.length > 10 && (
+                              <p className="text-[10px] text-zinc-400 text-center pt-1">
+                                +{stats.allTransactions.length - 10} autres transactions
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </React.Fragment>
+            ));
+          })()}
         </div>
 
         {/* Version desktop: tableau */}
@@ -914,6 +995,9 @@ export function PositionPerformanceChart({
             <thead className="bg-zinc-50 dark:bg-zinc-800/50">
               <tr>
                 <th className="py-2 px-3 text-left font-semibold text-zinc-600 dark:text-zinc-400">Action</th>
+                {!groupByAccount && uniqueAccountIdsInPositions.size > 1 && (
+                  <th className="py-2 px-3 text-left font-semibold text-zinc-600 dark:text-zinc-400">Compte</th>
+                )}
                 <th className="py-2 px-3 text-right font-semibold text-zinc-600 dark:text-zinc-400">Qté</th>
                 <th className="py-2 px-3 text-right font-semibold text-zinc-600 dark:text-zinc-400">PRU</th>
                 <th className="py-2 px-3 text-right font-semibold text-zinc-600 dark:text-zinc-400">Cours</th>
@@ -926,29 +1010,65 @@ export function PositionPerformanceChart({
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-              {sortedByValue.map((m) => {
-                const isExpanded = expandedSymbol === m.symbol;
-                const stats = getTransactionStats(m.symbol);
-                
-                return (
-                  <React.Fragment key={m.symbol}>
-                    <tr 
-                      className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors cursor-pointer"
-                      onClick={() => setExpandedSymbol(isExpanded ? null : m.symbol)}
-                    >
-                      <td className="py-2 px-3">
-                        <div className="flex items-center gap-2">
-                          {isExpanded ? (
-                            <ChevronDown className="h-4 w-4 text-zinc-400 flex-shrink-0" />
-                          ) : (
-                            <ChevronRight className="h-4 w-4 text-zinc-400 flex-shrink-0" />
-                          )}
-                          <div>
-                            <p className="font-semibold text-zinc-900 dark:text-zinc-100">{m.symbol}</p>
-                            <p className="text-xs text-zinc-500 truncate max-w-[120px]">{m.name}</p>
-                          </div>
-                        </div>
-                      </td>
+              {(() => {
+                const showAccountCol = !groupByAccount && uniqueAccountIdsInPositions.size > 1;
+                const colSpan = showAccountCol ? 9 : 8;
+                const groups: Array<{ accountId: string | null; accountName: string; accountType: string; items: PositionMetrics[] }> = [];
+                if (groupByAccount) {
+                  const byAcc = new Map<string, PositionMetrics[]>();
+                  sortedByValue.forEach(m => {
+                    const arr = byAcc.get(m.accountId) ?? [];
+                    arr.push(m);
+                    byAcc.set(m.accountId, arr);
+                  });
+                  byAcc.forEach((items, accId) => {
+                    groups.push({ accountId: accId, accountName: items[0].accountName, accountType: items[0].accountType, items });
+                  });
+                } else {
+                  groups.push({ accountId: null, accountName: '', accountType: '', items: sortedByValue });
+                }
+
+                return groups.map((group) => (
+                  <React.Fragment key={`grp-d-${group.accountId ?? 'all'}`}>
+                    {group.accountId && (
+                      <tr className="bg-zinc-100 dark:bg-zinc-800/70">
+                        <td colSpan={colSpan} className="py-2 px-3">
+                          <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 uppercase tracking-wide">
+                            {group.accountName} <span className="text-[10px] opacity-70">({group.accountType})</span>
+                          </span>
+                        </td>
+                      </tr>
+                    )}
+                    {group.items.map((m) => {
+                      const isExpanded = expandedKey === m.key;
+                      const stats = getTransactionStats(m.symbol, m.accountId);
+                      return (
+                        <React.Fragment key={m.key}>
+                          <tr
+                            className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors cursor-pointer"
+                            onClick={() => setExpandedKey(isExpanded ? null : m.key)}
+                          >
+                            <td className="py-2 px-3">
+                              <div className="flex items-center gap-2">
+                                {isExpanded ? (
+                                  <ChevronDown className="h-4 w-4 text-zinc-400 flex-shrink-0" />
+                                ) : (
+                                  <ChevronRight className="h-4 w-4 text-zinc-400 flex-shrink-0" />
+                                )}
+                                <div>
+                                  <p className="font-semibold text-zinc-900 dark:text-zinc-100">{m.symbol}</p>
+                                  <p className="text-xs text-zinc-500 truncate max-w-[120px]">{m.name}</p>
+                                </div>
+                              </div>
+                            </td>
+                            {showAccountCol && (
+                              <td className="py-2 px-3">
+                                <div className="text-xs">
+                                  <p className="font-medium text-zinc-700 dark:text-zinc-300">{m.accountName}</p>
+                                  <p className="text-[10px] text-zinc-500">{m.accountType}</p>
+                                </div>
+                              </td>
+                            )}
                       <td className="py-2 px-3 text-right text-zinc-900 dark:text-zinc-100">
                         {m.quantity.toFixed(m.quantity % 1 === 0 ? 0 : 2)}
                       </td>
@@ -992,7 +1112,7 @@ export function PositionPerformanceChart({
                     {/* Ligne de détail extensible */}
                     {isExpanded && (
                       <tr className="bg-zinc-50/80 dark:bg-zinc-800/30">
-                        <td colSpan={8} className="px-4 py-4">
+                        <td colSpan={colSpan} className="px-4 py-4">
                           <div className="space-y-4">
                             {/* Résumé des transactions */}
                             <div className="grid grid-cols-4 gap-4">
@@ -1110,9 +1230,12 @@ export function PositionPerformanceChart({
                         </td>
                       </tr>
                     )}
+                        </React.Fragment>
+                      );
+                    })}
                   </React.Fragment>
-                );
-              })}
+                ));
+              })()}
             </tbody>
           </table>
         </div>

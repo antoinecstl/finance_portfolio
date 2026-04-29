@@ -1,5 +1,6 @@
 import { Transaction, Account } from './types';
 import { HistoricalQuote, findClosestQuote } from './stock-api';
+import { accountSupportsPositions } from './utils';
 
 /**
  * Représente une position calculée à partir des transactions
@@ -267,13 +268,15 @@ export function calculatePortfolioHistory(
   const dates = generateDateRange(startDate, endDate, interval);
 
   // Comptes épargne (non-actions)
-  const savingsAccounts = accounts.filter(a => !['PEA', 'CTO'].includes(a.type));
+  const savingsAccounts = accounts.filter(a => !accountSupportsPositions(a));
   // Comptes actions (PEA/CTO)
-  const stockAccounts = accounts.filter(a => ['PEA', 'CTO'].includes(a.type));
+  const stockAccounts = accounts.filter(accountSupportsPositions);
+  const stockAccountIds = new Set(stockAccounts.map(a => a.id));
+  const stockTransactions = transactions.filter(t => stockAccountIds.has(t.account_id));
   
   for (const date of dates) {
     // Calculer les positions à cette date
-    const positions = calculatePositionsAtDate(transactions, date);
+    const positions = calculatePositionsAtDate(stockTransactions, date);
     
     // Calculer la valeur des actions
     let stocksValue = 0;
@@ -553,9 +556,9 @@ export function calculatePortfolioPerformance(
     return emptyResult;
   }
 
-  // Comptes PEA/CTO uniquement
+  // Comptes pouvant détenir des positions uniquement.
   const stockAccountIds = new Set(
-    accounts.filter(a => ['PEA', 'CTO'].includes(a.type)).map(a => a.id)
+    accounts.filter(accountSupportsPositions).map(a => a.id)
   );
 
   // Filtrer les transactions pour les comptes actions uniquement

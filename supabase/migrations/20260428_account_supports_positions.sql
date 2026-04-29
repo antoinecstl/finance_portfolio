@@ -1,0 +1,297 @@
+-- Permet à un compte de déclarer s'il peut détenir des positions.
+-- NULL = utilise le défaut du type (PEA, CTO, ASSURANCE_VIE -> true, autres -> false).
+-- Permet notamment de marquer un compte AUTRE comme support de positions.
+
+alter table public.accounts
+  add column if not exists supports_positions boolean;
+
+comment on column public.accounts.supports_positions is
+  'Si NULL, le client résout le défaut depuis le type. Si TRUE/FALSE, surcharge le défaut.';
+
+create or replace function public.account_supports_positions(
+  p_type text,
+  p_supports_positions boolean
+)
+returns boolean
+language sql
+immutable
+set search_path = public
+as $$
+  select coalesce(
+    p_supports_positions,
+    p_type in ('PEA', 'CTO', 'ASSURANCE_VIE')
+  );
+$$;
+
+grant execute on function public.account_supports_positions(text, boolean)
+  to anon, authenticated, service_role;
+
+-- Empêche les écritures directes sur transactions/stock_positions de contourner
+-- la règle applicative.
+create or replace function public.enforce_position_capable_account()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_supports_positions boolean;
+begin
+  if tg_table_name = 'stock_positions' then
+    select public.account_supports_positions(a.type, a.supports_positions)
+      into v_supports_positions
+    from public.accounts a
+    where a.id = new.account_id
+      and a.user_id = new.user_id;
+
+    if coalesce(v_supports_positions, false) = false then
+      raise exception 'account_does_not_support_positions' using errcode = 'P0001';
+    end if;
+  elsif tg_table_name = 'transactions' and new.type in ('BUY', 'SELL', 'DIVIDEND') then
+    select public.account_supports_positions(a.type, a.supports_positions)
+      into v_supports_positions
+    from public.accounts a
+    where a.id = new.account_id
+      and a.user_id = new.user_id;
+
+    if coalesce(v_supports_positions, false) = false then
+      raise exception 'account_does_not_support_positions' using errcode = 'P0001';
+    end if;
+  end if;
+
+  return new;
+end;
+$$;
+
+revoke execute on function public.enforce_position_capable_account()
+  from public, anon, authenticated;
+
+drop trigger if exists enforce_position_capable_account_transactions on public.transactions;
+create trigger enforce_position_capable_account_transactions
+  before insert or update on public.transactions
+  for each row execute function public.enforce_position_capable_account();
+
+drop trigger if exists enforce_position_capable_account_positions on public.stock_positions;
+create trigger enforce_position_capable_account_positions
+  before insert or update on public.stock_positions
+  for each row execute function public.enforce_position_capable_account();
+
+-- Empêche de rendre un compte non éligible s'il porte déjà des positions ou
+-- des transactions boursières.
+create or replace function public.prevent_disabling_positions_for_used_account()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if public.account_supports_positions(old.type, old.supports_positions)
+     and not public.account_supports_positions(new.type, new.supports_positions)
+     and (
+       exists (
+         select 1
+         from public.stock_positions sp
+         where sp.account_id = new.id
+           and sp.user_id = new.user_id
+       )
+       or exists (
+         select 1
+         from public.transactions t
+         where t.account_id = new.id
+           and t.user_id = new.user_id
+           and t.type in ('BUY', 'SELL', 'DIVIDEND')
+       )
+     )
+  then
+    raise exception 'account_has_positions' using errcode = 'P0001';
+  end if;
+
+  return new;
+end;
+$$;
+
+revoke execute on function public.prevent_disabling_positions_for_used_account()
+  from public, anon, authenticated;
+
+drop trigger if exists prevent_disabling_positions_for_used_account_trigger on public.accounts;
+create trigger prevent_disabling_positions_for_used_account_trigger
+  before update of type, supports_positions on public.accounts
+  for each row execute function public.prevent_disabling_positions_for_used_account();
+
+-- RLS : l'utilisateur ne peut écrire des positions que sur un compte à lui qui
+-- accepte les positions.
+drop policy if exists "Users can insert own positions" on public.stock_positions;
+drop policy if exists "Users can update own positions" on public.stock_positions;
+
+create policy "Users can insert own positions" on public.stock_positions
+  for insert with check (
+    auth.uid() = user_id
+    and exists (
+      select 1
+      from public.accounts a
+      where a.id = stock_positions.account_id
+        and a.user_id = auth.uid()
+        and public.account_supports_positions(a.type, a.supports_positions)
+    )
+  );
+
+create policy "Users can update own positions" on public.stock_positions
+  for update using (auth.uid() = user_id)
+  with check (
+    auth.uid() = user_id
+    and exists (
+      select 1
+      from public.accounts a
+      where a.id = stock_positions.account_id
+        and a.user_id = auth.uid()
+        and public.account_supports_positions(a.type, a.supports_positions)
+    )
+  );
+
+-- RLS : les transactions boursières doivent être rattachées à un compte à
+-- positions. Dépôts/retraits/intérêts/frais restent autorisés sur tous les
+-- comptes de l'utilisateur.
+drop policy if exists "Users can insert own transactions" on public.transactions;
+drop policy if exists "Users can update own transactions" on public.transactions;
+
+create policy "Users can insert own transactions" on public.transactions
+  for insert with check (
+    auth.uid() = user_id
+    and exists (
+      select 1
+      from public.accounts a
+      where a.id = transactions.account_id
+        and a.user_id = auth.uid()
+        and (
+          transactions.type not in ('BUY', 'SELL', 'DIVIDEND')
+          or public.account_supports_positions(a.type, a.supports_positions)
+        )
+    )
+  );
+
+create policy "Users can update own transactions" on public.transactions
+  for update using (auth.uid() = user_id)
+  with check (
+    auth.uid() = user_id
+    and exists (
+      select 1
+      from public.accounts a
+      where a.id = transactions.account_id
+        and a.user_id = auth.uid()
+        and (
+          transactions.type not in ('BUY', 'SELL', 'DIVIDEND')
+          or public.account_supports_positions(a.type, a.supports_positions)
+        )
+    )
+  );
+
+-- Le RPC SECURITY DEFINER contourne RLS : il doit appliquer explicitement la
+-- même règle avant d'insérer les frais et la transaction principale.
+create or replace function public.insert_transaction_with_fee(
+  p_account_id uuid,
+  p_type text,
+  p_amount numeric,
+  p_description text,
+  p_date date,
+  p_stock_symbol text,
+  p_quantity numeric,
+  p_price_per_unit numeric,
+  p_fees numeric
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_user uuid := auth.uid();
+  v_fee_id uuid := null;
+  v_tx_id uuid;
+  v_tx record;
+  v_account record;
+  v_fee_description text;
+begin
+  if v_user is null then
+    raise exception 'unauthorized' using errcode = 'P0001';
+  end if;
+
+  if p_type not in ('DEPOSIT', 'WITHDRAWAL', 'BUY', 'SELL', 'DIVIDEND', 'INTEREST', 'FEE') then
+    raise exception 'invalid_type' using errcode = 'P0001';
+  end if;
+
+  if p_amount is null or p_amount <= 0 then
+    raise exception 'invalid_amount' using errcode = 'P0001';
+  end if;
+
+  if p_type in ('BUY', 'SELL') and (
+    p_stock_symbol is null
+    or length(trim(p_stock_symbol)) = 0
+    or p_quantity is null
+    or p_quantity <= 0
+    or p_price_per_unit is null
+    or p_price_per_unit <= 0
+  ) then
+    raise exception 'invalid_stock_transaction' using errcode = 'P0001';
+  end if;
+
+  if p_type = 'DIVIDEND' and (p_stock_symbol is null or length(trim(p_stock_symbol)) = 0) then
+    raise exception 'invalid_dividend_transaction' using errcode = 'P0001';
+  end if;
+
+  select id, type, supports_positions
+    into v_account
+  from public.accounts
+  where id = p_account_id
+    and user_id = v_user;
+
+  if not found then
+    raise exception 'invalid_account' using errcode = 'P0001';
+  end if;
+
+  if p_type in ('BUY', 'SELL', 'DIVIDEND')
+     and not public.account_supports_positions(v_account.type, v_account.supports_positions)
+  then
+    raise exception 'account_does_not_support_positions' using errcode = 'P0001';
+  end if;
+
+  if p_type <> 'FEE' and p_fees is not null and p_fees > 0 then
+    v_fee_description := case
+      when p_stock_symbol is not null and length(trim(p_stock_symbol)) > 0
+        then 'Frais ' || p_type || ' ' || upper(p_stock_symbol)
+      else 'Frais ' || p_type
+    end;
+
+    insert into public.transactions (
+      user_id, account_id, type, amount, description, date,
+      stock_symbol, quantity, price_per_unit
+    ) values (
+      v_user, p_account_id, 'FEE', p_fees, v_fee_description, p_date,
+      null, null, null
+    )
+    returning id into v_fee_id;
+  end if;
+
+  insert into public.transactions (
+    user_id, account_id, type, amount, fee_transaction_id, description, date,
+    stock_symbol, quantity, price_per_unit
+  ) values (
+    v_user, p_account_id, p_type, p_amount, v_fee_id,
+    coalesce(p_description, ''), p_date,
+    case when p_stock_symbol is null then null else upper(trim(p_stock_symbol)) end,
+    p_quantity,
+    p_price_per_unit
+  )
+  returning id into v_tx_id;
+
+  if p_type in ('BUY', 'SELL') and p_stock_symbol is not null and length(trim(p_stock_symbol)) > 0 then
+    perform public.rebuild_stock_position(v_user, p_account_id, p_stock_symbol);
+  end if;
+
+  select * into v_tx from public.transactions where id = v_tx_id;
+  return to_jsonb(v_tx);
+end;
+$$;
+
+grant execute on function public.insert_transaction_with_fee(
+  uuid, text, numeric, text, date, text, numeric, numeric, numeric
+) to authenticated;

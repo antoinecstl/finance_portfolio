@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getLimits } from '@/lib/subscription';
 import { createPositionSchema, formatZodError } from '@/lib/schemas';
+import { accountSupportsPositions } from '@/lib/utils';
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -22,12 +23,15 @@ export async function POST(request: Request) {
 
   const { data: account } = await supabase
     .from('accounts')
-    .select('id')
+    .select('id,type,supports_positions')
     .eq('id', body.account_id)
     .eq('user_id', user.id)
     .maybeSingle();
   if (!account) {
     return NextResponse.json({ error: 'invalid_account' }, { status: 403 });
+  }
+  if (!accountSupportsPositions(account)) {
+    return NextResponse.json({ error: 'account_does_not_support_positions' }, { status: 403 });
   }
 
   const limits = await getLimits(user.id);

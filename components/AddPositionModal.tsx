@@ -7,6 +7,7 @@ import { useStockSearch } from '@/lib/hooks';
 import { POPULAR_FRENCH_STOCKS } from '@/lib/stock-api';
 import { useAuth } from '@/lib/auth';
 import { useLimitReached } from './LimitReachedModal';
+import { accountSupportsPositions } from '@/lib/utils';
 
 interface AddPositionModalProps {
   isOpen: boolean;
@@ -36,8 +37,7 @@ export function AddPositionModal({
   const { user } = useAuth();
   const limitReached = useLimitReached();
 
-  // Filtrer seulement les comptes PEA et CTO
-  const stockAccounts = accounts.filter(a => ['PEA', 'CTO'].includes(a.type));
+  const stockAccounts = accounts.filter(accountSupportsPositions);
 
   useEffect(() => {
     if (searchQuery.length >= 2) {

@@ -13,6 +13,7 @@ import {
   calculateAllPositionsAtDate,
 } from '@/lib/portfolio-calculator';
 import { readSnapshots, upsertSnapshots } from '@/lib/portfolio-snapshots';
+import { accountSupportsPositions } from '@/lib/utils';
 
 // Hook pour récupérer les comptes
 export function useAccounts() {
@@ -513,8 +514,7 @@ export function useAccountsWithCalculatedValues(
 ): EnrichedAccount[] {
   return useMemo(() => {
     return accounts.map(account => {
-      // Pour les comptes actions (PEA, CTO), calculer la valeur dynamiquement
-      if (['PEA', 'CTO'].includes(account.type)) {
+      if (accountSupportsPositions(account)) {
         const accountPositions = positions.filter(p => p.account_id === account.id);
         const calculated = calculateAccountTotalValue(
           transactions,

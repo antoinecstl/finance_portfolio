@@ -7,6 +7,9 @@ export interface Account {
   name: string;
   type: AccountType;
   currency: string;
+  // Si null/undefined : utilise le défaut du type (PEA/CTO/ASSURANCE_VIE → true, autres → false).
+  // Si défini : surcharge explicite (utile pour AUTRE).
+  supports_positions?: boolean | null;
   created_at: string;
   updated_at: string;
 }

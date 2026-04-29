@@ -7,6 +7,7 @@ import { useStockSearch } from '@/lib/hooks';
 import { useLimitReached } from './LimitReachedModal';
 import { POPULAR_FRENCH_STOCKS } from '@/lib/stock-api';
 import { calculatePositionsAtDate } from '@/lib/portfolio-calculator';
+import { accountSupportsPositions } from '@/lib/utils';
 
 interface AddTransactionModalProps {
   isOpen: boolean;
@@ -56,6 +57,15 @@ export function AddTransactionModal({
   const searchRef = useRef<HTMLDivElement>(null);
   const { results: searchResults, search } = useStockSearch();
   const limitReached = useLimitReached();
+  const isStockTransaction = ['BUY', 'SELL'].includes(type);
+  const isDividendTransaction = type === 'DIVIDEND';
+  const requiresPositionAccount = isStockTransaction || isDividendTransaction;
+  const positionAccounts = useMemo(() => accounts.filter(accountSupportsPositions), [accounts]);
+  const selectedAccount = useMemo(
+    () => accounts.find((account) => account.id === accountId),
+    [accounts, accountId]
+  );
+  const selectableAccounts = requiresPositionAccount ? positionAccounts : accounts;
 
   const resetForm = () => {
     setAccountId(defaultAccountId || '');
@@ -147,9 +157,6 @@ export function AddTransactionModal({
 
   if (!isOpen) return null;
 
-  const isStockTransaction = ['BUY', 'SELL'].includes(type);
-  const isDividendTransaction = type === 'DIVIDEND';
-
   const handleSelectStock = (symbol: string, name: string) => {
     setStockSymbol(symbol);
     setStockName(name);
@@ -170,6 +177,9 @@ export function AddTransactionModal({
     try {
       if (!accountId) {
         throw new Error('Veuillez sélectionner un compte');
+      }
+      if (requiresPositionAccount && (!selectedAccount || !accountSupportsPositions(selectedAccount))) {
+        throw new Error('Ce type de transaction doit être rattaché à un compte pouvant détenir des positions');
       }
 
       const qty = parseFloat(quantity) || 0;
@@ -332,7 +342,7 @@ export function AddTransactionModal({
               className="w-full px-3 py-2 text-sm sm:text-base border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="">Sélectionner un compte</option>
-              {accounts.map((account) => (
+              {selectableAccounts.map((account) => (
                 <option key={account.id} value={account.id}>
                   {account.name}
                 </option>
@@ -346,7 +356,17 @@ export function AddTransactionModal({
             </label>
             <select
               value={type}
-              onChange={(e) => setType(e.target.value)}
+              onChange={(e) => {
+                const nextType = e.target.value;
+                setType(nextType);
+                if (
+                  ['BUY', 'SELL', 'DIVIDEND'].includes(nextType) &&
+                  selectedAccount &&
+                  !accountSupportsPositions(selectedAccount)
+                ) {
+                  setAccountId('');
+                }
+              }}
               className="w-full px-3 py-2 text-sm sm:text-base border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               {transactionTypes.map((t) => (

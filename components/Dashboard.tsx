@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { 
   RefreshCw, 
   Plus, 
@@ -39,7 +39,7 @@ import {
   useAccountsWithCalculatedValues,
   usePositionsWithCalculatedValues
 } from '@/lib/hooks';
-import { formatDateTime } from '@/lib/utils';
+import { accountSupportsPositions, formatDateTime } from '@/lib/utils';
 import { useAuth } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
 
@@ -50,14 +50,11 @@ export function Dashboard() {
   const [showAddAccount, setShowAddAccount] = useState(false);
   const [showAddTransaction, setShowAddTransaction] = useState(false);
   const [showAddPosition, setShowAddPosition] = useState(false);
-  // Initialisé null pour éviter un mismatch d'hydration : `new Date()` côté
-  // serveur ≠ côté client (horloge + fuseau). Renseigné après mount.
-  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
-  useEffect(() => {
-    setLastUpdate(new Date());
-  }, []);
+  const [lastUpdate, setLastUpdate] = useState(() => new Date());
   const [historyPeriod, setHistoryPeriod] = useState(30);
   const [txVersion, setTxVersion] = useState(0);
+  // Filtre de compte sur l'onglet Positions. null = "Tous les comptes" (vue groupée).
+  const [positionsAccountFilter, setPositionsAccountFilter] = useState<string | null>(null);
 
   const { user, signOut } = useAuth();
   const router = useRouter();
@@ -112,15 +109,8 @@ export function Dashboard() {
   // Calculer le total épargne (comptes non-actions)
   const savingsTotal = useMemo(() => {
     return enrichedAccounts
-      .filter(a => !['PEA', 'CTO'].includes(a.type))
+      .filter(a => !accountSupportsPositions(a))
       .reduce((sum, a) => sum + a.calculatedTotalValue, 0);
-  }, [enrichedAccounts]);
-
-  // Cash disponible sur les comptes actions (PEA/CTO)
-  const stockCashTotal = useMemo(() => {
-    return enrichedAccounts
-      .filter(a => ['PEA', 'CTO'].includes(a.type))
-      .reduce((sum, a) => sum + (a.calculatedCash ?? 0), 0);
   }, [enrichedAccounts]);
 
   // Valeur globale du portefeuille = somme de tous les comptes (source de vérité unifiée)
@@ -129,9 +119,41 @@ export function Dashboard() {
   }, [enrichedAccounts]);
 
   // Valeur de l'univers actions = positions + cash PEA/CTO
-  const stockPortfolioValue = useMemo(() => {
-    return portfolioSummary.totalValue + stockCashTotal;
-  }, [portfolioSummary.totalValue, stockCashTotal]);
+  // Comptes éligibles au filtre de l'onglet Positions (PEA/CTO uniquement)
+  const stockAccounts = useMemo(() => {
+    return enrichedAccounts.filter(accountSupportsPositions);
+  }, [enrichedAccounts]);
+
+  // Si le compte filtré n'existe plus (suppression), revenir à "Tous"
+  const selectedPositionsAccountFilter =
+    positionsAccountFilter && stockAccounts.some(a => a.id === positionsAccountFilter)
+      ? positionsAccountFilter
+      : null;
+
+  // Données scopées à l'onglet Positions selon le filtre de compte
+  const positionsScoped = useMemo(() => {
+    if (!selectedPositionsAccountFilter) {
+      return {
+        positions: enrichedPositions,
+        transactions,
+        accounts: enrichedAccounts,
+      };
+    }
+    return {
+      positions: enrichedPositions.filter(p => p.account_id === selectedPositionsAccountFilter),
+      transactions: transactions.filter(t => t.account_id === selectedPositionsAccountFilter),
+      accounts: enrichedAccounts.filter(a => a.id === selectedPositionsAccountFilter),
+    };
+  }, [selectedPositionsAccountFilter, enrichedPositions, transactions, enrichedAccounts]);
+
+  // Résumé recalculé selon le scope (pour les KPIs des charts du tab Positions)
+  const scopedPortfolioSummary = usePortfolioSummary(positionsScoped.positions, quotes);
+  const scopedStockCashTotal = useMemo(() => {
+    return positionsScoped.accounts
+      .filter(accountSupportsPositions)
+      .reduce((sum, a) => sum + (a.calculatedCash ?? 0), 0);
+  }, [positionsScoped.accounts]);
+  const scopedStockPortfolioValue = scopedPortfolioSummary.totalValue + scopedStockCashTotal;
 
   const refreshAllData = useCallback(async () => {
     const [nextAccounts, nextPositions, nextTransactions] = await Promise.all([
@@ -194,8 +216,11 @@ export function Dashboard() {
                 <h1 className="text-base sm:text-xl font-bold text-zinc-900 dark:text-zinc-100">
                   Mon Portefeuille
                 </h1>
-                <p className="text-[10px] sm:text-xs text-zinc-500 dark:text-zinc-400 hidden sm:block">
-                  Mis à jour: {lastUpdate ? formatDateTime(lastUpdate) : '—'}
+                <p
+                  className="text-[10px] sm:text-xs text-zinc-500 dark:text-zinc-400 hidden sm:block"
+                  suppressHydrationWarning
+                >
+                  Mis à jour: {formatDateTime(lastUpdate)}
                 </p>
               </div>
             </div>
@@ -337,7 +362,12 @@ export function Dashboard() {
                 </div>
                 <div className="w-full max-w-full overflow-hidden">
                   <ErrorBoundary label="Dernières transactions">
-                    <TransactionsList transactions={transactions} limit={5} onDeleted={handleMutationSuccess} />
+                    <TransactionsList
+                      transactions={transactions}
+                      accounts={accounts}
+                      limit={5}
+                      onDeleted={handleMutationSuccess}
+                    />
                   </ErrorBoundary>
                 </div>
               </div>
@@ -374,37 +404,73 @@ export function Dashboard() {
               </p>
             </div>
 
+            {stockAccounts.length > 1 && (
+              <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-2 sm:p-3">
+                <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
+                  <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400 px-2 shrink-0 hidden sm:inline">
+                    Compte :
+                  </span>
+                  <button
+                    onClick={() => setPositionsAccountFilter(null)}
+                    className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium whitespace-nowrap transition-colors ${
+                      selectedPositionsAccountFilter === null
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700'
+                    }`}
+                  >
+                    Tous les comptes
+                  </button>
+                  {stockAccounts.map((account) => (
+                    <button
+                      key={account.id}
+                      onClick={() => setPositionsAccountFilter(account.id)}
+                      className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium whitespace-nowrap transition-colors ${
+                        selectedPositionsAccountFilter === account.id
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700'
+                      }`}
+                    >
+                      {account.name}
+                      <span className="ml-1.5 text-[10px] opacity-70">{account.type}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <ErrorBoundary label="Performance par position">
               <PositionPerformanceChart
-                positions={enrichedPositions}
+                positions={positionsScoped.positions}
                 quotes={quotes}
-                transactions={transactions}
-                portfolioTotalValue={stockPortfolioValue}
-                portfolioTotalInvested={portfolioSummary.totalInvested}
-                portfolioTotalGain={portfolioSummary.totalGain}
-                portfolioTotalGainPercent={portfolioSummary.totalGainPercent}
-                portfolioDayChange={portfolioSummary.dayChange}
+                transactions={positionsScoped.transactions}
+                accounts={positionsScoped.accounts}
+                groupByAccount={selectedPositionsAccountFilter === null && stockAccounts.length > 1}
+                portfolioTotalValue={scopedStockPortfolioValue}
+                portfolioTotalInvested={scopedPortfolioSummary.totalInvested}
+                portfolioTotalGain={scopedPortfolioSummary.totalGain}
+                portfolioTotalGainPercent={scopedPortfolioSummary.totalGainPercent}
+                portfolioDayChange={scopedPortfolioSummary.dayChange}
               />
             </ErrorBoundary>
 
             <ErrorBoundary label="Valeur vs Investissement">
               <PortfolioValueChart
                 history={fullPortfolioHistory}
-                transactions={transactions}
+                transactions={positionsScoped.transactions}
                 loading={loadingFullHistory}
-                currentTotalValue={portfolioSummary.totalValue}
-                currentTotalInvested={portfolioSummary.totalInvested}
+                currentTotalValue={scopedPortfolioSummary.totalValue}
+                currentTotalInvested={scopedPortfolioSummary.totalInvested}
               />
             </ErrorBoundary>
 
             <ErrorBoundary label="Performance annuelle">
               <ProBlur feature="advanced_analytics" partial label="Performance annuelle — Pro">
                 <PortfolioPerformanceChart
-                  transactions={transactions}
+                  transactions={positionsScoped.transactions}
                   portfolioHistory={fullPortfolioHistory}
-                  accounts={enrichedAccounts}
+                  accounts={positionsScoped.accounts}
                   loading={loadingFullHistory}
-                  currentPortfolioValue={stockPortfolioValue}
+                  currentPortfolioValue={scopedStockPortfolioValue}
                 />
               </ProBlur>
             </ErrorBoundary>
@@ -413,7 +479,7 @@ export function Dashboard() {
               <ProBlur feature="advanced_analytics" partial label="Comparaison benchmark — Pro">
                 <BenchmarkComparisonChart
                   portfolioHistory={fullPortfolioHistory}
-                  transactions={transactions}
+                  transactions={positionsScoped.transactions}
                   loading={loadingFullHistory}
                 />
               </ProBlur>
@@ -421,10 +487,11 @@ export function Dashboard() {
 
             <ErrorBoundary label="Tableau des positions">
               <PositionsTable
-                positions={enrichedPositions}
+                positions={positionsScoped.positions}
                 quotes={quotes}
-                accounts={enrichedAccounts}
-                transactions={transactions}
+                accounts={positionsScoped.accounts}
+                transactions={positionsScoped.transactions}
+                groupByAccount={selectedPositionsAccountFilter === null && stockAccounts.length > 1}
               />
             </ErrorBoundary>
           </div>

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { EnrichedAccount } from '@/lib/hooks';
-import { formatCurrency, formatDate, getAccountTypeLabel } from '@/lib/utils';
+import { accountSupportsPositions, formatCurrency, formatDate, getAccountTypeLabel } from '@/lib/utils';
 import {
   Building2,
   Landmark,
@@ -54,7 +54,7 @@ export function AccountCard({
   const [expanded, setExpanded] = useState(defaultExpanded);
   const Icon = accountIcons[account.type] || MoreHorizontal;
   const bgColor = accountColors[account.type] || 'bg-zinc-500';
-  const isPeaCto = ['PEA', 'CTO'].includes(account.type);
+  const supportsPositions = accountSupportsPositions(account);
 
   return (
     <div className="w-full max-w-full overflow-hidden bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm hover:shadow-md transition-all">
@@ -80,7 +80,7 @@ export function AccountCard({
             <p className="font-bold text-sm sm:text-base lg:text-lg text-zinc-900 dark:text-zinc-100 truncate">
               {formatCurrency(account.calculatedTotalValue, account.currency)}
             </p>
-            {isPeaCto && (
+            {supportsPositions && (
               <p className="text-[10px] sm:text-xs text-zinc-500 dark:text-zinc-400">
                 Valeur totale
               </p>
@@ -97,7 +97,7 @@ export function AccountCard({
       {expanded && (
         <div className="px-3 sm:px-4 lg:px-5 pb-3 sm:pb-4 lg:pb-5 border-t border-zinc-100 dark:border-zinc-800 pt-3 sm:pt-4">
           <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs sm:text-sm">
-            {isPeaCto && account.calculatedCash !== undefined && (
+            {supportsPositions && account.calculatedCash !== undefined && (
               <>
                 <div className="flex items-center gap-2">
                   <Wallet className="h-4 w-4 text-emerald-600 flex-shrink-0" />

@@ -5,6 +5,7 @@ import { createTransactionSchema, paginationSchema, formatZodError } from '@/lib
 import { decodeCursor, encodeCursor } from '@/lib/pagination';
 import { simulateAccountSequence } from '@/lib/transaction-validation';
 import type { Transaction } from '@/lib/types';
+import { accountSupportsPositions } from '@/lib/utils';
 
 // GET /api/transactions?cursor=<opaque>&limit=50&accountId=<uuid>
 // Pagination cursor-based sur (date DESC, id DESC) pour rester stable
@@ -85,12 +86,15 @@ export async function POST(request: Request) {
   // (Le RPC revérifie, mais on gagne un round-trip en cas d'accès interdit.)
   const { data: account } = await supabase
     .from('accounts')
-    .select('id')
+    .select('id,type,supports_positions')
     .eq('id', body.account_id)
     .eq('user_id', user.id)
     .maybeSingle();
   if (!account) {
     return NextResponse.json({ error: 'invalid_account' }, { status: 403 });
+  }
+  if (['BUY', 'SELL', 'DIVIDEND'].includes(body.type) && !accountSupportsPositions(account)) {
+    return NextResponse.json({ error: 'account_does_not_support_positions' }, { status: 403 });
   }
 
   const feesAmount = body.type !== 'FEE' && body.fees && body.fees > 0 ? body.fees : 0;

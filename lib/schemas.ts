@@ -83,6 +83,9 @@ export const createAccountSchema = z.object({
   name: z.string().trim().min(1, 'Nom requis').max(100, 'Nom trop long'),
   type: accountTypeSchema,
   currency: currencySchema.optional(),
+  // Surcharge optionnelle. Si omis, le défaut du type s'applique côté client via le helper.
+  // Stocké tel quel : NULL = pas de surcharge.
+  supports_positions: z.boolean().nullable().optional(),
 });
 export type CreateAccountInput = z.infer<typeof createAccountSchema>;
 

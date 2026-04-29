@@ -58,6 +58,8 @@ export async function POST(request: Request) {
       name: body.name,
       type: body.type,
       currency: body.currency ?? 'EUR',
+      // Stocke la surcharge uniquement si fournie. NULL = défaut du type.
+      supports_positions: body.supports_positions ?? null,
     })
     .select()
     .single();

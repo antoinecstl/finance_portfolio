@@ -1,4 +1,5 @@
 import { type ClassValue, clsx } from 'clsx';
+import type { Account, AccountType } from './types';
 
 export function cn(...inputs: ClassValue[]) {
   return clsx(inputs);
@@ -96,4 +97,20 @@ export const CHART_COLORS = [
 
 export function getSectorColor(index: number): string {
   return CHART_COLORS[index % CHART_COLORS.length];
+}
+
+// Défaut "peut détenir des positions" pour un type donné.
+// PEA, CTO, ASSURANCE_VIE → true. Livrets / PEL / AUTRE → false.
+export function defaultSupportsPositions(type: AccountType): boolean {
+  return type === 'PEA' || type === 'CTO' || type === 'ASSURANCE_VIE';
+}
+
+// Source de vérité unique pour savoir si un compte peut détenir des positions actions.
+// Si `supports_positions` est explicitement défini en BDD, il prime.
+// Sinon, fallback sur le défaut du type. Permet à un compte AUTRE d'être marqué éligible.
+export function accountSupportsPositions(account: Pick<Account, 'type' | 'supports_positions'>): boolean {
+  if (account.supports_positions === true || account.supports_positions === false) {
+    return account.supports_positions;
+  }
+  return defaultSupportsPositions(account.type);
 }
