@@ -18,13 +18,15 @@ async function handle(params: {
   tokenHash: string | null;
   rawType: string | null;
   next: string;
+  redirectStatus?: 303 | 307;
 }) {
   const supabase = await createClient();
+  const redirectStatus = params.redirectStatus ?? 307;
 
   if (params.code) {
     const { error } = await supabase.auth.exchangeCodeForSession(params.code);
     if (!error) {
-      return NextResponse.redirect(`${params.origin}${params.next}`);
+      return NextResponse.redirect(`${params.origin}${params.next}`, redirectStatus);
     }
   } else if (
     params.tokenHash &&
@@ -36,11 +38,11 @@ async function handle(params: {
       type: params.rawType as EmailOtpType,
     });
     if (!error) {
-      return NextResponse.redirect(`${params.origin}${params.next}`);
+      return NextResponse.redirect(`${params.origin}${params.next}`, redirectStatus);
     }
   }
 
-  return NextResponse.redirect(`${params.origin}/login?error=auth_callback_failed`);
+  return NextResponse.redirect(`${params.origin}/login?error=auth_callback_failed`, redirectStatus);
 }
 
 export async function GET(request: Request) {
@@ -63,5 +65,6 @@ export async function POST(request: Request) {
     tokenHash: (formData.get('token_hash') as string | null) ?? null,
     rawType: (formData.get('type') as string | null) ?? null,
     next: safeInternalRedirect(formData.get('next') as string | null),
+    redirectStatus: 303,
   });
 }
