@@ -3,22 +3,22 @@
 import { useEffect, useMemo, useState } from 'react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer, Legend } from 'recharts';
 import { TrendingUp } from 'lucide-react';
-import type { PortfolioHistoryPoint } from '@/lib/portfolio-calculator';
+import { calculateModifiedDietzPerformance, type PortfolioHistoryPoint } from '@/lib/portfolio-calculator';
 import type { HistoricalQuote } from '@/lib/stock-api';
 import type { Transaction } from '@/lib/types';
 import { findClosestQuote } from '@/lib/stock-api';
 
 const BENCHMARKS = {
-  '^FCHI': { label: 'CAC 40', color: '#2563eb' },
-  '^GSPC': { label: 'S&P 500', color: '#dc2626' },
-  '^NDX': { label: 'Nasdaq 100', color: '#0891b2' },
-  '^IXIC': { label: 'Nasdaq Composite', color: '#0d9488' },
-  '^DJI': { label: 'Dow Jones', color: '#7c3aed' },
-  '^STOXX50E': { label: 'Euro Stoxx 50', color: '#9333ea' },
-  '^GDAXI': { label: 'DAX', color: '#ca8a04' },
-  '^FTSE': { label: 'FTSE 100', color: '#be185d' },
-  '^N225': { label: 'Nikkei 225', color: '#ea580c' },
-  '^RUT': { label: 'Russell 2000', color: '#65a30d' },
+  '^FCHI': { label: 'CAC 40', color: 'var(--chart-1)' },
+  '^GSPC': { label: 'S&P 500', color: 'var(--chart-4)' },
+  '^NDX': { label: 'Nasdaq 100', color: 'var(--chart-6)' },
+  '^IXIC': { label: 'Nasdaq Composite', color: 'var(--chart-2)' },
+  '^DJI': { label: 'Dow Jones', color: 'var(--chart-5)' },
+  '^STOXX50E': { label: 'Euro Stoxx 50', color: 'var(--chart-secondary)' },
+  '^GDAXI': { label: 'DAX', color: 'var(--chart-3)' },
+  '^FTSE': { label: 'FTSE 100', color: 'var(--chart-7)' },
+  '^N225': { label: 'Nikkei 225', color: 'var(--chart-9)' },
+  '^RUT': { label: 'Russell 2000', color: 'var(--chart-8)' },
 } as const;
 
 type BenchmarkKey = keyof typeof BENCHMARKS;
@@ -27,81 +27,71 @@ type PeriodOption = '1M' | '3M' | '6M' | '1A' | 'YTD' | 'Max';
 
 const PERIODS: PeriodOption[] = ['1M', '3M', '6M', '1A', 'YTD', 'Max'];
 
+function formatLocalDate(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 function periodCutoff(period: PeriodOption): string | null {
   if (period === 'Max') return null;
   const now = new Date();
   if (period === 'YTD') {
-    return new Date(now.getFullYear(), 0, 1).toISOString().split('T')[0];
+    return formatLocalDate(new Date(now.getFullYear(), 0, 1));
   }
   const d = new Date(now);
   const months = ({ '1M': 1, '3M': 3, '6M': 6, '1A': 12 } as Record<string, number>)[period];
   d.setMonth(d.getMonth() - months);
-  return d.toISOString().split('T')[0];
+  return formatLocalDate(d);
 }
 
 const fmtPct = (n: number) => `${n >= 0 ? '+' : ''}${n.toFixed(2)}%`;
 
-// Computes a Time-Weighted Return index (base 100) that neutralizes cash flows.
-// Each day: r_d = (V_d - flow_d) / V_{d-1} - 1, then index_d = index_{d-1} * (1 + r_d).
-// This is the same "hors apports" logic used by the annual performance table.
-function buildPortfolioTwrIndex(
+// Computes a Modified Dietz index (base 100), matching the annual performance card.
+function buildPortfolioDietzIndex(
   history: PortfolioHistoryPoint[],
-  transactions: Transaction[]
+  transactions: Transaction[],
+  startDate: string
 ): Array<{ date: string; index: number }> {
   if (history.length === 0) return [];
 
-  // Aggregate DEPOSIT / WITHDRAWAL per day — these are the only flows that matter
-  // for "hors apports". Dividends/fees are internal and already reflected in totalValue.
-  const flowsByDate = new Map<string, number>();
-  for (const tx of transactions) {
-    if (tx.type === 'DEPOSIT') {
-      flowsByDate.set(tx.date, (flowsByDate.get(tx.date) ?? 0) + tx.amount);
-    } else if (tx.type === 'WITHDRAWAL') {
-      flowsByDate.set(tx.date, (flowsByDate.get(tx.date) ?? 0) - tx.amount);
-    }
-  }
+  const sortedHistory = [...history].sort((a, b) => a.date.localeCompare(b.date));
+  const visibleHistory = sortedHistory.filter((point) => point.date >= startDate);
 
-  const result: Array<{ date: string; index: number }> = [];
-  let index = 100;
-  let prevValue = 0;
-  let started = false;
-
-  for (const p of history) {
-    const flow = flowsByDate.get(p.date) ?? 0;
-
-    if (!started) {
-      // Start indexing from the first day with a meaningful positive value.
-      if (p.totalValue > 0) {
-        started = true;
-        index = 100;
-        prevValue = p.totalValue;
-        result.push({ date: p.date, index });
-      }
-      continue;
+  return visibleHistory.map((point, index) => {
+    if (index === 0) {
+      return { date: point.date, index: 100 };
     }
 
-    if (prevValue > 0) {
-      const r = (p.totalValue - flow) / prevValue - 1;
-      index *= 1 + r;
-    }
-    prevValue = p.totalValue;
-    result.push({ date: p.date, index });
-  }
+    const performance = calculateModifiedDietzPerformance(
+      sortedHistory,
+      transactions,
+      startDate,
+      point.date,
+      'stocksValue'
+    );
 
-  return result;
+    return {
+      date: point.date,
+      index: 100 + performance.gainLossPercent,
+    };
+  });
 }
 
 export function BenchmarkComparisonChart({
   portfolioHistory,
   transactions,
   loading,
+  currentPortfolioValue,
 }: {
   portfolioHistory: PortfolioHistoryPoint[];
   transactions: Transaction[];
   loading?: boolean;
+  currentPortfolioValue?: number;
 }) {
   const [selectedBenchmark, setSelectedBenchmark] = useState<BenchmarkKey>('^FCHI');
-  const [selectedPeriod, setSelectedPeriod] = useState<PeriodOption>('Max');
+  const [selectedPeriod, setSelectedPeriod] = useState<PeriodOption>('YTD');
   const [benchmarkQuotes, setBenchmarkQuotes] = useState<Record<string, HistoricalQuote[]>>({});
   const [benchmarkLoading, setBenchmarkLoading] = useState(false);
   const [benchmarkError, setBenchmarkError] = useState<string | null>(null);
@@ -110,15 +100,38 @@ export function BenchmarkComparisonChart({
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
 
+  const performanceHistory = useMemo(() => {
+    if (currentPortfolioValue === undefined || portfolioHistory.length === 0) {
+      return portfolioHistory;
+    }
+
+    const today = formatLocalDate(new Date());
+    const lastPoint = portfolioHistory[portfolioHistory.length - 1];
+    const updatedLastPoint = {
+      ...lastPoint,
+      date: lastPoint.date < today ? today : lastPoint.date,
+      stocksValue: currentPortfolioValue,
+      totalValue: lastPoint.totalValue + (currentPortfolioValue - lastPoint.stocksValue),
+    };
+
+    if (lastPoint.date < today) {
+      return [...portfolioHistory, updatedLastPoint];
+    }
+
+    return portfolioHistory.map((point, index) =>
+      index === portfolioHistory.length - 1 ? updatedLastPoint : point
+    );
+  }, [portfolioHistory, currentPortfolioValue]);
+
   const filteredHistory = useMemo(() => {
     const cutoff = periodCutoff(selectedPeriod);
-    if (!cutoff) return portfolioHistory;
-    return portfolioHistory.filter((p) => p.date >= cutoff);
-  }, [portfolioHistory, selectedPeriod]);
+    if (!cutoff) return performanceHistory;
+    return performanceHistory.filter((p) => p.date >= cutoff);
+  }, [performanceHistory, selectedPeriod]);
 
   const { startDate, endDate } = useMemo(() => {
     if (filteredHistory.length === 0) {
-      const today = new Date().toISOString().split('T')[0];
+      const today = formatLocalDate(new Date());
       return { startDate: today, endDate: today };
     }
     return {
@@ -149,37 +162,28 @@ export function BenchmarkComparisonChart({
     return () => { cancelled = true; };
   }, [selectedBenchmark, startDate, endDate, filteredHistory.length]);
 
-  // Portfolio TWR index — computed on the FULL history so cumulative returns are
-  // correct, then sliced to the visible window and rebased to 100 at window start.
-  const fullTwrIndex = useMemo(
-    () => buildPortfolioTwrIndex(portfolioHistory, transactions),
-    [portfolioHistory, transactions]
-  );
-
+  // Portfolio index based on the same Modified Dietz method as annual performance.
   const chartData = useMemo(() => {
-    if (filteredHistory.length === 0 || fullTwrIndex.length === 0) return [];
+    if (filteredHistory.length === 0) return [];
 
     const quotes = benchmarkQuotes[selectedBenchmark] ?? [];
     if (quotes.length === 0) return [];
 
-    // Rebase portfolio TWR index to 100 at the first date of the filtered window.
-    const windowStart = filteredHistory[0].date;
-    const firstTwrIdx = fullTwrIndex.findIndex((p) => p.date >= windowStart);
-    if (firstTwrIdx === -1) return [];
+    // Build the same Modified Dietz return used by the annual performance card.
+    const windowStart = periodCutoff(selectedPeriod) ?? filteredHistory[0].date;
+    const dietzIndex = buildPortfolioDietzIndex(performanceHistory, transactions, windowStart);
+    if (dietzIndex.length === 0) return [];
 
-    const baseTwr = fullTwrIndex[firstTwrIdx].index;
-    if (baseTwr <= 0) return [];
-
-    const twrMap = new Map<string, number>();
-    for (let i = firstTwrIdx; i < fullTwrIndex.length; i++) {
-      twrMap.set(fullTwrIndex[i].date, (fullTwrIndex[i].index / baseTwr) * 100);
+    const dietzMap = new Map<string, number>();
+    for (const point of dietzIndex) {
+      dietzMap.set(point.date, point.index);
     }
 
     const baseBenchmark = findClosestQuote(quotes, windowStart)?.close ?? quotes[0].close;
     if (baseBenchmark <= 0) return [];
 
     return filteredHistory.map((p) => {
-      const portfolioVal = twrMap.get(p.date);
+      const portfolioVal = dietzMap.get(p.date);
       const q = findClosestQuote(quotes, p.date);
       const benchValue = q ? (q.close / baseBenchmark) * 100 : 100;
       return {
@@ -188,7 +192,7 @@ export function BenchmarkComparisonChart({
         benchmark: Number(benchValue.toFixed(2)),
       };
     });
-  }, [filteredHistory, fullTwrIndex, benchmarkQuotes, selectedBenchmark]);
+  }, [filteredHistory, performanceHistory, transactions, benchmarkQuotes, selectedBenchmark, selectedPeriod]);
 
   const finalPerf = useMemo(() => {
     if (chartData.length === 0) return { portfolio: 0, benchmark: 0, delta: 0 };
@@ -290,7 +294,7 @@ export function BenchmarkComparisonChart({
         ) : (
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--rule)" />
               <XAxis
                 dataKey="date"
                 tick={{ fontSize: 11 }}
@@ -310,7 +314,7 @@ export function BenchmarkComparisonChart({
                 type="monotone"
                 dataKey="portfolio"
                 name="Portefeuille (hors apports)"
-                stroke="#059669"
+                stroke="var(--gain)"
                 strokeWidth={2}
                 dot={false}
               />

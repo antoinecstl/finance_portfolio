@@ -81,18 +81,18 @@ export function getTransactionColor(type: string): string {
   return colors[type] || 'text-zinc-600';
 }
 
-// Couleurs pour les graphiques de répartition
+// Couleurs pour les graphiques de répartition, alignées avec app/globals.css.
 export const CHART_COLORS = [
-  '#3B82F6', // blue-500
-  '#10B981', // emerald-500
-  '#F59E0B', // amber-500
-  '#EF4444', // red-500
-  '#8B5CF6', // violet-500
-  '#EC4899', // pink-500
-  '#06B6D4', // cyan-500
-  '#84CC16', // lime-500
-  '#F97316', // orange-500
-  '#6366F1', // indigo-500
+  'var(--chart-1)',
+  'var(--chart-2)',
+  'var(--chart-3)',
+  'var(--chart-4)',
+  'var(--chart-5)',
+  'var(--chart-6)',
+  'var(--chart-7)',
+  'var(--chart-8)',
+  'var(--chart-9)',
+  'var(--chart-10)',
 ];
 
 export function getSectorColor(index: number): string {

@@ -103,12 +103,6 @@ export function Dashboard() {
     historyPeriod
   );
 
-  // Historique complet pour la performance annuelle (depuis la première transaction)
-  const { history: fullPortfolioHistory, loading: loadingFullHistory } = useFullPortfolioHistory(
-    transactions,
-    accounts
-  );
-
   // Calculer le total épargne (comptes non-actions)
   const savingsTotal = useMemo(() => {
     return enrichedAccounts
@@ -136,10 +130,11 @@ export function Dashboard() {
   // Données scopées à l'onglet Positions selon le filtre de compte
   const positionsScoped = useMemo(() => {
     if (!selectedPositionsAccountFilter) {
+      const stockAccountIds = new Set(stockAccounts.map(a => a.id));
       return {
-        positions: enrichedPositions,
-        transactions,
-        accounts: enrichedAccounts,
+        positions: enrichedPositions.filter(p => stockAccountIds.has(p.account_id)),
+        transactions: transactions.filter(t => stockAccountIds.has(t.account_id)),
+        accounts: stockAccounts,
       };
     }
     return {
@@ -147,7 +142,13 @@ export function Dashboard() {
       transactions: transactions.filter(t => t.account_id === selectedPositionsAccountFilter),
       accounts: enrichedAccounts.filter(a => a.id === selectedPositionsAccountFilter),
     };
-  }, [selectedPositionsAccountFilter, enrichedPositions, transactions, enrichedAccounts]);
+  }, [selectedPositionsAccountFilter, enrichedPositions, transactions, enrichedAccounts, stockAccounts]);
+
+  // Historique complet du scope Positions (tous les comptes actions ou compte sélectionné).
+  const { history: positionsFullPortfolioHistory, loading: loadingPositionsFullHistory } = useFullPortfolioHistory(
+    positionsScoped.transactions,
+    positionsScoped.accounts
+  );
 
   // Résumé recalculé selon le scope (pour les KPIs des charts du tab Positions)
   const scopedPortfolioSummary = usePortfolioSummary(positionsScoped.positions, quotes);
@@ -208,34 +209,32 @@ export function Dashboard() {
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 overflow-x-hidden">
       {/* Header */}
-      <header className="bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-14 sm:h-16">
-            <div className="flex items-center gap-2 sm:gap-3">
-              <div className="bg-blue-600 rounded-lg p-1.5 sm:p-2">
-                <TrendingUp className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
-              </div>
-              <div className="hidden xs:block">
-                <h1 className="text-base sm:text-xl font-bold text-zinc-900 dark:text-zinc-100">
-                  Mon Portefeuille
-                </h1>
-                <p
-                  className="text-[10px] sm:text-xs text-zinc-500 dark:text-zinc-400 hidden sm:block"
-                  suppressHydrationWarning
-                >
-                  Mis à jour: {formatDateTime(lastUpdate)}
-                </p>
-              </div>
+      <header className="sticky top-0 z-40 backdrop-blur-md bg-[color:var(--paper)]/85 border-b border-[color:var(--rule)]">
+        <div className="max-w-7xl mx-auto px-5">
+          <div className="flex items-center justify-between h-14">
+            <div className="flex items-center gap-4 min-w-0">
+              <Link
+                href="/dashboard"
+                className="flex items-baseline gap-2 text-[color:var(--ink)] hover:opacity-80 transition-opacity"
+              >
+                <span className="display text-2xl leading-none">Fi&#8209;Hub</span>
+              </Link>
+              <p
+                className="hidden sm:block mono text-[10px] tracking-[0.12em] uppercase text-[color:var(--ink-soft)] truncate"
+                suppressHydrationWarning
+              >
+                Mis à jour: {formatDateTime(lastUpdate)}
+              </p>
             </div>
 
             <div className="flex items-center gap-1 sm:gap-3">
-              <span className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 hidden md:inline truncate max-w-[150px]">
+              <span className="hidden md:inline truncate max-w-[180px] mono text-[11px] tracking-[0.08em] text-[color:var(--ink-soft)]">
                 {user?.email}
               </span>
               {isFree && (
                 <Link
                   href="/settings/billing"
-                  className="inline-flex shrink-0 items-center justify-center rounded-lg bg-blue-600 px-2.5 py-1.5 text-xs font-medium text-white transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-zinc-900 sm:px-3 sm:py-2 sm:text-sm"
+                  className="btn-ink inline-flex shrink-0 items-center justify-center rounded-full px-3 py-2 text-xs font-medium sm:px-4 sm:text-sm"
                   title="Passer pro"
                   aria-label="Passer pro"
                 >
@@ -246,21 +245,21 @@ export function Dashboard() {
               <button
                 onClick={handleRefresh}
                 disabled={isLoading}
-                className="p-1.5 sm:p-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors disabled:opacity-50"
+                className="p-1.5 sm:p-2 rounded-lg text-[color:var(--ink-soft)] hover:bg-[color:var(--paper-2)] hover:text-[color:var(--ink)] transition-colors disabled:opacity-50"
                 title="Rafraîchir"
               >
-                <RefreshCw className={`h-4 w-4 sm:h-5 sm:w-5 text-zinc-600 dark:text-zinc-400 ${isLoading ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`h-4 w-4 sm:h-5 sm:w-5 ${isLoading ? 'animate-spin' : ''}`} />
               </button>
               <Link
                 href="/settings/profile"
-                className="p-1.5 sm:p-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors text-zinc-600 dark:text-zinc-400"
+                className="p-1.5 sm:p-2 rounded-lg text-[color:var(--ink-soft)] hover:bg-[color:var(--paper-2)] hover:text-[color:var(--ink)] transition-colors"
                 title="Paramètres"
               >
                 <Settings className="h-4 w-4 sm:h-5 sm:w-5" />
               </Link>
               <button
                 onClick={handleLogout}
-                className="p-1.5 sm:p-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors text-zinc-600 dark:text-zinc-400"
+                className="p-1.5 sm:p-2 rounded-lg text-[color:var(--ink-soft)] hover:bg-[color:var(--paper-2)] hover:text-[color:var(--ink)] transition-colors"
                 title="Déconnexion"
               >
                 <LogOut className="h-4 w-4 sm:h-5 sm:w-5" />
@@ -269,15 +268,15 @@ export function Dashboard() {
           </div>
 
           {/* Tabs - scrollable on mobile */}
-          <nav className="flex gap-1 -mb-px overflow-x-auto scrollbar-hide">
+          <nav className="flex gap-1 -mb-px overflow-x-auto scrollbar-hide border-t border-[color:var(--rule)]/70">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2.5 sm:py-3 mono text-[11px] tracking-[0.12em] uppercase border-b-2 transition-colors whitespace-nowrap ${
                   activeTab === tab.id
-                    ? 'border-blue-600 text-blue-600'
-                    : 'border-transparent text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
+                    ? 'border-[color:var(--accent)] text-[color:var(--ink)]'
+                    : 'border-transparent text-[color:var(--ink-soft)] hover:text-[color:var(--ink)]'
                 }`}
               >
                 <tab.icon className="h-4 w-4" />
@@ -470,9 +469,9 @@ export function Dashboard() {
 
             <ErrorBoundary label="Valeur vs Investissement">
               <PortfolioValueChart
-                history={fullPortfolioHistory}
+                history={positionsFullPortfolioHistory}
                 transactions={positionsScoped.transactions}
-                loading={loadingFullHistory}
+                loading={loadingPositionsFullHistory}
                 currentTotalValue={scopedPortfolioSummary.totalValue}
                 currentTotalInvested={scopedPortfolioSummary.totalInvested}
               />
@@ -482,9 +481,9 @@ export function Dashboard() {
               <ProBlur feature="advanced_analytics" partial label="Performance annuelle — Pro">
                 <PortfolioPerformanceChart
                   transactions={positionsScoped.transactions}
-                  portfolioHistory={fullPortfolioHistory}
+                  portfolioHistory={positionsFullPortfolioHistory}
                   accounts={positionsScoped.accounts}
-                  loading={loadingFullHistory}
+                  loading={loadingPositionsFullHistory}
                   currentPortfolioValue={scopedStockPortfolioValue}
                 />
               </ProBlur>
@@ -493,9 +492,10 @@ export function Dashboard() {
             <ErrorBoundary label="Comparaison benchmark">
               <ProBlur feature="advanced_analytics" partial label="Comparaison benchmark — Pro">
                 <BenchmarkComparisonChart
-                  portfolioHistory={fullPortfolioHistory}
+                  portfolioHistory={positionsFullPortfolioHistory}
                   transactions={positionsScoped.transactions}
-                  loading={loadingFullHistory}
+                  loading={loadingPositionsFullHistory}
+                  currentPortfolioValue={scopedStockPortfolioValue}
                 />
               </ProBlur>
             </ErrorBoundary>

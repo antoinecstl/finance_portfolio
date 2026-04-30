@@ -3,9 +3,9 @@ import { DangerZone } from './DangerZone';
 export default function DangerPage() {
   return (
     <div>
-      <header className="mb-6 pb-6 border-b border-zinc-200 dark:border-zinc-800">
-        <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">Zone danger</h2>
-        <p className="text-sm text-zinc-500 mt-1">
+      <header className="mb-6 pb-6 border-b border-[color:var(--rule)]">
+        <h2 className="display text-3xl leading-none text-[color:var(--ink)]">Zone danger</h2>
+        <p className="text-sm text-[color:var(--ink-soft)] mt-2">
           Export et suppression de vos données personnelles.
         </p>
       </header>

@@ -62,69 +62,69 @@ export function ProfileForm({ initial }: { initial: Profile }) {
           <img
             src={avatarUrl}
             alt=""
-            className="w-14 h-14 rounded-full object-cover border border-zinc-200 dark:border-zinc-800"
+            className="w-14 h-14 rounded-full object-cover border border-[color:var(--rule)]"
             onError={(e) => {
               (e.currentTarget as HTMLImageElement).style.display = 'none';
             }}
           />
         ) : (
-          <div className="w-14 h-14 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 text-white flex items-center justify-center font-semibold text-lg">
+          <div className="w-14 h-14 rounded-full bg-[color:var(--ink)] text-[color:var(--paper)] flex items-center justify-center font-semibold text-lg">
             {initials}
           </div>
         )}
         <div>
-          <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+          <p className="text-sm font-medium text-[color:var(--ink)]">
             {fullName || 'Sans nom'}
           </p>
-          <p className="text-xs text-zinc-500">Votre avatar apparaît dans le dashboard.</p>
+          <p className="text-xs text-[color:var(--ink-soft)]">Votre avatar apparaît dans le dashboard.</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 gap-5">
         <div>
-          <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">
+          <label className="block text-sm font-medium text-[color:var(--ink)] mb-1.5">
             Nom complet
           </label>
           <div className="relative">
-            <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
+            <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[color:var(--ink-soft)]" />
             <input
               type="text"
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               placeholder="Jean Dupont"
-              className="w-full pl-10 pr-3 py-2.5 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+              className="w-full pl-10 pr-3 py-2.5 border border-[color:var(--rule)] rounded-lg bg-[color:var(--paper)] text-[color:var(--ink)] focus:ring-2 focus:ring-[color:var(--accent)] focus:border-transparent transition"
             />
           </div>
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">
+          <label className="block text-sm font-medium text-[color:var(--ink)] mb-1.5">
             URL de l&apos;avatar{' '}
-            <span className="text-zinc-400 font-normal">(optionnel)</span>
+            <span className="text-[color:var(--ink-soft)] font-normal">(optionnel)</span>
           </label>
           <input
             type="url"
             value={avatarUrl}
             onChange={(e) => setAvatarUrl(e.target.value)}
             placeholder="https://..."
-            className="w-full px-3 py-2.5 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+            className="w-full px-3 py-2.5 border border-[color:var(--rule)] rounded-lg bg-[color:var(--paper)] text-[color:var(--ink)] focus:ring-2 focus:ring-[color:var(--accent)] focus:border-transparent transition"
           />
         </div>
       </div>
 
-      <div className="rounded-lg border border-zinc-200 dark:border-zinc-800 p-4">
+      <div className="rounded-lg border border-[color:var(--rule)] bg-[color:var(--paper-2)] p-4">
         <label className="flex items-start gap-3 cursor-pointer">
           <input
             type="checkbox"
             checked={marketing}
             onChange={(e) => setMarketing(e.target.checked)}
-            className="mt-0.5 rounded border-zinc-300 text-blue-600 focus:ring-blue-500"
+            className="mt-0.5 rounded border-[color:var(--rule)] text-[color:var(--accent)] focus:ring-[color:var(--accent)]"
           />
           <div>
-            <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+            <p className="text-sm font-medium text-[color:var(--ink)]">
               Emails produit
             </p>
-            <p className="text-xs text-zinc-500">
+            <p className="text-xs text-[color:var(--ink-soft)]">
               Recevoir des nouvelles occasionnelles sur les évolutions de Fi-Hub.
             </p>
           </div>
@@ -148,7 +148,7 @@ export function ProfileForm({ initial }: { initial: Profile }) {
         <button
           type="submit"
           disabled={saving}
-          className="inline-flex items-center gap-2 py-2.5 px-5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium rounded-lg transition"
+          className="btn-ink inline-flex items-center gap-2 py-2.5 px-5 rounded-lg disabled:opacity-50 transition"
         >
           {saving && <Loader2 className="h-4 w-4 animate-spin" />}
           Enregistrer

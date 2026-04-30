@@ -15,7 +15,8 @@ import {
   BarChart,
   Bar,
   ReferenceLine,
-  ComposedChart
+  ComposedChart,
+  Legend
 } from 'recharts';
 import { StockPosition, StockQuote, Transaction, Account } from '@/lib/types';
 import { PortfolioHistoryPoint, calculatePortfolioPerformance } from '@/lib/portfolio-calculator';
@@ -25,6 +26,14 @@ import { useSubscription } from '@/lib/subscription-client';
 import { ProBlur } from './ProBlur';
 
 const MS_PER_DAY = 86_400_000;
+const CHART_LEGEND_WRAPPER_STYLE = { fontSize: 12 };
+function formatLocalDate(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 const DEFAULT_YTD_DAYS = (() => {
   const now = new Date();
   return Math.ceil((now.getTime() - new Date(now.getFullYear(), 0, 1).getTime()) / MS_PER_DAY);
@@ -378,32 +387,32 @@ export function PortfolioHistoryChart({
           <AreaChart data={data}>
             <defs>
               <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.3}/>
-                <stop offset="95%" stopColor="#3B82F6" stopOpacity={0}/>
+                <stop offset="5%" stopColor="var(--chart-primary)" stopOpacity={0.3}/>
+                <stop offset="95%" stopColor="var(--chart-primary)" stopOpacity={0}/>
               </linearGradient>
               <linearGradient id="colorStocks" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#10B981" stopOpacity={0.3}/>
-                <stop offset="95%" stopColor="#10B981" stopOpacity={0}/>
+                <stop offset="5%" stopColor="var(--gain)" stopOpacity={0.3}/>
+                <stop offset="95%" stopColor="var(--gain)" stopOpacity={0}/>
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--rule)" />
             <XAxis 
               dataKey="date" 
               tick={{ fontSize: 10 }}
-              stroke="#9ca3af"
+              stroke="var(--ink-soft)"
               interval="preserveStartEnd"
             />
             <YAxis 
               domain={[minValue, maxValue]}
               tickFormatter={(value) => value >= 1000 ? `${(value / 1000).toFixed(0)}k€` : `${value.toFixed(0)}€`}
               tick={{ fontSize: 10 }}
-              stroke="#9ca3af"
+              stroke="var(--ink-soft)"
               width={45}
             />
             <Tooltip 
               formatter={(value, name) => {
-                const label = name === 'totalValue' ? 'Total' : 
-                             name === 'stocksValue' ? 'Positions' : 'Épargne';
+                const label = name === 'Total' ? 'Total' :
+                             name === 'Positions' ? 'Positions' : 'Épargne';
                 return [formatCurrency(Number(value) || 0), label];
               }}
               labelFormatter={(_, payload) => {
@@ -413,47 +422,38 @@ export function PortfolioHistoryChart({
                 return '';
               }}
               contentStyle={{
-                backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                border: '1px solid #e5e7eb',
+                backgroundColor: 'var(--paper-2)',
+                border: '1px solid var(--rule)',
                 borderRadius: '8px',
-                color: '#18181b',
+                color: 'var(--ink)',
               }}
               labelStyle={{
-                color: '#18181b',
+                color: 'var(--ink)',
                 fontWeight: 600,
                 marginBottom: '4px',
               }}
             />
+            <Legend wrapperStyle={CHART_LEGEND_WRAPPER_STYLE} />
             <Area 
               type="monotone" 
               dataKey="totalValue" 
-              stroke="#3B82F6" 
+              stroke="var(--chart-primary)"
               strokeWidth={2}
               fill="url(#colorTotal)"
-              name="totalValue"
+              name="Total"
+              legendType="line"
             />
             <Area 
               type="monotone" 
               dataKey="stocksValue" 
-              stroke="#10B981" 
+              stroke="var(--gain)"
               strokeWidth={1}
               fill="url(#colorStocks)"
-              name="stocksValue"
+              name="Positions"
+              legendType="line"
             />
           </AreaChart>
         </ResponsiveContainer>
-      </div>
-
-      {/* Légende */}
-      <div className="flex gap-4 mt-2 text-xs">
-        <div className="flex items-center gap-1">
-          <div className="w-3 h-3 rounded bg-blue-500"></div>
-          <span className="text-zinc-600 dark:text-zinc-400">Total</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <div className="w-3 h-3 rounded bg-emerald-500"></div>
-          <span className="text-zinc-600 dark:text-zinc-400">Positions</span>
-        </div>
       </div>
     </div>
   );
@@ -631,12 +631,14 @@ export function PositionPerformanceChart({
   const totalGain = portfolioTotalGain ?? calculatedGain;
   const totalGainPercent = portfolioTotalGainPercent ?? (totalInvested > 0 ? (totalGain / totalInvested) * 100 : 0);
   const totalDayChange = portfolioDayChange ?? calculatedDayChange;
+  const totalDayChangeTone = totalDayChange >= 0 ? 'var(--gain)' : 'var(--loss)';
+  const totalDayChangeSoftTone = totalDayChange >= 0 ? 'var(--gain-soft)' : 'var(--loss-soft)';
 
   // Données pour le graphique de performance par position
   const perfChartData = sortedByPerf.map(m => ({
     symbol: m.displayLabel,
     gainPercent: m.gainPercent,
-    fill: m.gainPercent >= 0 ? '#10b981' : '#ef4444',
+    fill: m.gainPercent >= 0 ? 'var(--gain)' : 'var(--loss)',
   }));
 
   // Données pour le graphique de répartition par poids
@@ -700,9 +702,9 @@ export function PositionPerformanceChart({
               {formatPercent(totalGainPercent)}
             </p>
           </div>
-          <div className={`rounded-lg p-3 ${totalDayChange >= 0 ? 'bg-blue-50 dark:bg-blue-900/20' : 'bg-orange-50 dark:bg-orange-900/20'}`}>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400">Variation jour</p>
-            <p className={`text-lg sm:text-xl font-bold ${totalDayChange >= 0 ? 'text-blue-600' : 'text-orange-600'}`}>
+          <div className="rounded-lg p-3" style={{ backgroundColor: totalDayChangeSoftTone }}>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">Variation du jour</p>
+            <p className="text-lg sm:text-xl font-bold" style={{ color: totalDayChangeTone }}>
               {totalDayChange >= 0 ? '+' : ''}{formatCurrency(totalDayChange)}
             </p>
           </div>
@@ -726,38 +728,38 @@ export function PositionPerformanceChart({
                 layout="vertical"
                 margin={{ top: 5, right: 30, left: 60, bottom: 5 }}
               >
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={true} vertical={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--rule)" horizontal={true} vertical={false} />
                 <XAxis 
                   type="number" 
                   domain={['dataMin - 5', 'dataMax + 5']}
                   tickFormatter={(value) => `${value.toFixed(0)}%`}
                   tick={{ fontSize: 10 }}
-                  stroke="#9ca3af"
+                  stroke="var(--ink-soft)"
                 />
                 <YAxis 
                   type="category" 
                   dataKey="symbol" 
                   tick={{ fontSize: 11, fontWeight: 500 }}
-                  stroke="#9ca3af"
+                  stroke="var(--ink-soft)"
                   width={50}
                 />
-                <ReferenceLine x={0} stroke="#6b7280" strokeWidth={1} />
+                <ReferenceLine x={0} stroke="var(--ink-soft)" strokeWidth={1} />
                 <Tooltip 
                   formatter={(value) => {
                     const numValue = Number(value) || 0;
                     return [`${numValue >= 0 ? '+' : ''}${numValue.toFixed(2)}%`, 'Performance'];
                   }}
                   contentStyle={{
-                    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                    border: '1px solid #e5e7eb',
+                    backgroundColor: 'var(--paper-2)',
+                    border: '1px solid var(--rule)',
                     borderRadius: '8px',
-                    color: '#18181b',
+                    color: 'var(--ink)',
                   }}
-                  labelStyle={{ color: '#18181b', fontWeight: 600 }}
+                  labelStyle={{ color: 'var(--ink)', fontWeight: 600 }}
                 />
                 <Bar 
                   dataKey="gainPercent" 
-                  fill="#10b981"
+                  fill="var(--gain)"
                   radius={[0, 4, 4, 0]}
                   barSize={20}
                 >
@@ -786,19 +788,19 @@ export function PositionPerformanceChart({
                 layout="vertical"
                 margin={{ top: 5, right: 30, left: 60, bottom: 5 }}
               >
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={true} vertical={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--rule)" horizontal={true} vertical={false} />
                 <XAxis 
                   type="number" 
                   domain={[0, 'dataMax + 5']}
                   tickFormatter={(value) => `${value.toFixed(0)}%`}
                   tick={{ fontSize: 10 }}
-                  stroke="#9ca3af"
+                  stroke="var(--ink-soft)"
                 />
                 <YAxis 
                   type="category" 
                   dataKey="symbol" 
                   tick={{ fontSize: 11, fontWeight: 500 }}
-                  stroke="#9ca3af"
+                  stroke="var(--ink-soft)"
                   width={50}
                 />
                 <Tooltip 
@@ -808,12 +810,12 @@ export function PositionPerformanceChart({
                     return [`${numValue.toFixed(1)}% (${formatCurrency(data.value)})`, 'Poids'];
                   }}
                   contentStyle={{
-                    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                    border: '1px solid #e5e7eb',
+                    backgroundColor: 'var(--paper-2)',
+                    border: '1px solid var(--rule)',
                     borderRadius: '8px',
-                    color: '#18181b',
+                    color: 'var(--ink)',
                   }}
-                  labelStyle={{ color: '#18181b', fontWeight: 600 }}
+                  labelStyle={{ color: 'var(--ink)', fontWeight: 600 }}
                 />
                 <Bar 
                   dataKey="weight" 
@@ -1265,7 +1267,7 @@ export function PortfolioValueChart({
   currentTotalValue,
   currentTotalInvested 
 }: PortfolioValueChartProps) {
-  const [selectedPeriod, setSelectedPeriod] = useState<PeriodOption>('MAX');
+  const [selectedPeriod, setSelectedPeriod] = useState<PeriodOption>('YTD');
 
   // Filtrer l'historique selon la période sélectionnée
   const filteredHistory = useMemo(() => {
@@ -1406,13 +1408,13 @@ export function PortfolioValueChart({
     return (
       <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-4 sm:p-6">
         <div className="flex items-center gap-2 mb-4">
-          <LineChartIcon className="h-4 w-4 sm:h-5 sm:w-5 text-purple-600" />
+          <LineChartIcon className="h-4 w-4 sm:h-5 sm:w-5 text-emerald-600" />
           <h3 className="font-semibold text-sm sm:text-base text-zinc-900 dark:text-zinc-100">
             Évolution Valeur vs Investissement
           </h3>
         </div>
         <div className="flex items-center justify-center py-8 sm:py-12">
-          <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 text-purple-600 animate-spin" />
+          <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 text-emerald-600 animate-spin" />
           <span className="ml-2 text-sm text-zinc-500">Chargement...</span>
         </div>
       </div>
@@ -1447,22 +1449,22 @@ export function PortfolioValueChart({
 
   return (
     <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-4 sm:p-6">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
         <div className="flex items-center gap-2">
-          <LineChartIcon className="h-4 w-4 sm:h-5 sm:w-5 text-purple-600" />
+          <LineChartIcon className="h-4 w-4 sm:h-5 sm:w-5 text-emerald-600" />
           <h3 className="font-semibold text-sm sm:text-base text-zinc-900 dark:text-zinc-100">
             Valeur du Portefeuille vs Investissement
           </h3>
         </div>
         {/* Sélecteur de période */}
-        <div className="flex gap-1">
+        <div className="flex w-full flex-wrap gap-1 sm:w-auto sm:flex-nowrap">
           {(['1M', '3M', '6M', 'YTD', '1Y', 'MAX'] as PeriodOption[]).map((period) => (
             <button
               key={period}
               onClick={() => setSelectedPeriod(period)}
-              className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
+              className={`px-2 py-1 text-[10px] sm:text-xs rounded transition-colors ${
                 selectedPeriod === period
-                  ? 'bg-purple-600 text-white'
+                  ? 'bg-[color:var(--ink)] text-[color:var(--paper)]'
                   : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'
               }`}
             >
@@ -1475,15 +1477,15 @@ export function PortfolioValueChart({
       {/* Statistiques actuelles */}
       {stats && (
         <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-4">
-          <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-2 sm:p-3">
-            <p className="text-[10px] sm:text-xs text-purple-600 dark:text-purple-400 font-medium">Valeur actuelle</p>
-            <p className="text-sm sm:text-lg font-bold text-purple-700 dark:text-purple-300">
+          <div className="bg-zinc-50 dark:bg-zinc-800/40 rounded-lg p-2 sm:p-3">
+            <p className="text-[10px] sm:text-xs text-zinc-500 dark:text-zinc-400 font-medium">Valeur actuelle</p>
+            <p className="text-sm sm:text-lg font-bold text-zinc-900 dark:text-zinc-100">
               {formatCurrency(stats.currentValue)}
             </p>
           </div>
-          <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-2 sm:p-3">
-            <p className="text-[10px] sm:text-xs text-blue-600 dark:text-blue-400 font-medium">Investi</p>
-            <p className="text-sm sm:text-lg font-bold text-blue-700 dark:text-blue-300">
+          <div className="bg-zinc-50 dark:bg-zinc-800/40 rounded-lg p-2 sm:p-3">
+            <p className="text-[10px] sm:text-xs text-zinc-500 dark:text-zinc-400 font-medium">Investi</p>
+            <p className="text-sm sm:text-lg font-bold text-zinc-900 dark:text-zinc-100">
               {formatCurrency(stats.invested)}
             </p>
           </div>
@@ -1507,33 +1509,33 @@ export function PortfolioValueChart({
           <AreaChart data={chartData}>
             <defs>
               <linearGradient id="colorValeur" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#9333EA" stopOpacity={0.3}/>
-                <stop offset="95%" stopColor="#9333EA" stopOpacity={0}/>
+                <stop offset="5%" stopColor="var(--gain)" stopOpacity={0.24}/>
+                <stop offset="95%" stopColor="var(--gain)" stopOpacity={0}/>
               </linearGradient>
               <linearGradient id="colorInvesti" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.2}/>
-                <stop offset="95%" stopColor="#3B82F6" stopOpacity={0}/>
+                <stop offset="5%" stopColor="var(--chart-primary)" stopOpacity={0.12}/>
+                <stop offset="95%" stopColor="var(--chart-primary)" stopOpacity={0}/>
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--rule)" />
             <XAxis 
               dataKey="date" 
               tick={{ fontSize: 10 }}
-              stroke="#9ca3af"
+              stroke="var(--ink-soft)"
               tickLine={false}
               interval="preserveStartEnd"
             />
             <YAxis 
               tickFormatter={(value) => formatCurrency(value).replace('€', '').trim()}
               tick={{ fontSize: 10 }}
-              stroke="#9ca3af"
+              stroke="var(--ink-soft)"
               width={60}
               domain={[minValue, maxValue]}
             />
             <Tooltip 
               formatter={(value, name) => {
                 const numValue = Number(value) || 0;
-                const label = name === 'valeurActuelle' ? 'Valeur actuelle' : 'Investi';
+                const label = name === 'Valeur actuelle' ? 'Valeur actuelle' : 'Montant investi';
                 return [formatCurrency(numValue), label];
               }}
               labelFormatter={(_, payload) => {
@@ -1544,45 +1546,36 @@ export function PortfolioValueChart({
                 return '';
               }}
               contentStyle={{
-                backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                border: '1px solid #e5e7eb',
+                backgroundColor: 'var(--paper-2)',
+                border: '1px solid var(--rule)',
                 borderRadius: '8px',
-                color: '#18181b',
+                color: 'var(--ink)',
                 whiteSpace: 'pre-line',
               }}
             />
+            <Legend wrapperStyle={CHART_LEGEND_WRAPPER_STYLE} />
             {/* Zone entre les deux courbes pour visualiser le gain/perte */}
             <Area 
               type="monotone" 
               dataKey="investissement" 
-              stroke="#3B82F6" 
+              stroke="var(--chart-primary)"
               strokeWidth={2}
               fill="url(#colorInvesti)"
               strokeDasharray="5 5"
-              name="investissement"
+              name="Montant investi"
+              legendType="line"
             />
             <Area 
               type="monotone" 
               dataKey="valeurActuelle" 
-              stroke="#9333EA" 
+              stroke="var(--gain)"
               strokeWidth={2.5}
               fill="url(#colorValeur)"
-              name="valeurActuelle"
+              name="Valeur actuelle"
+              legendType="line"
             />
           </AreaChart>
         </ResponsiveContainer>
-      </div>
-
-      {/* Légende */}
-      <div className="flex items-center justify-center gap-4 sm:gap-6 mt-3 text-xs sm:text-sm">
-        <div className="flex items-center gap-1.5">
-          <div className="w-3 h-0.5 bg-purple-600 rounded"></div>
-          <span className="text-zinc-600 dark:text-zinc-400">Valeur actuelle</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-3 h-0.5 bg-blue-500 rounded" style={{ borderStyle: 'dashed' }}></div>
-          <span className="text-zinc-600 dark:text-zinc-400">Montant investi</span>
-        </div>
       </div>
     </div>
   );
@@ -1600,19 +1593,19 @@ interface StockHistoryChartProps {
 
 // Couleurs pour les différentes actions
 const STOCK_COLORS = [
-  '#3B82F6', // blue
-  '#10B981', // emerald
-  '#F59E0B', // amber
-  '#EF4444', // red
-  '#8B5CF6', // violet
-  '#EC4899', // pink
-  '#06B6D4', // cyan
-  '#84CC16', // lime
-  '#F97316', // orange
-  '#6366F1', // indigo
+  'var(--chart-primary)', // ink
+  'var(--gain)', // emerald
+  'var(--chart-3)', // saffron
+  'var(--loss)', // red
+  'var(--chart-5)', // plum
+  'var(--chart-7)', // rose
+  'var(--chart-6)', // teal
+  'var(--chart-8)', // olive
+  'var(--chart-9)', // burnt orange
+  'var(--chart-10)', // deep indigo
 ];
 
-const TOTAL_COLOR = '#9333EA'; // Couleur pour le total (violet vif, très visible)
+const TOTAL_COLOR = 'var(--chart-secondary)'; // Couleur pour le total
 
 export function StockHistoryChart({ 
   history, 
@@ -1915,8 +1908,8 @@ export function StockHistoryChart({
               : 'opacity-40'
           }`}
           style={{ 
-            backgroundColor: selectedSymbols.has('__TOTAL__') ? TOTAL_COLOR : '#e5e7eb',
-            color: selectedSymbols.has('__TOTAL__') ? 'white' : '#6b7280'
+            backgroundColor: selectedSymbols.has('__TOTAL__') ? TOTAL_COLOR : 'var(--rule)',
+            color: selectedSymbols.has('__TOTAL__') ? 'white' : 'var(--ink-soft)'
           }}
           title="Clic: afficher/masquer • Double-clic: isoler"
         >
@@ -1946,8 +1939,8 @@ export function StockHistoryChart({
                   : 'opacity-40'
               }`}
               style={{ 
-                backgroundColor: isSelected ? color : '#e5e7eb',
-                color: isSelected ? 'white' : '#6b7280',
+                backgroundColor: isSelected ? color : 'var(--rule)',
+                color: isSelected ? 'white' : 'var(--ink-soft)',
                 '--tw-ring-color': color
               } as React.CSSProperties & { '--tw-ring-color': string }}
               title="Clic: afficher/masquer • Double-clic: isoler"
@@ -1967,21 +1960,21 @@ export function StockHistoryChart({
       <div className="h-[280px] sm:h-[350px]">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--rule)" />
             <XAxis 
               dataKey="date" 
               tick={{ fontSize: 10 }}
-              stroke="#9ca3af"
+              stroke="var(--ink-soft)"
               interval="preserveStartEnd"
             />
             <YAxis 
               domain={yDomain}
               tickFormatter={(value) => `${value > 0 ? '+' : ''}${value.toFixed(0)}%`}
               tick={{ fontSize: 10 }}
-              stroke="#9ca3af"
+              stroke="var(--ink-soft)"
               width={50}
             />
-            <ReferenceLine y={0} stroke="#6b7280" strokeWidth={1} strokeDasharray="3 3" />
+            <ReferenceLine y={0} stroke="var(--ink-soft)" strokeWidth={1} strokeDasharray="3 3" />
             <Tooltip 
               formatter={(value, name, props) => {
                 const numValue = Number(value) || 0;
@@ -2026,14 +2019,14 @@ export function StockHistoryChart({
                 return '';
               }}
               contentStyle={{
-                backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                border: '1px solid #e5e7eb',
+                backgroundColor: 'var(--paper-2)',
+                border: '1px solid var(--rule)',
                 borderRadius: '8px',
-                color: '#18181b',
+                color: 'var(--ink)',
                 whiteSpace: 'pre-line',
               }}
               labelStyle={{
-                color: '#18181b',
+                color: 'var(--ink)',
                 fontWeight: 600,
                 marginBottom: '4px',
               }}
@@ -2104,38 +2097,26 @@ export function PortfolioPerformanceChart({
   
   // Calculer la performance
   const performance = useMemo(() => {
-    const basePerformance = calculatePortfolioPerformance(transactions, portfolioHistory, accounts);
-    
-    // Si on a une valeur actuelle en temps réel, corriger la endValue de l'année en cours
-    if (currentPortfolioValue !== undefined && basePerformance.currentYearPerformance) {
-      const correctedCurrentYear = {
-        ...basePerformance.currentYearPerformance,
-        endValue: currentPortfolioValue,
-        gainLoss: currentPortfolioValue - basePerformance.currentYearPerformance.startValue - basePerformance.currentYearPerformance.netFlows,
-        gainLossPercent: 0,
-        totalReturn: 0,
-        totalReturnPercent: 0,
-      };
-      
-      // Recalculer les pourcentages
-      const avgCapital = correctedCurrentYear.startValue + (correctedCurrentYear.netFlows / 2);
-      if (avgCapital > 0) {
-        correctedCurrentYear.gainLossPercent = (correctedCurrentYear.gainLoss / avgCapital) * 100;
-        correctedCurrentYear.totalReturn = correctedCurrentYear.gainLoss + correctedCurrentYear.dividends;
-        correctedCurrentYear.totalReturnPercent = (correctedCurrentYear.totalReturn / avgCapital) * 100;
-      }
-      
-      return {
-        ...basePerformance,
-        currentValue: currentPortfolioValue,
-        currentYearPerformance: correctedCurrentYear,
-        yearlyPerformance: basePerformance.yearlyPerformance.map(y => 
-          y.year === correctedCurrentYear.year ? correctedCurrentYear : y
-        ),
-      };
+    if (currentPortfolioValue === undefined || portfolioHistory.length === 0) {
+      return calculatePortfolioPerformance(transactions, portfolioHistory, accounts);
     }
-    
-    return basePerformance;
+
+    const today = formatLocalDate(new Date());
+    const lastPoint = portfolioHistory[portfolioHistory.length - 1];
+    const updatedLastPoint = {
+      ...lastPoint,
+      date: lastPoint.date < today ? today : lastPoint.date,
+      stocksValue: currentPortfolioValue,
+      totalValue: lastPoint.totalValue + (currentPortfolioValue - lastPoint.stocksValue),
+    };
+
+    const historyWithCurrentValue = lastPoint.date < today
+      ? [...portfolioHistory, updatedLastPoint]
+      : portfolioHistory.map((point, index) =>
+          index === portfolioHistory.length - 1 ? updatedLastPoint : point
+        );
+
+    return calculatePortfolioPerformance(transactions, historyWithCurrentValue, accounts);
   }, [transactions, portfolioHistory, accounts, currentPortfolioValue]);
 
   // Trier les années de la plus récente à la plus ancienne
@@ -2203,6 +2184,9 @@ export function PortfolioPerformanceChart({
   }
 
   const currentYear = new Date().getFullYear();
+  const currentYearPerformance = performance.currentYearPerformance;
+  const currentYearIsPositive = currentYearPerformance ? currentYearPerformance.gainLossPercent >= 0 : true;
+  const currentYearTone = currentYearIsPositive ? 'var(--gain)' : 'var(--loss)';
 
   return (
     <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-4 sm:p-6 space-y-4">
@@ -2215,38 +2199,43 @@ export function PortfolioPerformanceChart({
       </div>
 
       {/* Performance année en cours en évidence */}
-      {performance.currentYearPerformance && (
-        <div className="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-xl p-4 text-white">
+      {currentYearPerformance && (
+        <div
+          className="rounded-xl border border-l-4 border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/40 p-4"
+          style={{
+            borderLeftColor: currentYearTone,
+          }}
+        >
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
-              <p className="text-indigo-100 text-sm font-medium mb-1">📅 Année {currentYear} (en cours)</p>
+              <p className="text-zinc-500 dark:text-zinc-400 text-sm font-medium mb-1">Année {currentYear} (en cours)</p>
               <div className="flex items-baseline gap-3">
-                <p className={`text-3xl sm:text-4xl font-bold ${performance.currentYearPerformance.gainLossPercent >= 0 ? 'text-white' : 'text-red-200'}`}>
-                  {performance.currentYearPerformance.gainLossPercent >= 0 ? '+' : ''}{performance.currentYearPerformance.gainLossPercent.toFixed(2)}%
+                <p className="text-3xl sm:text-4xl font-bold" style={{ color: currentYearTone }}>
+                  {currentYearPerformance.gainLossPercent >= 0 ? '+' : ''}{currentYearPerformance.gainLossPercent.toFixed(2)}%
                 </p>
-                <p className="text-indigo-200 text-sm">
-                  ({performance.currentYearPerformance.gainLoss >= 0 ? '+' : ''}{formatCurrency(performance.currentYearPerformance.gainLoss)})
+                <p className="text-zinc-500 dark:text-zinc-400 text-sm">
+                  ({currentYearPerformance.gainLoss >= 0 ? '+' : ''}{formatCurrency(currentYearPerformance.gainLoss)})
                 </p>
               </div>
             </div>
             <div className="grid grid-cols-3 gap-4 text-center">
               <div>
-                <p className="text-indigo-200 text-xs">Début année</p>
-                <p className="text-lg font-semibold">{formatCurrency(performance.currentYearPerformance.startValue)}</p>
+                <p className="text-zinc-500 dark:text-zinc-400 text-xs">Début année</p>
+                <p className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">{formatCurrency(currentYearPerformance.startValue)}</p>
               </div>
               <div>
-                <p className="text-indigo-200 text-xs">Valeur actuelle</p>
-                <p className="text-lg font-semibold">{formatCurrency(performance.currentYearPerformance.endValue)}</p>
+                <p className="text-zinc-500 dark:text-zinc-400 text-xs">Valeur actuelle</p>
+                <p className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">{formatCurrency(currentYearPerformance.endValue)}</p>
               </div>
               <div>
-                <p className="text-indigo-200 text-xs">Dividendes</p>
-                <p className="text-lg font-semibold text-emerald-300">+{formatCurrency(performance.currentYearPerformance.dividends)}</p>
+                <p className="text-zinc-500 dark:text-zinc-400 text-xs">Dividendes</p>
+                <p className="text-lg font-semibold text-emerald-600 dark:text-emerald-400">+{formatCurrency(currentYearPerformance.dividends)}</p>
               </div>
             </div>
           </div>
-          {performance.currentYearPerformance.netFlows !== 0 && (
-            <p className="text-indigo-200 text-xs mt-3 pt-3 border-t border-indigo-400/30">
-              Apports nets cette année : {performance.currentYearPerformance.netFlows >= 0 ? '+' : ''}{formatCurrency(performance.currentYearPerformance.netFlows)}
+          {currentYearPerformance.netFlows !== 0 && (
+            <p className="text-zinc-500 dark:text-zinc-400 text-xs mt-3 pt-3 border-t border-zinc-200 dark:border-zinc-700">
+              Apports nets cette année : {currentYearPerformance.netFlows >= 0 ? '+' : ''}{formatCurrency(currentYearPerformance.netFlows)}
               {' '}(déjà exclus du calcul de performance)
             </p>
           )}
@@ -2258,19 +2247,19 @@ export function PortfolioPerformanceChart({
         <div className="h-[200px] sm:h-[250px]">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={yearlyChartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--rule)" />
               <XAxis 
                 dataKey="year" 
                 tick={{ fontSize: 12 }}
-                stroke="#9ca3af"
+                stroke="var(--ink-soft)"
               />
               <YAxis 
                 tickFormatter={(value) => `${value >= 0 ? '+' : ''}${value.toFixed(0)}%`}
                 tick={{ fontSize: 10 }}
-                stroke="#9ca3af"
+                stroke="var(--ink-soft)"
                 width={50}
               />
-              <ReferenceLine y={0} stroke="#6b7280" strokeWidth={1} />
+              <ReferenceLine y={0} stroke="var(--ink-soft)" strokeWidth={1} />
               <Tooltip 
                 formatter={(value, name) => {
                   const numValue = Number(value);
@@ -2283,10 +2272,10 @@ export function PortfolioPerformanceChart({
                   return [formatCurrency(numValue), name === 'gainLoss' ? 'Gain/Perte' : 'Dividendes'];
                 }}
                 contentStyle={{
-                  backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                  border: '1px solid #e5e7eb',
+                  backgroundColor: 'var(--paper-2)',
+                  border: '1px solid var(--rule)',
                   borderRadius: '8px',
-                  color: '#18181b',
+                  color: 'var(--ink)',
                 }}
               />
               <Bar 
@@ -2297,7 +2286,7 @@ export function PortfolioPerformanceChart({
                 {yearlyChartData.map((entry, index) => (
                   <Cell 
                     key={`cell-${index}`} 
-                    fill={entry.performance >= 0 ? '#10b981' : '#ef4444'} 
+                    fill={entry.performance >= 0 ? 'var(--gain)' : 'var(--loss)'}
                   />
                 ))}
               </Bar>

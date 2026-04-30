@@ -15,6 +15,13 @@ import {
 import { readSnapshots, upsertSnapshots } from '@/lib/portfolio-snapshots';
 import { accountSupportsPositions } from '@/lib/utils';
 
+function formatLocalDate(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 // Hook pour récupérer les comptes
 export function useAccounts() {
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -304,7 +311,7 @@ export function usePortfolioHistory(
 
   // Déterminer les dates et les symboles nécessaires
   const { startDate, endDate, symbols } = useMemo(() => {
-    const end = new Date().toISOString().split('T')[0];
+    const end = formatLocalDate(new Date());
     
     // Trouver la première transaction ou utiliser la période demandée
     const firstTxDate = getFirstTransactionDate(transactions);
@@ -313,14 +320,14 @@ export function usePortfolioHistory(
     if (firstTxDate) {
       const periodStart = new Date();
       periodStart.setDate(periodStart.getDate() - periodDays);
-      const periodStartStr = periodStart.toISOString().split('T')[0];
+      const periodStartStr = formatLocalDate(periodStart);
       
       // Prendre la date la plus récente entre la première transaction et le début de période
       start = firstTxDate > periodStartStr ? firstTxDate : periodStartStr;
     } else {
       const periodStart = new Date();
       periodStart.setDate(periodStart.getDate() - periodDays);
-      start = periodStart.toISOString().split('T')[0];
+      start = formatLocalDate(periodStart);
     }
 
     const syms = getUniqueSymbolsFromTransactions(transactions);
@@ -421,7 +428,7 @@ export function useFullPortfolioHistory(
 
   // Déterminer les dates et les symboles nécessaires
   const { startDate, endDate, symbols } = useMemo(() => {
-    const end = new Date().toISOString().split('T')[0];
+    const end = formatLocalDate(new Date());
     
     // Trouver la première transaction
     const firstTxDate = getFirstTransactionDate(transactions);
@@ -576,7 +583,7 @@ export function usePositionsWithCalculatedValues(
   transactions: Transaction[]
 ): EnrichedPosition[] {
   return useMemo(() => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = formatLocalDate(new Date());
 
     const calculatedByAccount = calculateAllPositionsAtDate(transactions, today);
     const existingKeys = new Set<string>();

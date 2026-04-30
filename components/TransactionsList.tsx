@@ -180,7 +180,7 @@ function TransactionRow({
                 e.stopPropagation();
                 onEditClick(transaction);
               }}
-              className="p-1.5 rounded-md text-blue-600 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 transition-colors"
+              className="p-1.5 rounded-md border border-[color:var(--rule)] bg-[color:var(--paper-2)] text-[color:var(--ink)] hover:bg-[color:var(--paper-3)] transition-colors"
               aria-label="Modifier la transaction"
               title="Modifier"
             >

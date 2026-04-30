@@ -16,18 +16,18 @@ export default async function ProfilePage() {
 
   return (
     <div>
-      <header className="mb-6 pb-6 border-b border-zinc-200 dark:border-zinc-800">
-        <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">Profil</h2>
-        <p className="text-sm text-zinc-500 mt-1">
+      <header className="mb-6 pb-6 border-b border-[color:var(--rule)]">
+        <h2 className="display text-3xl leading-none text-[color:var(--ink)]">Profil</h2>
+        <p className="text-sm text-[color:var(--ink-soft)] mt-2">
           Informations personnelles associées à votre compte.
         </p>
       </header>
 
-      <div className="mb-6 flex items-center gap-3 rounded-lg bg-zinc-50 dark:bg-zinc-950/50 border border-zinc-200 dark:border-zinc-800 px-4 py-3">
-        <Mail className="h-4 w-4 text-zinc-400 flex-shrink-0" />
+      <div className="mb-6 flex items-center gap-3 rounded-lg bg-[color:var(--paper-2)] border border-[color:var(--rule)] px-4 py-3">
+        <Mail className="h-4 w-4 text-[color:var(--accent)] flex-shrink-0" />
         <div className="min-w-0">
-          <p className="text-xs text-zinc-500">Adresse email</p>
-          <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100 truncate">
+          <p className="text-xs text-[color:var(--ink-soft)]">Adresse email</p>
+          <p className="text-sm font-medium text-[color:var(--ink)] truncate">
             {user!.email}
           </p>
         </div>

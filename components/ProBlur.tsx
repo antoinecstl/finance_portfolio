@@ -21,17 +21,17 @@ function DefaultPlaceholder({ partial }: { partial?: boolean }) {
   const height = partial ? 'h-64 sm:h-80' : 'h-80 sm:h-96';
   return (
     <div
-      className={`bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-4 sm:p-6 ${height}`}
+      className={`bg-[color:var(--paper-2)] rounded-xl border border-[color:var(--rule)] p-4 sm:p-6 ${height}`}
     >
       <div className="flex items-center gap-2 mb-4">
-        <div className="h-4 w-4 rounded bg-zinc-200 dark:bg-zinc-700" />
-        <div className="h-4 w-40 rounded bg-zinc-200 dark:bg-zinc-700" />
+        <div className="h-4 w-4 rounded bg-[color:var(--rule)]" />
+        <div className="h-4 w-40 rounded bg-[color:var(--rule)]" />
       </div>
       <div className="h-[calc(100%-2rem)] flex items-end gap-2">
         {[40, 65, 35, 80, 55, 70, 45, 90, 60, 50, 75, 40].map((h, i) => (
           <div
             key={i}
-            className="flex-1 rounded-t bg-gradient-to-t from-blue-200 to-blue-100 dark:from-blue-900/40 dark:to-blue-900/20"
+            className="flex-1 rounded-t bg-[color:var(--accent-soft)]"
             style={{ height: `${h}%` }}
           />
         ))}
@@ -67,19 +67,19 @@ export function ProBlur({
       </div>
 
       <div className="absolute inset-0 flex items-center justify-center p-4">
-        <div className="bg-white/90 dark:bg-zinc-900/90 backdrop-blur rounded-xl border border-zinc-200 dark:border-zinc-700 shadow-lg p-4 sm:p-6 max-w-xs text-center">
-          <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white mb-2">
+        <div className="ink-card pop-shadow backdrop-blur rounded-xl p-4 sm:p-6 max-w-xs text-center">
+          <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-[color:var(--accent-soft)] text-[color:var(--accent)] mb-2">
             <Sparkles className="h-5 w-5" />
           </div>
-          <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 mb-1">
+          <p className="text-sm font-semibold text-[color:var(--ink)] mb-1">
             {label}
           </p>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-3">
+          <p className="text-xs text-[color:var(--ink-soft)] mb-3">
             Analyses avancées, historique complet, export CSV…
           </p>
           <Link
             href="/settings/billing"
-            className="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg transition"
+            className="btn-ink inline-flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg transition"
           >
             Passer Pro — 4,99 € / mois
           </Link>
@@ -105,11 +105,11 @@ export function ProCellBlur({
   // Replace real content with a neutral dash so DevTools can't reveal the value.
   return (
     <span className="inline-flex items-center gap-1 relative">
-      <span className="blur-sm select-none text-zinc-400" aria-hidden="true">
+      <span className="blur-sm select-none text-[color:var(--ink-soft)]" aria-hidden="true">
         ———
       </span>
       <span
-        className="absolute inset-0 flex items-center justify-center text-[10px] font-medium text-blue-600 dark:text-blue-400"
+        className="absolute inset-0 flex items-center justify-center text-[10px] font-medium text-[color:var(--accent)]"
         title="Fonctionnalité Pro"
       >
         <Lock className="h-3 w-3 mr-0.5" />

@@ -34,12 +34,12 @@ export function SettingsNavItem({
     'group flex items-start gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors border border-transparent';
 
   const activeCls = danger
-    ? 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-900/40 text-red-700 dark:text-red-300'
-    : 'bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-900/40 text-blue-700 dark:text-blue-300';
+    ? 'bg-[color:var(--loss-soft)] border-[color:var(--loss)] text-[color:var(--loss)]'
+    : 'bg-[color:var(--accent-soft)] border-[color:var(--accent)] text-[color:var(--accent)]';
 
   const idleCls = danger
-    ? 'text-zinc-700 dark:text-zinc-300 hover:bg-red-50/50 dark:hover:bg-red-950/20 hover:text-red-700 dark:hover:text-red-400'
-    : 'text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-900';
+    ? 'text-[color:var(--ink)] hover:bg-[color:var(--loss-soft)] hover:text-[color:var(--loss)]'
+    : 'text-[color:var(--ink)] hover:bg-[color:var(--paper-2)]';
 
   return (
     <Link href={href} className={`${base} ${active ? activeCls : idleCls}`}>
@@ -48,7 +48,7 @@ export function SettingsNavItem({
         <span className="block font-medium">{label}</span>
         <span
           className={`block text-xs mt-0.5 ${
-            active ? 'opacity-80' : 'text-zinc-500 dark:text-zinc-500'
+            active ? 'opacity-80' : 'text-[color:var(--ink-soft)]'
           }`}
         >
           {description}

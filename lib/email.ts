@@ -47,17 +47,17 @@ function layout(title: string, body: string): string {
   return `<!doctype html>
 <html lang="fr">
 <head><meta charset="utf-8"><title>${title}</title></head>
-<body style="margin:0;padding:0;background:#f4f4f5;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#18181b">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:32px 0;background:#f4f4f5">
+<body style="margin:0;padding:0;background:#f7f2e8;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#0e0c0a">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:32px 0;background:#f7f2e8">
     <tr><td align="center">
-      <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:12px;border:1px solid #e4e4e7;overflow:hidden">
-        <tr><td style="padding:24px 32px;border-bottom:1px solid #e4e4e7">
-          <strong style="font-size:18px;color:#2563eb">Fi-Hub</strong>
+      <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="background:#efe7d4;border-radius:8px;border:1px solid #d8cdb6;overflow:hidden">
+        <tr><td style="padding:24px 32px;border-bottom:1px solid #d8cdb6">
+          <strong style="font-size:18px;color:#0e0c0a">Fi-Hub</strong>
         </td></tr>
         <tr><td style="padding:32px;line-height:1.5;font-size:15px">${body}</td></tr>
-        <tr><td style="padding:16px 32px;background:#fafafa;border-top:1px solid #e4e4e7;font-size:12px;color:#71717a">
+        <tr><td style="padding:16px 32px;background:#e6dcc4;border-top:1px solid #d8cdb6;font-size:12px;color:#5b524a">
           Fi-Hub — Suivez votre patrimoine sans Excel.<br>
-          <a href="${appUrl()}" style="color:#2563eb;text-decoration:none">${appUrl()}</a>
+          <a href="${appUrl()}" style="color:#b91c1c;text-decoration:none">${appUrl()}</a>
         </td></tr>
       </table>
     </td></tr>
@@ -72,9 +72,9 @@ export async function sendWelcome(to: string): Promise<void> {
     `<h1 style="margin:0 0 16px;font-size:22px">Bienvenue sur Fi-Hub 👋</h1>
     <p>Votre compte est prêt. Vous pouvez commencer à ajouter votre premier compte (PEA, CTO, livret…) et suivre votre patrimoine.</p>
     <p style="margin:24px 0">
-      <a href="${appUrl()}/dashboard" style="display:inline-block;padding:10px 20px;background:#2563eb;color:#fff;text-decoration:none;border-radius:8px;font-weight:500">Accéder au dashboard</a>
+      <a href="${appUrl()}/dashboard" style="display:inline-block;padding:10px 20px;background:#0e0c0a;color:#f7f2e8;text-decoration:none;border-radius:8px;font-weight:500">Accéder au dashboard</a>
     </p>
-    <p style="color:#71717a;font-size:13px">Le plan Free inclut 1 compte, 50 transactions et 5 positions. Passez Pro à tout moment pour lever les limites.</p>`
+    <p style="color:#5b524a;font-size:13px">Le plan Free inclut 1 compte, 50 transactions et 5 positions. Passez Pro à tout moment pour lever les limites.</p>`
   );
   await sendEmail({ to, subject: 'Bienvenue sur Fi-Hub', html });
 }
@@ -89,7 +89,7 @@ export async function sendSubscriptionReceipt(to: string, periodEnd: string | nu
     <p>Votre abonnement <strong>Fi-Hub Pro</strong> est actif. Toutes les fonctionnalités Pro sont débloquées : analyses avancées, historique complet, module dividendes, export CSV.</p>
     <p>Prochain renouvellement : <strong>${endStr}</strong>.</p>
     <p style="margin:24px 0">
-      <a href="${appUrl()}/settings/billing" style="display:inline-block;padding:10px 20px;background:#2563eb;color:#fff;text-decoration:none;border-radius:8px;font-weight:500">Gérer l'abonnement</a>
+      <a href="${appUrl()}/settings/billing" style="display:inline-block;padding:10px 20px;background:#0e0c0a;color:#f7f2e8;text-decoration:none;border-radius:8px;font-weight:500">Gérer l'abonnement</a>
     </p>`
   );
   await sendEmail({ to, subject: 'Abonnement Pro activé — Fi-Hub', html });
@@ -101,7 +101,7 @@ export async function sendPaymentFailed(to: string): Promise<void> {
     `<h1 style="margin:0 0 16px;font-size:22px">Paiement en échec</h1>
     <p>Nous n'avons pas pu prélever votre abonnement Fi-Hub Pro. Merci de mettre à jour votre moyen de paiement pour éviter l'interruption du service.</p>
     <p style="margin:24px 0">
-      <a href="${appUrl()}/settings/billing" style="display:inline-block;padding:10px 20px;background:#dc2626;color:#fff;text-decoration:none;border-radius:8px;font-weight:500">Mettre à jour le paiement</a>
+      <a href="${appUrl()}/settings/billing" style="display:inline-block;padding:10px 20px;background:#b91c1c;color:#f7f2e8;text-decoration:none;border-radius:8px;font-weight:500">Mettre à jour le paiement</a>
     </p>`
   );
   await sendEmail({ to, subject: 'Action requise — paiement Fi-Hub', html });

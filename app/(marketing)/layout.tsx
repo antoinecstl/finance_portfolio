@@ -4,7 +4,7 @@ import { CookieBanner } from '@/components/marketing/CookieBanner';
 
 export default function MarketingLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-white dark:bg-zinc-950 flex flex-col">
+    <div className="marketing-shell min-h-screen flex flex-col">
       <Navbar />
       <div className="flex-1">{children}</div>
       <Footer />

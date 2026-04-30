@@ -102,18 +102,22 @@ export async function GET(request: NextRequest) {
   // ====== PDF ======
   const doc = new jsPDF({ unit: 'pt', format: 'a4' });
   const pageWidth = doc.internal.pageSize.getWidth();
+  const PDF_INK: [number, number, number] = [14, 12, 10];
+  const PDF_PAPER: [number, number, number] = [247, 242, 232];
+  const PDF_ACCENT: [number, number, number] = [185, 28, 28];
+  const PDF_MUTED: [number, number, number] = [91, 82, 74];
 
   // Couverture
-  doc.setFillColor(37, 99, 235); // blue-600
+  doc.setFillColor(...PDF_ACCENT);
   doc.rect(0, 0, pageWidth, 120, 'F');
-  doc.setTextColor(255, 255, 255);
+  doc.setTextColor(...PDF_PAPER);
   doc.setFontSize(24);
   doc.text('Rapport Patrimoine', 40, 60);
   doc.setFontSize(12);
   doc.text(`fi-hub — ${user.email ?? user.id}`, 40, 85);
   doc.text(`Généré le ${fmtDate(new Date())}`, 40, 105);
 
-  doc.setTextColor(0, 0, 0);
+  doc.setTextColor(...PDF_INK);
   let cursorY = 160;
 
   // Section : synthèse
@@ -133,7 +137,7 @@ export async function GET(request: NextRequest) {
       ['Nombre total de transactions', String(allTransactions.length)],
     ],
     theme: 'striped',
-    headStyles: { fillColor: [37, 99, 235] },
+    headStyles: { fillColor: PDF_ACCENT },
     styles: { fontSize: 10 },
     margin: { left: 40, right: 40 },
   });
@@ -157,7 +161,7 @@ export async function GET(request: NextRequest) {
         account.currency,
       ]),
       theme: 'striped',
-      headStyles: { fillColor: [37, 99, 235] },
+      headStyles: { fillColor: PDF_ACCENT },
       styles: { fontSize: 10 },
       margin: { left: 40, right: 40 },
     });
@@ -188,7 +192,7 @@ export async function GET(request: NextRequest) {
       head: [['Symbole', 'Quantité', 'PRU', 'Montant investi']],
       body: rows,
       theme: 'striped',
-      headStyles: { fillColor: [37, 99, 235] },
+      headStyles: { fillColor: PDF_ACCENT },
       styles: { fontSize: 10 },
       margin: { left: 40, right: 40 },
     });
@@ -216,7 +220,7 @@ export async function GET(request: NextRequest) {
       fmtEUR(v.amount),
     ]),
     theme: 'striped',
-    headStyles: { fillColor: [37, 99, 235] },
+    headStyles: { fillColor: PDF_ACCENT },
     styles: { fontSize: 10 },
     margin: { left: 40, right: 40 },
   });
@@ -254,7 +258,7 @@ export async function GET(request: NextRequest) {
       head: [['Date', 'Type', 'Compte', 'Symbole', 'Montant']],
       body: rows,
       theme: 'striped',
-      headStyles: { fillColor: [37, 99, 235] },
+      headStyles: { fillColor: PDF_ACCENT },
       styles: { fontSize: 9 },
       margin: { left: 40, right: 40 },
     });
@@ -265,7 +269,7 @@ export async function GET(request: NextRequest) {
   for (let i = 1; i <= totalPages; i++) {
     doc.setPage(i);
     doc.setFontSize(9);
-    doc.setTextColor(120, 120, 120);
+    doc.setTextColor(...PDF_MUTED);
     doc.text(
       `fi-hub — page ${i} / ${totalPages}`,
       pageWidth - 40,

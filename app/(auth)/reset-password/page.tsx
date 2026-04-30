@@ -61,7 +61,7 @@ export default function ResetPasswordPage() {
 
   if (ready && !hasSession) {
     return (
-      <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm p-6">
+      <div className="ink-card rounded-2xl pop-shadow p-6">
         <div className="flex items-start gap-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 px-4 py-3 mb-4">
           <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
           <div>
@@ -75,7 +75,7 @@ export default function ResetPasswordPage() {
         </div>
         <Link
           href="/forgot-password"
-          className="inline-block w-full text-center py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg"
+          className="btn-ink inline-block w-full text-center py-2.5 font-medium rounded-lg"
         >
           Renvoyer un lien
         </Link>
@@ -84,14 +84,14 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm p-6">
-      <h1 className="text-xl font-bold text-zinc-900 dark:text-zinc-100 mb-2">Nouveau mot de passe</h1>
-      <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-4">
+    <div className="ink-card rounded-2xl pop-shadow p-6">
+      <h1 className="display text-3xl leading-tight text-[color:var(--ink)] mb-2">Nouveau mot de passe</h1>
+      <p className="text-sm text-[color:var(--ink-soft)] mb-4">
         Choisissez un nouveau mot de passe pour votre compte.
       </p>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="relative">
-          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-400" />
+          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-[color:var(--ink-soft)]" />
           <input
             type={show ? 'text' : 'password'}
             value={password}
@@ -99,19 +99,19 @@ export default function ResetPasswordPage() {
             placeholder="8 caractères minimum"
             autoComplete="new-password"
             required
-            className="w-full pl-10 pr-12 py-2.5 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800"
+            className="w-full pl-10 pr-12 py-2.5 border border-[color:var(--rule)] rounded-lg bg-[color:var(--paper)] text-[color:var(--ink)] placeholder:text-[color:var(--ink-soft)]"
           />
           <button
             type="button"
             onClick={() => setShow((v) => !v)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-[color:var(--ink-soft)] hover:text-[color:var(--ink)]"
             aria-label={show ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
           >
             {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
           </button>
         </div>
         <div className="relative">
-          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-400" />
+          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-[color:var(--ink-soft)]" />
           <input
             type={show ? 'text' : 'password'}
             value={confirm}
@@ -119,7 +119,7 @@ export default function ResetPasswordPage() {
             placeholder="Confirmer le mot de passe"
             autoComplete="new-password"
             required
-            className="w-full pl-10 pr-4 py-2.5 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800"
+            className="w-full pl-10 pr-4 py-2.5 border border-[color:var(--rule)] rounded-lg bg-[color:var(--paper)] text-[color:var(--ink)] placeholder:text-[color:var(--ink-soft)]"
           />
           {confirm.length > 0 && password === confirm && (
             <Check className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-emerald-600" />
@@ -129,7 +129,7 @@ export default function ResetPasswordPage() {
         <button
           type="submit"
           disabled={loading || !ready}
-          className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium rounded-lg flex items-center justify-center gap-2"
+          className="btn-ink w-full py-2.5 font-medium rounded-lg flex items-center justify-center gap-2"
         >
           {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Mettre à jour'}
         </button>

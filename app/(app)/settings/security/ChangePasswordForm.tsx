@@ -92,23 +92,23 @@ export function ChangePasswordForm() {
   return (
     <form onSubmit={handleSubmit} className="space-y-5 max-w-md">
       <div>
-        <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">
+        <label className="block text-sm font-medium text-[color:var(--ink)] mb-1.5">
           Mot de passe actuel
         </label>
         <div className="relative">
-          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
+          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[color:var(--ink-soft)]" />
           <input
             type={showCurrent ? 'text' : 'password'}
             value={current}
             onChange={(e) => setCurrent(e.target.value)}
             autoComplete="current-password"
             required
-            className="w-full pl-10 pr-12 py-2.5 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+            className="w-full pl-10 pr-12 py-2.5 border border-[color:var(--rule)] rounded-lg bg-[color:var(--paper)] text-[color:var(--ink)] focus:ring-2 focus:ring-[color:var(--accent)] focus:border-transparent transition"
           />
           <button
             type="button"
             onClick={() => setShowCurrent((v) => !v)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-[color:var(--ink-soft)] hover:text-[color:var(--ink)]"
             aria-label={showCurrent ? 'Masquer' : 'Afficher'}
           >
             {showCurrent ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -117,11 +117,11 @@ export function ChangePasswordForm() {
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">
+        <label className="block text-sm font-medium text-[color:var(--ink)] mb-1.5">
           Nouveau mot de passe
         </label>
         <div className="relative">
-          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
+          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[color:var(--ink-soft)]" />
           <input
             type={showNext ? 'text' : 'password'}
             value={next}
@@ -129,12 +129,12 @@ export function ChangePasswordForm() {
             placeholder={`${MIN_LENGTH} caractères minimum`}
             autoComplete="new-password"
             required
-            className="w-full pl-10 pr-12 py-2.5 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+            className="w-full pl-10 pr-12 py-2.5 border border-[color:var(--rule)] rounded-lg bg-[color:var(--paper)] text-[color:var(--ink)] focus:ring-2 focus:ring-[color:var(--accent)] focus:border-transparent transition"
           />
           <button
             type="button"
             onClick={() => setShowNext((v) => !v)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-[color:var(--ink-soft)] hover:text-[color:var(--ink)]"
             aria-label={showNext ? 'Masquer' : 'Afficher'}
           >
             {showNext ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -142,36 +142,36 @@ export function ChangePasswordForm() {
         </div>
         {next.length > 0 && (
           <div className="mt-2 flex items-center gap-2">
-            <div className="flex-1 h-1.5 rounded-full bg-zinc-200 dark:bg-zinc-800 overflow-hidden">
+            <div className="flex-1 h-1.5 rounded-full bg-[color:var(--rule)] overflow-hidden">
               <div
                 className={`h-full transition-all ${strength.color}`}
                 style={{ width: `${(strength.score / 3) * 100}%` }}
               />
             </div>
-            <span className="text-xs text-zinc-500 w-12 text-right">{strength.label}</span>
+            <span className="text-xs text-[color:var(--ink-soft)] w-12 text-right">{strength.label}</span>
           </div>
         )}
-        <p className="text-xs text-zinc-500 mt-1.5">
+        <p className="text-xs text-[color:var(--ink-soft)] mt-1.5">
           Utilisez au moins {MIN_LENGTH} caractères, mélangez lettres, chiffres et symboles.
         </p>
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">
+        <label className="block text-sm font-medium text-[color:var(--ink)] mb-1.5">
           Confirmer le nouveau mot de passe
         </label>
         <div className="relative">
-          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
+          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[color:var(--ink-soft)]" />
           <input
             type={showNext ? 'text' : 'password'}
             value={confirm}
             onChange={(e) => setConfirm(e.target.value)}
             autoComplete="new-password"
             required
-            className={`w-full pl-10 pr-10 py-2.5 border rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:border-transparent transition ${
+            className={`w-full pl-10 pr-10 py-2.5 border rounded-lg bg-[color:var(--paper)] text-[color:var(--ink)] focus:ring-2 focus:border-transparent transition ${
               mismatch
                 ? 'border-red-400 dark:border-red-700 focus:ring-red-500'
-                : 'border-zinc-300 dark:border-zinc-700 focus:ring-blue-500'
+                : 'border-[color:var(--rule)] focus:ring-[color:var(--accent)]'
             }`}
           />
           {confirm.length > 0 && !mismatch && next === confirm && (
@@ -200,7 +200,7 @@ export function ChangePasswordForm() {
       <button
         type="submit"
         disabled={loading}
-        className="inline-flex items-center gap-2 py-2.5 px-5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium rounded-lg transition"
+        className="btn-ink inline-flex items-center gap-2 py-2.5 px-5 rounded-lg disabled:opacity-50 transition"
       >
         {loading && <Loader2 className="h-4 w-4 animate-spin" />}
         Mettre à jour le mot de passe

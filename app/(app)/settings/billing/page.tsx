@@ -18,18 +18,18 @@ export default async function BillingPage() {
 
   const statusLabel: Record<string, { text: string; color: string }> = {
     active: { text: 'Actif', color: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300' },
-    trialing: { text: 'Essai', color: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' },
+    trialing: { text: 'Essai', color: 'bg-[color:var(--accent-soft)] text-[color:var(--accent)]' },
     past_due: { text: 'Paiement en attente', color: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300' },
-    canceled: { text: 'Annulé', color: 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300' },
+    canceled: { text: 'Annulé', color: 'bg-[color:var(--paper-2)] text-[color:var(--ink-soft)]' },
     paused: { text: 'En pause', color: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300' },
   };
   const badge = ctx.status ? statusLabel[ctx.status] : null;
 
   return (
     <div>
-      <header className="mb-6 pb-6 border-b border-zinc-200 dark:border-zinc-800">
-        <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">Abonnement</h2>
-        <p className="text-sm text-zinc-500 mt-1">
+      <header className="mb-6 pb-6 border-b border-[color:var(--rule)]">
+        <h2 className="display text-3xl leading-none text-[color:var(--ink)]">Abonnement</h2>
+        <p className="text-sm text-[color:var(--ink-soft)] mt-2">
           Gérez votre plan et vos informations de facturation.
         </p>
       </header>
@@ -37,8 +37,8 @@ export default async function BillingPage() {
       <div
         className={`rounded-xl p-6 mb-6 ${
           ctx.planId === 'pro' || ctx.isFounder
-            ? 'bg-gradient-to-br from-blue-600 to-blue-700 text-white'
-            : 'bg-zinc-50 dark:bg-zinc-950/50 border border-zinc-200 dark:border-zinc-800'
+            ? 'bg-[color:var(--ink)] text-[color:var(--paper)] border border-[color:var(--ink)]'
+            : 'bg-[color:var(--paper-2)] border border-[color:var(--rule)] text-[color:var(--ink)]'
         }`}
       >
         <div className="flex items-start justify-between gap-4">
@@ -46,7 +46,7 @@ export default async function BillingPage() {
             <div className="flex items-center gap-2 mb-1">
               <p
                 className={`text-xs uppercase tracking-wide font-medium ${
-                  ctx.planId === 'pro' || ctx.isFounder ? 'text-blue-100' : 'text-zinc-500'
+                  ctx.planId === 'pro' || ctx.isFounder ? 'text-[color:var(--paper)] opacity-70' : 'text-[color:var(--ink-soft)]'
                 }`}
               >
                 Plan actuel
@@ -65,7 +65,7 @@ export default async function BillingPage() {
             <p className="text-3xl font-bold">{ctx.plan.name}</p>
             <p
               className={`text-sm mt-1 ${
-                ctx.planId === 'pro' || ctx.isFounder ? 'text-blue-100' : 'text-zinc-500'
+                ctx.planId === 'pro' || ctx.isFounder ? 'text-[color:var(--paper)] opacity-70' : 'text-[color:var(--ink-soft)]'
               }`}
             >
               {formatPrice(ctx.plan)}
@@ -76,7 +76,7 @@ export default async function BillingPage() {
         {ctx.planId === 'pro' && ctx.currentPeriodEnd && (
           <p
             className={`text-sm mt-4 pt-4 border-t ${
-              ctx.planId === 'pro' ? 'border-white/20 text-blue-100' : 'border-zinc-200 text-zinc-500'
+              ctx.planId === 'pro' ? 'border-white/20 text-[color:var(--paper)] opacity-70' : 'border-[color:var(--rule)] text-[color:var(--ink-soft)]'
             }`}
           >
             {ctx.cancelAtPeriodEnd ? 'Accès Pro jusqu\u2019au ' : 'Prochain renouvellement le '}
@@ -98,14 +98,14 @@ export default async function BillingPage() {
       </div>
 
       {ctx.planId === 'free' && !ctx.isFounder && (
-        <div className="rounded-xl border border-blue-200 dark:border-blue-900/40 bg-blue-50/50 dark:bg-blue-950/20 p-6 mb-6">
+        <div className="rounded-xl border border-[color:var(--rule)] bg-[color:var(--paper-2)] p-6 mb-6">
           <div className="flex items-center gap-2 mb-2">
-            <Sparkles className="h-5 w-5 text-blue-600" />
-            <h3 className="font-semibold text-zinc-900 dark:text-zinc-100">
+            <Sparkles className="h-5 w-5 text-[color:var(--accent)]" />
+            <h3 className="font-semibold text-[color:var(--ink)]">
               Passez Pro pour débloquer tout Fi-Hub
             </h3>
           </div>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-4">
+          <p className="text-sm text-[color:var(--ink-soft)] mb-4">
             Comptes, transactions et positions illimités, analytics avancées, export CSV, module
             dividendes.
           </p>
@@ -113,9 +113,9 @@ export default async function BillingPage() {
             {pro.highlights.map((h) => (
               <li
                 key={h}
-                className="flex items-start gap-2 text-sm text-zinc-700 dark:text-zinc-300"
+                className="flex items-start gap-2 text-sm text-[color:var(--ink)]"
               >
-                <Check className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                <Check className="h-4 w-4 text-[color:var(--accent)] mt-0.5 flex-shrink-0" />
                 {h}
               </li>
             ))}

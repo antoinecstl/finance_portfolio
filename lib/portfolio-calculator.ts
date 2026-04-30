@@ -2,6 +2,8 @@ import { Transaction, Account } from './types';
 import { HistoricalQuote, findClosestQuote } from './stock-api';
 import { accountSupportsPositions } from './utils';
 
+const MS_PER_DAY = 1000 * 60 * 60 * 24;
+
 /**
  * Représente une position calculée à partir des transactions
  */
@@ -533,6 +535,113 @@ export interface PortfolioPerformanceData {
 /**
  * Calcule la performance du portefeuille par année
  */
+export type PerformanceValueKey = 'stocksValue' | 'totalValue';
+export type ModifiedDietzPerformance = Omit<YearlyPerformance, 'year'>;
+
+function emptyModifiedDietzPerformance(): ModifiedDietzPerformance {
+  return {
+    startValue: 0,
+    endValue: 0,
+    deposits: 0,
+    withdrawals: 0,
+    netFlows: 0,
+    dividends: 0,
+    gainLoss: 0,
+    gainLossPercent: 0,
+    totalReturn: 0,
+    totalReturnPercent: 0,
+  };
+}
+
+function getHistoryValue(point: PortfolioHistoryPoint, valueKey: PerformanceValueKey): number {
+  return valueKey === 'totalValue' ? point.totalValue : point.stocksValue;
+}
+
+/**
+ * Calcule une performance hors apports sur une periode avec Modified Dietz.
+ * Les depots/retraits sont les seuls flux externes neutralises.
+ */
+export function calculateModifiedDietzPerformance(
+  history: PortfolioHistoryPoint[],
+  transactions: Transaction[],
+  startDate: string,
+  endDate: string,
+  valueKey: PerformanceValueKey = 'stocksValue'
+): ModifiedDietzPerformance {
+  if (history.length === 0 || startDate > endDate) {
+    return emptyModifiedDietzPerformance();
+  }
+
+  const sortedHistory = [...history].sort((a, b) => a.date.localeCompare(b.date));
+  const periodHistory = sortedHistory.filter(point => point.date >= startDate && point.date <= endDate);
+
+  if (periodHistory.length === 0) {
+    return emptyModifiedDietzPerformance();
+  }
+
+  const previousPoint = [...sortedHistory]
+    .reverse()
+    .find(point => point.date < startDate);
+
+  const firstPoint = periodHistory[0];
+  const lastPoint = periodHistory[periodHistory.length - 1];
+  const hasPreviousPoint = Boolean(previousPoint);
+  const effectiveStartDate = hasPreviousPoint ? startDate : firstPoint.date;
+  const effectiveEndDate = lastPoint.date;
+  const startValue = previousPoint ? getHistoryValue(previousPoint, valueKey) : getHistoryValue(firstPoint, valueKey);
+  const endValue = getHistoryValue(lastPoint, valueKey);
+
+  const startDateObj = new Date(effectiveStartDate);
+  const endDateObj = new Date(effectiveEndDate);
+  const effectiveDays = Math.max(1, Math.round((endDateObj.getTime() - startDateObj.getTime()) / MS_PER_DAY));
+
+  let deposits = 0;
+  let withdrawals = 0;
+  let dividends = 0;
+  let weightedFlows = 0;
+
+  const periodTransactions = transactions.filter(tx => {
+    if (hasPreviousPoint) {
+      return tx.date >= effectiveStartDate && tx.date <= effectiveEndDate;
+    }
+    return tx.date > effectiveStartDate && tx.date <= effectiveEndDate;
+  });
+
+  periodTransactions.forEach(tx => {
+    const txDate = new Date(tx.date);
+    const daysFromStart = Math.round((txDate.getTime() - startDateObj.getTime()) / MS_PER_DAY);
+    const weight = Math.max(0, (effectiveDays - daysFromStart) / effectiveDays);
+
+    if (tx.type === 'DEPOSIT') {
+      deposits += tx.amount;
+      weightedFlows += tx.amount * weight;
+    } else if (tx.type === 'WITHDRAWAL') {
+      withdrawals += tx.amount;
+      weightedFlows -= tx.amount * weight;
+    } else if (tx.type === 'DIVIDEND') {
+      dividends += tx.amount;
+    }
+  });
+
+  const netFlows = deposits - withdrawals;
+  const gainLoss = endValue - startValue - netFlows;
+  const averageCapital = startValue + weightedFlows;
+  const gainLossPercent = averageCapital > 0 ? (gainLoss / averageCapital) * 100 : 0;
+
+  return {
+    startValue,
+    endValue,
+    deposits,
+    withdrawals,
+    netFlows,
+    dividends,
+    gainLoss,
+    gainLossPercent,
+    totalReturn: gainLoss,
+    totalReturnPercent: gainLossPercent,
+  };
+}
+
 export function calculatePortfolioPerformance(
   transactions: Transaction[],
   portfolioHistory: PortfolioHistoryPoint[],

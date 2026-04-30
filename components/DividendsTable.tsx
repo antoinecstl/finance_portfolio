@@ -25,6 +25,25 @@ interface DividendsTableProps {
   quotes: Record<string, StockQuote>;
 }
 
+function DividendSummaryCard({
+  label,
+  value,
+}: {
+  label: string;
+  value: string | number;
+}) {
+  return (
+    <div className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/40 p-2.5 sm:p-3">
+      <div className="text-xs sm:text-sm font-medium text-zinc-500 dark:text-zinc-400">
+        {label}
+      </div>
+      <div className="mt-1 text-base sm:text-xl font-bold text-zinc-900 dark:text-zinc-100">
+        {value}
+      </div>
+    </div>
+  );
+}
+
 export function DividendsTable({ transactions, positions }: DividendsTableProps) {
   const [showDetails, setShowDetails] = useState(false);
   const [selectedYear, setSelectedYear] = useState<number | 'all'>('all');
@@ -192,32 +211,26 @@ export function DividendsTable({ transactions, positions }: DividendsTableProps)
 
       {/* Résumé global */}
       <div className="grid grid-cols-2 gap-2 sm:gap-4 mb-4 sm:mb-6">
-        <div className="bg-emerald-50 dark:bg-emerald-900/30 rounded-lg p-2 sm:p-3">
-          <div className="text-xs sm:text-sm text-emerald-600 dark:text-emerald-400">Total Dividendes</div>
-          <div className="text-base sm:text-xl font-bold text-emerald-700 dark:text-emerald-300">
-            {formatCurrency(totalDividends)}
-          </div>
-        </div>
-        <div className="bg-blue-50 dark:bg-blue-900/30 rounded-lg p-2 sm:p-3">
-          <div className="text-xs sm:text-sm text-blue-600 dark:text-blue-400">Versements</div>
-          <div className="text-base sm:text-xl font-bold text-blue-700 dark:text-blue-300">
-            {filteredTransactions.length}
-          </div>
-        </div>
-        <div className="bg-violet-50 dark:bg-violet-900/30 rounded-lg p-2 sm:p-3">
-          <div className="text-xs sm:text-sm text-violet-600 dark:text-violet-400">Actions</div>
-          <div className="text-base sm:text-xl font-bold text-violet-700 dark:text-violet-300">
-            {dividendsByStock.filter(d => d.symbol !== 'NON_ATTRIBUE').length}
-          </div>
-        </div>
-        <div className="bg-amber-50 dark:bg-amber-900/30 rounded-lg p-2 sm:p-3">
-          <div className="text-xs sm:text-sm text-amber-600 dark:text-amber-400">Moyenne</div>
-          <div className="text-base sm:text-xl font-bold text-amber-700 dark:text-amber-300">
-            {filteredTransactions.length > 0 
+        <DividendSummaryCard
+          label="Total dividendes"
+          value={formatCurrency(totalDividends)}
+        />
+        <DividendSummaryCard
+          label="Nb. versements"
+          value={filteredTransactions.length}
+        />
+        <DividendSummaryCard
+          label="Actions payeuses"
+          value={dividendsByStock.filter(d => d.symbol !== 'NON_ATTRIBUE').length}
+        />
+        <DividendSummaryCard
+          label="Moyenne / versement"
+          value={
+            filteredTransactions.length > 0
               ? formatCurrency(totalDividends / filteredTransactions.length)
-              : '0 €'}
-          </div>
-        </div>
+              : '0 €'
+          }
+        />
       </div>
 
       {/* Dividendes par année */}

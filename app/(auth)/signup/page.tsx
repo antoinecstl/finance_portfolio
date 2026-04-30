@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useAuth } from '@/lib/auth';
-import { Mail, Lock, Eye, EyeOff, Loader2, TrendingUp } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 
 export default function SignupPage() {
@@ -45,67 +45,66 @@ export default function SignupPage() {
   return (
     <>
       <div className="text-center mb-8">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-600 text-white mb-4">
-          <TrendingUp className="w-8 h-8" />
-        </div>
-        <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">Fi-Hub</h1>
-        <p className="text-zinc-500 dark:text-zinc-400 mt-2">Créez votre compte gratuit</p>
+        <Link href="/" className="inline-flex items-baseline gap-2 text-[color:var(--ink)] hover:opacity-80 transition-opacity">
+          <span className="display text-4xl leading-none">Fi&#8209;Hub</span>
+        </Link>
+        <p className="mono text-[11px] tracking-[0.16em] uppercase text-[color:var(--ink-soft)] mt-3">Créer un compte</p>
       </div>
 
-      <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm p-6">
+      <div className="ink-card rounded-2xl pop-shadow p-6">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Email</label>
+            <label className="block text-sm font-medium text-[color:var(--ink)] mb-1">Email</label>
             <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-400" />
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-[color:var(--ink-soft)]" />
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="vous@exemple.com"
                 required
-                className="w-full pl-10 pr-4 py-2.5 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full pl-10 pr-4 py-2.5 border border-[color:var(--rule)] rounded-lg bg-[color:var(--paper)] text-[color:var(--ink)] placeholder:text-[color:var(--ink-soft)]"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Mot de passe</label>
+            <label className="block text-sm font-medium text-[color:var(--ink)] mb-1">Mot de passe</label>
             <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-400" />
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-[color:var(--ink-soft)]" />
               <input
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="8 caractères minimum"
                 required
-                className="w-full pl-10 pr-12 py-2.5 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full pl-10 pr-12 py-2.5 border border-[color:var(--rule)] rounded-lg bg-[color:var(--paper)] text-[color:var(--ink)] placeholder:text-[color:var(--ink-soft)]"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[color:var(--ink-soft)] hover:text-[color:var(--ink)]"
               >
                 {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
               </button>
             </div>
           </div>
 
-          <label className="flex items-start gap-2 text-xs text-zinc-600 dark:text-zinc-400 cursor-pointer">
+          <label className="flex items-start gap-2 text-xs text-[color:var(--ink-soft)] cursor-pointer">
             <input
               type="checkbox"
               checked={acceptTerms}
               onChange={(e) => setAcceptTerms(e.target.checked)}
-              className="mt-0.5 rounded border-zinc-300 text-blue-600 focus:ring-blue-500"
+              className="mt-0.5 rounded border-[color:var(--rule)]"
               required
             />
             <span>
               J&apos;accepte les{' '}
-              <Link href="/legal/cgu" className="text-blue-600 hover:underline">
+              <Link href="/legal/cgu" className="text-[color:var(--accent)] hover:underline">
                 CGU
               </Link>{' '}
               et la{' '}
-              <Link href="/legal/confidentialite" className="text-blue-600 hover:underline">
+              <Link href="/legal/confidentialite" className="text-[color:var(--accent)] hover:underline">
                 politique de confidentialité
               </Link>
               .
@@ -127,14 +126,14 @@ export default function SignupPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+            className="btn-ink w-full py-2.5 px-4 font-medium rounded-lg flex items-center justify-center gap-2"
           >
             {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Créer mon compte'}
           </button>
         </form>
 
         <div className="mt-6 text-center">
-          <Link href="/login" className="text-sm text-blue-600 hover:text-blue-700 font-medium">
+          <Link href="/login" className="text-sm text-[color:var(--accent)] hover:underline font-medium">
             Déjà un compte ? Se connecter
           </Link>
         </div>

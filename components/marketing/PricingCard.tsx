@@ -1,6 +1,12 @@
 import Link from 'next/link';
-import { Check } from 'lucide-react';
-import { type Plan, type BillingInterval, formatPrice, formatPriceFor, getYearlySavingsPercent } from '@/lib/plans';
+import { ArrowRight, Check } from 'lucide-react';
+import {
+  type BillingInterval,
+  type Plan,
+  formatPrice,
+  formatPriceFor,
+  getYearlySavingsPercent,
+} from '@/lib/plans';
 
 export function PricingCard({
   plan,
@@ -14,56 +20,78 @@ export function PricingCard({
   const isPro = plan.id === 'pro';
   const priceLabel = isPro ? formatPriceFor(plan, interval) : formatPrice(plan);
   const savings = isPro && interval === 'year' ? getYearlySavingsPercent(plan) : null;
+  const showPopular = highlight && interval === 'year';
   const monthlyEquivalent =
     isPro && interval === 'year' && plan.priceCentsYearly
       ? (plan.priceCentsYearly / 12 / 100).toFixed(2).replace('.', ',')
       : null;
 
   return (
-    <div
-      className={`rounded-2xl border p-6 flex flex-col ${
-        highlight
-          ? 'border-blue-600 ring-2 ring-blue-600/20 bg-white dark:bg-zinc-900'
-          : 'border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900'
-      }`}
-    >
-      <div className="mb-4">
-        <h3 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">{plan.name}</h3>
-        <p className="text-sm text-zinc-500 dark:text-zinc-400">{plan.tagline}</p>
+    <article className="relative bg-[color:var(--paper)] p-7 sm:p-8 flex flex-col min-h-full">
+      {showPopular && (
+        <span
+          className="absolute right-5 top-5 mono text-[10px] tracking-[0.16em] uppercase px-2.5 py-1 rounded-sm"
+          style={{ background: 'var(--accent)', color: 'var(--paper)' }}
+        >
+          Populaire
+        </span>
+      )}
+
+      <div className={`mb-5 ${showPopular ? 'pr-24' : ''}`}>
+        <span className="mono text-[11px] tracking-[0.18em] uppercase text-[color:var(--ink-soft)]">
+          {plan.id === 'free' ? '01' : '02'}
+        </span>
+        <h3 className="display text-2xl mt-2 leading-tight text-[color:var(--ink)]">
+          {plan.name}
+        </h3>
+        <p className="mt-2 text-sm leading-relaxed text-[color:var(--ink-2)]">
+          {plan.tagline}
+        </p>
       </div>
-      <div className="mb-6">
+
+      <div className="mb-7 pb-6 border-b border-[color:var(--rule)]">
         <div className="flex items-baseline gap-2 flex-wrap">
-          <span className="text-3xl font-bold text-zinc-900 dark:text-zinc-100">{priceLabel}</span>
+          <span className="display text-4xl leading-none text-[color:var(--ink)]">
+            {priceLabel}
+          </span>
           {savings !== null && (
-            <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300">
+            <span className="mono text-[10px] tracking-[0.14em] uppercase px-2 py-1 rounded-full bg-[color:var(--gain-soft)] text-[color:var(--gain)]">
               -{savings}%
             </span>
           )}
         </div>
         {monthlyEquivalent && (
-          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+          <p className="mono text-[11px] text-[color:var(--ink-soft)] mt-2">
             Soit {monthlyEquivalent} € / mois facturés annuellement
           </p>
         )}
       </div>
-      <ul className="space-y-2 mb-6 flex-1">
+
+      <ul className="space-y-2.5 mb-7 flex-1">
         {plan.highlights.map((h) => (
-          <li key={h} className="flex items-start gap-2 text-sm text-zinc-700 dark:text-zinc-300">
-            <Check className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+          <li
+            key={h}
+            className="flex items-start gap-2.5 text-sm leading-relaxed text-[color:var(--ink-2)]"
+          >
+            <Check
+              className="h-4 w-4 shrink-0 mt-0.5"
+              style={{ color: 'var(--gain)' }}
+              aria-hidden="true"
+            />
             <span>{h}</span>
           </li>
         ))}
       </ul>
+
       <Link
         href="/signup"
-        className={`block w-full py-2.5 px-4 text-center rounded-lg font-medium transition-colors ${
-          highlight
-            ? 'bg-blue-600 hover:bg-blue-700 text-white'
-            : 'border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-900 dark:text-zinc-100'
+        className={`inline-flex w-full items-center justify-center gap-2 px-5 py-3 rounded-full text-sm font-medium ${
+          highlight ? 'btn-ink' : 'btn-outline'
         }`}
       >
         {plan.id === 'free' ? 'Commencer gratuitement' : 'Passer Pro'}
+        <ArrowRight className="w-4 h-4" aria-hidden="true" />
       </Link>
-    </div>
+    </article>
   );
 }

@@ -23,15 +23,15 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm p-6">
+    <div className="ink-card rounded-2xl pop-shadow p-6">
       <Link
         href="/login"
-        className="inline-flex items-center gap-1 text-sm text-zinc-500 hover:text-zinc-700 mb-4"
+        className="inline-flex items-center gap-1 text-sm text-[color:var(--ink-soft)] hover:text-[color:var(--ink)] mb-4"
       >
         <ArrowLeft className="h-4 w-4" /> Retour
       </Link>
-      <h1 className="text-xl font-bold text-zinc-900 dark:text-zinc-100 mb-2">Mot de passe oublié</h1>
-      <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-4">
+      <h1 className="display text-3xl leading-tight text-[color:var(--ink)] mb-2">Mot de passe oublié</h1>
+      <p className="text-sm text-[color:var(--ink-soft)] mb-4">
         Entrez votre email, nous vous enverrons un lien pour réinitialiser votre mot de passe.
       </p>
 
@@ -44,21 +44,21 @@ export default function ForgotPasswordPage() {
       ) : (
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="relative">
-            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-400" />
+            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-[color:var(--ink-soft)]" />
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="vous@exemple.com"
               required
-              className="w-full pl-10 pr-4 py-2.5 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800"
+              className="w-full pl-10 pr-4 py-2.5 border border-[color:var(--rule)] rounded-lg bg-[color:var(--paper)] text-[color:var(--ink)] placeholder:text-[color:var(--ink-soft)]"
             />
           </div>
           {error && <p className="text-sm text-red-600">{error}</p>}
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium rounded-lg flex items-center justify-center gap-2"
+            className="btn-ink w-full py-2.5 font-medium rounded-lg flex items-center justify-center gap-2"
           >
             {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Envoyer le lien'}
           </button>

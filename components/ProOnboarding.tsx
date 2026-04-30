@@ -70,13 +70,13 @@ export function ProOnboarding({ onClose }: { onClose: () => void }) {
       aria-labelledby="pro-onboarding-title"
       className="fixed inset-0 z-[101] bg-black/50 backdrop-blur-sm flex items-center justify-center px-4 py-8 overflow-y-auto"
     >
-      <div className="w-full max-w-lg bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl border border-zinc-200 dark:border-zinc-800 animate-[popIn_0.4s_ease-out]">
+      <div className="ink-card pop-shadow w-full max-w-lg rounded-2xl animate-[popIn_0.4s_ease-out]">
         <div className="flex items-center justify-center gap-2 pt-2 pb-4">
           {Array.from({ length: total }).map((_, i) => (
             <span
               key={i}
               className={`h-1.5 w-8 rounded-full transition-colors ${
-                i <= step ? 'bg-blue-600' : 'bg-zinc-200 dark:bg-zinc-800'
+                i <= step ? 'bg-[color:var(--accent)]' : 'bg-[color:var(--rule)]'
               }`}
             />
           ))}
@@ -86,26 +86,26 @@ export function ProOnboarding({ onClose }: { onClose: () => void }) {
           {step === 0 && (
             <div>
               <div className="flex items-center justify-center mb-4">
-                <span className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-600/30">
+                <span className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-[color:var(--accent-soft)] text-[color:var(--accent)]">
                   <Sparkles className="w-7 h-7" />
                 </span>
               </div>
               <h1
                 id="pro-onboarding-title"
-                className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 text-center mb-2"
+                className="display text-3xl leading-none text-[color:var(--ink)] text-center mb-2"
               >
                 Bienvenue dans Fi-Hub Pro 🎉
               </h1>
-              <p className="text-zinc-600 dark:text-zinc-400 text-center mb-6">
+              <p className="text-[color:var(--ink-soft)] text-center mb-6">
                 Votre abonnement est actif. Voici tout ce que vous venez de débloquer.
               </p>
               <ul className="space-y-2.5 mb-2">
                 {PRO_FEATURES.map((f) => (
                   <li
                     key={f.label}
-                    className="flex items-start gap-3 text-sm text-zinc-700 dark:text-zinc-300"
+                    className="flex items-start gap-3 text-sm text-[color:var(--ink)]"
                   >
-                    <span className="flex-shrink-0 w-7 h-7 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 flex items-center justify-center">
+                    <span className="flex-shrink-0 w-7 h-7 rounded-lg bg-[color:var(--gain-soft)] text-[color:var(--gain)] flex items-center justify-center">
                       <Check className="w-4 h-4" />
                     </span>
                     <span className="pt-1">{f.label}</span>
@@ -117,10 +117,10 @@ export function ProOnboarding({ onClose }: { onClose: () => void }) {
 
           {step === 1 && (
             <div>
-              <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 mb-2 text-center">
+              <h1 className="display text-3xl leading-none text-[color:var(--ink)] mb-2 text-center">
                 Par où commencer ?
               </h1>
-              <p className="text-zinc-600 dark:text-zinc-400 text-center mb-6">
+              <p className="text-[color:var(--ink-soft)] text-center mb-6">
                 Choisissez une action pour tirer parti de votre nouveau plan.
               </p>
               <div className="space-y-3">
@@ -131,20 +131,20 @@ export function ProOnboarding({ onClose }: { onClose: () => void }) {
                       key={action.key}
                       type="button"
                       onClick={() => goTo(action.href)}
-                      className="w-full text-left flex items-start gap-3 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 hover:border-blue-500 hover:bg-blue-50/50 dark:hover:bg-blue-950/20 transition-colors group"
+                      className="w-full text-left flex items-start gap-3 p-4 rounded-xl border border-[color:var(--rule)] hover:border-[color:var(--accent)] hover:bg-[color:var(--paper-2)] transition-colors group"
                     >
-                      <span className="flex-shrink-0 w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                      <span className="flex-shrink-0 w-10 h-10 rounded-lg bg-[color:var(--accent-soft)] text-[color:var(--accent)] flex items-center justify-center group-hover:bg-[color:var(--accent)] group-hover:text-[color:var(--paper)] transition-colors">
                         <Icon className="w-5 h-5" />
                       </span>
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-zinc-900 dark:text-zinc-100">
+                        <p className="font-medium text-[color:var(--ink)]">
                           {action.title}
                         </p>
-                        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                        <p className="text-sm text-[color:var(--ink-soft)]">
                           {action.description}
                         </p>
                       </div>
-                      <ArrowRight className="w-5 h-5 text-zinc-400 group-hover:text-blue-600 mt-2.5 flex-shrink-0" />
+                      <ArrowRight className="w-5 h-5 text-[color:var(--ink-soft)] group-hover:text-[color:var(--accent)] mt-2.5 flex-shrink-0" />
                     </button>
                   );
                 })}
@@ -156,7 +156,7 @@ export function ProOnboarding({ onClose }: { onClose: () => void }) {
             <button
               type="button"
               onClick={onClose}
-              className="text-sm text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
+              className="text-sm text-[color:var(--ink-soft)] hover:text-[color:var(--ink)]"
             >
               Plus tard
             </button>
@@ -164,7 +164,7 @@ export function ProOnboarding({ onClose }: { onClose: () => void }) {
               <button
                 type="button"
                 onClick={() => setStep((s) => (s + 1) as 0 | 1)}
-                className="inline-flex items-center gap-2 py-2.5 px-5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg"
+                className="btn-ink inline-flex items-center gap-2 py-2.5 px-5 rounded-lg"
               >
                 Continuer <ArrowRight className="w-4 h-4" />
               </button>
@@ -172,7 +172,7 @@ export function ProOnboarding({ onClose }: { onClose: () => void }) {
               <button
                 type="button"
                 onClick={onClose}
-                className="inline-flex items-center gap-2 py-2.5 px-5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg"
+                className="btn-ink inline-flex items-center gap-2 py-2.5 px-5 rounded-lg"
               >
                 Terminer
               </button>

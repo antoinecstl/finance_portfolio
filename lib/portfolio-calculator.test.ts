@@ -8,6 +8,7 @@ import {
   calculateAccountCashAtDate,
   calculateAccountCashFromTransactions,
   calculateAccountTotalValue,
+  calculateModifiedDietzPerformance,
   calculatePortfolioHistory,
   calculatePortfolioPerformance,
   getFirstTransactionDate,
@@ -280,6 +281,60 @@ describe('calculatePortfolioPerformance (Modified Dietz)', () => {
     expect(p.totalDeposits).toBe(10000);
     expect(p.absoluteGain).toBe(1000);
     expect(p.absoluteGainPercent).toBeCloseTo(10, 5);
+  });
+
+  it('requires history scoped to the selected account for account-level performance', () => {
+    const accounts = [
+      acc({ id: 'pea', type: 'PEA', name: 'PEA' }),
+      acc({ id: 'cto', type: 'CTO', name: 'CTO' }),
+    ];
+    const peaTransactions = [
+      tx({ account_id: 'pea', type: 'DEPOSIT', amount: 1000, date: '2025-01-01' }),
+    ];
+    const allTransactions = [
+      ...peaTransactions,
+      tx({ account_id: 'cto', type: 'DEPOSIT', amount: 2000, date: '2025-01-01' }),
+    ];
+    const peaHistory = [
+      { date: '2025-01-01', totalValue: 1000, stocksValue: 1000, savingsValue: 0, positions: [] },
+      { date: '2025-12-31', totalValue: 1100, stocksValue: 1100, savingsValue: 0, positions: [] },
+    ];
+    const globalHistory = [
+      { date: '2025-01-01', totalValue: 3000, stocksValue: 3000, savingsValue: 0, positions: [] },
+      { date: '2025-12-31', totalValue: 3100, stocksValue: 3100, savingsValue: 0, positions: [] },
+    ];
+
+    const scoped = calculatePortfolioPerformance(peaTransactions, peaHistory, [accounts[0]]);
+    const misScoped = calculatePortfolioPerformance(peaTransactions, globalHistory, [accounts[0]]);
+
+    expect(scoped.yearlyPerformance[0].gainLossPercent).toBeCloseTo(10, 5);
+    expect(misScoped.yearlyPerformance[0].gainLossPercent).not.toBeCloseTo(
+      scoped.yearlyPerformance[0].gainLossPercent,
+      5
+    );
+    expect(allTransactions).toHaveLength(2);
+  });
+
+  it('matches annual YTD performance with the shared Modified Dietz period calculation', () => {
+    const accounts = [acc({ id: 'cto', type: 'CTO' })];
+    const txs = [
+      tx({ account_id: 'cto', type: 'DEPOSIT', amount: 1000, date: '2024-01-01' }),
+      tx({ account_id: 'cto', type: 'DEPOSIT', amount: 500, date: '2025-07-01' }),
+    ];
+    const history = [
+      { date: '2024-12-31', totalValue: 1000, stocksValue: 1000, savingsValue: 0, positions: [] },
+      { date: '2025-01-01', totalValue: 1000, stocksValue: 1000, savingsValue: 0, positions: [] },
+      { date: '2025-07-01', totalValue: 1650, stocksValue: 1650, savingsValue: 0, positions: [] },
+      { date: '2025-12-31', totalValue: 1800, stocksValue: 1800, savingsValue: 0, positions: [] },
+    ];
+
+    const annual = calculatePortfolioPerformance(txs, history, accounts)
+      .yearlyPerformance
+      .find((p) => p.year === 2025)!;
+    const ytd = calculateModifiedDietzPerformance(history, txs, '2025-01-01', '2025-12-31');
+
+    expect(ytd.gainLossPercent).toBeCloseTo(annual.gainLossPercent, 5);
+    expect(ytd.gainLoss).toBeCloseTo(annual.gainLoss, 5);
   });
 
   it('aggregates dividends in totalDividends but does not double-count in gain', () => {

@@ -26,14 +26,14 @@ export default async function ConfirmPage({ searchParams }: { searchParams: Prom
   const valid = Boolean(tokenHash && type);
 
   return (
-    <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm p-6">
+    <div className="ink-card rounded-2xl pop-shadow p-6">
       <div className="flex items-start gap-3 mb-4">
-        <div className="rounded-full bg-blue-50 dark:bg-blue-950/30 p-2">
-          <ShieldCheck className="h-5 w-5 text-blue-600" />
+        <div className="rounded-full bg-[color:var(--accent-soft)] p-2">
+          <ShieldCheck className="h-5 w-5 text-[color:var(--accent)]" />
         </div>
         <div>
-          <h1 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">{meta.title}</h1>
-          <p className="text-sm text-zinc-500 mt-0.5">
+          <h1 className="display text-2xl leading-tight text-[color:var(--ink)]">{meta.title}</h1>
+          <p className="text-sm text-[color:var(--ink-soft)] mt-1">
             Pour des raisons de sécurité, cliquez sur le bouton ci-dessous pour valider l&apos;action.
           </p>
         </div>
@@ -46,7 +46,7 @@ export default async function ConfirmPage({ searchParams }: { searchParams: Prom
           {next && <input type="hidden" name="next" value={next} />}
           <button
             type="submit"
-            className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg"
+            className="btn-ink w-full py-2.5 rounded-lg"
           >
             {meta.cta}
           </button>

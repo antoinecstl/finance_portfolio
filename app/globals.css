@@ -1,31 +1,782 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/* ──────────────────────────────────────────────────────────
+   Fi-Hub — Editorial Financial Theme (global)
+   Cream/parchment paper · ink black · serif headlines
+   ────────────────────────────────────────────────────────── */
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+:root {
+  /* Surfaces */
+  --paper:        #f7f2e8;
+  --paper-2:      #efe7d4;
+  --paper-3:      #e6dcc4;
+
+  /* Text & rules */
+  --ink:          #0e0c0a;
+  --ink-2:        #2a2520;
+  --ink-soft:     #5b524a;
+  --rule:         #d8cdb6;
+  --rule-strong:  #b6a98c;
+
+  /* Accents */
+  --accent:        #b91c1c;
+  --accent-strong: #991b1b;
+  --accent-soft:   #fde8e8;
+
+  --gain:        #047857;
+  --gain-soft:   #ecfdf5;
+  --loss:        #b91c1c;
+  --loss-soft:   #fde8e8;
+
+  /* Chart roles (auto-flip in dark) */
+  --chart-grid:        #d8cdb6;
+  --chart-axis:        #5b524a;
+  --chart-tooltip-bg:  #f7f2e8;
+  --chart-tooltip-fg:  #0e0c0a;
+  --chart-tooltip-br:  #d8cdb6;
+  --chart-primary:     #0e0c0a;
+  --chart-secondary:   #b45309;   /* saffron — editorial counterpoint */
+  --chart-tertiary:    #047857;
+  --chart-loss:        #b91c1c;
+
+  /* 10-color editorial palette for multi-series charts */
+  --chart-1:  #0e0c0a;   /* ink */
+  --chart-2:  #047857;   /* emerald */
+  --chart-3:  #b45309;   /* saffron */
+  --chart-4:  #b91c1c;   /* red */
+  --chart-5:  #6b21a8;   /* plum */
+  --chart-6:  #0f766e;   /* teal */
+  --chart-7:  #be185d;   /* rose */
+  --chart-8:  #65a30d;   /* olive */
+  --chart-9:  #c2410c;   /* burnt orange */
+  --chart-10: #4338ca;   /* deep indigo */
+
+  /* Legacy app vars some code may reference */
+  --background: var(--paper);
+  --foreground: var(--ink);
+
+  /* Tailwind palette adapters.
+     These keep old zinc/blue class names while preserving their original
+     light/dark semantics: high zinc = text in light, surface in dark. */
+  --ui-white: var(--paper);
+  --ui-black: var(--ink);
+
+  --ui-neutral-50:  var(--paper-2);
+  --ui-neutral-100: var(--paper-2);
+  --ui-neutral-200: var(--rule);
+  --ui-neutral-300: var(--rule-strong);
+  --ui-neutral-400: var(--ink-soft);
+  --ui-neutral-500: var(--ink-soft);
+  --ui-neutral-600: var(--ink-2);
+  --ui-neutral-700: var(--ink-2);
+  --ui-neutral-800: var(--ink);
+  --ui-neutral-900: var(--ink);
+  --ui-neutral-950: var(--ink);
+
+  --ui-accent-50:  #fde8e8;
+  --ui-accent-100: #fee2e2;
+  --ui-accent-200: #fecaca;
+  --ui-accent-300: #fca5a5;
+  --ui-accent-400: #ef4444;
+  --ui-accent-500: var(--accent);
+  --ui-accent-600: var(--accent);
+  --ui-accent-700: var(--accent-strong);
+  --ui-accent-800: #7f1d1d;
+  --ui-accent-900: #7f1d1d;
+  --ui-accent-950: #450a0a;
+
+  --ui-gain-50:  var(--gain-soft);
+  --ui-gain-100: var(--gain-soft);
+  --ui-gain-200: #a7f3d0;
+  --ui-gain-300: #6ee7b7;
+  --ui-gain-400: #10b981;
+  --ui-gain-500: var(--gain);
+  --ui-gain-600: var(--gain);
+  --ui-gain-700: #065f46;
+  --ui-gain-800: #064e3b;
+  --ui-gain-900: #064e3b;
+  --ui-gain-950: #022c22;
+
+  --ui-warning-50:  #fff7ed;
+  --ui-warning-100: #ffedd5;
+  --ui-warning-200: #fed7aa;
+  --ui-warning-300: #fdba74;
+  --ui-warning-400: #fb923c;
+  --ui-warning-500: #c2410c;
+  --ui-warning-600: #b45309;
+  --ui-warning-700: #92400e;
+  --ui-warning-800: #7c2d12;
+  --ui-warning-900: #7c2d12;
+  --ui-warning-950: #431407;
+
+  --ui-plum-50:  #faf5ff;
+  --ui-plum-100: #f3e8ff;
+  --ui-plum-200: #e9d5ff;
+  --ui-plum-300: #d8b4fe;
+  --ui-plum-400: #a855f7;
+  --ui-plum-500: #6b21a8;
+  --ui-plum-600: #6b21a8;
+  --ui-plum-700: #581c87;
+  --ui-plum-800: #4c1d95;
+  --ui-plum-900: #3b0764;
+  --ui-plum-950: #2e1065;
+
+  --ui-rose-50:  #fff1f2;
+  --ui-rose-100: #ffe4e6;
+  --ui-rose-200: #fecdd3;
+  --ui-rose-300: #fda4af;
+  --ui-rose-400: #fb7185;
+  --ui-rose-500: #be185d;
+  --ui-rose-600: #be185d;
+  --ui-rose-700: #9f1239;
+  --ui-rose-800: #881337;
+  --ui-rose-900: #881337;
+  --ui-rose-950: #4c0519;
+
+  --ui-teal-50:  #f0fdfa;
+  --ui-teal-100: #ccfbf1;
+  --ui-teal-200: #99f6e4;
+  --ui-teal-300: #5eead4;
+  --ui-teal-400: #2dd4bf;
+  --ui-teal-500: #0f766e;
+  --ui-teal-600: #0f766e;
+  --ui-teal-700: #115e59;
+  --ui-teal-800: #134e4a;
+  --ui-teal-900: #134e4a;
+  --ui-teal-950: #042f2e;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --paper:        #0c0b0a;
+    --paper-2:      #181613;
+    --paper-3:      #221d18;
+
+    --ink:          #f1ead9;
+    --ink-2:        #d8cfb9;
+    --ink-soft:     #9a907d;
+    --rule:         #2a2620;
+    --rule-strong:  #3d362c;
+
+    --accent:        #ef4444;
+    --accent-strong: #dc2626;
+    --accent-soft:   rgba(239, 68, 68, 0.14);
+
+    --gain:        #34d399;
+    --gain-soft:   rgba(52, 211, 153, 0.12);
+    --loss:        #ef4444;
+    --loss-soft:   rgba(239, 68, 68, 0.14);
+
+    --chart-grid:        #2a2620;
+    --chart-axis:        #9a907d;
+    --chart-tooltip-bg:  #181613;
+    --chart-tooltip-fg:  #f1ead9;
+    --chart-tooltip-br:  #2a2620;
+    --chart-primary:     #f1ead9;
+    --chart-secondary:   #f59e0b;
+    --chart-tertiary:    #34d399;
+    --chart-loss:        #ef4444;
+
+    --chart-1:  #f1ead9;
+    --chart-2:  #34d399;
+    --chart-3:  #f59e0b;
+    --chart-4:  #ef4444;
+    --chart-5:  #c084fc;
+    --chart-6:  #2dd4bf;
+    --chart-7:  #f472b6;
+    --chart-8:  #a3e635;
+    --chart-9:  #fb923c;
+    --chart-10: #818cf8;
+
+    --background: var(--paper);
+    --foreground: var(--ink);
+
+    --ui-white: var(--ink);
+    --ui-black: var(--paper);
+
+    --ui-neutral-50:  var(--ink);
+    --ui-neutral-100: var(--ink);
+    --ui-neutral-200: var(--ink-2);
+    --ui-neutral-300: var(--ink-2);
+    --ui-neutral-400: var(--ink-soft);
+    --ui-neutral-500: var(--ink-soft);
+    --ui-neutral-600: var(--rule-strong);
+    --ui-neutral-700: var(--rule-strong);
+    --ui-neutral-800: var(--paper-3);
+    --ui-neutral-900: var(--paper-2);
+    --ui-neutral-950: var(--paper);
+
+    --ui-accent-50:  #fee2e2;
+    --ui-accent-100: #fee2e2;
+    --ui-accent-200: #fecaca;
+    --ui-accent-300: #fca5a5;
+    --ui-accent-400: #f87171;
+    --ui-accent-500: var(--accent);
+    --ui-accent-600: var(--accent);
+    --ui-accent-700: #dc2626;
+    --ui-accent-800: #991b1b;
+    --ui-accent-900: #7f1d1d;
+    --ui-accent-950: #450a0a;
+
+    --ui-gain-50:  #d1fae5;
+    --ui-gain-100: #d1fae5;
+    --ui-gain-200: #a7f3d0;
+    --ui-gain-300: #6ee7b7;
+    --ui-gain-400: #34d399;
+    --ui-gain-500: var(--gain);
+    --ui-gain-600: var(--gain);
+    --ui-gain-700: #047857;
+    --ui-gain-800: #065f46;
+    --ui-gain-900: #064e3b;
+    --ui-gain-950: #022c22;
+
+    --ui-warning-50:  #ffedd5;
+    --ui-warning-100: #ffedd5;
+    --ui-warning-200: #fed7aa;
+    --ui-warning-300: #fdba74;
+    --ui-warning-400: #fb923c;
+    --ui-warning-500: #f59e0b;
+    --ui-warning-600: #d97706;
+    --ui-warning-700: #b45309;
+    --ui-warning-800: #92400e;
+    --ui-warning-900: #78350f;
+    --ui-warning-950: #451a03;
+
+    --ui-plum-50:  #f3e8ff;
+    --ui-plum-100: #f3e8ff;
+    --ui-plum-200: #e9d5ff;
+    --ui-plum-300: #d8b4fe;
+    --ui-plum-400: #c084fc;
+    --ui-plum-500: #a855f7;
+    --ui-plum-600: #9333ea;
+    --ui-plum-700: #7e22ce;
+    --ui-plum-800: #6b21a8;
+    --ui-plum-900: #581c87;
+    --ui-plum-950: #3b0764;
+
+    --ui-rose-50:  #ffe4e6;
+    --ui-rose-100: #ffe4e6;
+    --ui-rose-200: #fecdd3;
+    --ui-rose-300: #fda4af;
+    --ui-rose-400: #fb7185;
+    --ui-rose-500: #f472b6;
+    --ui-rose-600: #db2777;
+    --ui-rose-700: #be185d;
+    --ui-rose-800: #9d174d;
+    --ui-rose-900: #831843;
+    --ui-rose-950: #500724;
+
+    --ui-teal-50:  #ccfbf1;
+    --ui-teal-100: #ccfbf1;
+    --ui-teal-200: #99f6e4;
+    --ui-teal-300: #5eead4;
+    --ui-teal-400: #2dd4bf;
+    --ui-teal-500: #14b8a6;
+    --ui-teal-600: #0d9488;
+    --ui-teal-700: #0f766e;
+    --ui-teal-800: #115e59;
+    --ui-teal-900: #134e4a;
+    --ui-teal-950: #042f2e;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* ────────────────────────────────────────────────────────────
+   Tailwind v4 — remap blue + zinc + white/black to editorial
+   so every `bg-zinc-900`, `text-blue-600` etc. picks up the
+   editorial palette without touching component class strings.
+   ──────────────────────────────────────────────────────────── */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans:    var(--font-geist-sans);
+  --font-mono:    var(--font-jetbrains);
+  --font-serif:   var(--font-fraunces);
+
+  --radius-lg:  0.5rem;
+  --radius-xl:  0.5rem;
+  --radius-2xl: 0.5rem;
+
+  /* White/black keep contrast on strong fills across light and dark. */
+  --color-white: var(--ui-white);
+  --color-black: var(--ui-black);
+
+  /* Zinc → editorial ink/paper scale */
+  --color-zinc-50:  var(--ui-neutral-50);
+  --color-zinc-100: var(--ui-neutral-100);
+  --color-zinc-200: var(--ui-neutral-200);
+  --color-zinc-300: var(--ui-neutral-300);
+  --color-zinc-400: var(--ui-neutral-400);
+  --color-zinc-500: var(--ui-neutral-500);
+  --color-zinc-600: var(--ui-neutral-600);
+  --color-zinc-700: var(--ui-neutral-700);
+  --color-zinc-800: var(--ui-neutral-800);
+  --color-zinc-900: var(--ui-neutral-900);
+  --color-zinc-950: var(--ui-neutral-950);
+
+  /* Gray + Slate + Neutral aliases — same scale */
+  --color-gray-50:  var(--ui-neutral-50);
+  --color-gray-100: var(--ui-neutral-100);
+  --color-gray-200: var(--ui-neutral-200);
+  --color-gray-300: var(--ui-neutral-300);
+  --color-gray-400: var(--ui-neutral-400);
+  --color-gray-500: var(--ui-neutral-500);
+  --color-gray-600: var(--ui-neutral-600);
+  --color-gray-700: var(--ui-neutral-700);
+  --color-gray-800: var(--ui-neutral-800);
+  --color-gray-900: var(--ui-neutral-900);
+  --color-gray-950: var(--ui-neutral-950);
+
+  --color-slate-50:  var(--ui-neutral-50);
+  --color-slate-100: var(--ui-neutral-100);
+  --color-slate-200: var(--ui-neutral-200);
+  --color-slate-300: var(--ui-neutral-300);
+  --color-slate-400: var(--ui-neutral-400);
+  --color-slate-500: var(--ui-neutral-500);
+  --color-slate-600: var(--ui-neutral-600);
+  --color-slate-700: var(--ui-neutral-700);
+  --color-slate-800: var(--ui-neutral-800);
+  --color-slate-900: var(--ui-neutral-900);
+  --color-slate-950: var(--ui-neutral-950);
+
+  --color-neutral-50:  var(--ui-neutral-50);
+  --color-neutral-100: var(--ui-neutral-100);
+  --color-neutral-200: var(--ui-neutral-200);
+  --color-neutral-300: var(--ui-neutral-300);
+  --color-neutral-400: var(--ui-neutral-400);
+  --color-neutral-500: var(--ui-neutral-500);
+  --color-neutral-600: var(--ui-neutral-600);
+  --color-neutral-700: var(--ui-neutral-700);
+  --color-neutral-800: var(--ui-neutral-800);
+  --color-neutral-900: var(--ui-neutral-900);
+  --color-neutral-950: var(--ui-neutral-950);
+
+  /* Blue → editorial accent (red) */
+  --color-blue-50:  var(--ui-accent-50);
+  --color-blue-100: var(--ui-accent-100);
+  --color-blue-200: var(--ui-accent-200);
+  --color-blue-300: var(--ui-accent-300);
+  --color-blue-400: var(--ui-accent-400);
+  --color-blue-500: var(--ui-accent-500);
+  --color-blue-600: var(--ui-accent-600);
+  --color-blue-700: var(--ui-accent-700);
+  --color-blue-800: var(--ui-accent-800);
+  --color-blue-900: var(--ui-accent-900);
+  --color-blue-950: var(--ui-accent-950);
+
+  /* Indigo / Sky / Cyan also map to accent — anything blue-ish */
+  --color-indigo-50:  var(--ui-plum-50);
+  --color-indigo-100: var(--ui-plum-100);
+  --color-indigo-200: var(--ui-plum-200);
+  --color-indigo-300: var(--ui-plum-300);
+  --color-indigo-400: var(--ui-plum-400);
+  --color-indigo-500: var(--ui-accent-500);
+  --color-indigo-600: var(--ui-accent-600);
+  --color-indigo-700: var(--ui-accent-700);
+  --color-indigo-800: var(--ui-plum-800);
+  --color-indigo-900: var(--ui-plum-900);
+  --color-indigo-950: var(--ui-plum-950);
+  --color-sky-50:     var(--ui-accent-50);
+  --color-sky-100:    var(--ui-accent-100);
+  --color-sky-200:    var(--ui-accent-200);
+  --color-sky-300:    var(--ui-accent-300);
+  --color-sky-400:    var(--ui-accent-400);
+  --color-sky-500:    var(--ui-accent-500);
+  --color-sky-600:    var(--ui-accent-600);
+  --color-sky-700:    var(--ui-accent-700);
+  --color-sky-800:    var(--ui-accent-800);
+  --color-sky-900:    var(--ui-accent-900);
+  --color-sky-950:    var(--ui-accent-950);
+  --color-cyan-50:    var(--ui-teal-50);
+  --color-cyan-100:   var(--ui-teal-100);
+  --color-cyan-200:   var(--ui-teal-200);
+  --color-cyan-300:   var(--ui-teal-300);
+  --color-cyan-400:   var(--ui-teal-400);
+  --color-cyan-500:   var(--ui-accent-500);
+  --color-cyan-600:   var(--ui-accent-600);
+  --color-cyan-700:   var(--ui-teal-700);
+  --color-cyan-800:   var(--ui-teal-800);
+  --color-cyan-900:   var(--ui-teal-900);
+  --color-cyan-950:   var(--ui-teal-950);
+
+  /* Emerald — keep as gain (already aligns) */
+  --color-emerald-50:  var(--ui-gain-50);
+  --color-emerald-100: var(--ui-gain-100);
+  --color-emerald-200: var(--ui-gain-200);
+  --color-emerald-300: var(--ui-gain-300);
+  --color-emerald-400: var(--ui-gain-400);
+  --color-emerald-500: var(--ui-gain-500);
+  --color-emerald-600: var(--ui-gain-600);
+  --color-emerald-700: var(--ui-gain-700);
+  --color-emerald-800: var(--ui-gain-800);
+  --color-emerald-900: var(--ui-gain-900);
+  --color-emerald-950: var(--ui-gain-950);
+  --color-green-50:    var(--ui-gain-50);
+  --color-green-100:   var(--ui-gain-100);
+  --color-green-200:   var(--ui-gain-200);
+  --color-green-300:   var(--ui-gain-300);
+  --color-green-400:   var(--ui-gain-400);
+  --color-green-500:   var(--ui-gain-500);
+  --color-green-600:   var(--ui-gain-600);
+  --color-green-700:   var(--ui-gain-700);
+  --color-green-800:   var(--ui-gain-800);
+  --color-green-900:   var(--ui-gain-900);
+  --color-green-950:   var(--ui-gain-950);
+
+  /* Red — keep as loss/accent */
+  --color-red-50:   var(--ui-accent-50);
+  --color-red-100:  var(--ui-accent-100);
+  --color-red-200:  var(--ui-accent-200);
+  --color-red-300:  var(--ui-accent-300);
+  --color-red-400:  var(--ui-accent-400);
+  --color-red-500:  var(--loss);
+  --color-red-600:  var(--loss);
+  --color-red-700:  var(--ui-accent-700);
+  --color-red-800:  var(--ui-accent-800);
+  --color-red-900:  var(--ui-accent-900);
+  --color-red-950:  var(--ui-accent-950);
+
+  /* Other semantic chart families used by existing components */
+  --color-amber-50:  var(--ui-warning-50);
+  --color-amber-100: var(--ui-warning-100);
+  --color-amber-200: var(--ui-warning-200);
+  --color-amber-300: var(--ui-warning-300);
+  --color-amber-400: var(--ui-warning-400);
+  --color-amber-500: var(--ui-warning-500);
+  --color-amber-600: var(--ui-warning-600);
+  --color-amber-700: var(--ui-warning-700);
+  --color-amber-800: var(--ui-warning-800);
+  --color-amber-900: var(--ui-warning-900);
+  --color-amber-950: var(--ui-warning-950);
+  --color-yellow-50:  var(--ui-warning-50);
+  --color-yellow-100: var(--ui-warning-100);
+  --color-yellow-200: var(--ui-warning-200);
+  --color-yellow-300: var(--ui-warning-300);
+  --color-yellow-400: var(--ui-warning-400);
+  --color-yellow-500: var(--ui-warning-500);
+  --color-yellow-600: var(--ui-warning-600);
+  --color-yellow-700: var(--ui-warning-700);
+  --color-yellow-800: var(--ui-warning-800);
+  --color-yellow-900: var(--ui-warning-900);
+  --color-yellow-950: var(--ui-warning-950);
+  --color-orange-50:  var(--ui-warning-50);
+  --color-orange-100: var(--ui-warning-100);
+  --color-orange-200: var(--ui-warning-200);
+  --color-orange-300: var(--ui-warning-300);
+  --color-orange-400: var(--ui-warning-400);
+  --color-orange-500: var(--ui-warning-500);
+  --color-orange-600: var(--ui-warning-600);
+  --color-orange-700: var(--ui-warning-700);
+  --color-orange-800: var(--ui-warning-800);
+  --color-orange-900: var(--ui-warning-900);
+  --color-orange-950: var(--ui-warning-950);
+  --color-purple-50:  var(--ui-plum-50);
+  --color-purple-100: var(--ui-plum-100);
+  --color-purple-200: var(--ui-plum-200);
+  --color-purple-300: var(--ui-plum-300);
+  --color-purple-400: var(--ui-plum-400);
+  --color-purple-500: var(--ui-plum-500);
+  --color-purple-600: var(--ui-plum-600);
+  --color-purple-700: var(--ui-plum-700);
+  --color-purple-800: var(--ui-plum-800);
+  --color-purple-900: var(--ui-plum-900);
+  --color-purple-950: var(--ui-plum-950);
+  --color-violet-50:  var(--ui-plum-50);
+  --color-violet-100: var(--ui-plum-100);
+  --color-violet-200: var(--ui-plum-200);
+  --color-violet-300: var(--ui-plum-300);
+  --color-violet-400: var(--ui-plum-400);
+  --color-violet-500: var(--ui-plum-500);
+  --color-violet-600: var(--ui-plum-600);
+  --color-violet-700: var(--ui-plum-700);
+  --color-violet-800: var(--ui-plum-800);
+  --color-violet-900: var(--ui-plum-900);
+  --color-violet-950: var(--ui-plum-950);
+  --color-pink-50:   var(--ui-rose-50);
+  --color-pink-100:  var(--ui-rose-100);
+  --color-pink-200:  var(--ui-rose-200);
+  --color-pink-300:  var(--ui-rose-300);
+  --color-pink-400:  var(--ui-rose-400);
+  --color-pink-500:  var(--ui-rose-500);
+  --color-pink-600:  var(--ui-rose-600);
+  --color-pink-700:  var(--ui-rose-700);
+  --color-pink-800:  var(--ui-rose-800);
+  --color-pink-900:  var(--ui-rose-900);
+  --color-pink-950:  var(--ui-rose-950);
+  --color-rose-50:   var(--ui-rose-50);
+  --color-rose-100:  var(--ui-rose-100);
+  --color-rose-200:  var(--ui-rose-200);
+  --color-rose-300:  var(--ui-rose-300);
+  --color-rose-400:  var(--ui-rose-400);
+  --color-rose-500:  var(--ui-rose-500);
+  --color-rose-600:  var(--ui-rose-600);
+  --color-rose-700:  var(--ui-rose-700);
+  --color-rose-800:  var(--ui-rose-800);
+  --color-rose-900:  var(--ui-rose-900);
+  --color-rose-950:  var(--ui-rose-950);
+  --color-teal-50:   var(--ui-teal-50);
+  --color-teal-100:  var(--ui-teal-100);
+  --color-teal-200:  var(--ui-teal-200);
+  --color-teal-300:  var(--ui-teal-300);
+  --color-teal-400:  var(--ui-teal-400);
+  --color-teal-500:  var(--ui-teal-500);
+  --color-teal-600:  var(--ui-teal-600);
+  --color-teal-700:  var(--ui-teal-700);
+  --color-teal-800:  var(--ui-teal-800);
+  --color-teal-900:  var(--ui-teal-900);
+  --color-teal-950:  var(--ui-teal-950);
+  --color-lime-50:   var(--ui-gain-50);
+  --color-lime-100:  var(--ui-gain-100);
+  --color-lime-200:  var(--ui-gain-200);
+  --color-lime-300:  var(--ui-gain-300);
+  --color-lime-400:  var(--ui-gain-400);
+  --color-lime-500:  var(--ui-gain-500);
+  --color-lime-600:  var(--ui-gain-600);
+  --color-lime-700:  var(--ui-gain-700);
+  --color-lime-800:  var(--ui-gain-800);
+  --color-lime-900:  var(--ui-gain-900);
+  --color-lime-950:  var(--ui-gain-950);
 }
 
-/* Hide scrollbar but allow scrolling */
+/* ────────────────────────────────────────────────────────────
+   Base body styles
+   ──────────────────────────────────────────────────────────── */
+html, body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-geist-sans), 'Helvetica Neue', Arial, sans-serif;
+  font-feature-settings: 'ss01';
+  color-scheme: light dark;
+}
+
+body {
+  background-image:
+    radial-gradient(rgba(14, 12, 10, 0.04) 1px, transparent 1px),
+    radial-gradient(rgba(14, 12, 10, 0.03) 1px, transparent 1px);
+  background-size: 22px 22px, 8px 8px;
+  background-position: 0 0, 4px 4px;
+  background-attachment: fixed;
+}
+
+@media (prefers-color-scheme: dark) {
+  body {
+    background-image:
+      radial-gradient(rgba(241, 234, 217, 0.035) 1px, transparent 1px),
+      radial-gradient(rgba(241, 234, 217, 0.025) 1px, transparent 1px);
+  }
+}
+
+/* ────────────────────────────────────────────────────────────
+   Utility classes — usable anywhere in the app
+   ──────────────────────────────────────────────────────────── */
+.display {
+  font-family: var(--font-fraunces), 'Times New Roman', Georgia, serif;
+  font-feature-settings: 'ss01', 'ss02';
+  font-variation-settings: 'SOFT' 50, 'WONK' 1, 'opsz' 144;
+  letter-spacing: 0;
+}
+.display-italic {
+  font-style: italic;
+  font-variation-settings: 'SOFT' 100, 'WONK' 1, 'opsz' 144;
+}
+.mono {
+  font-family: var(--font-jetbrains), ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-variant-numeric: tabular-nums;
+}
+.eyebrow {
+  font-family: var(--font-jetbrains), ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* All numeric data in the app uses tabular nums by default */
+input[type="number"],
+output,
+.amount,
+[data-numeric] {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Buttons ────────────────────────────────── */
+.btn-ink {
+  background: var(--ink);
+  color: var(--paper);
+  border: 1px solid var(--ink);
+  transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease;
+}
+.btn-ink:hover {
+  transform: translateY(-1px);
+  box-shadow: 4px 4px 0 0 var(--accent);
+}
+.btn-ink:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+.btn-outline {
+  border: 1px solid var(--ink);
+  color: var(--ink);
+  background: transparent;
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+.btn-outline:hover {
+  transform: translateY(-1px);
+  box-shadow: 4px 4px 0 0 var(--ink);
+}
+
+/* Card — editorial paper card */
+.ink-card {
+  background: var(--paper-2);
+  border: 1px solid var(--rule);
+}
+
+.rule-top    { border-top: 1px solid var(--rule); }
+.rule-bottom { border-bottom: 1px solid var(--rule); }
+
+/* Inputs — minimal editorial style */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="search"],
+input[type="date"],
+input[type="tel"],
+input[type="url"],
+select,
+textarea {
+  font-family: inherit;
+}
+
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Native form controls accent — calendar, checkbox, radio, range */
+:root, html, body { accent-color: var(--accent); }
+
+/* Selection */
+::selection {
+  background: var(--accent);
+  color: var(--paper);
+}
+
+/* ────────────────────────────────────────────────────────────
+   Recharts — make tooltips & labels follow the editorial theme
+   ──────────────────────────────────────────────────────────── */
+.recharts-default-tooltip {
+  background: var(--chart-tooltip-bg) !important;
+  border: 1px solid var(--chart-tooltip-br) !important;
+  border-radius: 8px !important;
+  color: var(--chart-tooltip-fg) !important;
+  font-family: var(--font-jetbrains), ui-monospace, monospace !important;
+  font-size: 12px !important;
+}
+.recharts-tooltip-label,
+.recharts-tooltip-item {
+  color: var(--chart-tooltip-fg) !important;
+}
+.recharts-cartesian-axis-tick-value {
+  fill: var(--chart-axis) !important;
+}
+.recharts-legend-item-text {
+  color: var(--chart-axis) !important;
+}
+
+/* ────────────────────────────────────────────────────────────
+   Marketing-only decorations (scoped to .marketing-shell)
+   ──────────────────────────────────────────────────────────── */
+.marketing-shell .ink-mark {
+  position: relative;
+  white-space: nowrap;
+  isolation: isolate;
+  color: var(--paper);
+}
+.marketing-shell .ink-mark::after {
+  content: '';
+  position: absolute;
+  left: -0.08em;
+  right: -0.08em;
+  top: 0.04em;
+  bottom: 0.06em;
+  background: var(--accent);
+  z-index: -1;
+  transform: skew(-4deg) rotate(-0.6deg);
+  border-radius: 3px;
+  box-shadow: 2px 3px 0 rgba(14, 12, 10, 0.08);
+}
+
+.marketing-shell .grain::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.35;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.45 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+@media (prefers-color-scheme: dark) {
+  .marketing-shell .grain::before {
+    mix-blend-mode: screen;
+    opacity: 0.18;
+  }
+}
+
+.marketing-shell .pop-shadow {
+  box-shadow:
+    0 1px 0 rgba(14, 12, 10, 0.04),
+    0 14px 24px -16px rgba(14, 12, 10, 0.18),
+    0 32px 60px -32px rgba(14, 12, 10, 0.22);
+}
+@media (prefers-color-scheme: dark) {
+  .marketing-shell .pop-shadow {
+    box-shadow:
+      0 1px 0 rgba(0, 0, 0, 0.4),
+      0 14px 24px -16px rgba(0, 0, 0, 0.6),
+      0 32px 60px -32px rgba(0, 0, 0, 0.8);
+  }
+}
+
+@keyframes marketing-ticker {
+  from { transform: translate3d(0, 0, 0); }
+  to   { transform: translate3d(-50%, 0, 0); }
+}
+.marketing-shell .ticker-track {
+  animation: marketing-ticker 64s linear infinite;
+  will-change: transform;
+}
+@media (prefers-reduced-motion: reduce) {
+  .marketing-shell .ticker-track { animation: none; }
+}
+
+@keyframes spark-draw {
+  to { stroke-dashoffset: 0; }
+}
+.marketing-shell .spark-path {
+  stroke-dasharray: 600;
+  stroke-dashoffset: 600;
+  animation: spark-draw 2.4s 0.4s ease-out forwards;
+}
+
+@keyframes pop-in {
+  0%   { opacity: 0; transform: translateY(8px) scale(0.98); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+.marketing-shell .pop-in {
+  animation: pop-in 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+/* ────────────────────────────────────────────────────────────
+   Misc
+   ──────────────────────────────────────────────────────────── */
 .scrollbar-hide {
   -ms-overflow-style: none;
   scrollbar-width: none;

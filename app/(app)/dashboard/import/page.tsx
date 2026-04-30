@@ -24,29 +24,29 @@ export default async function ImportPage() {
 
   if (!hasImportAccess) {
     return (
-      <div className="min-h-[calc(100vh-4rem)] bg-zinc-50 dark:bg-zinc-950">
+      <div className="min-h-[calc(100vh-4rem)] bg-[color:var(--paper)] text-[color:var(--ink)]">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
           <Link
             href="/dashboard"
-            className="inline-flex items-center gap-1.5 text-sm text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 mb-6"
+            className="inline-flex items-center gap-1.5 text-sm text-[color:var(--ink-soft)] hover:text-[color:var(--accent)] mb-6"
           >
             <ArrowLeft className="h-4 w-4" />
             Retour au tableau de bord
           </Link>
 
-          <div className="rounded-xl border border-blue-200 dark:border-blue-800 bg-white dark:bg-zinc-900 p-6 sm:p-8 text-center">
-            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-blue-600 text-white mb-4">
+          <div className="ink-card rounded-2xl pop-shadow p-6 sm:p-8 text-center">
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-[color:var(--accent-soft)] text-[color:var(--accent)] mb-4">
               <Lock className="h-6 w-6" />
             </div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-zinc-900 dark:text-zinc-100">
+            <h1 className="display text-3xl sm:text-4xl leading-none text-[color:var(--ink)]">
               Import reserve aux utilisateurs Pro
             </h1>
-            <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
+            <p className="mt-3 text-sm text-[color:var(--ink-soft)]">
               Passez Pro pour importer des historiques CSV, Excel, PDF ou texte, puis valider les transactions avant insertion.
             </p>
             <Link
               href="/settings/billing"
-              className="mt-6 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+              className="btn-ink mt-6 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm"
             >
               <Sparkles className="h-4 w-4" />
               Passer Pro

@@ -79,11 +79,11 @@ export function DangerZone() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-lg border border-zinc-200 dark:border-zinc-800 p-5">
+      <section className="rounded-lg border border-[color:var(--rule)] p-5">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div className="min-w-0">
-            <h3 className="font-medium text-zinc-900 dark:text-zinc-100">Exporter mes données</h3>
-            <p className="text-sm text-zinc-500 mt-1">
+            <h3 className="font-medium text-[color:var(--ink)]">Exporter mes données</h3>
+            <p className="text-sm text-[color:var(--ink-soft)] mt-1">
               Téléchargez l&apos;intégralité de vos données (profil, comptes, transactions,
               positions) au format JSON, conformément au RGPD.
             </p>
@@ -91,7 +91,7 @@ export function DangerZone() {
           <button
             onClick={handleExport}
             disabled={exporting}
-            className="inline-flex items-center gap-2 py-2 px-4 border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800 rounded-lg text-sm font-medium transition flex-shrink-0"
+            className="btn-outline inline-flex items-center gap-2 py-2 px-4 rounded-lg text-sm transition flex-shrink-0 disabled:opacity-50"
           >
             {exporting ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -103,10 +103,10 @@ export function DangerZone() {
         </div>
       </section>
 
-      <section className="rounded-lg border border-zinc-200 dark:border-zinc-800 p-5">
+      <section className="rounded-lg border border-[color:var(--rule)] p-5">
         <div className="min-w-0 mb-4">
-          <h3 className="font-medium text-zinc-900 dark:text-zinc-100">Rapport patrimonial (PDF)</h3>
-          <p className="text-sm text-zinc-500 mt-1">
+          <h3 className="font-medium text-[color:var(--ink)]">Rapport patrimonial (PDF)</h3>
+          <p className="text-sm text-[color:var(--ink-soft)] mt-1">
             Générez un rapport PDF synthétique avec votre patrimoine, la liste des comptes,
             vos positions actuelles et l&apos;activité sur la période choisie.
           </p>
@@ -123,7 +123,7 @@ export function DangerZone() {
               type="button"
               onClick={() => handleExportPdf(key)}
               disabled={exportingPdf !== null}
-              className="inline-flex items-center gap-2 py-2 px-3 border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-50 rounded-lg text-sm font-medium transition"
+              className="btn-outline inline-flex items-center gap-2 py-2 px-3 disabled:opacity-50 rounded-lg text-sm transition"
             >
               {exportingPdf === key ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -136,14 +136,14 @@ export function DangerZone() {
         </div>
       </section>
 
-      <section className="rounded-lg border border-red-200 dark:border-red-900/40 bg-red-50/30 dark:bg-red-950/10 p-5">
+      <section className="rounded-lg border border-[color:var(--loss)] bg-[color:var(--loss-soft)] p-5">
         <div className="flex items-start gap-3 mb-4">
-          <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-red-100 dark:bg-red-900/30 text-red-600 flex items-center justify-center">
+          <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-[color:var(--paper)] text-[color:var(--loss)] flex items-center justify-center">
             <AlertTriangle className="h-5 w-5" />
           </div>
           <div className="min-w-0">
             <h3 className="font-medium text-red-700 dark:text-red-400">Supprimer mon compte</h3>
-            <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">
+            <p className="text-sm text-[color:var(--ink-soft)] mt-1">
               Action <strong>irréversible</strong>. Toutes vos données (comptes, transactions,
               positions) seront définitivement supprimées.
             </p>
@@ -155,7 +155,7 @@ export function DangerZone() {
             value={confirmText}
             onChange={(e) => setConfirmText(e.target.value)}
             placeholder="Tapez SUPPRIMER pour confirmer"
-            className="w-full px-3 py-2.5 border border-red-300 dark:border-red-900/50 rounded-lg bg-white dark:bg-zinc-900 focus:ring-2 focus:ring-red-500 focus:border-transparent transition"
+            className="w-full px-3 py-2.5 border border-[color:var(--loss)] rounded-lg bg-[color:var(--paper)] text-[color:var(--ink)] focus:ring-2 focus:ring-[color:var(--loss)] focus:border-transparent transition"
           />
           {error && <p className="text-sm text-red-600">{error}</p>}
           <button

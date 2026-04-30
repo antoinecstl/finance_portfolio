@@ -176,7 +176,7 @@ export function BillingActions({
 
   if (isFounder) {
     return (
-      <p className="text-sm text-zinc-500">
+      <p className="text-sm text-[color:var(--ink-soft)]">
         Accès Pro à vie (statut fondateur). Pas de facturation active.
       </p>
     );
@@ -197,15 +197,15 @@ export function BillingActions({
       <div className="space-y-4">
         {planId === 'free' && (
           <div>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-2">Cycle de facturation</p>
-            <div className="inline-flex items-center gap-1 p-1 rounded-full border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
+            <p className="text-xs text-[color:var(--ink-soft)] mb-2">Cycle de facturation</p>
+            <div className="inline-flex items-center gap-1 p-1 rounded-full border border-[color:var(--rule)] bg-[color:var(--paper)]">
               <button
                 type="button"
                 onClick={() => setInterval('month')}
                 className={`px-4 py-1.5 text-sm font-medium rounded-full transition-colors ${
                   interval === 'month'
-                    ? 'bg-blue-600 text-white'
-                    : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'
+                    ? 'bg-[color:var(--ink)] text-[color:var(--paper)]'
+                    : 'text-[color:var(--ink-soft)] hover:text-[color:var(--ink)]'
                 }`}
               >
                 Mensuel — {formatPriceFor(PLANS.pro, 'month')}
@@ -215,8 +215,8 @@ export function BillingActions({
                 onClick={() => setInterval('year')}
                 className={`px-4 py-1.5 text-sm font-medium rounded-full transition-colors inline-flex items-center gap-1.5 ${
                   interval === 'year'
-                    ? 'bg-blue-600 text-white'
-                    : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'
+                    ? 'bg-[color:var(--ink)] text-[color:var(--paper)]'
+                    : 'text-[color:var(--ink-soft)] hover:text-[color:var(--ink)]'
                 }`}
               >
                 Annuel — {formatPriceFor(PLANS.pro, 'year')}
@@ -224,7 +224,7 @@ export function BillingActions({
                   <span
                     className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
                       interval === 'year'
-                        ? 'bg-white/20 text-white'
+                        ? 'bg-[color:var(--gain-soft)] text-[color:var(--gain)]'
                         : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300'
                     }`}
                   >
@@ -242,12 +242,12 @@ export function BillingActions({
               <button
                 onClick={handleUpgrade}
                 disabled={!paddleReady}
-                className="inline-flex items-center gap-2 py-2.5 px-5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium rounded-lg w-fit"
+                className="btn-ink inline-flex items-center gap-2 py-2.5 px-5 disabled:opacity-50 rounded-lg w-fit"
               >
                 {!paddleReady && <Loader2 className="h-4 w-4 animate-spin" />}
                 Passer Pro — {formatPriceFor(PLANS.pro, interval)}
               </button>
-              <p className="text-xs text-zinc-500 dark:text-zinc-400">
+              <p className="text-xs text-[color:var(--ink-soft)]">
                 Les factures seront envoyées à l&apos;adresse email indiquée lors du paiement.
               </p>
             </div>
@@ -255,7 +255,7 @@ export function BillingActions({
             <button
               onClick={handleManage}
               disabled={loading}
-              className="inline-flex items-center gap-2 py-2.5 px-5 border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800 font-medium rounded-lg"
+              className="btn-outline inline-flex items-center gap-2 py-2.5 px-5 rounded-lg disabled:opacity-60"
             >
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ExternalLink className="h-4 w-4" />}
               Gérer mon abonnement
