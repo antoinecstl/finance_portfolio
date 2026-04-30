@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getLimits } from '@/lib/subscription';
 import { createPositionSchema, formatZodError } from '@/lib/schemas';
-import { accountSupportsPositions } from '@/lib/utils';
+import { accountSupportsPositions, accountTypeAllowsAsset, assetAccountMismatchMessage } from '@/lib/utils';
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -32,6 +32,12 @@ export async function POST(request: Request) {
   }
   if (!accountSupportsPositions(account)) {
     return NextResponse.json({ error: 'account_does_not_support_positions' }, { status: 403 });
+  }
+  if (!accountTypeAllowsAsset(account.type, body.symbol)) {
+    return NextResponse.json(
+      { error: 'asset_account_mismatch', message: assetAccountMismatchMessage(account.type) },
+      { status: 400 }
+    );
   }
 
   const limits = await getLimits(user.id);

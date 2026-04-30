@@ -5,7 +5,7 @@ import { createTransactionSchema, paginationSchema, formatZodError } from '@/lib
 import { decodeCursor, encodeCursor } from '@/lib/pagination';
 import { simulateAccountSequence } from '@/lib/transaction-validation';
 import type { Transaction } from '@/lib/types';
-import { accountSupportsPositions } from '@/lib/utils';
+import { accountSupportsPositions, accountTypeAllowsAsset, assetAccountMismatchMessage } from '@/lib/utils';
 
 // GET /api/transactions?cursor=<opaque>&limit=50&accountId=<uuid>
 // Pagination cursor-based sur (date DESC, id DESC) pour rester stable
@@ -95,6 +95,12 @@ export async function POST(request: Request) {
   }
   if (['BUY', 'SELL', 'DIVIDEND'].includes(body.type) && !accountSupportsPositions(account)) {
     return NextResponse.json({ error: 'account_does_not_support_positions' }, { status: 403 });
+  }
+  if (body.stock_symbol && !accountTypeAllowsAsset(account.type, body.stock_symbol)) {
+    return NextResponse.json(
+      { error: 'asset_account_mismatch', message: assetAccountMismatchMessage(account.type) },
+      { status: 400 }
+    );
   }
 
   const feesAmount = body.type !== 'FEE' && body.fees && body.fees > 0 ? body.fees : 0;

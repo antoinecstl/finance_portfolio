@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import type { Transaction } from '@/lib/types';
 import { simulateAccountSequence } from '@/lib/transaction-validation';
 import { createTransactionSchema, formatZodError } from '@/lib/schemas';
-import { accountSupportsPositions } from '@/lib/utils';
+import { accountSupportsPositions, accountTypeAllowsAsset, assetAccountMismatchMessage } from '@/lib/utils';
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -153,6 +153,12 @@ export async function PATCH(request: Request, { params }: RouteContext) {
   }
   if (['BUY', 'SELL', 'DIVIDEND'].includes(body.type) && !accountSupportsPositions(account)) {
     return NextResponse.json({ error: 'account_does_not_support_positions' }, { status: 403 });
+  }
+  if (body.stock_symbol && !accountTypeAllowsAsset(account.type, body.stock_symbol)) {
+    return NextResponse.json(
+      { error: 'asset_account_mismatch', message: assetAccountMismatchMessage(account.type) },
+      { status: 400 }
+    );
   }
 
   const newFees = body.type !== 'FEE' && body.fees && body.fees > 0 ? body.fees : 0;

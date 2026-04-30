@@ -19,6 +19,7 @@ const accountTypes: { value: AccountType; label: string }[] = [
   { value: 'CTO', label: 'Compte-Titres Ordinaire' },
   { value: 'ASSURANCE_VIE', label: 'Assurance Vie' },
   { value: 'PEL', label: 'PEL' },
+  { value: 'CRYPTO', label: 'Crypto' },
   { value: 'AUTRE', label: 'Autre' },
 ];
 

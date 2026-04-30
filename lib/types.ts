@@ -1,6 +1,6 @@
 // Types pour le suivi de portefeuille financier
 
-export type AccountType = 'PEA' | 'LIVRET_A' | 'LDDS' | 'CTO' | 'ASSURANCE_VIE' | 'PEL' | 'AUTRE';
+export type AccountType = 'PEA' | 'LIVRET_A' | 'LDDS' | 'CTO' | 'ASSURANCE_VIE' | 'PEL' | 'CRYPTO' | 'AUTRE';
 
 export interface Account {
   id: string;

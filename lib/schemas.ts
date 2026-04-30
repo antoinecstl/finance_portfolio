@@ -4,7 +4,7 @@ import { z } from 'zod';
 // Le même schéma est importé des deux côtés : contrat unique = zéro dérive.
 
 export const accountTypeSchema = z.enum([
-  'PEA', 'LIVRET_A', 'LDDS', 'CTO', 'ASSURANCE_VIE', 'PEL', 'AUTRE',
+  'PEA', 'LIVRET_A', 'LDDS', 'CTO', 'ASSURANCE_VIE', 'PEL', 'CRYPTO', 'AUTRE',
 ]);
 
 export const transactionTypeSchema = z.enum([

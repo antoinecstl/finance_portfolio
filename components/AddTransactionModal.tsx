@@ -5,9 +5,16 @@ import { X, Search, Copy } from 'lucide-react';
 import { Account, StockPosition, Transaction } from '@/lib/types';
 import { useStockSearch } from '@/lib/hooks';
 import { useLimitReached } from './LimitReachedModal';
-import { POPULAR_FRENCH_STOCKS } from '@/lib/stock-api';
+import { POPULAR_FRENCH_STOCKS, POPULAR_CRYPTOS } from '@/lib/stock-api';
 import { calculatePositionsAtDate } from '@/lib/portfolio-calculator';
-import { accountSupportsPositions, formatDate, formatCurrency } from '@/lib/utils';
+import {
+  accountSupportsPositions,
+  accountTypeAllowsAsset,
+  assetAccountMismatchMessage,
+  formatDate,
+  formatCurrency,
+  isCryptoSymbol,
+} from '@/lib/utils';
 import { findDuplicateTransaction } from '@/lib/transaction-duplicates';
 
 interface AddTransactionModalProps {
@@ -67,6 +74,13 @@ export function AddTransactionModal({
     [accounts, accountId]
   );
   const selectableAccounts = requiresPositionAccount ? positionAccounts : accounts;
+  const isCryptoAccount = selectedAccount?.type === 'CRYPTO';
+  const filteredSearchResults = useMemo(() => {
+    if (!selectedAccount) return searchResults;
+    return searchResults.filter((r) =>
+      isCryptoAccount ? isCryptoSymbol(r.symbol) : !isCryptoSymbol(r.symbol)
+    );
+  }, [searchResults, selectedAccount, isCryptoAccount]);
 
   const resetForm = () => {
     setAccountId(defaultAccountId || '');
@@ -204,6 +218,13 @@ export function AddTransactionModal({
       }
       if (requiresPositionAccount && (!selectedAccount || !accountSupportsPositions(selectedAccount))) {
         throw new Error('Ce type de transaction doit être rattaché à un compte pouvant détenir des positions');
+      }
+      if (
+        selectedAccount &&
+        stockSymbol &&
+        !accountTypeAllowsAsset(selectedAccount.type, stockSymbol)
+      ) {
+        throw new Error(assetAccountMismatchMessage(selectedAccount.type));
       }
 
       const qty = parseFloat(quantity) || 0;
@@ -486,7 +507,7 @@ export function AddTransactionModal({
               {type === 'BUY' && (
                 <div className="relative" ref={searchRef}>
                   <label className="block text-xs sm:text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-                    Rechercher une action
+                    {isCryptoAccount ? 'Rechercher une crypto' : 'Rechercher une action'}
                   </label>
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
@@ -498,13 +519,13 @@ export function AddTransactionModal({
                         setShowSearchDropdown(true);
                       }}
                       onFocus={() => setShowSearchDropdown(true)}
-                      placeholder="Rechercher..."
+                      placeholder={isCryptoAccount ? 'Bitcoin, ETH...' : 'Rechercher...'}
                       className="w-full pl-10 pr-3 py-2 text-sm sm:text-base border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                   </div>
-                  {showSearchDropdown && searchResults.length > 0 && (
+                  {showSearchDropdown && filteredSearchResults.length > 0 && (
                     <div className="absolute z-20 left-0 right-0 mt-1 bg-white dark:bg-zinc-800 rounded-lg shadow-lg border border-zinc-200 dark:border-zinc-700 max-h-48 overflow-y-auto overscroll-contain">
-                      {searchResults.map((result) => (
+                      {filteredSearchResults.map((result) => (
                         <button
                           key={result.symbol}
                           type="button"
@@ -520,16 +541,18 @@ export function AddTransactionModal({
 
                   {!searchQuery && (
                     <div className="mt-2">
-                      <div className="text-xs text-zinc-500 mb-1">Actions populaires :</div>
+                      <div className="text-xs text-zinc-500 mb-1">
+                        {isCryptoAccount ? 'Cryptos populaires :' : 'Actions populaires :'}
+                      </div>
                       <div className="flex flex-wrap gap-1">
-                        {POPULAR_FRENCH_STOCKS.slice(0, 6).map((stock) => (
+                        {(isCryptoAccount ? POPULAR_CRYPTOS : POPULAR_FRENCH_STOCKS).slice(0, 6).map((stock) => (
                           <button
                             key={stock.symbol}
                             type="button"
                             onClick={() => handleSelectStock(stock.symbol, stock.name)}
                             className="text-xs px-2 py-1 bg-zinc-100 dark:bg-zinc-800 rounded hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300"
                           >
-                            {stock.symbol.replace('.PA', '')}
+                            {isCryptoAccount ? stock.symbol.replace('-USD', '') : stock.symbol.replace('.PA', '')}
                           </button>
                         ))}
                       </div>

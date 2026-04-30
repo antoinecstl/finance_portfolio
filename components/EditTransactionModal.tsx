@@ -4,9 +4,14 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { X, Search } from 'lucide-react';
 import { Account, Transaction, TransactionType } from '@/lib/types';
 import { useStockSearch } from '@/lib/hooks';
-import { POPULAR_FRENCH_STOCKS } from '@/lib/stock-api';
+import { POPULAR_FRENCH_STOCKS, POPULAR_CRYPTOS } from '@/lib/stock-api';
 import { calculatePositionsAtDate } from '@/lib/portfolio-calculator';
-import { accountSupportsPositions } from '@/lib/utils';
+import {
+  accountSupportsPositions,
+  accountTypeAllowsAsset,
+  assetAccountMismatchMessage,
+  isCryptoSymbol,
+} from '@/lib/utils';
 
 interface EditTransactionModalProps {
   isOpen: boolean;
@@ -169,6 +174,9 @@ export function EditTransactionModal({
         throw new Error(
           'Ce type de transaction doit être rattaché à un compte pouvant détenir des positions. Supprimez la transaction et recréez-la sur le bon compte.'
         );
+      }
+      if (stockSymbol && !accountTypeAllowsAsset(selectedAccount.type, stockSymbol)) {
+        throw new Error(assetAccountMismatchMessage(selectedAccount.type));
       }
 
       const qty = parseFloat(quantity) || 0;
@@ -367,31 +375,39 @@ export function EditTransactionModal({
               </div>
               {showSearchDropdown && searchResults.length > 0 && (
                 <div className="absolute z-20 left-0 right-0 mt-1 bg-white dark:bg-zinc-800 rounded-lg shadow-lg border border-zinc-200 dark:border-zinc-700 max-h-48 overflow-y-auto overscroll-contain">
-                  {searchResults.map((result) => (
-                    <button
-                      key={result.symbol}
-                      type="button"
-                      onClick={() => handleSelectStock(result.symbol, result.name)}
-                      className="w-full text-left px-3 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-700 border-b border-zinc-100 dark:border-zinc-700 last:border-0"
-                    >
-                      <div className="font-medium text-sm text-zinc-900 dark:text-zinc-100 truncate">{result.symbol}</div>
-                      <div className="text-xs text-zinc-500 truncate">{result.name}</div>
-                    </button>
-                  ))}
+                  {searchResults
+                    .filter((r) =>
+                      selectedAccount?.type === 'CRYPTO'
+                        ? isCryptoSymbol(r.symbol)
+                        : !isCryptoSymbol(r.symbol)
+                    )
+                    .map((result) => (
+                      <button
+                        key={result.symbol}
+                        type="button"
+                        onClick={() => handleSelectStock(result.symbol, result.name)}
+                        className="w-full text-left px-3 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-700 border-b border-zinc-100 dark:border-zinc-700 last:border-0"
+                      >
+                        <div className="font-medium text-sm text-zinc-900 dark:text-zinc-100 truncate">{result.symbol}</div>
+                        <div className="text-xs text-zinc-500 truncate">{result.name}</div>
+                      </button>
+                    ))}
                 </div>
               )}
               {!searchQuery && !stockSymbol && (
                 <div className="mt-2">
-                  <div className="text-xs text-zinc-500 mb-1">Actions populaires :</div>
+                  <div className="text-xs text-zinc-500 mb-1">
+                    {selectedAccount?.type === 'CRYPTO' ? 'Cryptos populaires :' : 'Actions populaires :'}
+                  </div>
                   <div className="flex flex-wrap gap-1">
-                    {POPULAR_FRENCH_STOCKS.slice(0, 6).map((stock) => (
+                    {(selectedAccount?.type === 'CRYPTO' ? POPULAR_CRYPTOS : POPULAR_FRENCH_STOCKS).slice(0, 6).map((stock) => (
                       <button
                         key={stock.symbol}
                         type="button"
                         onClick={() => handleSelectStock(stock.symbol, stock.name)}
                         className="text-xs px-2 py-1 bg-zinc-100 dark:bg-zinc-800 rounded hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300"
                       >
-                        {stock.symbol.replace('.PA', '')}
+                        {selectedAccount?.type === 'CRYPTO' ? stock.symbol.replace('-USD', '') : stock.symbol.replace('.PA', '')}
                       </button>
                     ))}
                   </div>

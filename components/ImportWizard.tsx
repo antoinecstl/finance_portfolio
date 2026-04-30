@@ -6,7 +6,7 @@ import { ArrowLeft, Upload, FileText, ClipboardPaste, Loader2, CheckCircle2, Ale
 import { useAccounts, useStockSearch, useTransactions } from '@/lib/hooks';
 import type { ProposedTransaction, ImportNote } from '@/lib/import/types';
 import type { Transaction, TransactionType } from '@/lib/types';
-import { accountSupportsPositions, formatDate } from '@/lib/utils';
+import { accountSupportsPositions, accountTypeAllowsAsset, assetAccountMismatchMessage, formatDate, isCryptoSymbol } from '@/lib/utils';
 import { findDuplicateTransaction } from '@/lib/transaction-duplicates';
 
 type Step = 'upload' | 'preview' | 'done';
@@ -31,19 +31,21 @@ function buildSymbolSearchHint(description?: string): string {
     .slice(0, 60);
 }
 
-type TickerStatus = 'valid' | 'invalid' | 'pending' | 'unknown';
+type TickerStatus = 'valid' | 'invalid' | 'pending' | 'unknown' | 'mismatch';
 
 function ImportSymbolCell({
   value,
   description,
   disabled,
   status,
+  isCryptoAccount,
   onChange,
 }: {
   value: string | null | undefined;
   description?: string;
   disabled: boolean;
   status: TickerStatus;
+  isCryptoAccount: boolean;
   onChange: (symbol: string | null) => void;
 }) {
   const [showDropdown, setShowDropdown] = useState(false);
@@ -51,9 +53,13 @@ function ImportSymbolCell({
   const query = value ?? '';
   const hint = useMemo(() => buildSymbolSearchHint(description), [description]);
   const inputBorder =
-    status === 'invalid'
+    status === 'invalid' || status === 'mismatch'
       ? 'border-red-400 dark:border-red-500'
       : 'border-zinc-200 dark:border-zinc-700';
+  const filteredResults = useMemo(
+    () => results.filter((r) => (isCryptoAccount ? isCryptoSymbol(r.symbol) : !isCryptoSymbol(r.symbol))),
+    [results, isCryptoAccount]
+  );
 
   useEffect(() => {
     if (!showDropdown || disabled) return;
@@ -95,6 +101,13 @@ function ImportSymbolCell({
           Ticker introuvable — choisissez-en un dans la liste.
         </p>
       )}
+      {!disabled && status === 'mismatch' && (
+        <p className="mt-1 text-[10px] text-red-600 dark:text-red-400">
+          {isCryptoAccount
+            ? 'Symbole non-crypto interdit sur un compte Crypto.'
+            : 'Symbole crypto interdit sur ce type de compte.'}
+        </p>
+      )}
       {!disabled && status === 'pending' && query.trim().length > 0 && (
         <p className="mt-1 text-[10px] text-zinc-500 dark:text-zinc-400 inline-flex items-center gap-1">
           <Loader2 className="h-2.5 w-2.5 animate-spin" /> Vérification…
@@ -116,7 +129,7 @@ function ImportSymbolCell({
             </div>
           )}
 
-          {!loading && results.map((result) => (
+          {!loading && filteredResults.map((result) => (
             <button
               key={`${result.symbol}-${result.exchange}`}
               type="button"
@@ -136,9 +149,9 @@ function ImportSymbolCell({
             </button>
           ))}
 
-          {!loading && results.length === 0 && (
+          {!loading && filteredResults.length === 0 && (
             <div className="px-3 py-2 text-xs text-zinc-500 dark:text-zinc-400">
-              Aucun ticker trouve
+              {isCryptoAccount ? 'Aucune crypto trouvée' : 'Aucun ticker trouvé'}
             </div>
           )}
         </div>
@@ -387,13 +400,31 @@ export function ImportWizard() {
       else if (
         (r.type === 'BUY' || r.type === 'SELL' || r.type === 'DIVIDEND') &&
         r.stock_symbol &&
+        selectedAccount &&
+        !accountTypeAllowsAsset(selectedAccount.type, r.stock_symbol)
+      ) {
+        errors.push(i);
+      }
+      else if (
+        (r.type === 'BUY' || r.type === 'SELL' || r.type === 'DIVIDEND') &&
+        r.stock_symbol &&
         tickerStatus.get(r.stock_symbol.toUpperCase()) !== 'valid'
       ) {
         errors.push(i);
       }
     });
     return errors;
-  }, [rows, tickerStatus]);
+  }, [rows, tickerStatus, selectedAccount]);
+
+  const hasAssetMismatch = useMemo(() => {
+    if (!selectedAccount) return false;
+    return rows.some(
+      (r) =>
+        (r.type === 'BUY' || r.type === 'SELL' || r.type === 'DIVIDEND') &&
+        r.stock_symbol &&
+        !accountTypeAllowsAsset(selectedAccount.type, r.stock_symbol)
+    );
+  }, [rows, selectedAccount]);
 
   async function handleCommit() {
     setError(null);
@@ -474,6 +505,12 @@ export function ImportWizard() {
                 <p className="mt-1.5 text-xs text-amber-600 dark:text-amber-400 inline-flex items-start gap-1">
                   <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
                   Ce compte ne supporte pas les positions : seules les transactions cash (DEPOSIT, WITHDRAWAL, INTEREST, FEE) seront acceptées.
+                </p>
+              )}
+              {selectedAccount && hasAssetMismatch && (
+                <p className="mt-1.5 text-xs text-red-600 dark:text-red-400 inline-flex items-start gap-1">
+                  <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                  {assetAccountMismatchMessage(selectedAccount.type)}
                 </p>
               )}
             </div>
@@ -658,10 +695,13 @@ export function ImportWizard() {
                               value={r.stock_symbol ?? ''}
                               disabled={!isStock && !isDividend}
                               description={r.description}
+                              isCryptoAccount={selectedAccount?.type === 'CRYPTO'}
                               status={
                                 !r.stock_symbol
                                   ? 'unknown'
-                                  : (tickerStatus.get(r.stock_symbol.toUpperCase()) ?? 'pending')
+                                  : selectedAccount && !accountTypeAllowsAsset(selectedAccount.type, r.stock_symbol)
+                                    ? 'mismatch'
+                                    : (tickerStatus.get(r.stock_symbol.toUpperCase()) ?? 'pending')
                               }
                               onChange={(symbol) => updateRow(idx, { stock_symbol: symbol })}
                             />

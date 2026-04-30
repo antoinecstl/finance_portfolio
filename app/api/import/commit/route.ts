@@ -9,7 +9,7 @@ import { createTransactionSchema, formatZodError } from '@/lib/schemas';
 import { commitRequestSchema } from '@/lib/import/types';
 import { getLimits, hasUserFeature } from '@/lib/subscription';
 import { getStockQuotes } from '@/lib/stock-api';
-import { accountSupportsPositions } from '@/lib/utils';
+import { accountSupportsPositions, accountTypeAllowsAsset, assetAccountMismatchMessage } from '@/lib/utils';
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -114,6 +114,24 @@ export async function POST(request: Request) {
         message: 'Ce compte ne supporte pas les positions boursieres. Importez uniquement des transactions cash ou choisissez un PEA/CTO/Assurance Vie.',
       },
       { status: 403 }
+    );
+  }
+
+  const mismatchedRows = positionRows.filter(
+    ({ tx }) => tx.stock_symbol && !accountTypeAllowsAsset(account.type, tx.stock_symbol)
+  );
+  if (mismatchedRows.length > 0) {
+    return NextResponse.json(
+      {
+        error: 'asset_account_mismatch',
+        message: assetAccountMismatchMessage(account.type),
+        issues: mismatchedRows.map(({ tx, row }) => ({
+          row,
+          path: 'stock_symbol',
+          message: `Symbole incompatible avec le type de compte : ${tx.stock_symbol}`,
+        })),
+      },
+      { status: 400 }
     );
   }
 

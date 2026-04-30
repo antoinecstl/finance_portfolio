@@ -4,10 +4,10 @@ import { useState, useEffect } from 'react';
 import { X, Search } from 'lucide-react';
 import { Account } from '@/lib/types';
 import { useStockSearch } from '@/lib/hooks';
-import { POPULAR_FRENCH_STOCKS } from '@/lib/stock-api';
+import { POPULAR_FRENCH_STOCKS, POPULAR_CRYPTOS } from '@/lib/stock-api';
 import { useAuth } from '@/lib/auth';
 import { useLimitReached } from './LimitReachedModal';
-import { accountSupportsPositions } from '@/lib/utils';
+import { accountSupportsPositions, accountTypeAllowsAsset, assetAccountMismatchMessage, isCryptoSymbol } from '@/lib/utils';
 
 interface AddPositionModalProps {
   isOpen: boolean;
@@ -38,6 +38,11 @@ export function AddPositionModal({
   const limitReached = useLimitReached();
 
   const stockAccounts = accounts.filter(accountSupportsPositions);
+  const selectedAccount = accounts.find((a) => a.id === accountId);
+  const isCryptoAccount = selectedAccount?.type === 'CRYPTO';
+  const filteredSearchResults = searchResults.filter((r) =>
+    isCryptoAccount ? isCryptoSymbol(r.symbol) : !isCryptoSymbol(r.symbol)
+  );
 
   useEffect(() => {
     if (searchQuery.length >= 2) {
@@ -83,6 +88,9 @@ export function AddPositionModal({
     }
 
     try {
+      if (selectedAccount && !accountTypeAllowsAsset(selectedAccount.type, symbol)) {
+        throw new Error(assetAccountMismatchMessage(selectedAccount.type));
+      }
       const res = await fetch('/api/positions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -169,10 +177,10 @@ export function AddPositionModal({
             </select>
           </div>
 
-          {/* Recherche d'action */}
+          {/* Recherche */}
           <div className="relative">
             <label className="block text-xs sm:text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-              Rechercher une action
+              {isCryptoAccount ? 'Rechercher une crypto' : 'Rechercher une action'}
             </label>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
@@ -184,9 +192,9 @@ export function AddPositionModal({
                 className="w-full pl-10 pr-3 py-2 text-sm sm:text-base border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
-            {searchResults.length > 0 && (
+            {filteredSearchResults.length > 0 && (
               <div className="absolute z-10 w-full mt-1 bg-white dark:bg-zinc-800 rounded-lg shadow-lg border border-zinc-200 dark:border-zinc-700 max-h-48 overflow-y-auto">
-                {searchResults.map((result) => (
+                {filteredSearchResults.map((result) => (
                   <button
                     key={result.symbol}
                     type="button"
@@ -201,20 +209,20 @@ export function AddPositionModal({
             )}
           </div>
 
-          {/* Actions populaires */}
+          {/* Populaires */}
           <div>
             <p className="text-xs sm:text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-              Actions populaires
+              {isCryptoAccount ? 'Cryptos populaires' : 'Actions populaires'}
             </p>
             <div className="flex flex-wrap gap-2">
-              {POPULAR_FRENCH_STOCKS.slice(0, 6).map((stock) => (
+              {(isCryptoAccount ? POPULAR_CRYPTOS : POPULAR_FRENCH_STOCKS).slice(0, 6).map((stock) => (
                 <button
                   key={stock.symbol}
                   type="button"
                   onClick={() => handleSelectStock(stock.symbol, stock.name)}
                   className="px-2 py-1 text-xs rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-blue-100 dark:hover:bg-blue-900/30 hover:text-blue-700 dark:hover:text-blue-400 transition-colors"
                 >
-                  {stock.symbol.replace('.PA', '')}
+                  {isCryptoAccount ? stock.symbol.replace('-USD', '') : stock.symbol.replace('.PA', '')}
                 </button>
               ))}
             </div>

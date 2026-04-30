@@ -118,35 +118,37 @@ export async function searchStocks(query: string): Promise<Array<{ symbol: strin
     );
 
     if (!response.ok) {
-      // Fallback: retourner les actions populaires qui correspondent
       console.warn(`Search API returned ${response.status}, using local fallback`);
-      return POPULAR_FRENCH_STOCKS
-        .filter(stock => 
-          stock.symbol.toLowerCase().includes(query.toLowerCase()) ||
-          stock.name.toLowerCase().includes(query.toLowerCase())
-        )
-        .map(stock => ({ ...stock, exchange: 'Paris' }));
+      return localFallbackSearch(query);
     }
 
     const data = await response.json();
     
     return (data.quotes || [])
-      .filter((q: { quoteType?: string }) => q.quoteType === 'EQUITY' || q.quoteType === 'ETF')
-      .map((q: { symbol: string; shortname?: string; longname?: string; exchange?: string }) => ({
+      .filter((q: { quoteType?: string }) =>
+        q.quoteType === 'EQUITY' || q.quoteType === 'ETF' || q.quoteType === 'CRYPTOCURRENCY'
+      )
+      .map((q: { symbol: string; shortname?: string; longname?: string; exchange?: string; quoteType?: string }) => ({
         symbol: q.symbol,
         name: q.shortname || q.longname || q.symbol,
-        exchange: q.exchange || '',
+        exchange: q.exchange || (q.quoteType === 'CRYPTOCURRENCY' ? 'Crypto' : ''),
       }));
   } catch (error) {
     console.error('Error searching stocks:', error);
-    // Fallback local
-    return POPULAR_FRENCH_STOCKS
-      .filter(stock => 
-        stock.symbol.toLowerCase().includes(query.toLowerCase()) ||
-        stock.name.toLowerCase().includes(query.toLowerCase())
-      )
-      .map(stock => ({ ...stock, exchange: 'Paris' }));
+    // Fallback local : actions FR + cryptos populaires.
+    return localFallbackSearch(query);
   }
+}
+
+function localFallbackSearch(query: string): Array<{ symbol: string; name: string; exchange: string }> {
+  const q = query.toLowerCase();
+  const stocks = POPULAR_FRENCH_STOCKS
+    .filter(s => s.symbol.toLowerCase().includes(q) || s.name.toLowerCase().includes(q))
+    .map(s => ({ ...s, exchange: 'Paris' }));
+  const cryptos = POPULAR_CRYPTOS
+    .filter(c => c.symbol.toLowerCase().includes(q) || c.name.toLowerCase().includes(q))
+    .map(c => ({ ...c, exchange: 'Crypto' }));
+  return [...stocks, ...cryptos];
 }
 
 /**
@@ -186,6 +188,18 @@ export const POPULAR_ETFS = [
   { symbol: 'PANX.PA', name: 'Amundi Nasdaq-100' },
   { symbol: 'ESE.PA', name: 'BNP S&P 500' },
   { symbol: 'PAEEM.PA', name: 'Amundi Emerging Markets' },
+];
+
+/**
+ * Cryptos populaires (paires Yahoo Finance, valorisation USD).
+ */
+export const POPULAR_CRYPTOS = [
+  { symbol: 'BTC-USD', name: 'Bitcoin' },
+  { symbol: 'ETH-USD', name: 'Ethereum' },
+  { symbol: 'SOL-USD', name: 'Solana' },
+  { symbol: 'BNB-USD', name: 'BNB' },
+  { symbol: 'XRP-USD', name: 'XRP' },
+  { symbol: 'ADA-USD', name: 'Cardano' },
 ];
 
 /**

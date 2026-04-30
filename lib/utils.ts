@@ -50,6 +50,7 @@ export function getAccountTypeLabel(type: string): string {
     CTO: 'Compte-Titres',
     ASSURANCE_VIE: 'Assurance Vie',
     PEL: 'PEL',
+    CRYPTO: 'Crypto',
     AUTRE: 'Autre',
   };
   return labels[type] || type;
@@ -100,9 +101,9 @@ export function getSectorColor(index: number): string {
 }
 
 // Défaut "peut détenir des positions" pour un type donné.
-// PEA, CTO, ASSURANCE_VIE → true. Livrets / PEL / AUTRE → false.
+// PEA, CTO, ASSURANCE_VIE, CRYPTO → true. Livrets / PEL / AUTRE → false.
 export function defaultSupportsPositions(type: AccountType): boolean {
-  return type === 'PEA' || type === 'CTO' || type === 'ASSURANCE_VIE';
+  return type === 'PEA' || type === 'CTO' || type === 'ASSURANCE_VIE' || type === 'CRYPTO';
 }
 
 // Source de vérité unique pour savoir si un compte peut détenir des positions actions.
@@ -113,4 +114,33 @@ export function accountSupportsPositions(account: Pick<Account, 'type' | 'suppor
     return account.supports_positions;
   }
   return defaultSupportsPositions(account.type);
+}
+
+// Détection : un symbole est crypto si son suffixe -USD/-USDT/-EUR/-GBP/-BTC/-ETH
+// correspond à une paire de quote Yahoo (ex: BTC-USD, ETH-USDT). Les actions
+// utilisent des suffixes de bourse (.PA, .L, .DE, ...) qui ne matchent pas.
+const CRYPTO_QUOTE_SUFFIXES = /-(USD|USDT|EUR|GBP|BTC|ETH)$/i;
+
+export function isCryptoSymbol(symbol: string | null | undefined): boolean {
+  if (!symbol) return false;
+  return CRYPTO_QUOTE_SUFFIXES.test(symbol.trim());
+}
+
+// Compatibilité actif ↔ type de compte.
+// CRYPTO n'accepte que des cryptos ; tous les autres types refusent les cryptos.
+// Sans symbole (DEPOSIT/WITHDRAWAL/INTEREST/FEE), la transaction est toujours valide.
+export function accountTypeAllowsAsset(
+  accountType: AccountType,
+  stockSymbol: string | null | undefined
+): boolean {
+  if (!stockSymbol) return true;
+  const isCrypto = isCryptoSymbol(stockSymbol);
+  if (accountType === 'CRYPTO') return isCrypto;
+  return !isCrypto;
+}
+
+export function assetAccountMismatchMessage(accountType: AccountType): string {
+  return accountType === 'CRYPTO'
+    ? 'Un compte Crypto ne peut contenir que des actifs crypto (ex: BTC-USD).'
+    : 'Les cryptos ne peuvent être ajoutées que dans un compte de type Crypto.';
 }
