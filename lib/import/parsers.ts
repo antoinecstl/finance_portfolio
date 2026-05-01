@@ -29,6 +29,7 @@ type PdfJsCanvasPolyfills = {
   DOMMatrix?: unknown;
   ImageData?: unknown;
   Path2D?: unknown;
+  pdfjsWorker?: { WorkerMessageHandler?: unknown };
 };
 
 type ProcessWithBuiltinModule = NodeJS.Process & {
@@ -116,15 +117,23 @@ async function ensurePdfJsNodePolyfills() {
   }
 
   const runtime = globalThis as unknown as PdfJsCanvasPolyfills;
-  if (runtime.DOMMatrix && runtime.ImageData && runtime.Path2D) return;
 
-  const canvas = (await import('@napi-rs/canvas')) as PdfJsCanvasPolyfills;
-  runtime.DOMMatrix ??= canvas.DOMMatrix;
-  runtime.ImageData ??= canvas.ImageData;
-  runtime.Path2D ??= canvas.Path2D;
+  if (!runtime.DOMMatrix || !runtime.ImageData || !runtime.Path2D) {
+    const canvas = (await import('@napi-rs/canvas')) as PdfJsCanvasPolyfills;
+    runtime.DOMMatrix ??= canvas.DOMMatrix;
+    runtime.ImageData ??= canvas.ImageData;
+    runtime.Path2D ??= canvas.Path2D;
+  }
 
   if (!runtime.DOMMatrix) {
     throw new Error('pdf_runtime_missing_dommatrix');
+  }
+
+  // En serverless Next, le fallback worker relatif "./pdf.worker.mjs" de PDF.js
+  // ne pointe pas vers un fichier réel dans .next/server/chunks. Charger le
+  // worker ici initialise globalThis.pdfjsWorker et court-circuite ce fallback.
+  if (!runtime.pdfjsWorker?.WorkerMessageHandler) {
+    await import('pdfjs-dist/legacy/build/pdf.worker.mjs');
   }
 }
 

@@ -12,5 +12,9 @@ describe('parsePDF', () => {
 
     expect(result.kind).toBe('text');
     expect(result.text).toContain('Achat AAPL');
+    expect(
+      (globalThis as typeof globalThis & { pdfjsWorker?: { WorkerMessageHandler?: unknown } }).pdfjsWorker
+        ?.WorkerMessageHandler
+    ).toBeDefined();
   });
 });
