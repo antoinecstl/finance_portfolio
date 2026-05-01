@@ -7,6 +7,7 @@
 
 import Papa from 'papaparse';
 import ExcelJS from 'exceljs';
+import * as nodeModule from 'node:module';
 
 export type TabularContent = {
   kind: 'tabular';
@@ -23,6 +24,16 @@ export type FileContent = TabularContent | TextContent;
 
 const MAX_ROWS = 5000;
 const MAX_TEXT_CHARS = 200_000;
+
+type PdfJsCanvasPolyfills = {
+  DOMMatrix?: unknown;
+  ImageData?: unknown;
+  Path2D?: unknown;
+};
+
+type ProcessWithBuiltinModule = NodeJS.Process & {
+  getBuiltinModule?: (id: string) => unknown;
+};
 
 // Normalise une cellule : trim + remplace les espaces multiples + caps à 500 chars.
 function normalizeCell(v: unknown): string {
@@ -95,18 +106,44 @@ export async function parseXLSX(buffer: Buffer): Promise<TabularContent> {
   return { kind: 'tabular', headers, rows };
 }
 
+async function ensurePdfJsNodePolyfills() {
+  const nodeProcess = process as ProcessWithBuiltinModule;
+  if (typeof nodeProcess.getBuiltinModule !== 'function') {
+    nodeProcess.getBuiltinModule = (id: string) => {
+      if (id === 'module') return nodeModule;
+      throw new Error(`unsupported_builtin_module:${id}`);
+    };
+  }
+
+  const runtime = globalThis as unknown as PdfJsCanvasPolyfills;
+  if (runtime.DOMMatrix && runtime.ImageData && runtime.Path2D) return;
+
+  const canvas = (await import('@napi-rs/canvas')) as PdfJsCanvasPolyfills;
+  runtime.DOMMatrix ??= canvas.DOMMatrix;
+  runtime.ImageData ??= canvas.ImageData;
+  runtime.Path2D ??= canvas.Path2D;
+
+  if (!runtime.DOMMatrix) {
+    throw new Error('pdf_runtime_missing_dommatrix');
+  }
+}
+
 // PDF : extraction texte best-effort. La structure tabulaire est perdue,
 // donc on délègue toujours au LLM (pas de parseur déclaratif PDF).
-// Note : pdf-parse exécute du code de test au require de l'entry-point en mode
-// "main module". Comme on l'importe via require/dynamic depuis une route Next.js,
-// on n'est jamais le module principal et le bloc test est inerte.
+// pdfjs-dist 5.x attend DOMMatrix dès l'import. Node 20 ne le fournit pas :
+// on installe les polyfills canvas avant de charger pdf-parse.
 export async function parsePDF(buffer: Buffer): Promise<TextContent> {
-  const mod = await import('pdf-parse');
-  const pdfParse = (mod as unknown as { default: (b: Buffer) => Promise<{ text: string }> }).default
-    ?? (mod as unknown as (b: Buffer) => Promise<{ text: string }>);
-  const data = await pdfParse(buffer);
-  const text = (data.text ?? '').slice(0, MAX_TEXT_CHARS);
-  return { kind: 'text', text };
+  await ensurePdfJsNodePolyfills();
+  const { PDFParse } = await import('pdf-parse');
+  const parser = new PDFParse({ data: new Uint8Array(buffer) });
+
+  try {
+    const data = await parser.getText({ pageJoiner: '\n' });
+    const text = (data.text ?? '').slice(0, MAX_TEXT_CHARS);
+    return { kind: 'text', text };
+  } finally {
+    await parser.destroy();
+  }
 }
 
 // Texte collé : aucune transformation, juste un cap de taille.

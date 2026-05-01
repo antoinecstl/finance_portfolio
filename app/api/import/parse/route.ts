@@ -13,6 +13,8 @@ import { runImportPipeline, buildIdempotencyKey } from '@/lib/import/orchestrato
 import type { ImportSourceType } from '@/lib/import/types';
 import { hasUserFeature } from '@/lib/subscription';
 
+export const runtime = 'nodejs';
+
 const MAX_FILE_BYTES = 10 * 1024 * 1024;       // 10 MB hard cap
 const MAX_TEXT_CHARS = 200_000;
 
