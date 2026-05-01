@@ -55,7 +55,7 @@ const EXTRACTION_JSON_SCHEMA = {
       items: {
         type: 'object',
         additionalProperties: false,
-        required: ['code', 'message'],
+        required: ['code', 'message', 'row'],
         properties: {
           code: { type: 'string' },
           message: { type: 'string' },
