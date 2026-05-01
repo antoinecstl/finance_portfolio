@@ -67,9 +67,7 @@ const EXTRACTION_JSON_SCHEMA = {
   },
 } as const;
 
-const SYSTEM_PROMPT = `Tu es un assistant qui extrait des transactions financières structurées depuis des relevés de courtiers, banques ou exports CSV/Excel.
-
-Sources possibles : CSV/Excel tabulaire, texte brut, ou PDF (relevé bancaire, avis d'opéré broker, extrait de compte). Pour les PDF, le fichier brut peut t'être attaché : si le texte extrait paraît tronqué, désordonné ou vide, lis directement la version visuelle du document.
+const SYSTEM_PROMPT = `Tu es un assistant qui extrait des transactions financières structurées depuis des exports CSV/Excel ou du texte collé. (Les PDF sont traités séparément par un OCR document-aware en amont — tu ne les vois jamais ici.)
 
 Règles d'extraction :
 - type : mappe précisément vers DEPOSIT (versement de cash, virement entrant), WITHDRAWAL (retrait, virement sortant), BUY (achat de titre), SELL (vente de titre), DIVIDEND, INTEREST, FEE.
@@ -109,20 +107,6 @@ Extrais toutes les transactions visibles.`;
   const text = input.text ?? '';
   const MAX = 80_000;
   const truncated = text.length > MAX ? text.slice(0, MAX) + '\n[... contenu tronqué ...]' : text;
-  const trimmed = truncated.trim();
-  if (input.pdfBuffer) {
-    const textBlock = trimmed.length > 0
-      ? `Texte extrait par la couche PDF (peut être bruité, désordonné ou partiel — le rendu visuel fait foi) :
-"""
-${truncated}
-"""`
-      : `La couche texte du PDF est vide (document scanné ou rendu en image). Lis directement le PDF visuellement.`;
-    return `Format : PDF (le fichier est attaché à ce message).${hint}
-
-${textBlock}
-
-Extrais TOUTES les transactions du tableau du PDF (chaque ligne d'opération = une transaction). Si le tableau a 10 lignes, renvoie 10 transactions. Ne te limite pas au texte extrait s'il paraît incomplet.`;
-  }
   return `Format : texte libre (collé).${hint}
 
 Contenu :
@@ -144,29 +128,12 @@ class OpenAIProvider implements LLMProvider {
   }
 
   async extractTransactions(input: LLMExtractionInput): Promise<LLMExtractionResult> {
-    // Si on a un buffer PDF, on le passe en file input à OpenAI : gpt-4o-mini et
-    // gpt-4.1 supportent les PDF natifs (vision + texte intégré). C'est la voie
-    // robuste pour les PDF-image / scans dont la couche texte est vide.
-    const userPrompt = buildUserPrompt(input);
-    const userContent = input.pdfBuffer
-      ? ([
-          { type: 'text', text: userPrompt },
-          {
-            type: 'file',
-            file: {
-              filename: input.hint && input.hint.toLowerCase().endsWith('.pdf') ? input.hint : 'document.pdf',
-              file_data: `data:application/pdf;base64,${input.pdfBuffer.toString('base64')}`,
-            },
-          },
-        ] as OpenAI.Chat.Completions.ChatCompletionContentPart[])
-      : userPrompt;
-
     const completion = await this.client.chat.completions.create({
       model: this.model,
       temperature: 0,
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user', content: userContent },
+        { role: 'user', content: buildUserPrompt(input) },
       ],
       response_format: {
         type: 'json_schema',
@@ -205,7 +172,7 @@ export function getLLMProvider(): LLMProvider {
     if (!apiKey) {
       throw new Error('OPENAI_API_KEY manquant : configure-le dans .env.local pour activer l\'import intelligent.');
     }
-    const model = process.env.LLM_MODEL ?? 'gpt-4o-mini';
+    const model = process.env.LLM_MODEL ?? 'gpt-5.4-nano';
     cached = new OpenAIProvider(apiKey, model);
     return cached;
   }

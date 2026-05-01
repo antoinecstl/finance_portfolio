@@ -82,7 +82,7 @@ function ImportSymbolCell({
         }
       }}
     >
-      <Search className="absolute left-1.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-400 pointer-events-none" />
+      <Search className="absolute left-1.5 top-[0.55rem] sm:top-[0.65rem] h-3.5 w-3.5 sm:h-4 sm:w-4 text-zinc-400 pointer-events-none" />
       <input
         type="text"
         value={query}
@@ -94,7 +94,7 @@ function ImportSymbolCell({
         onFocus={() => setShowDropdown(true)}
         disabled={disabled}
         placeholder={disabled ? '-' : 'Symbole ou nom'}
-        className={`w-36 pl-6 pr-2 py-1 text-xs border rounded bg-white dark:bg-zinc-800 disabled:opacity-40 ${inputBorder}`}
+        className={`w-36 sm:w-44 pl-6 sm:pl-7 pr-2 py-1 sm:py-1.5 text-xs sm:text-sm border rounded bg-white dark:bg-zinc-800 disabled:opacity-40 ${inputBorder}`}
       />
       {!disabled && status === 'invalid' && (
         <p className="mt-1 text-[10px] text-red-600 dark:text-red-400">
@@ -115,7 +115,7 @@ function ImportSymbolCell({
       )}
 
       {canShowSuggestions && (
-        <div className="absolute z-30 left-0 top-full mt-1 w-72 bg-white dark:bg-zinc-800 rounded-lg shadow-lg border border-zinc-200 dark:border-zinc-700 max-h-56 overflow-y-auto">
+        <div className="absolute z-30 left-0 top-full mt-1 w-72 sm:w-80 bg-white dark:bg-zinc-800 rounded-lg shadow-lg border border-zinc-200 dark:border-zinc-700 max-h-56 sm:max-h-72 overflow-y-auto">
           {!query.trim() && hint.length >= 2 && (
             <div className="px-3 py-1.5 text-[11px] text-zinc-500 dark:text-zinc-400 border-b border-zinc-100 dark:border-zinc-700">
               Suggestions depuis le libelle
@@ -466,33 +466,33 @@ export function ImportWizard() {
 
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-zinc-50 dark:bg-zinc-950">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10 lg:py-12">
         <Link
           href="/dashboard"
-          className="inline-flex items-center gap-1.5 text-sm text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 mb-4"
+          className="inline-flex items-center gap-1.5 text-sm text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 mb-4 sm:mb-5"
         >
           <ArrowLeft className="h-4 w-4" />
           Retour au tableau de bord
         </Link>
 
-        <h1 className="text-2xl sm:text-3xl font-bold text-zinc-900 dark:text-zinc-100">
+        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-zinc-900 dark:text-zinc-100">
           Importer des transactions
         </h1>
-        <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
+        <p className="text-sm sm:text-base text-zinc-500 dark:text-zinc-400 mt-1.5 sm:mt-2 max-w-3xl">
           CSV, Excel, PDF de relevé broker, ou texte collé. Une IA extrait les transactions ; vous validez avant import.
         </p>
 
         {step === 'upload' && (
-          <div className="mt-6 sm:mt-8 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-4 sm:p-6 space-y-5">
+          <div className="mt-6 sm:mt-8 lg:mt-10 bg-white dark:bg-zinc-900 rounded-xl sm:rounded-2xl border border-zinc-200 dark:border-zinc-800 p-4 sm:p-6 lg:p-8 space-y-5 sm:space-y-6">
             <div>
-              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">
+              <label className="block text-sm sm:text-base font-medium text-zinc-700 dark:text-zinc-300 mb-1.5 sm:mb-2">
                 Compte de destination
               </label>
               <select
                 value={accountId}
                 onChange={(e) => setAccountId(e.target.value)}
                 disabled={accountsLoading || accounts.length === 0}
-                className="w-full px-3 py-2 text-sm border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 sm:py-2.5 text-sm sm:text-base border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500"
               >
                 {accounts.length === 0 && <option value="">Aucun compte disponible</option>}
                 {accounts.map((a) => (
@@ -516,40 +516,40 @@ export function ImportWizard() {
             </div>
 
             <div>
-              <div className="flex gap-2 mb-3">
+              <div className="flex gap-2 sm:gap-3 mb-3 sm:mb-4">
                 <button
                   type="button"
                   onClick={() => setMode('file')}
-                  className={`flex-1 inline-flex items-center justify-center gap-2 px-3 py-2 text-sm rounded-lg border transition-colors ${
+                  className={`flex-1 inline-flex items-center justify-center gap-2 px-3 py-2 sm:py-2.5 text-sm sm:text-base rounded-lg border transition-colors ${
                     mode === 'file'
                       ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-500 text-blue-700 dark:text-blue-300'
                       : 'border-zinc-300 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800'
                   }`}
                 >
-                  <FileText className="h-4 w-4" />
+                  <FileText className="h-4 w-4 sm:h-5 sm:w-5" />
                   Fichier
                 </button>
                 <button
                   type="button"
                   onClick={() => setMode('text')}
-                  className={`flex-1 inline-flex items-center justify-center gap-2 px-3 py-2 text-sm rounded-lg border transition-colors ${
+                  className={`flex-1 inline-flex items-center justify-center gap-2 px-3 py-2 sm:py-2.5 text-sm sm:text-base rounded-lg border transition-colors ${
                     mode === 'text'
                       ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-500 text-blue-700 dark:text-blue-300'
                       : 'border-zinc-300 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800'
                   }`}
                 >
-                  <ClipboardPaste className="h-4 w-4" />
+                  <ClipboardPaste className="h-4 w-4 sm:h-5 sm:w-5" />
                   Texte collé
                 </button>
               </div>
 
               {mode === 'file' && (
-                <label className="flex flex-col items-center justify-center gap-2 px-4 py-8 border-2 border-dashed border-zinc-300 dark:border-zinc-700 rounded-lg cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors">
-                  <Upload className="h-6 w-6 text-zinc-400" />
-                  <span className="text-sm text-zinc-600 dark:text-zinc-400">
+                <label className="flex flex-col items-center justify-center gap-2 sm:gap-3 px-4 py-8 sm:py-12 lg:py-16 border-2 border-dashed border-zinc-300 dark:border-zinc-700 rounded-lg sm:rounded-xl cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors">
+                  <Upload className="h-6 w-6 sm:h-8 sm:w-8 lg:h-10 lg:w-10 text-zinc-400" />
+                  <span className="text-sm sm:text-base text-zinc-600 dark:text-zinc-400 text-center px-2">
                     {file ? file.name : 'Cliquez pour sélectionner un fichier'}
                   </span>
-                  <span className="text-xs text-zinc-400">CSV, XLSX, PDF — max 10 MB</span>
+                  <span className="text-xs sm:text-sm text-zinc-400">CSV, XLSX, PDF — max 10 MB</span>
                   <input
                     type="file"
                     accept=".csv,.xlsx,.xls,.pdf,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/pdf"
@@ -565,7 +565,7 @@ export function ImportWizard() {
                   onChange={(e) => setPastedText(e.target.value)}
                   rows={10}
                   placeholder="Collez ici un extrait de transactions (relevé email, copier-coller depuis l'app de votre courtier, etc.)"
-                  className="w-full px-3 py-2 text-sm font-mono border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 sm:py-2.5 text-sm sm:text-base font-mono border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 sm:min-h-[16rem]"
                 />
               )}
             </div>
@@ -579,38 +579,38 @@ export function ImportWizard() {
             <button
               onClick={handleParse}
               disabled={submitting || accounts.length === 0}
-              className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+              className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 sm:py-3 text-sm sm:text-base font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
             >
-              {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+              {submitting ? <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" /> : <Upload className="h-4 w-4 sm:h-5 sm:w-5" />}
               {submitting ? 'Analyse en cours…' : 'Analyser'}
             </button>
           </div>
         )}
 
         {step === 'preview' && (
-          <div className="mt-6 sm:mt-8 space-y-4">
-            <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-4">
+          <div className="mt-6 sm:mt-8 lg:mt-10 space-y-4 sm:space-y-5">
+            <div className="bg-white dark:bg-zinc-900 rounded-xl sm:rounded-2xl border border-zinc-200 dark:border-zinc-800 p-4 sm:p-5 lg:p-6">
               <div className="flex items-center justify-between gap-2 flex-wrap">
                 <div>
-                  <div className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                  <div className="text-sm sm:text-base font-medium text-zinc-900 dark:text-zinc-100">
                     {rows.length} transaction(s) extraite(s)
                   </div>
-                  <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+                  <div className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 mt-0.5 sm:mt-1">
                     Format détecté :{' '}
                     <code className="px-1.5 py-0.5 bg-zinc-100 dark:bg-zinc-800 rounded">
                       {detectedFormat ?? 'inconnu'}
                     </code>
                   </div>
                   {duplicatesByRow.size > 0 && (
-                    <div className="mt-1.5 inline-flex items-center gap-1 text-xs text-amber-700 dark:text-amber-400">
-                      <Copy className="h-3.5 w-3.5" />
+                    <div className="mt-1.5 inline-flex items-center gap-1 text-xs sm:text-sm text-amber-700 dark:text-amber-400">
+                      <Copy className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                       {duplicatesByRow.size} doublon(s) potentiel(s) détecté(s)
                     </div>
                   )}
                 </div>
                 <button
                   onClick={() => { setStep('upload'); setRows([]); setNotes([]); setJobId(null); }}
-                  className="text-xs text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
+                  className="text-xs sm:text-sm text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
                 >
                   Recommencer
                 </button>
@@ -618,11 +618,11 @@ export function ImportWizard() {
             </div>
 
             {notes.length > 0 && (
-              <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-3 text-sm text-amber-800 dark:text-amber-200">
-                <div className="font-medium mb-1 inline-flex items-center gap-1.5">
-                  <AlertTriangle className="h-4 w-4" /> Remarques de l&apos;analyse
+              <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-3 sm:p-4 text-sm text-amber-800 dark:text-amber-200">
+                <div className="font-medium mb-1 sm:mb-1.5 inline-flex items-center gap-1.5 sm:text-base">
+                  <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5" /> Remarques de l&apos;analyse
                 </div>
-                <ul className="list-disc list-inside space-y-0.5 text-xs">
+                <ul className="list-disc list-inside space-y-0.5 sm:space-y-1 text-xs sm:text-sm">
                   {notes.map((n, i) => (
                     <li key={i}>
                       {n.row !== undefined && <span className="font-mono mr-1">[L{n.row}]</span>}
@@ -633,20 +633,20 @@ export function ImportWizard() {
               </div>
             )}
 
-            <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden">
+            <div className="bg-white dark:bg-zinc-900 rounded-xl sm:rounded-2xl border border-zinc-200 dark:border-zinc-800 overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-xs sm:text-sm">
                   <thead className="bg-zinc-50 dark:bg-zinc-800/50 text-zinc-500 dark:text-zinc-400 text-left">
                     <tr>
-                      <th className="px-3 py-2 font-medium">Date</th>
-                      <th className="px-3 py-2 font-medium">Type</th>
-                      <th className="px-3 py-2 font-medium">Symbole</th>
-                      <th className="px-3 py-2 font-medium text-right">Qté</th>
-                      <th className="px-3 py-2 font-medium text-right">Prix</th>
-                      <th className="px-3 py-2 font-medium text-right">Montant</th>
-                      <th className="px-3 py-2 font-medium text-right">Frais</th>
-                      <th className="px-3 py-2 font-medium">Description</th>
-                      <th className="px-3 py-2 w-8" />
+                      <th className="px-3 py-2.5 sm:py-3 font-medium">Date</th>
+                      <th className="px-3 py-2.5 sm:py-3 font-medium">Type</th>
+                      <th className="px-3 py-2.5 sm:py-3 font-medium">Symbole</th>
+                      <th className="px-3 py-2.5 sm:py-3 font-medium text-right">Qté</th>
+                      <th className="px-3 py-2.5 sm:py-3 font-medium text-right">Prix</th>
+                      <th className="px-3 py-2.5 sm:py-3 font-medium text-right">Montant</th>
+                      <th className="px-3 py-2.5 sm:py-3 font-medium text-right">Frais</th>
+                      <th className="px-3 py-2.5 sm:py-3 font-medium">Description</th>
+                      <th className="px-3 py-2.5 sm:py-3 w-8" />
                     </tr>
                   </thead>
                   <tbody>
@@ -662,35 +662,35 @@ export function ImportWizard() {
                           : '';
                       return (
                         <tr key={idx} className={`border-t border-zinc-100 dark:border-zinc-800 ${rowBg}`}>
-                          <td className="px-2 py-1.5 align-top">
+                          <td className="px-2 py-2 sm:py-2.5 align-top">
                             <input
                               type="date"
                               value={r.date}
                               onChange={(e) => updateRow(idx, { date: e.target.value })}
-                              className="w-32 px-1.5 py-1 text-xs border border-zinc-200 dark:border-zinc-700 rounded bg-white dark:bg-zinc-800"
+                              className="w-32 sm:w-36 px-1.5 py-1 sm:py-1.5 text-xs sm:text-sm border border-zinc-200 dark:border-zinc-700 rounded bg-white dark:bg-zinc-800"
                             />
                             {duplicate && (
                               <p
-                                className="mt-1 max-w-[8rem] text-[10px] text-amber-700 dark:text-amber-400 inline-flex items-start gap-1"
+                                className="mt-1 max-w-[8rem] sm:max-w-[9rem] text-[10px] sm:text-[11px] text-amber-700 dark:text-amber-400 inline-flex items-start gap-1"
                                 title={`Existante : ${duplicate.type} ${duplicate.amount}€ le ${formatDate(duplicate.date)}${duplicate.stock_symbol ? ` · ${duplicate.stock_symbol}` : ''}`}
                               >
-                                <Copy className="h-2.5 w-2.5 mt-0.5 shrink-0" />
+                                <Copy className="h-2.5 w-2.5 sm:h-3 sm:w-3 mt-0.5 shrink-0" />
                                 Doublon possible
                               </p>
                             )}
                           </td>
-                          <td className="px-2 py-1.5">
+                          <td className="px-2 py-2 sm:py-2.5">
                             <select
                               value={r.type}
                               onChange={(e) => updateRow(idx, { type: e.target.value as TransactionType })}
-                              className="px-1.5 py-1 text-xs border border-zinc-200 dark:border-zinc-700 rounded bg-white dark:bg-zinc-800"
+                              className="px-1.5 py-1 sm:py-1.5 text-xs sm:text-sm border border-zinc-200 dark:border-zinc-700 rounded bg-white dark:bg-zinc-800"
                             >
                               {TX_TYPES.map((t) => (
                                 <option key={t.value} value={t.value}>{t.label}</option>
                               ))}
                             </select>
                           </td>
-                          <td className="px-2 py-1.5">
+                          <td className="px-2 py-2 sm:py-2.5">
                             <ImportSymbolCell
                               value={r.stock_symbol ?? ''}
                               disabled={!isStock && !isDividend}
@@ -706,36 +706,36 @@ export function ImportWizard() {
                               onChange={(symbol) => updateRow(idx, { stock_symbol: symbol })}
                             />
                           </td>
-                          <td className="px-2 py-1.5 text-right">
+                          <td className="px-2 py-2 sm:py-2.5 text-right">
                             <input
                               type="number"
                               step="0.0001"
                               value={r.quantity ?? ''}
                               onChange={(e) => updateRow(idx, { quantity: e.target.value ? Number(e.target.value) : null })}
                               disabled={!isStock}
-                              className="w-20 px-1.5 py-1 text-xs text-right border border-zinc-200 dark:border-zinc-700 rounded bg-white dark:bg-zinc-800 disabled:opacity-40"
+                              className="w-20 sm:w-24 px-1.5 py-1 sm:py-1.5 text-xs sm:text-sm text-right border border-zinc-200 dark:border-zinc-700 rounded bg-white dark:bg-zinc-800 disabled:opacity-40"
                             />
                           </td>
-                          <td className="px-2 py-1.5 text-right">
+                          <td className="px-2 py-2 sm:py-2.5 text-right">
                             <input
                               type="number"
                               step="0.01"
                               value={r.price_per_unit ?? ''}
                               onChange={(e) => updateRow(idx, { price_per_unit: e.target.value ? Number(e.target.value) : null })}
                               disabled={!isStock}
-                              className="w-20 px-1.5 py-1 text-xs text-right border border-zinc-200 dark:border-zinc-700 rounded bg-white dark:bg-zinc-800 disabled:opacity-40"
+                              className="w-20 sm:w-24 px-1.5 py-1 sm:py-1.5 text-xs sm:text-sm text-right border border-zinc-200 dark:border-zinc-700 rounded bg-white dark:bg-zinc-800 disabled:opacity-40"
                             />
                           </td>
-                          <td className="px-2 py-1.5 text-right">
+                          <td className="px-2 py-2 sm:py-2.5 text-right">
                             <input
                               type="number"
                               step="0.01"
                               value={r.amount}
                               onChange={(e) => updateRow(idx, { amount: Number(e.target.value) })}
-                              className="w-24 px-1.5 py-1 text-xs text-right border border-zinc-200 dark:border-zinc-700 rounded bg-white dark:bg-zinc-800"
+                              className="w-24 sm:w-28 px-1.5 py-1 sm:py-1.5 text-xs sm:text-sm text-right border border-zinc-200 dark:border-zinc-700 rounded bg-white dark:bg-zinc-800"
                             />
                           </td>
-                          <td className="px-2 py-1.5 text-right">
+                          <td className="px-2 py-2 sm:py-2.5 text-right">
                             <input
                               type="number"
                               step="0.01"
@@ -743,24 +743,24 @@ export function ImportWizard() {
                               value={r.fees ?? 0}
                               onChange={(e) => updateRow(idx, { fees: Number(e.target.value) })}
                               disabled={r.type === 'FEE'}
-                              className="w-20 px-1.5 py-1 text-xs text-right border border-zinc-200 dark:border-zinc-700 rounded bg-white dark:bg-zinc-800 disabled:opacity-40"
+                              className="w-20 sm:w-24 px-1.5 py-1 sm:py-1.5 text-xs sm:text-sm text-right border border-zinc-200 dark:border-zinc-700 rounded bg-white dark:bg-zinc-800 disabled:opacity-40"
                             />
                           </td>
-                          <td className="px-2 py-1.5">
+                          <td className="px-2 py-2 sm:py-2.5">
                             <input
                               type="text"
                               value={r.description ?? ''}
                               onChange={(e) => updateRow(idx, { description: e.target.value })}
-                              className="w-40 px-1.5 py-1 text-xs border border-zinc-200 dark:border-zinc-700 rounded bg-white dark:bg-zinc-800"
+                              className="w-40 sm:w-48 lg:w-56 px-1.5 py-1 sm:py-1.5 text-xs sm:text-sm border border-zinc-200 dark:border-zinc-700 rounded bg-white dark:bg-zinc-800"
                             />
                           </td>
-                          <td className="px-2 py-1.5 text-center">
+                          <td className="px-2 py-2 sm:py-2.5 text-center">
                             <button
                               onClick={() => removeRow(idx)}
                               aria-label="Supprimer la ligne"
                               className="text-red-500 hover:text-red-700"
                             >
-                              <Trash2 className="h-3.5 w-3.5" />
+                              <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                             </button>
                           </td>
                         </tr>
@@ -784,8 +784,8 @@ export function ImportWizard() {
               </div>
             )}
 
-            <div className="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
-              <p className="text-xs text-zinc-500 dark:text-zinc-400">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-2 sm:items-center sm:justify-between">
+              <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400">
                 {invalidRows.length > 0
                   ? `${invalidRows.length} ligne(s) à corriger avant import.`
                   : `${rows.length} transaction(s) prêtes à importer.`}
@@ -793,16 +793,16 @@ export function ImportWizard() {
               <div className="flex gap-2">
                 <button
                   onClick={() => { setStep('upload'); setError(null); }}
-                  className="px-4 py-2 text-sm border border-zinc-300 dark:border-zinc-700 rounded-lg text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800"
+                  className="px-4 sm:px-5 py-2 sm:py-2.5 text-sm sm:text-base border border-zinc-300 dark:border-zinc-700 rounded-lg text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800"
                 >
                   Annuler
                 </button>
                 <button
                   onClick={handleCommit}
                   disabled={submitting || rows.length === 0 || invalidRows.length > 0}
-                  className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                  className="inline-flex items-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 text-sm sm:text-base font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
                 >
-                  {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                  {submitting ? <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" /> : <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5" />}
                   Importer {rows.length} transaction(s)
                 </button>
               </div>
@@ -811,18 +811,18 @@ export function ImportWizard() {
         )}
 
         {step === 'done' && committedSummary && (
-          <div className="mt-8 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-6 text-center">
-            <CheckCircle2 className="h-12 w-12 mx-auto text-emerald-500 mb-3" />
-            <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">
+          <div className="mt-8 sm:mt-10 bg-white dark:bg-zinc-900 rounded-xl sm:rounded-2xl border border-zinc-200 dark:border-zinc-800 p-6 sm:p-8 lg:p-10 text-center">
+            <CheckCircle2 className="h-12 w-12 sm:h-14 sm:w-14 mx-auto text-emerald-500 mb-3 sm:mb-4" />
+            <h2 className="text-xl sm:text-2xl lg:text-3xl font-semibold text-zinc-900 dark:text-zinc-100">
               Import terminé
             </h2>
-            <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+            <p className="mt-1.5 sm:mt-2 text-sm sm:text-base text-zinc-500 dark:text-zinc-400">
               {committedSummary.inserted} transaction(s) ajoutée(s) sur {committedSummary.total}.
             </p>
-            <div className="mt-6 flex gap-2 justify-center">
+            <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row gap-2 sm:gap-3 justify-center">
               <Link
                 href="/dashboard"
-                className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                className="px-4 sm:px-5 py-2 sm:py-2.5 text-sm sm:text-base bg-blue-600 text-white rounded-lg hover:bg-blue-700"
               >
                 Voir le tableau de bord
               </Link>
@@ -832,7 +832,7 @@ export function ImportWizard() {
                   setRows([]); setNotes([]); setFile(null); setPastedText('');
                   setJobId(null); setCommittedSummary(null); setDetectedFormat(null);
                 }}
-                className="px-4 py-2 text-sm border border-zinc-300 dark:border-zinc-700 rounded-lg text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800"
+                className="px-4 sm:px-5 py-2 sm:py-2.5 text-sm sm:text-base border border-zinc-300 dark:border-zinc-700 rounded-lg text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800"
               >
                 Importer un autre fichier
               </button>

@@ -25,7 +25,7 @@ export type ProposedTransaction = z.infer<typeof proposedTransactionSchema>;
 export const importNoteSchema = z.object({
   code: z.string(),
   message: z.string(),
-  row: z.number().int().nonnegative().optional(),
+  row: z.number().int().nonnegative().nullable().optional(),
 });
 export type ImportNote = z.infer<typeof importNoteSchema>;
 
@@ -39,13 +39,12 @@ export interface ParseResult {
 
 // Payload envoyé au LLM pour l'extraction. On garde le contexte minimum :
 // - tabular : headers + lignes (chaque ligne = objet { header: value })
-// - text/pdf : raw text tronqué + (optionnel) buffer PDF brut pour vision
+// - text    : raw text tronqué (texte collé). Les PDF passent par OCRProvider, pas par ici.
 export interface LLMExtractionInput {
   kind: 'tabular' | 'text';
   headers?: string[];
   rows?: Array<Record<string, string>>;
   text?: string;
-  pdfBuffer?: Buffer;           // si présent, envoyé en file input au LLM (vision PDF)
   hint?: string;                // ex: nom du fichier, indice broker
 }
 

@@ -15,7 +15,6 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ['@napi-rs/canvas'],
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: '*.supabase.co' },
