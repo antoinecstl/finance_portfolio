@@ -48,11 +48,18 @@ export async function runImportPipeline(input: OrchestratorInput): Promise<Parse
   }
 
   // Fallback LLM : gère aussi les PDF / texte collé qui n'ont pas de structure tabulaire.
+  // Pour les PDF, on transmet aussi le buffer brut : si la couche texte est vide
+  // (PDF-image / scan), le modèle peut quand même lire le document via la vision.
   const llm = getLLMProvider();
   const llmResult = await llm.extractTransactions(
     content.kind === 'tabular'
       ? { kind: 'tabular', headers: content.headers, rows: content.rows, hint: input.filename }
-      : { kind: 'text', text: content.text, hint: input.filename }
+      : {
+          kind: 'text',
+          text: content.text,
+          hint: input.filename,
+          pdfBuffer: input.sourceType === 'pdf' ? input.buffer : undefined,
+        }
   );
 
   return {

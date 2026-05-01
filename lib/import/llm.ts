@@ -69,18 +69,28 @@ const EXTRACTION_JSON_SCHEMA = {
 
 const SYSTEM_PROMPT = `Tu es un assistant qui extrait des transactions financières structurées depuis des relevés de courtiers, banques ou exports CSV/Excel.
 
+Sources possibles : CSV/Excel tabulaire, texte brut, ou PDF (relevé bancaire, avis d'opéré broker, extrait de compte). Pour les PDF, le fichier brut peut t'être attaché : si le texte extrait paraît tronqué, désordonné ou vide, lis directement la version visuelle du document.
+
 Règles d'extraction :
-- type : mappe précisément vers DEPOSIT (versement de cash), WITHDRAWAL (retrait), BUY, SELL, DIVIDEND, INTEREST, FEE.
+- type : mappe précisément vers DEPOSIT (versement de cash, virement entrant), WITHDRAWAL (retrait, virement sortant), BUY (achat de titre), SELL (vente de titre), DIVIDEND, INTEREST, FEE.
 - amount : montant absolu positif en EUR. Convertis si la devise est USD/GBP en utilisant un taux raisonnable, et signale-le dans notes.
 - fees : frais associés à la transaction (commissions de courtage, droits de garde). 0 si non précisé.
 - date : YYYY-MM-DD strict. Si la date est ambigüe (DD/MM vs MM/DD), choisis le format européen DD/MM/YYYY par défaut, et signale-le dans notes.
 - stock_symbol : pour BUY/SELL/DIVIDEND uniquement. Utilise les suffixes Yahoo Finance (.PA, .DE, .L, .MI, .SW). Null sinon.
-- quantity, price_per_unit : pour BUY/SELL uniquement. Calcule price_per_unit = amount / quantity si manquant. Null sinon.
+- quantity, price_per_unit : pour BUY/SELL uniquement. Si le document ne donne pas la quantité (relevés bancaires "ACHAT ACTION X" sans détail), laisse les deux à null mais conserve le montant. Sinon calcule price_per_unit = (amount - fees) / quantity.
 - description : conserve le libellé original tronqué à 500 char.
 
-Notes : remonte toute ligne ignorée (avec row index 0-based si tabulaire), toute hypothèse faite, toute conversion de devise. Sois honnête sur l'incertitude.
+Reconnaissance des relevés bancaires français :
+- "ACHAT ACTION <NOM>" / "ACHAT TITRE" → BUY ; "VENTE ACTION <NOM>" / "VENTE TITRE" → SELL.
+- Le code ISIN (FR..., US..., NL..., DE..., LU..., IE...) figure souvent sur la ligne suivante du libellé. Convertis-le en ticker Yahoo Finance que tu connais (ex: FR0000121014 → MC.PA, FR0000120271 → TTE.PA, NL0000235190 → AIR.PA, US5949181045 → MSFT, US0378331005 → AAPL). Si l'ISIN est inconnu, mets stock_symbol à null et signale-le dans notes.
+- Colonnes Débit/Crédit : Débit → BUY/WITHDRAWAL/FEE, Crédit → SELL/DEPOSIT/DIVIDEND/INTEREST. Le solde n'est PAS une transaction.
+- "FRAIS DE COURTAGE", "DROITS DE GARDE", "COMMISSION" → FEE.
+- "VIREMENT", "VRT" entrant → DEPOSIT ; sortant → WITHDRAWAL.
+- "COUPON", "DIVIDENDE" → DIVIDEND.
 
-N'invente jamais de transaction. Si le document ne contient pas de transactions claires, renvoie un tableau vide et explique dans notes.`;
+Notes : remonte toute ligne ignorée (avec row index 0-based si tabulaire), toute hypothèse faite, toute conversion de devise, tout ISIN non reconnu. Sois honnête sur l'incertitude.
+
+Sois exhaustif : extrais TOUTES les lignes d'opération du tableau, pas seulement les premières. Ne renvoie un tableau vide que si le document ne contient réellement aucune transaction (ex: page de garde, conditions générales). N'invente jamais de transaction.`;
 
 function buildUserPrompt(input: LLMExtractionInput): string {
   const hint = input.hint ? `\n\nIndice contextuel : ${input.hint}` : '';
@@ -99,7 +109,21 @@ Extrais toutes les transactions visibles.`;
   const text = input.text ?? '';
   const MAX = 80_000;
   const truncated = text.length > MAX ? text.slice(0, MAX) + '\n[... contenu tronqué ...]' : text;
-  return `Format : texte libre (PDF ou collé).${hint}
+  const trimmed = truncated.trim();
+  if (input.pdfBuffer) {
+    const textBlock = trimmed.length > 0
+      ? `Texte extrait par la couche PDF (peut être bruité, désordonné ou partiel — le rendu visuel fait foi) :
+"""
+${truncated}
+"""`
+      : `La couche texte du PDF est vide (document scanné ou rendu en image). Lis directement le PDF visuellement.`;
+    return `Format : PDF (le fichier est attaché à ce message).${hint}
+
+${textBlock}
+
+Extrais TOUTES les transactions du tableau du PDF (chaque ligne d'opération = une transaction). Si le tableau a 10 lignes, renvoie 10 transactions. Ne te limite pas au texte extrait s'il paraît incomplet.`;
+  }
+  return `Format : texte libre (collé).${hint}
 
 Contenu :
 """
@@ -120,12 +144,29 @@ class OpenAIProvider implements LLMProvider {
   }
 
   async extractTransactions(input: LLMExtractionInput): Promise<LLMExtractionResult> {
+    // Si on a un buffer PDF, on le passe en file input à OpenAI : gpt-4o-mini et
+    // gpt-4.1 supportent les PDF natifs (vision + texte intégré). C'est la voie
+    // robuste pour les PDF-image / scans dont la couche texte est vide.
+    const userPrompt = buildUserPrompt(input);
+    const userContent = input.pdfBuffer
+      ? ([
+          { type: 'text', text: userPrompt },
+          {
+            type: 'file',
+            file: {
+              filename: input.hint && input.hint.toLowerCase().endsWith('.pdf') ? input.hint : 'document.pdf',
+              file_data: `data:application/pdf;base64,${input.pdfBuffer.toString('base64')}`,
+            },
+          },
+        ] as OpenAI.Chat.Completions.ChatCompletionContentPart[])
+      : userPrompt;
+
     const completion = await this.client.chat.completions.create({
       model: this.model,
       temperature: 0,
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user', content: buildUserPrompt(input) },
+        { role: 'user', content: userContent },
       ],
       response_format: {
         type: 'json_schema',
