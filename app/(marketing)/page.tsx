@@ -117,7 +117,6 @@ function buildJsonLd() {
     name: 'Fi-Hub',
     url: SITE_URL,
     logo: `${SITE_URL}/icon.png`,
-    sameAs: [] as string[],
   };
 
   const softwareApplication = {
@@ -192,6 +191,11 @@ function buildJsonLd() {
     name: 'Fi-Hub',
     url: SITE_URL,
     inLanguage: 'fr-FR',
+    potentialAction: {
+      '@type': 'SearchAction',
+      target: { '@type': 'EntryPoint', urlTemplate: `${SITE_URL}/signup?ref={search_term_string}` },
+      'query-input': 'required name=search_term_string',
+    },
   };
 
   return [organization, softwareApplication, faqPage, website];

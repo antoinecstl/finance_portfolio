@@ -1,4 +1,11 @@
-export const metadata = { title: 'Mentions légales — Fi-Hub' };
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Mentions légales',
+  description: 'Mentions légales de Fi-Hub : éditeur, hébergeur, propriété intellectuelle et responsabilités.',
+  alternates: { canonical: '/legal/mentions-legales' },
+  robots: { index: false },
+};
 
 export default function MentionsLegalesPage() {
   return (

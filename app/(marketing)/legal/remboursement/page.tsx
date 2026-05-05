@@ -1,4 +1,11 @@
-export const metadata = { title: 'Politique de remboursement — Fi-Hub' };
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Politique de remboursement',
+  description: 'Conditions de remboursement de Fi-Hub : délais, procédure et exceptions applicables aux abonnements Pro.',
+  alternates: { canonical: '/legal/remboursement' },
+  robots: { index: false },
+};
 
 export default function RefundPage() {
   return (

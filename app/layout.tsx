@@ -49,10 +49,6 @@ export const metadata: Metadata = {
   creator: "Fi-Hub",
   publisher: "Fi-Hub",
   category: "finance",
-  alternates: {
-    canonical: "/",
-    languages: { "fr-FR": "/" },
-  },
   openGraph: {
     type: "website",
     locale: "fr_FR",

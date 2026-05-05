@@ -1,4 +1,11 @@
-export const metadata = { title: 'Politique cookies — Fi-Hub' };
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Politique de cookies',
+  description: 'Informations sur les cookies utilisés par Fi-Hub et comment les gérer dans votre navigateur.',
+  alternates: { canonical: '/legal/cookies' },
+  robots: { index: false },
+};
 
 export default function CookiesPage() {
   return (

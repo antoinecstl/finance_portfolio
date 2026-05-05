@@ -1,4 +1,11 @@
-export const metadata = { title: 'CGU — Fi-Hub' };
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Conditions Générales d\'Utilisation',
+  description: 'Consultez les CGU de Fi-Hub : conditions d\'accès au service, droits et obligations des utilisateurs, abonnements.',
+  alternates: { canonical: '/legal/cgu' },
+  robots: { index: false },
+};
 
 export default function CGUPage() {
   return (

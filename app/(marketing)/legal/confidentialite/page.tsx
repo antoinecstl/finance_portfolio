@@ -1,4 +1,11 @@
-export const metadata = { title: 'Politique de confidentialité — Fi-Hub' };
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Politique de confidentialité',
+  description: 'Découvrez comment Fi-Hub collecte, utilise et protège vos données personnelles conformément au RGPD.',
+  alternates: { canonical: '/legal/confidentialite' },
+  robots: { index: false },
+};
 
 export default function PrivacyPage() {
   return (

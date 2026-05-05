@@ -12,15 +12,12 @@ export default function robots(): MetadataRoute.Robots {
           '/api/',
           '/auth/',
           '/dashboard',
-          '/dashboard/',
           '/settings',
-          '/settings/',
           '/reset-password',
           '/forgot-password',
         ],
       },
     ],
     sitemap: `${BASE}/sitemap.xml`,
-    host: BASE,
   };
 }
