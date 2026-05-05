@@ -391,9 +391,12 @@ export function ImportWizard() {
           type: r.type,
           date: r.date,
           amount: r.amount,
+          currency: (r.currency ?? selectedAccount?.currency ?? 'EUR').toUpperCase(),
           stock_symbol: r.stock_symbol ?? null,
           quantity: r.quantity ?? null,
           price_per_unit: r.price_per_unit ?? null,
+          target_amount: r.target_amount ?? null,
+          target_currency: r.target_currency?.toUpperCase() ?? null,
         },
         existingTxs,
         { accountId }
@@ -401,7 +404,7 @@ export function ImportWizard() {
       if (dup) map.set(i, dup);
     });
     return map;
-  }, [rows, existingTxs, accountId]);
+  }, [rows, existingTxs, accountId, selectedAccount?.currency]);
 
   // Validation locale rapide pour griser le bouton commit s'il y a des lignes invalides.
   // Inclut la vérification du ticker contre Yahoo : BUY/SELL/DIVIDEND avec un

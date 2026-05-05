@@ -419,13 +419,22 @@ export function Dashboard() {
 
         {activeTab === 'positions' && (
           <div className="space-y-4 sm:space-y-6">
-            <div>
-              <h2 className="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-zinc-100">
-                Mes Positions
-              </h2>
-              <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 mt-1">
-                Gérez vos positions via l&apos;onglet Transactions
-              </p>
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+              <div>
+                <h2 className="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-zinc-100">
+                  Mes Positions
+                </h2>
+                <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 mt-1">
+                  Ajoutez une position manuelle ou gérez vos positions via l&apos;onglet Transactions
+                </p>
+              </div>
+              <button
+                onClick={() => setShowAddPosition(true)}
+                className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm sm:text-base"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Ajouter une position</span>
+              </button>
             </div>
 
             {stockAccounts.length > 1 && (
@@ -611,6 +620,7 @@ export function Dashboard() {
         onClose={() => setShowAddPosition(false)}
         onSuccess={handleMutationSuccess}
         accounts={accounts}
+        defaultAccountId={selectedPositionsAccountFilter ?? undefined}
       />
     </div>
   );

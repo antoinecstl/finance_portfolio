@@ -80,6 +80,40 @@ describe('calculatePositionsAtDate', () => {
     expect(aapl.totalInvested).toBe(2500);
   });
 
+  it('applies same-day SELL before same-day BUY when replaying positions', () => {
+    const positions = calculatePositionsAtDate(
+      [
+        tx({ id: 'initial-buy', type: 'BUY', stock_symbol: 'AAPL', quantity: 10, price_per_unit: 100, date: '2025-01-01' }),
+        tx({
+          id: 'same-day-buy',
+          type: 'BUY',
+          stock_symbol: 'AAPL',
+          quantity: 10,
+          price_per_unit: 200,
+          amount: 2000,
+          date: '2025-02-01',
+          created_at: '2025-02-01T08:00:00Z',
+        }),
+        tx({
+          id: 'same-day-sell',
+          type: 'SELL',
+          stock_symbol: 'AAPL',
+          quantity: 5,
+          price_per_unit: 150,
+          amount: 750,
+          date: '2025-02-01',
+          created_at: '2025-02-01T09:00:00Z',
+        }),
+      ],
+      '2025-02-01'
+    );
+
+    const aapl = positions.get('AAPL')!;
+    expect(aapl.quantity).toBe(15);
+    expect(aapl.averagePrice).toBeCloseTo(2500 / 15);
+    expect(aapl.totalInvested).toBeCloseTo(2500);
+  });
+
   it('keeps average price unchanged on SELL (réduction de l\'exposition sans modification du PRU)', () => {
     const positions = calculatePositionsAtDate(
       [

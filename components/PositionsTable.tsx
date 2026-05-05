@@ -5,6 +5,7 @@ import { StockPosition, StockQuote, Transaction } from '@/lib/types';
 import { EnrichedAccount } from '@/lib/hooks';
 import { accountSupportsPositions, formatCurrency, formatCurrencyBreakdown, formatNumber, formatPercent } from '@/lib/utils';
 import { convertToBase, type FxRateMap } from '@/lib/fx';
+import { compareTransactionSequence } from '@/lib/transaction-ordering';
 import { Wallet, History, ChevronDown, ChevronUp, BarChart2 } from 'lucide-react';
 
 // Type pour les positions clôturées (vendues)
@@ -106,7 +107,7 @@ export function PositionsTable({
     // Trier les transactions par date pour suivre les cycles
     const sortedTransactions = [...transactions]
       .filter(t => t.stock_symbol && ['BUY', 'SELL'].includes(t.type))
-      .sort((a, b) => a.date.localeCompare(b.date));
+      .sort(compareTransactionSequence);
 
     // Pour chaque (compte, symbole), calculer les positions vendues
     const runningPositions = new Map<string, { qty: number; totalCost: number }>();

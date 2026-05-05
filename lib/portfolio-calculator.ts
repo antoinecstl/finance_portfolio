@@ -2,6 +2,7 @@ import { Transaction, Account } from './types';
 import { HistoricalQuote, findClosestQuote } from './stock-api';
 import { accountSupportsPositions } from './utils';
 import { convertToBase, type FxRateMap } from './fx';
+import { compareTransactionSequence } from './transaction-ordering';
 
 const MS_PER_DAY = 1000 * 60 * 60 * 24;
 
@@ -37,7 +38,7 @@ export function calculatePositionsAtDate(
       ['BUY', 'SELL'].includes(t.type) &&
       (!accountId || t.account_id === accountId)
     )
-    .sort((a, b) => a.date.localeCompare(b.date));
+    .sort(compareTransactionSequence);
 
   for (const tx of relevantTransactions) {
     const symbol = tx.stock_symbol!.toUpperCase();
@@ -110,7 +111,7 @@ export function calculateAllPositionsAtDate(
   // Filtrer les transactions jusqu'à la date donnée et trier par date
   const relevantTransactions = transactions
     .filter(t => t.date <= asOfDate && t.stock_symbol && ['BUY', 'SELL'].includes(t.type))
-    .sort((a, b) => a.date.localeCompare(b.date));
+    .sort(compareTransactionSequence);
 
   for (const tx of relevantTransactions) {
     const symbol = tx.stock_symbol!.toUpperCase();
@@ -301,14 +302,33 @@ function sumCurrencyBucketsInBase(
  * quantity` que retourne Yahoo, donc à les convertir en EUR proprement.
  */
 function buildPositionCurrencyMap(transactions: Transaction[]): Map<string, string> {
-  const result = new Map<string, string>();
-  for (const tx of transactions) {
+  const stateBySymbol = new Map<string, { quantity: number; currency?: string }>();
+  for (const tx of [...transactions].sort(compareTransactionSequence)) {
     if (!tx.stock_symbol) continue;
-    if (tx.type !== 'BUY') continue;
     const sym = tx.stock_symbol.toUpperCase();
-    if (result.has(sym)) continue;
-    result.set(sym, (tx.currency ?? 'EUR').toUpperCase());
+    const state = stateBySymbol.get(sym) ?? { quantity: 0 };
+    const qty = Number(tx.quantity) || 0;
+
+    if (tx.type === 'BUY') {
+      if (state.quantity <= 0 || !state.currency) {
+        state.currency = (tx.currency ?? 'EUR').toUpperCase();
+      }
+      state.quantity += qty;
+    } else if (tx.type === 'SELL') {
+      state.quantity -= qty;
+      if (state.quantity <= 0) {
+        state.quantity = 0;
+        state.currency = undefined;
+      }
+    }
+
+    stateBySymbol.set(sym, state);
   }
+
+  const result = new Map<string, string>();
+  stateBySymbol.forEach((state, symbol) => {
+    if (state.currency) result.set(symbol, state.currency);
+  });
   return result;
 }
 

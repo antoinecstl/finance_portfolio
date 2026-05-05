@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { X, Search } from 'lucide-react';
 import { Account } from '@/lib/types';
 import { useStockSearch } from '@/lib/hooks';
@@ -8,6 +8,8 @@ import { POPULAR_FRENCH_STOCKS, POPULAR_CRYPTOS } from '@/lib/stock-api';
 import { useAuth } from '@/lib/auth';
 import { useLimitReached } from './LimitReachedModal';
 import { accountSupportsPositions, accountTypeAllowsAsset, assetAccountMismatchMessage, isCryptoSymbol } from '@/lib/utils';
+
+const COMMON_CURRENCIES = ['EUR', 'USD', 'GBP', 'CHF', 'USDC', 'USDT', 'BTC', 'ETH'];
 
 interface AddPositionModalProps {
   isOpen: boolean;
@@ -29,6 +31,7 @@ export function AddPositionModal({
   const [name, setName] = useState('');
   const [quantity, setQuantity] = useState('');
   const [averagePrice, setAveragePrice] = useState('');
+  const [currency, setCurrency] = useState('EUR');
   const [sector, setSector] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,8 +40,10 @@ export function AddPositionModal({
   const { user } = useAuth();
   const limitReached = useLimitReached();
 
-  const stockAccounts = accounts.filter(accountSupportsPositions);
-  const selectedAccount = accounts.find((a) => a.id === accountId);
+  const stockAccounts = useMemo(() => accounts.filter(accountSupportsPositions), [accounts]);
+  const selectedAccount = stockAccounts.find((a) => a.id === accountId);
+  const defaultAccount = stockAccounts.find((a) => a.id === defaultAccountId);
+  const defaultCurrency = defaultAccount?.currency?.toUpperCase() ?? 'EUR';
   const isCryptoAccount = selectedAccount?.type === 'CRYPTO';
   const filteredSearchResults = searchResults.filter((r) =>
     isCryptoAccount ? isCryptoSymbol(r.symbol) : !isCryptoSymbol(r.symbol)
@@ -51,12 +56,26 @@ export function AddPositionModal({
     }
   }, [searchQuery, search]);
 
+  useEffect(() => {
+    if (isOpen) {
+      setAccountId(defaultAccountId || '');
+      setCurrency(defaultCurrency);
+    }
+  }, [defaultAccountId, defaultCurrency, isOpen]);
+
+  useEffect(() => {
+    if (selectedAccount?.currency) {
+      setCurrency(selectedAccount.currency.toUpperCase());
+    }
+  }, [selectedAccount?.currency]);
+
   const resetForm = () => {
     setAccountId(defaultAccountId || '');
     setSymbol('');
     setName('');
     setQuantity('');
     setAveragePrice('');
+    setCurrency(defaultCurrency);
     setSector('');
     setSearchQuery('');
     setError(null);
@@ -88,6 +107,10 @@ export function AddPositionModal({
     }
 
     try {
+      const normalizedCurrency = currency.trim().toUpperCase();
+      if (!/^[A-Z]{3,10}$/.test(normalizedCurrency)) {
+        throw new Error('Code devise invalide');
+      }
       if (selectedAccount && !accountTypeAllowsAsset(selectedAccount.type, symbol)) {
         throw new Error(assetAccountMismatchMessage(selectedAccount.type));
       }
@@ -100,7 +123,7 @@ export function AddPositionModal({
           name,
           quantity: parseFloat(quantity) || 0,
           average_price: parseFloat(averagePrice) || 0,
-          currency: 'EUR',
+          currency: normalizedCurrency,
           sector: sector || null,
         }),
       });
@@ -257,7 +280,7 @@ export function AddPositionModal({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <label className="block text-xs sm:text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
                 Quantité
@@ -274,7 +297,7 @@ export function AddPositionModal({
             </div>
             <div>
               <label className="block text-xs sm:text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-                Prix moyen (€)
+                Prix moyen ({currency})
               </label>
               <input
                 type="number"
@@ -285,6 +308,23 @@ export function AddPositionModal({
                 required
                 className="w-full px-3 py-2 text-sm sm:text-base border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
+            </div>
+            <div>
+              <label className="block text-xs sm:text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                Devise
+              </label>
+              <input
+                type="text"
+                list="position-currencies"
+                value={currency}
+                onChange={(e) => setCurrency(e.target.value.toUpperCase())}
+                maxLength={10}
+                required
+                className="w-full px-3 py-2 text-sm sm:text-base border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent uppercase"
+              />
+              <datalist id="position-currencies">
+                {COMMON_CURRENCIES.map((c) => <option key={c} value={c} />)}
+              </datalist>
             </div>
           </div>
 

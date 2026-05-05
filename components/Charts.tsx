@@ -22,6 +22,7 @@ import { StockPosition, StockQuote, Transaction, Account } from '@/lib/types';
 import { PortfolioHistoryPoint, calculatePortfolioPerformance } from '@/lib/portfolio-calculator';
 import { convertToBase, type FxRateMap } from '@/lib/fx';
 import { formatCurrency, formatPercent, getSectorColor } from '@/lib/utils';
+import { compareTransactionSequence } from '@/lib/transaction-ordering';
 import { PieChart as PieChartIcon, TrendingUp, TrendingDown, Loader2, BarChart2, Target, Scale, Activity, ChevronDown, ChevronRight, ShoppingCart, DollarSign, Banknote, Percent, Wallet, LineChart as LineChartIcon, Lock } from 'lucide-react';
 import { useSubscription } from '@/lib/subscription-client';
 import { ProBlur } from './ProBlur';
@@ -1371,14 +1372,10 @@ export function PortfolioValueChart({
   const chartData = useMemo(() => {
     if (filteredHistory.length === 0) return [];
 
-    // Trier les transactions BUY/SELL par date pour calculer le coût d'acquisition
+    // Trier les transactions BUY/SELL selon le même ordre de replay que les positions.
     const sortedTx = [...transactions]
       .filter(t => ['BUY', 'SELL'].includes(t.type) && t.stock_symbol)
-      .sort((a, b) => {
-        const byDate = a.date.localeCompare(b.date);
-        if (byDate !== 0) return byDate;
-        return (a.created_at ?? '').localeCompare(b.created_at ?? '');
-      });
+      .sort(compareTransactionSequence);
 
     // Calculer le coût d'acquisition par symbole à chaque date
     // Le coût d'acquisition = somme des (quantité achetée * prix d'achat) - somme des (quantité vendue * prix d'achat moyen)

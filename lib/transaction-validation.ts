@@ -1,4 +1,5 @@
 import type { Transaction } from './types';
+import { compareTransactionSequence } from './transaction-ordering';
 
 export type ValidationFailure = {
   ok: false;
@@ -16,38 +17,6 @@ export type ValidationFailure = {
 export type ValidationSuccess = { ok: true };
 
 export type ValidationResult = ValidationSuccess | ValidationFailure;
-
-function sameDayPriority(tx: Transaction): number {
-  switch (tx.type) {
-    case 'DEPOSIT':
-    case 'DIVIDEND':
-    case 'INTEREST':
-    case 'SELL':
-      return 0;
-    case 'CONVERSION':
-      return 1;
-    case 'WITHDRAWAL':
-    case 'BUY':
-    case 'FEE':
-      return 2;
-    default:
-      return 3;
-  }
-}
-
-// Tuple used to stabilize ordering across transactions on the same date.
-function orderKey(tx: Transaction): [string, number, string, string] {
-  return [tx.date, sameDayPriority(tx), tx.created_at ?? '', tx.id];
-}
-
-function cmpOrder(a: Transaction, b: Transaction): number {
-  const [ad, ap, ac, ai] = orderKey(a);
-  const [bd, bp, bc, bi] = orderKey(b);
-  if (ad !== bd) return ad.localeCompare(bd);
-  if (ap !== bp) return ap - bp;
-  if (ac !== bc) return ac.localeCompare(bc);
-  return ai.localeCompare(bi);
-}
 
 // Cash impact of a transaction on its account, dans sa devise source.
 // Les frais sont portés par une ligne FEE séparée (liée via fee_transaction_id) :
@@ -90,7 +59,7 @@ export function simulateAccountSequence(
   txs: Transaction[],
   epsilon = 0.005
 ): ValidationResult {
-  const ordered = [...txs].sort(cmpOrder);
+  const ordered = [...txs].sort(compareTransactionSequence);
   // Bucket cash par devise : EUR séparé d'USDC, etc.
   const cashByCurrency = new Map<string, number>();
   const shares = new Map<string, number>();

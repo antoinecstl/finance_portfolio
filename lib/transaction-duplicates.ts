@@ -11,9 +11,12 @@ export interface DuplicateCandidate {
   type: TransactionType;
   date: string; // YYYY-MM-DD
   amount: number;
+  currency?: string | null;
   stock_symbol?: string | null;
   quantity?: number | null;
   price_per_unit?: number | null;
+  target_amount?: number | null;
+  target_currency?: string | null;
 }
 
 export interface FindDuplicateOptions {
@@ -42,6 +45,10 @@ export function findDuplicateTransaction(
   const candidateSymbol = candidate.stock_symbol
     ? candidate.stock_symbol.toUpperCase()
     : null;
+  const candidateCurrency = (candidate.currency ?? 'EUR').toUpperCase();
+  const candidateTargetCurrency = candidate.target_currency
+    ? candidate.target_currency.toUpperCase()
+    : null;
   const isStockMove =
     candidate.type === 'BUY' || candidate.type === 'SELL';
 
@@ -59,6 +66,15 @@ export function findDuplicateTransaction(
     if (tx.type !== candidate.type) continue;
     if (tx.date !== candidate.date) continue;
     if (Math.abs(Number(tx.amount) - candidate.amount) > AMOUNT_EPSILON) continue;
+    if ((tx.currency ?? 'EUR').toUpperCase() !== candidateCurrency) continue;
+
+    if (candidate.type === 'CONVERSION') {
+      const txTargetCurrency = tx.target_currency ? tx.target_currency.toUpperCase() : null;
+      const candidateTargetAmount = candidate.target_amount ?? 0;
+      const txTargetAmount = Number(tx.target_amount ?? 0);
+      if (txTargetCurrency !== candidateTargetCurrency) continue;
+      if (Math.abs(txTargetAmount - candidateTargetAmount) > AMOUNT_EPSILON) continue;
+    }
 
     const txSymbol = tx.stock_symbol ? tx.stock_symbol.toUpperCase() : null;
     if (candidateSymbol && txSymbol !== candidateSymbol) continue;

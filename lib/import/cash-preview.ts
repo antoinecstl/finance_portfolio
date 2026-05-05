@@ -1,5 +1,6 @@
 import type { ProposedTransaction } from './types';
 import type { Transaction, TransactionType } from '@/lib/types';
+import { transactionSameDayPriority } from '@/lib/transaction-ordering';
 
 export type ImportCashPreviewBucket = {
   currency: string;
@@ -39,24 +40,6 @@ type CashEvent = {
 };
 
 const EPSILON = 0.005;
-
-function sameDayPriority(type: TransactionType): number {
-  switch (type) {
-    case 'DEPOSIT':
-    case 'DIVIDEND':
-    case 'INTEREST':
-    case 'SELL':
-      return 0;
-    case 'CONVERSION':
-      return 1;
-    case 'WITHDRAWAL':
-    case 'BUY':
-    case 'FEE':
-      return 2;
-    default:
-      return 3;
-  }
-}
 
 function addDelta(map: Map<string, number>, currency: string, delta: number) {
   map.set(currency, (map.get(currency) ?? 0) + delta);
@@ -101,7 +84,7 @@ function eventForDelta(
 ): CashEvent {
   return {
     date: tx.date,
-    priority: sameDayPriority(tx.type),
+    priority: transactionSameDayPriority(tx.type),
     sourceOrder,
     createdAt: tx.created_at ?? '',
     id: tx.id ?? '',

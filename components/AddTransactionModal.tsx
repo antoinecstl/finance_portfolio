@@ -199,19 +199,23 @@ export function AddTransactionModal({
     if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
     const numQty = parseFloat(quantity);
     const numPrice = parseFloat(pricePerUnit);
+    const numTargetAmount = parseFloat(targetAmount);
     return findDuplicateTransaction(
       {
         type: type as Transaction['type'],
         date,
         amount: numAmount,
+        currency: currency.trim().toUpperCase(),
         stock_symbol: stockSymbol ? stockSymbol.toUpperCase() : null,
         quantity: Number.isFinite(numQty) ? numQty : null,
         price_per_unit: Number.isFinite(numPrice) ? numPrice : null,
+        target_amount: Number.isFinite(numTargetAmount) ? numTargetAmount : null,
+        target_currency: targetCurrency ? targetCurrency.trim().toUpperCase() : null,
       },
       transactions,
       { accountId }
     );
-  }, [accountId, type, date, amount, stockSymbol, quantity, pricePerUnit, transactions]);
+  }, [accountId, type, date, amount, currency, stockSymbol, quantity, pricePerUnit, targetAmount, targetCurrency, transactions]);
 
   if (!isOpen) return null;
 
