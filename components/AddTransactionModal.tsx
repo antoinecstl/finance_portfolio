@@ -35,7 +35,12 @@ const transactionTypes = [
   { value: 'DIVIDEND', label: 'Dividende' },
   { value: 'INTEREST', label: 'Intérêts' },
   { value: 'FEE', label: 'Frais' },
+  { value: 'CONVERSION', label: 'Conversion de devises' },
 ];
+
+// Devises proposées par défaut dans le sélecteur. La saisie libre reste
+// possible (toute valeur 3-10 majuscules est acceptée par le backend).
+const COMMON_CURRENCIES = ['EUR', 'USD', 'GBP', 'CHF', 'USDC', 'USDT', 'BTC', 'ETH'];
 
 const todayISO = () => new Date().toISOString().split('T')[0];
 
@@ -58,6 +63,9 @@ export function AddTransactionModal({
   const [quantity, setQuantity] = useState('');
   const [pricePerUnit, setPricePerUnit] = useState('');
   const [fees, setFees] = useState('');
+  const [currency, setCurrency] = useState('EUR');
+  const [targetAmount, setTargetAmount] = useState('');
+  const [targetCurrency, setTargetCurrency] = useState('USD');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -67,6 +75,7 @@ export function AddTransactionModal({
   const limitReached = useLimitReached();
   const isStockTransaction = ['BUY', 'SELL'].includes(type);
   const isDividendTransaction = type === 'DIVIDEND';
+  const isConversion = type === 'CONVERSION';
   const requiresPositionAccount = isStockTransaction || isDividendTransaction;
   const positionAccounts = useMemo(() => accounts.filter(accountSupportsPositions), [accounts]);
   const selectedAccount = useMemo(
@@ -93,6 +102,9 @@ export function AddTransactionModal({
     setQuantity('');
     setPricePerUnit('');
     setFees('');
+    setCurrency(selectedAccount?.currency ?? 'EUR');
+    setTargetAmount('');
+    setTargetCurrency('USD');
     setSearchQuery('');
     setShowSearchDropdown(false);
     setError(null);
@@ -111,6 +123,14 @@ export function AddTransactionModal({
       setAmount(total.toFixed(2));
     }
   }, [quantity, pricePerUnit]);
+
+  // Devise par défaut = devise du compte sélectionné. L'utilisateur peut la
+  // surcharger via le sélecteur (multi-devise sur un même compte = OK).
+  useEffect(() => {
+    if (selectedAccount?.currency) {
+      setCurrency(selectedAccount.currency.toUpperCase());
+    }
+  }, [selectedAccount?.currency]);
 
   // Fermer le dropdown au clic extérieur
   useEffect(() => {
@@ -221,6 +241,7 @@ export function AddTransactionModal({
       }
       if (
         selectedAccount &&
+        (isStockTransaction || isDividendTransaction) &&
         stockSymbol &&
         !accountTypeAllowsAsset(selectedAccount.type, stockSymbol)
       ) {
@@ -231,6 +252,9 @@ export function AddTransactionModal({
       const price = parseFloat(pricePerUnit) || 0;
       const totalAmount = parseFloat(amount) || 0;
       const feesAmount = Math.max(0, parseFloat(fees) || 0);
+      const targetAmt = parseFloat(targetAmount) || 0;
+      const normalizedCurrency = currency.trim().toUpperCase();
+      const normalizedTargetCurrency = targetCurrency.trim().toUpperCase();
 
       // Validation côté client (UX feedback rapide). Le serveur re-valide.
       if (isStockTransaction) {
@@ -241,6 +265,25 @@ export function AddTransactionModal({
 
       if (isDividendTransaction && !stockSymbol) {
         throw new Error('Veuillez sélectionner l\'action associée au dividende');
+      }
+
+      if (totalAmount <= 0) {
+        throw new Error('Le montant doit être supérieur à 0');
+      }
+      if (!/^[A-Z]{3,10}$/.test(normalizedCurrency)) {
+        throw new Error('Code devise invalide');
+      }
+
+      if (isConversion) {
+        if (!/^[A-Z]{3,10}$/.test(normalizedTargetCurrency)) {
+          throw new Error('Code devise cible invalide');
+        }
+        if (normalizedCurrency === normalizedTargetCurrency) {
+          throw new Error('La devise cible doit être différente de la devise source');
+        }
+        if (targetAmt <= 0) {
+          throw new Error('Le montant cible doit être supérieur à 0');
+        }
       }
 
       // Pré-validation locale pour SELL : on rejette tôt si la position est insuffisante
@@ -262,9 +305,12 @@ export function AddTransactionModal({
         fees: number;
         description: string;
         date: string;
+        currency: string;
         stock_symbol?: string;
         quantity?: number;
         price_per_unit?: number;
+        target_amount?: number;
+        target_currency?: string;
       } = {
         account_id: accountId,
         type,
@@ -276,8 +322,11 @@ export function AddTransactionModal({
             ? `${type === 'BUY' ? 'Achat' : 'Vente'} ${qty} x ${stockSymbol}`
             : isDividendTransaction && stockSymbol
               ? `Dividende ${stockSymbol}`
-              : ''),
+              : isConversion
+                ? `Conversion ${normalizedCurrency} → ${normalizedTargetCurrency}`
+                : ''),
         date,
+        currency: normalizedCurrency,
       };
 
       if (isStockTransaction) {
@@ -288,6 +337,13 @@ export function AddTransactionModal({
 
       if (isDividendTransaction && stockSymbol) {
         payload.stock_symbol = stockSymbol.toUpperCase();
+      }
+
+      if (isConversion) {
+        payload.target_amount = targetAmt;
+        payload.target_currency = normalizedTargetCurrency;
+        // Une CONVERSION ne porte pas de frais classiques côté UX.
+        payload.fees = 0;
       }
 
       const res = await fetch('/api/transactions', {
@@ -596,7 +652,7 @@ export function AddTransactionModal({
                 </div>
                 <div>
                   <label className="block text-xs sm:text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-                    Prix unitaire (€)
+                    Prix unitaire ({currency})
                   </label>
                   <input
                     type="number"
@@ -611,26 +667,85 @@ export function AddTransactionModal({
             </>
           )}
 
-          <div>
-            <label className="block text-xs sm:text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-              Montant (€) {isStockTransaction && <span className="text-zinc-400 text-xs">(auto)</span>}
-            </label>
-            <input
-              type="number"
-              step="0.01"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              placeholder="0.00"
-              required
-              readOnly={isStockTransaction}
-              className={`w-full px-3 py-2 text-sm sm:text-base border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent ${isStockTransaction ? 'bg-zinc-50 dark:bg-zinc-900' : ''}`}
-            />
-          </div>
-
-          {type !== 'FEE' && (
+          <div className="grid grid-cols-3 gap-2 sm:gap-3">
+            <div className="col-span-2">
+              <label className="block text-xs sm:text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                {isConversion ? `Montant débité (${currency})` : `Montant (${currency})`}{' '}
+                {isStockTransaction && <span className="text-zinc-400 text-xs">(auto)</span>}
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                placeholder="0.00"
+                required
+                readOnly={isStockTransaction}
+                className={`w-full px-3 py-2 text-sm sm:text-base border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent ${isStockTransaction ? 'bg-zinc-50 dark:bg-zinc-900' : ''}`}
+              />
+            </div>
             <div>
               <label className="block text-xs sm:text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-                Frais (€) <span className="text-zinc-400 text-xs">optionnel</span>
+                Devise
+              </label>
+              <input
+                type="text"
+                list="common-currencies-source"
+                value={currency}
+                onChange={(e) => setCurrency(e.target.value.toUpperCase())}
+                maxLength={10}
+                className="w-full px-2 py-2 text-sm sm:text-base border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent uppercase"
+              />
+              <datalist id="common-currencies-source">
+                {COMMON_CURRENCIES.map((c) => <option key={c} value={c} />)}
+              </datalist>
+            </div>
+          </div>
+
+          {isConversion && (
+            <div className="grid grid-cols-3 gap-2 sm:gap-3 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+              <div className="col-span-2">
+                <label className="block text-xs sm:text-sm font-medium text-amber-800 dark:text-amber-200 mb-1">
+                  Montant crédité ({targetCurrency})
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={targetAmount}
+                  onChange={(e) => setTargetAmount(e.target.value)}
+                  placeholder="0.00"
+                  required
+                  className="w-full px-3 py-2 text-sm sm:text-base border border-amber-300 dark:border-amber-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-amber-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs sm:text-sm font-medium text-amber-800 dark:text-amber-200 mb-1">
+                  Devise cible
+                </label>
+                <input
+                  type="text"
+                  list="common-currencies-target"
+                  value={targetCurrency}
+                  onChange={(e) => setTargetCurrency(e.target.value.toUpperCase())}
+                  maxLength={10}
+                  className="w-full px-2 py-2 text-sm sm:text-base border border-amber-300 dark:border-amber-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-amber-500 uppercase"
+                />
+                <datalist id="common-currencies-target">
+                  {COMMON_CURRENCIES.map((c) => <option key={c} value={c} />)}
+                </datalist>
+              </div>
+              {parseFloat(amount) > 0 && parseFloat(targetAmount) > 0 && (
+                <div className="col-span-3 text-xs text-amber-700 dark:text-amber-300">
+                  Taux implicite : 1 {currency} = {(parseFloat(targetAmount) / parseFloat(amount)).toFixed(4)} {targetCurrency}
+                </div>
+              )}
+            </div>
+          )}
+
+          {type !== 'FEE' && !isConversion && (
+            <div>
+              <label className="block text-xs sm:text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                Frais ({currency}) <span className="text-zinc-400 text-xs">optionnel</span>
               </label>
               <input
                 type="number"
@@ -671,7 +786,7 @@ export function AddTransactionModal({
                   <div className="mt-0.5 text-[11px] sm:text-xs">
                     Une transaction très similaire existe déjà : {duplicateMatch.type}
                     {duplicateMatch.stock_symbol ? ` ${duplicateMatch.stock_symbol}` : ''} de{' '}
-                    {formatCurrency(Number(duplicateMatch.amount))} le {formatDate(duplicateMatch.date)}.
+                    {formatCurrency(Number(duplicateMatch.amount), duplicateMatch.currency)} le {formatDate(duplicateMatch.date)}.
                     Vérifiez qu&apos;il ne s&apos;agit pas d&apos;une saisie en double.
                   </div>
                 </div>

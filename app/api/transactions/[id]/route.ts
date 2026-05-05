@@ -4,6 +4,7 @@ import type { Transaction } from '@/lib/types';
 import { simulateAccountSequence } from '@/lib/transaction-validation';
 import { createTransactionSchema, formatZodError } from '@/lib/schemas';
 import { accountSupportsPositions, accountTypeAllowsAsset, assetAccountMismatchMessage } from '@/lib/utils';
+import { formatInvalidAccountSequenceMessage } from '@/lib/sequence-errors';
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -144,7 +145,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
 
   const { data: account } = await supabase
     .from('accounts')
-    .select('id,type,supports_positions')
+    .select('id,type,supports_positions,currency')
     .eq('id', target.account_id)
     .eq('user_id', user.id)
     .maybeSingle();
@@ -161,6 +162,8 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     );
   }
 
+  // Devise : si le PATCH n'en fournit pas, on garde celle de la cible.
+  const txCurrency = (body.currency ?? target.currency ?? account.currency ?? 'EUR').toUpperCase();
   const newFees = body.type !== 'FEE' && body.fees && body.fees > 0 ? body.fees : 0;
 
   // Pré-validation côté JS de la séquence : on remplace la cible (et son
@@ -186,11 +189,14 @@ export async function PATCH(request: Request, { params }: RouteContext) {
       ...target,
       type: body.type,
       amount: body.amount,
+      currency: txCurrency,
       description: body.description ?? '',
       date: body.date,
       stock_symbol: body.stock_symbol,
       quantity: body.quantity,
       price_per_unit: body.price_per_unit,
+      target_amount: body.target_amount ?? null,
+      target_currency: body.target_currency ?? null,
     } as Transaction);
 
   if (newFees > 0) {
@@ -199,6 +205,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
       account_id: target.account_id,
       type: 'FEE',
       amount: newFees,
+      currency: txCurrency,
       description: '',
       date: body.date,
       // Conserve le created_at original si on update une FEE existante, pour
@@ -230,13 +237,16 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     p_quantity: body.quantity ?? null,
     p_price_per_unit: body.price_per_unit ?? null,
     p_fees: newFees > 0 ? newFees : null,
+    p_currency: txCurrency,
+    p_target_amount: body.target_amount ?? null,
+    p_target_currency: body.target_currency ?? null,
   });
 
   if (error) {
     const msg = error.message ?? '';
     if (msg.includes('INVALID_ACCOUNT_SEQUENCE')) {
       return NextResponse.json(
-        { error: 'invalid_state', message: msg },
+        { error: 'invalid_state', message: formatInvalidAccountSequenceMessage(msg) },
         { status: 409 }
       );
     }

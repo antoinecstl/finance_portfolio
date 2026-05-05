@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isCryptoSymbol, accountTypeAllowsAsset, defaultSupportsPositions } from './utils';
+import { isCryptoSymbol, accountTypeAllowsAsset, defaultSupportsPositions, formatCurrency, formatCurrencyBreakdown } from './utils';
 
 describe('isCryptoSymbol', () => {
   it.each(['BTC-USD', 'eth-usd', 'SOL-USDT', 'XRP-EUR', 'ADA-GBP', 'ETH-BTC'])(
@@ -48,5 +48,21 @@ describe('defaultSupportsPositions', () => {
     expect(defaultSupportsPositions('LDDS')).toBe(false);
     expect(defaultSupportsPositions('PEL')).toBe(false);
     expect(defaultSupportsPositions('AUTRE')).toBe(false);
+  });
+});
+
+describe('formatCurrency', () => {
+  it('formats stablecoin-like 4-letter currencies without throwing', () => {
+    expect(formatCurrency(1234.5, 'USDC')).toContain('USDC');
+  });
+
+  it('keeps small crypto fees readable', () => {
+    expect(formatCurrency(0.000003, 'SOL')).toContain('0,00000300');
+  });
+});
+
+describe('formatCurrencyBreakdown', () => {
+  it('keeps non-account currency cash buckets visible', () => {
+    expect(formatCurrencyBreakdown({ EUR: 0, USDC: 4000 })).toContain('USDC');
   });
 });

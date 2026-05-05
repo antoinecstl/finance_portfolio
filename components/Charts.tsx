@@ -20,6 +20,7 @@ import {
 } from 'recharts';
 import { StockPosition, StockQuote, Transaction, Account } from '@/lib/types';
 import { PortfolioHistoryPoint, calculatePortfolioPerformance } from '@/lib/portfolio-calculator';
+import { convertToBase, type FxRateMap } from '@/lib/fx';
 import { formatCurrency, formatPercent, getSectorColor } from '@/lib/utils';
 import { PieChart as PieChartIcon, TrendingUp, TrendingDown, Loader2, BarChart2, Target, Scale, Activity, ChevronDown, ChevronRight, ShoppingCart, DollarSign, Banknote, Percent, Wallet, LineChart as LineChartIcon, Lock } from 'lucide-react';
 import { useSubscription } from '@/lib/subscription-client';
@@ -34,22 +35,53 @@ function formatLocalDate(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
+// Détecte un périmètre multi-devise (USDC, USD, etc.). On ne masque plus le
+// graphe : on affiche juste un petit indicateur "Valeurs converties en EUR".
+function hasMultiCurrency(transactions: Transaction[]): boolean {
+  const currencies = new Set<string>();
+  for (const tx of transactions) {
+    currencies.add((tx.currency ?? 'EUR').toUpperCase());
+    if (tx.target_currency) currencies.add(tx.target_currency.toUpperCase());
+  }
+  return currencies.size > 1;
+}
+
 const DEFAULT_YTD_DAYS = (() => {
   const now = new Date();
   return Math.ceil((now.getTime() - new Date(now.getFullYear(), 0, 1).getTime()) / MS_PER_DAY);
 })();
 
+function txCurrency(tx: Transaction): string {
+  return (tx.currency ?? 'EUR').toUpperCase();
+}
+
+function formatTransactionTotals(transactions: Transaction[]): string {
+  const totals = new Map<string, number>();
+  for (const tx of transactions) {
+    const currency = txCurrency(tx);
+    totals.set(currency, (totals.get(currency) ?? 0) + tx.amount);
+  }
+
+  const entries = Array.from(totals.entries()).sort(([a], [b]) => a.localeCompare(b));
+  if (entries.length === 0) return formatCurrency(0);
+  return entries.map(([currency, amount]) => formatCurrency(amount, currency)).join(' + ');
+}
+
 interface AllocationChartProps {
   positions: StockPosition[];
   quotes: Record<string, StockQuote>;
+  fxRates?: FxRateMap;
 }
 
-export function AllocationChart({ positions, quotes }: AllocationChartProps) {
+export function AllocationChart({ positions, quotes, fxRates = {} }: AllocationChartProps) {
+  const today = formatLocalDate(new Date());
   // Agréger par symbole (somme entre comptes pour une exposition globale)
   const aggregated = new Map<string, { name: string; fullName: string; value: number }>();
   positions.forEach((position) => {
-    const currentPrice = quotes[position.symbol]?.price ?? position.average_price;
-    const value = position.quantity * currentPrice;
+    const quote = quotes[position.symbol];
+    const currentPrice = quote?.price ?? position.average_price;
+    const valueCurrency = (quote?.currency ?? position.currency ?? 'EUR').toUpperCase();
+    const value = convertToBase(position.quantity * currentPrice, valueCurrency, today, fxRates);
     const existing = aggregated.get(position.symbol);
     if (existing) {
       existing.value += value;
@@ -142,14 +174,14 @@ export function SectorAllocationChart() {
 // Nouveau composant pour la répartition par compte
 
 interface AccountAllocationChartProps {
-  accounts: Array<Account & { calculatedTotalValue: number }>;
+  accounts: Array<Account & { calculatedTotalValue: number; calculatedTotalValueInBase?: number }>;
 }
 
 export function AccountAllocationChart({ accounts }: AccountAllocationChartProps) {
   // Calculer la répartition par compte
   const data = accounts
     .map((account, index) => {
-      const value = account.calculatedTotalValue;
+      const value = account.calculatedTotalValueInBase ?? account.calculatedTotalValue;
       return {
         name: account.name,
         type: account.type,
@@ -473,6 +505,7 @@ interface PositionPerformanceChartProps {
   portfolioTotalGain?: number;
   portfolioTotalGainPercent?: number;
   portfolioDayChange?: number;
+  fxRates?: FxRateMap;
 }
 
 interface PositionMetrics {
@@ -489,10 +522,16 @@ interface PositionMetrics {
   gainPercent: number;
   dayChange: number;
   dayChangePercent: number;
+  nativeCurrentValue: number;
+  nativeInvestedValue: number;
+  nativeGainValue: number;
+  nativeGainPercent: number;
+  nativeDayChange: number;
   weight: number;
   quantity: number;
   avgPrice: number;
   currentPrice: number;
+  currency: string;
   color: string;
 }
 
@@ -506,7 +545,8 @@ export function PositionPerformanceChart({
   portfolioTotalInvested,
   portfolioTotalGain,
   portfolioTotalGainPercent,
-  portfolioDayChange
+  portfolioDayChange,
+  fxRates = {}
 }: PositionPerformanceChartProps) {
   // État pour les lignes étendues (clé composite accountId:symbol)
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
@@ -569,17 +609,32 @@ export function PositionPerformanceChart({
     return new Set(positions.map(p => p.account_id));
   }, [positions]);
 
+  const today = formatLocalDate(new Date());
+
   // Calculer les métriques pour chaque position (clé composite accountId:symbol)
   const metrics: PositionMetrics[] = positions.map((position, index) => {
     const quote = quotes[position.symbol];
     const currentPrice = quote?.price ?? position.average_price;
     const dayChange = quote?.change || 0;
     const dayChangePercent = quote?.changePercent || 0;
+    const currency = (quote?.currency ?? position.currency ?? 'EUR').toUpperCase();
 
-    const currentValue = position.quantity * currentPrice;
-    const investedValue = position.quantity * position.average_price;
+    const nativeCurrentValue = position.quantity * currentPrice;
+    const nativeInvestedValue = position.quantity * position.average_price;
+    const nativeGainValue = nativeCurrentValue - nativeInvestedValue;
+    const nativeGainPercent = nativeInvestedValue > 0 ? (nativeGainValue / nativeInvestedValue) * 100 : 0;
+    const nativeDayChange = position.quantity * dayChange;
+
+    // On convertit `currentValue` ET `investedValue` au taux du jour pour que la
+    // +/- value affichée reflète le mouvement de prix natif (pas un faux gain
+    // FX dû à la divergence entre taux d'achat et taux du jour).
+    // `position.currency` est `'EUR'` par défaut en base même pour BTC-USD —
+    // on privilégie `currency` (issu de `quote.currency`) qui est fiable.
+    const currentValue = convertToBase(nativeCurrentValue, currency, today, fxRates);
+    const investedValue = convertToBase(nativeInvestedValue, currency, today, fxRates);
     const gainValue = currentValue - investedValue;
     const gainPercent = investedValue > 0 ? (gainValue / investedValue) * 100 : 0;
+    const convertedDayChange = convertToBase(nativeDayChange, currency, today, fxRates);
 
     const account = accountById.get(position.account_id);
     const accountName = account?.name ?? '—';
@@ -601,12 +656,18 @@ export function PositionPerformanceChart({
       investedValue,
       gainValue,
       gainPercent,
-      dayChange,
+      dayChange: convertedDayChange,
       dayChangePercent,
+      nativeCurrentValue,
+      nativeInvestedValue,
+      nativeGainValue,
+      nativeGainPercent,
+      nativeDayChange,
       weight: 0, // Calculé après
       quantity: position.quantity,
       avgPrice: position.average_price,
       currentPrice,
+      currency,
       color: getSectorColor(index),
     };
   });
@@ -625,7 +686,7 @@ export function PositionPerformanceChart({
   // Utiliser les totaux passés en props pour cohérence avec les autres composants
   const calculatedInvested = metrics.reduce((sum, m) => sum + m.investedValue, 0);
   const calculatedGain = metrics.reduce((sum, m) => sum + m.gainValue, 0);
-  const calculatedDayChange = metrics.reduce((sum, m) => sum + (m.dayChange * m.quantity), 0);
+  const calculatedDayChange = metrics.reduce((sum, m) => sum + m.dayChange, 0);
   
   const totalInvested = portfolioTotalInvested ?? calculatedInvested;
   const totalGain = portfolioTotalGain ?? calculatedGain;
@@ -646,6 +707,7 @@ export function PositionPerformanceChart({
     symbol: m.displayLabel,
     weight: m.weight,
     value: m.currentValue,
+    currency: 'EUR',
     color: m.color,
   }));
 
@@ -807,7 +869,7 @@ export function PositionPerformanceChart({
                   formatter={(value, name, props) => {
                     const numValue = Number(value) || 0;
                     const data = props.payload;
-                    return [`${numValue.toFixed(1)}% (${formatCurrency(data.value)})`, 'Poids'];
+                    return [`${numValue.toFixed(1)}% (${formatCurrency(data.value, data.currency)})`, 'Poids'];
                   }}
                   contentStyle={{
                     backgroundColor: 'var(--paper-2)',
@@ -895,7 +957,7 @@ export function PositionPerformanceChart({
                           </div>
                         </div>
                         <div className="text-right">
-                          <p className="font-bold text-zinc-900 dark:text-zinc-100">{formatCurrency(m.currentValue)}</p>
+                          <p className="font-bold text-zinc-900 dark:text-zinc-100">{formatCurrency(m.nativeCurrentValue, m.currency)}</p>
                           <p className={`text-xs text-zinc-500 ${isProUser ? '' : 'blur-sm select-none'}`}>{m.weight.toFixed(1)}% du portefeuille</p>
                         </div>
                       </div>
@@ -903,12 +965,12 @@ export function PositionPerformanceChart({
                         <div>
                           <p className="text-zinc-500">Qté × PRU</p>
                           <p className="font-medium text-zinc-900 dark:text-zinc-100">
-                            {m.quantity.toFixed(m.quantity % 1 === 0 ? 0 : 2)} × {formatCurrency(m.avgPrice)}
+                            {m.quantity.toFixed(m.quantity % 1 === 0 ? 0 : 2)} × {formatCurrency(m.avgPrice, m.currency)}
                           </p>
                         </div>
                         <div>
                           <p className="text-zinc-500">Cours actuel</p>
-                          <p className="font-medium text-zinc-900 dark:text-zinc-100">{formatCurrency(m.currentPrice)}</p>
+                          <p className="font-medium text-zinc-900 dark:text-zinc-100">{formatCurrency(m.currentPrice, m.currency)}</p>
                         </div>
                         <div>
                           <p className="text-zinc-500">Var. jour</p>
@@ -916,14 +978,14 @@ export function PositionPerformanceChart({
                             {formatPercent(m.dayChangePercent)}
                           </p>
                           <p className={`text-[10px] ${m.dayChangePercent >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                            {m.dayChange * m.quantity >= 0 ? '+' : ''}{formatCurrency(m.dayChange * m.quantity)}
+                            {m.nativeDayChange >= 0 ? '+' : ''}{formatCurrency(m.nativeDayChange, m.currency)}
                           </p>
                         </div>
                       </div>
                       <div className="flex justify-between items-center pt-1 border-t border-zinc-100 dark:border-zinc-800">
                         <span className="text-xs text-zinc-500">+/- Value</span>
-                        <span className={`font-semibold ${m.gainPercent >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                          {m.gainValue >= 0 ? '+' : ''}{formatCurrency(m.gainValue)} ({formatPercent(m.gainPercent)})
+                        <span className={`font-semibold ${m.nativeGainPercent >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                          {m.nativeGainValue >= 0 ? '+' : ''}{formatCurrency(m.nativeGainValue, m.currency)} ({formatPercent(m.nativeGainPercent)})
                         </span>
                       </div>
 
@@ -933,20 +995,20 @@ export function PositionPerformanceChart({
                             <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded p-2">
                               <p className="text-emerald-600 dark:text-emerald-400 font-medium">Achats</p>
                               <p className="text-zinc-900 dark:text-zinc-100">{stats.buys.length} ordres • {stats.totalBought.toFixed(2)} titres</p>
-                              <p className="text-zinc-600 dark:text-zinc-400">{formatCurrency(stats.totalBuyAmount)}</p>
+                              <p className="text-zinc-600 dark:text-zinc-400">{formatTransactionTotals(stats.buys)}</p>
                             </div>
                             {stats.sells.length > 0 && (
                               <div className="bg-red-50 dark:bg-red-900/20 rounded p-2">
                                 <p className="text-red-600 dark:text-red-400 font-medium">Ventes</p>
                                 <p className="text-zinc-900 dark:text-zinc-100">{stats.sells.length} ordres • {stats.totalSold.toFixed(2)} titres</p>
-                                <p className="text-zinc-600 dark:text-zinc-400">{formatCurrency(stats.totalSellAmount)}</p>
+                                <p className="text-zinc-600 dark:text-zinc-400">{formatTransactionTotals(stats.sells)}</p>
                               </div>
                             )}
                             {stats.totalDividends > 0 && (
                               <div className="bg-blue-50 dark:bg-blue-900/20 rounded p-2">
                                 <p className="text-blue-600 dark:text-blue-400 font-medium">Dividendes</p>
                                 <p className="text-zinc-900 dark:text-zinc-100">{stats.dividends.length} versements</p>
-                                <p className="text-zinc-600 dark:text-zinc-400">{formatCurrency(stats.totalDividends)}</p>
+                                <p className="text-zinc-600 dark:text-zinc-400">{formatTransactionTotals(stats.dividends)}</p>
                               </div>
                             )}
                           </div>
@@ -967,10 +1029,10 @@ export function PositionPerformanceChart({
                                 </div>
                                 <div className="text-right">
                                   {t.quantity && t.price_per_unit && (
-                                    <span className="text-zinc-600 dark:text-zinc-400 mr-2">{t.quantity} × {formatCurrency(t.price_per_unit)}</span>
+                                    <span className="text-zinc-600 dark:text-zinc-400 mr-2">{t.quantity} × {formatCurrency(t.price_per_unit, txCurrency(t))}</span>
                                   )}
                                   <span className={`font-medium ${t.type === 'SELL' || t.type === 'DIVIDEND' ? 'text-emerald-600' : 'text-zinc-900 dark:text-zinc-100'}`}>
-                                    {t.type === 'SELL' || t.type === 'DIVIDEND' ? '+' : '-'}{formatCurrency(Math.abs(t.amount))}
+                                    {t.type === 'SELL' || t.type === 'DIVIDEND' ? '+' : '-'}{formatCurrency(Math.abs(t.amount), txCurrency(t))}
                                   </span>
                                 </div>
                               </div>
@@ -1075,10 +1137,10 @@ export function PositionPerformanceChart({
                         {m.quantity.toFixed(m.quantity % 1 === 0 ? 0 : 2)}
                       </td>
                       <td className="py-2 px-3 text-right text-zinc-900 dark:text-zinc-100">
-                        {formatCurrency(m.avgPrice)}
+                        {formatCurrency(m.avgPrice, m.currency)}
                       </td>
                       <td className="py-2 px-3 text-right text-zinc-900 dark:text-zinc-100">
-                        {formatCurrency(m.currentPrice)}
+                        {formatCurrency(m.currentPrice, m.currency)}
                       </td>
                       <td className={`py-2 px-3 text-right font-medium ${m.dayChangePercent >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                         <span className="flex items-center justify-end gap-1">
@@ -1086,11 +1148,11 @@ export function PositionPerformanceChart({
                           {formatPercent(m.dayChangePercent)}
                         </span>
                         <p className="text-xs font-normal">
-                          {m.dayChange * m.quantity >= 0 ? '+' : ''}{formatCurrency(m.dayChange * m.quantity)}
+                          {m.nativeDayChange >= 0 ? '+' : ''}{formatCurrency(m.nativeDayChange, m.currency)}
                         </p>
                       </td>
                       <td className="py-2 px-3 text-right font-bold text-zinc-900 dark:text-zinc-100">
-                        {formatCurrency(m.currentValue)}
+                        {formatCurrency(m.nativeCurrentValue, m.currency)}
                       </td>
                       <td className="py-2 px-3 text-right">
                         <div className={`flex items-center justify-end gap-2 ${isProUser ? '' : 'blur-sm select-none pointer-events-none'}`} aria-hidden={!isProUser}>
@@ -1105,9 +1167,9 @@ export function PositionPerformanceChart({
                           </span>
                         </div>
                       </td>
-                      <td className={`py-2 px-3 text-right font-semibold ${m.gainPercent >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                        <p>{m.gainPercent >= 0 ? '+' : ''}{formatCurrency(m.gainValue)}</p>
-                        <p className="text-xs font-normal">{formatPercent(m.gainPercent)}</p>
+                      <td className={`py-2 px-3 text-right font-semibold ${m.nativeGainPercent >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                        <p>{m.nativeGainValue >= 0 ? '+' : ''}{formatCurrency(m.nativeGainValue, m.currency)}</p>
+                        <p className="text-xs font-normal">{formatPercent(m.nativeGainPercent)}</p>
                       </td>
                     </tr>
                     
@@ -1125,7 +1187,7 @@ export function PositionPerformanceChart({
                                 </div>
                                 <p className="text-lg font-bold text-zinc-900 dark:text-zinc-100">{stats.buys.length} ordres</p>
                                 <p className="text-sm text-zinc-500">{stats.totalBought.toFixed(2)} titres achetés</p>
-                                <p className="text-sm font-medium text-emerald-600">{formatCurrency(stats.totalBuyAmount)}</p>
+                                <p className="text-sm font-medium text-emerald-600">{formatTransactionTotals(stats.buys)}</p>
                               </div>
                               
                               <div className="bg-white dark:bg-zinc-900 rounded-lg p-3 border border-zinc-200 dark:border-zinc-700">
@@ -1135,7 +1197,7 @@ export function PositionPerformanceChart({
                                 </div>
                                 <p className="text-lg font-bold text-zinc-900 dark:text-zinc-100">{stats.sells.length} ordres</p>
                                 <p className="text-sm text-zinc-500">{stats.totalSold.toFixed(2)} titres vendus</p>
-                                <p className="text-sm font-medium text-red-600">{formatCurrency(stats.totalSellAmount)}</p>
+                                <p className="text-sm font-medium text-red-600">{formatTransactionTotals(stats.sells)}</p>
                               </div>
                               
                               <div className="bg-white dark:bg-zinc-900 rounded-lg p-3 border border-zinc-200 dark:border-zinc-700">
@@ -1145,7 +1207,7 @@ export function PositionPerformanceChart({
                                 </div>
                                 <p className="text-lg font-bold text-zinc-900 dark:text-zinc-100">{stats.dividends.length} versements</p>
                                 <p className="text-sm text-zinc-500">Total perçu</p>
-                                <p className="text-sm font-medium text-blue-600">{formatCurrency(stats.totalDividends)}</p>
+                                <p className="text-sm font-medium text-blue-600">{formatTransactionTotals(stats.dividends)}</p>
                               </div>
                               
                               <div className="bg-white dark:bg-zinc-900 rounded-lg p-3 border border-zinc-200 dark:border-zinc-700">
@@ -1153,12 +1215,12 @@ export function PositionPerformanceChart({
                                   <Percent className="h-4 w-4 text-purple-600" />
                                   <span className="font-semibold text-sm text-zinc-900 dark:text-zinc-100">Rendement Total</span>
                                 </div>
-                                <p className={`text-lg font-bold ${(m.gainValue + stats.totalDividends) >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                                  {(m.gainValue + stats.totalDividends) >= 0 ? '+' : ''}{formatCurrency(m.gainValue + stats.totalDividends)}
+                                <p className={`text-lg font-bold ${(m.nativeGainValue + stats.totalDividends) >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                                  {(m.nativeGainValue + stats.totalDividends) >= 0 ? '+' : ''}{formatCurrency(m.nativeGainValue + stats.totalDividends, m.currency)}
                                 </p>
                                 <p className="text-sm text-zinc-500">+/- value + dividendes</p>
                                 <p className="text-sm font-medium text-purple-600">
-                                  {m.investedValue > 0 ? formatPercent(((m.gainValue + stats.totalDividends) / m.investedValue) * 100) : '0%'}
+                                  {m.nativeInvestedValue > 0 ? formatPercent(((m.nativeGainValue + stats.totalDividends) / m.nativeInvestedValue) * 100) : '0%'}
                                 </p>
                               </div>
                             </div>
@@ -1205,12 +1267,12 @@ export function PositionPerformanceChart({
                                           {t.quantity ? t.quantity.toFixed(t.quantity % 1 === 0 ? 0 : 4) : '-'}
                                         </td>
                                         <td className="py-2 px-3 text-right text-zinc-900 dark:text-zinc-100">
-                                          {t.price_per_unit ? formatCurrency(t.price_per_unit) : '-'}
+                                          {t.price_per_unit ? formatCurrency(t.price_per_unit, txCurrency(t)) : '-'}
                                         </td>
                                         <td className={`py-2 px-3 text-right font-medium ${
                                           t.type === 'SELL' || t.type === 'DIVIDEND' ? 'text-emerald-600' : 'text-zinc-900 dark:text-zinc-100'
                                         }`}>
-                                          {t.type === 'SELL' || t.type === 'DIVIDEND' ? '+' : '-'}{formatCurrency(Math.abs(t.amount))}
+                                          {t.type === 'SELL' || t.type === 'DIVIDEND' ? '+' : '-'}{formatCurrency(Math.abs(t.amount), txCurrency(t))}
                                         </td>
                                         <td className="py-2 px-3 text-zinc-500 truncate max-w-[200px]">
                                           {t.description || '-'}
@@ -1258,6 +1320,7 @@ interface PortfolioValueChartProps {
   // Valeurs actuelles du portefeuille (pour cohérence avec les autres composants)
   currentTotalValue?: number;
   currentTotalInvested?: number;
+  fxRates?: FxRateMap;
 }
 
 export function PortfolioValueChart({ 
@@ -1265,9 +1328,14 @@ export function PortfolioValueChart({
   transactions, 
   loading = false,
   currentTotalValue,
-  currentTotalInvested 
+  currentTotalInvested,
+  fxRates = {},
 }: PortfolioValueChartProps) {
   const [selectedPeriod, setSelectedPeriod] = useState<PeriodOption>('YTD');
+  const isMultiCurrency = useMemo(
+    () => hasMultiCurrency(transactions),
+    [transactions]
+  );
 
   // Filtrer l'historique selon la période sélectionnée
   const filteredHistory = useMemo(() => {
@@ -1306,7 +1374,11 @@ export function PortfolioValueChart({
     // Trier les transactions BUY/SELL par date pour calculer le coût d'acquisition
     const sortedTx = [...transactions]
       .filter(t => ['BUY', 'SELL'].includes(t.type) && t.stock_symbol)
-      .sort((a, b) => a.date.localeCompare(b.date));
+      .sort((a, b) => {
+        const byDate = a.date.localeCompare(b.date);
+        if (byDate !== 0) return byDate;
+        return (a.created_at ?? '').localeCompare(b.created_at ?? '');
+      });
 
     // Calculer le coût d'acquisition par symbole à chaque date
     // Le coût d'acquisition = somme des (quantité achetée * prix d'achat) - somme des (quantité vendue * prix d'achat moyen)
@@ -1314,12 +1386,13 @@ export function PortfolioValueChart({
     const costBasisHistoryByDate = new Map<string, number>();
     
     sortedTx.forEach(tx => {
-      const symbol = tx.stock_symbol!;
+      const symbol = `${tx.account_id}:${tx.stock_symbol!.toUpperCase()}`;
       const current = costBasisBySymbol.get(symbol) || { totalCost: 0, totalQuantity: 0 };
       
       if (tx.type === 'BUY' && tx.quantity && tx.price_per_unit) {
         // Achat: ajouter au coût total et à la quantité
-        current.totalCost += tx.quantity * tx.price_per_unit;
+        const nativeCost = tx.quantity * tx.price_per_unit;
+        current.totalCost += convertToBase(nativeCost, tx.currency ?? 'EUR', tx.date, fxRates);
         current.totalQuantity += tx.quantity;
       } else if (tx.type === 'SELL' && tx.quantity && current.totalQuantity > 0) {
         // Vente: retirer proportionnellement au PRU
@@ -1361,9 +1434,16 @@ export function PortfolioValueChart({
       const actionsValueAtDate = point.positions.reduce((sum, position) => sum + position.value, 0);
 
       // Pour le dernier point, utiliser les valeurs passées en props (cohérence temps réel)
+      // Ces props viennent du même résumé que la vue d'ensemble des performances.
       const isLastPoint = index === filteredHistory.length - 1;
-      const valeurActuelle = isLastPoint && currentTotalValue !== undefined ? currentTotalValue : actionsValueAtDate;
-      const investissement = isLastPoint && currentTotalInvested !== undefined ? currentTotalInvested : currentCostBasis;
+      const valeurActuelle =
+        isLastPoint && currentTotalValue !== undefined
+          ? currentTotalValue
+          : actionsValueAtDate;
+      const investissement =
+        isLastPoint && currentTotalInvested !== undefined
+          ? currentTotalInvested
+          : currentCostBasis;
       
       const gain = valeurActuelle - investissement;
       const gainPercent = investissement > 0 ? (gain / investissement) * 100 : 0;
@@ -1387,7 +1467,7 @@ export function PortfolioValueChart({
     });
     
     return data;
-  }, [filteredHistory, transactions, currentTotalValue, currentTotalInvested]);
+  }, [filteredHistory, transactions, currentTotalValue, currentTotalInvested, fxRates]);
 
   // Calculer les statistiques
   const stats = useMemo(() => {
@@ -1455,6 +1535,14 @@ export function PortfolioValueChart({
           <h3 className="font-semibold text-sm sm:text-base text-zinc-900 dark:text-zinc-100">
             Valeur du Portefeuille vs Investissement
           </h3>
+          {isMultiCurrency && (
+            <span
+              className="text-[10px] sm:text-xs px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300"
+              title="Les valeurs natives USD/USDC sont converties en EUR pour rester comparables a la performance annuelle."
+            >
+              EUR
+            </span>
+          )}
         </div>
         {/* Sélecteur de période */}
         <div className="flex w-full flex-wrap gap-1 sm:w-auto sm:flex-nowrap">
@@ -1468,7 +1556,7 @@ export function PortfolioValueChart({
                   : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'
               }`}
             >
-              {period === '1Y' ? '1A' : period}
+              {period === '1Y' ? '1A' : period === 'MAX' ? 'Max' : period}
             </button>
           ))}
         </div>
@@ -1491,13 +1579,13 @@ export function PortfolioValueChart({
           </div>
           <div className={`rounded-lg p-2 sm:p-3 ${stats.gain >= 0 ? 'bg-emerald-50 dark:bg-emerald-900/20' : 'bg-red-50 dark:bg-red-900/20'}`}>
             <p className={`text-[10px] sm:text-xs font-medium ${stats.gain >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
-              +/- Value
+              +/- Value latente
             </p>
             <p className={`text-sm sm:text-lg font-bold ${stats.gain >= 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-red-700 dark:text-red-300'}`}>
               {stats.gain >= 0 ? '+' : ''}{formatCurrency(stats.gain)}
             </p>
             <p className={`text-[10px] sm:text-xs ${stats.gain >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-              ({stats.gainPercent >= 0 ? '+' : ''}{stats.gainPercent.toFixed(1)}%)
+              {formatPercent(stats.gainPercent)}
             </p>
           </div>
         </div>
@@ -1541,7 +1629,7 @@ export function PortfolioValueChart({
               labelFormatter={(_, payload) => {
                 if (payload && payload.length > 0) {
                   const data = payload[0].payload;
-                  return `${data.fullDate}\n+/- Value: ${data.plusValue >= 0 ? '+' : ''}${formatCurrency(data.plusValue)} (${data.gainPercent >= 0 ? '+' : ''}${data.gainPercent.toFixed(1)}%)`;
+                  return `${data.fullDate}\n+/- Value latente: ${data.plusValue >= 0 ? '+' : ''}${formatCurrency(data.plusValue)} (${formatPercent(data.gainPercent)})`;
                 }
                 return '';
               }}
@@ -2083,22 +2171,33 @@ interface PortfolioPerformanceChartProps {
   accounts: Account[];
   loading?: boolean;
   currentPortfolioValue?: number; // Valeur actuelle en temps réel
+  fxRates?: FxRateMap;
 }
 
-export function PortfolioPerformanceChart({ 
-  transactions, 
-  portfolioHistory, 
+export function PortfolioPerformanceChart({
+  transactions,
+  portfolioHistory,
   accounts,
   loading = false,
-  currentPortfolioValue
+  currentPortfolioValue,
+  fxRates = {},
 }: PortfolioPerformanceChartProps) {
   // État pour afficher/masquer les années précédentes
   const [showAllYears, setShowAllYears] = useState(false);
-  
-  // Calculer la performance
+  const isMultiCurrency = useMemo(
+    () => hasMultiCurrency(transactions),
+    [transactions]
+  );
+
+  // Calculer la performance. En multi-devise, on n'écrase PAS le dernier point
+  // par `currentPortfolioValue` : cette valeur vient d'une sommation naïve EUR
+  // + USDC dans Dashboard (pas FX-aware), alors que le dernier point historique
+  // est déjà converti en EUR au taux du jour. L'override ferait perdre la
+  // conversion et générerait un faux gain.
   const performance = useMemo(() => {
-    if (currentPortfolioValue === undefined || portfolioHistory.length === 0) {
-      return calculatePortfolioPerformance(transactions, portfolioHistory, accounts);
+    const skipOverride = isMultiCurrency || currentPortfolioValue === undefined;
+    if (skipOverride || portfolioHistory.length === 0) {
+      return calculatePortfolioPerformance(transactions, portfolioHistory, accounts, fxRates);
     }
 
     const today = formatLocalDate(new Date());
@@ -2116,8 +2215,8 @@ export function PortfolioPerformanceChart({
           index === portfolioHistory.length - 1 ? updatedLastPoint : point
         );
 
-    return calculatePortfolioPerformance(transactions, historyWithCurrentValue, accounts);
-  }, [transactions, portfolioHistory, accounts, currentPortfolioValue]);
+    return calculatePortfolioPerformance(transactions, historyWithCurrentValue, accounts, fxRates);
+  }, [transactions, portfolioHistory, accounts, currentPortfolioValue, fxRates, isMultiCurrency]);
 
   // Trier les années de la plus récente à la plus ancienne
   const sortedYears = useMemo(() => {
@@ -2191,11 +2290,19 @@ export function PortfolioPerformanceChart({
   return (
     <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-4 sm:p-6 space-y-4">
       {/* Header */}
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <LineChartIcon className="h-4 w-4 sm:h-5 sm:w-5 text-indigo-600" />
         <h3 className="font-semibold text-sm sm:text-base text-zinc-900 dark:text-zinc-100">
           Performance Annuelle (hors apports)
         </h3>
+        {isMultiCurrency && (
+          <span
+            className="text-[10px] sm:text-xs px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300"
+            title="Les buckets non-EUR (USDC, USD, …) sont convertis en EUR au taux Yahoo du jour. Les stablecoins sont peggés 1:1 sur leur fiat."
+          >
+            Valeurs converties en EUR
+          </span>
+        )}
       </div>
 
       {/* Performance année en cours en évidence */}

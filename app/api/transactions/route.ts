@@ -6,6 +6,7 @@ import { decodeCursor, encodeCursor } from '@/lib/pagination';
 import { simulateAccountSequence } from '@/lib/transaction-validation';
 import type { Transaction } from '@/lib/types';
 import { accountSupportsPositions, accountTypeAllowsAsset, assetAccountMismatchMessage } from '@/lib/utils';
+import { formatInvalidAccountSequenceMessage } from '@/lib/sequence-errors';
 
 // GET /api/transactions?cursor=<opaque>&limit=50&accountId=<uuid>
 // Pagination cursor-based sur (date DESC, id DESC) pour rester stable
@@ -86,13 +87,16 @@ export async function POST(request: Request) {
   // (Le RPC revérifie, mais on gagne un round-trip en cas d'accès interdit.)
   const { data: account } = await supabase
     .from('accounts')
-    .select('id,type,supports_positions')
+    .select('id,type,supports_positions,currency')
     .eq('id', body.account_id)
     .eq('user_id', user.id)
     .maybeSingle();
   if (!account) {
     return NextResponse.json({ error: 'invalid_account' }, { status: 403 });
   }
+
+  // Devise effective : celle fournie au schéma, sinon celle du compte.
+  const txCurrency = (body.currency ?? account.currency ?? 'EUR').toUpperCase();
   if (['BUY', 'SELL', 'DIVIDEND'].includes(body.type) && !accountSupportsPositions(account)) {
     return NextResponse.json({ error: 'account_does_not_support_positions' }, { status: 403 });
   }
@@ -160,6 +164,7 @@ export async function POST(request: Request) {
       account_id: body.account_id,
       type: 'FEE',
       amount: feesAmount,
+      currency: txCurrency,
       description: '',
       date: body.date,
       created_at: now,
@@ -170,11 +175,14 @@ export async function POST(request: Request) {
     account_id: body.account_id,
     type: body.type,
     amount: body.amount,
+    currency: txCurrency,
     description: body.description ?? '',
     date: body.date,
     stock_symbol: body.stock_symbol,
     quantity: body.quantity,
     price_per_unit: body.price_per_unit,
+    target_amount: body.target_amount ?? null,
+    target_currency: body.target_currency ?? null,
     created_at: now,
   });
 
@@ -203,6 +211,9 @@ export async function POST(request: Request) {
     p_quantity: body.quantity ?? null,
     p_price_per_unit: body.price_per_unit ?? null,
     p_fees: feesAmount > 0 ? feesAmount : null,
+    p_currency: txCurrency,
+    p_target_amount: body.target_amount ?? null,
+    p_target_currency: body.target_currency ?? null,
   });
 
   if (error) {
@@ -229,6 +240,12 @@ export async function POST(request: Request) {
     }
     if (msg.includes('unauthorized')) {
       return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+    }
+    if (msg.includes('INVALID_ACCOUNT_SEQUENCE')) {
+      return NextResponse.json(
+        { error: 'invalid_state', message: formatInvalidAccountSequenceMessage(msg) },
+        { status: 409 }
+      );
     }
     console.error('[api/transactions] rpc failed', error);
     return NextResponse.json({ error: 'internal_error' }, { status: 500 });

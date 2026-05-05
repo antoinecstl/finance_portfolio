@@ -14,19 +14,26 @@ export interface Account {
   updated_at: string;
 }
 
-export type TransactionType = 'DEPOSIT' | 'WITHDRAWAL' | 'BUY' | 'SELL' | 'DIVIDEND' | 'INTEREST' | 'FEE';
+export type TransactionType = 'DEPOSIT' | 'WITHDRAWAL' | 'BUY' | 'SELL' | 'DIVIDEND' | 'INTEREST' | 'FEE' | 'CONVERSION';
 
 export interface Transaction {
   id: string;
   account_id: string;
   type: TransactionType;
   amount: number;
+  // Devise du montant (et de price_per_unit / fees liés). 'EUR' par défaut sur
+  // les transactions historiques (backfill de la migration multi-devise).
+  currency: string;
   fee_transaction_id?: string | null;
   description: string;
   date: string;
   stock_symbol?: string;
   quantity?: number;
   price_per_unit?: number;
+  // Spécifiques au type CONVERSION : montant et devise crédités après le swap.
+  // null/undefined pour tous les autres types.
+  target_amount?: number | null;
+  target_currency?: string | null;
   created_at: string;
 }
 

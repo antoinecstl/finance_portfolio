@@ -33,7 +33,10 @@ const transactionTypes: Array<{ value: TransactionType; label: string }> = [
   { value: 'DIVIDEND', label: 'Dividende' },
   { value: 'INTEREST', label: 'Intérêts' },
   { value: 'FEE', label: 'Frais' },
+  { value: 'CONVERSION', label: 'Conversion de devises' },
 ];
+
+const COMMON_CURRENCIES = ['EUR', 'USD', 'GBP', 'CHF', 'USDC', 'USDT', 'BTC', 'ETH'];
 
 export function EditTransactionModal({
   isOpen,
@@ -52,6 +55,9 @@ export function EditTransactionModal({
   const [quantity, setQuantity] = useState('');
   const [pricePerUnit, setPricePerUnit] = useState('');
   const [fees, setFees] = useState('');
+  const [currency, setCurrency] = useState('EUR');
+  const [targetAmount, setTargetAmount] = useState('');
+  const [targetCurrency, setTargetCurrency] = useState('USD');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -74,6 +80,7 @@ export function EditTransactionModal({
 
   const isStockTransaction = type === 'BUY' || type === 'SELL';
   const isDividendTransaction = type === 'DIVIDEND';
+  const isConversion = type === 'CONVERSION';
 
   // Pré-remplit le formulaire à chaque ouverture / changement de cible.
   useEffect(() => {
@@ -89,10 +96,13 @@ export function EditTransactionModal({
       transaction.price_per_unit != null ? transaction.price_per_unit.toString() : ''
     );
     setFees(linkedFee ? linkedFee.amount.toString() : '');
+    setCurrency((transaction.currency ?? selectedAccount?.currency ?? 'EUR').toUpperCase());
+    setTargetAmount(transaction.target_amount != null ? transaction.target_amount.toString() : '');
+    setTargetCurrency((transaction.target_currency ?? 'USD').toUpperCase());
     setSearchQuery('');
     setShowSearchDropdown(false);
     setError(null);
-  }, [isOpen, transaction, linkedFee]);
+  }, [isOpen, transaction, linkedFee, selectedAccount?.currency]);
 
   // Auto-calcul du montant pour BUY/SELL quand quantité ou prix changent.
   useEffect(() => {
@@ -175,7 +185,7 @@ export function EditTransactionModal({
           'Ce type de transaction doit être rattaché à un compte pouvant détenir des positions. Supprimez la transaction et recréez-la sur le bon compte.'
         );
       }
-      if (stockSymbol && !accountTypeAllowsAsset(selectedAccount.type, stockSymbol)) {
+      if ((isStockTransaction || isDividendTransaction) && stockSymbol && !accountTypeAllowsAsset(selectedAccount.type, stockSymbol)) {
         throw new Error(assetAccountMismatchMessage(selectedAccount.type));
       }
 
@@ -183,6 +193,9 @@ export function EditTransactionModal({
       const price = parseFloat(pricePerUnit) || 0;
       const totalAmount = parseFloat(amount) || 0;
       const feesAmount = Math.max(0, parseFloat(fees) || 0);
+      const targetAmt = parseFloat(targetAmount) || 0;
+      const normalizedCurrency = currency.trim().toUpperCase();
+      const normalizedTargetCurrency = targetCurrency.trim().toUpperCase();
 
       if (isStockTransaction) {
         if (!stockSymbol) throw new Error('Veuillez sélectionner une action');
@@ -193,6 +206,20 @@ export function EditTransactionModal({
         throw new Error('Veuillez sélectionner l\'action associée au dividende');
       }
       if (totalAmount <= 0) throw new Error('Le montant doit être supérieur à 0');
+      if (!/^[A-Z]{3,10}$/.test(normalizedCurrency)) {
+        throw new Error('Code devise invalide');
+      }
+      if (isConversion) {
+        if (!/^[A-Z]{3,10}$/.test(normalizedTargetCurrency)) {
+          throw new Error('Code devise cible invalide');
+        }
+        if (normalizedCurrency === normalizedTargetCurrency) {
+          throw new Error('La devise cible doit etre differente de la devise source');
+        }
+        if (targetAmt <= 0) {
+          throw new Error('Le montant cible doit etre superieur a 0');
+        }
+      }
       if (type === 'FEE' && feesAmount > 0) {
         throw new Error('Une transaction de type Frais ne peut pas porter elle-même des frais.');
       }
@@ -219,21 +246,27 @@ export function EditTransactionModal({
         fees: number;
         description: string;
         date: string;
+        currency: string;
         stock_symbol?: string;
         quantity?: number;
         price_per_unit?: number;
+        target_amount?: number;
+        target_currency?: string;
       } = {
         type,
         amount: totalAmount,
-        fees: feesAmount,
+        fees: isConversion ? 0 : feesAmount,
         description:
           description ||
           (isStockTransaction
             ? `${type === 'BUY' ? 'Achat' : 'Vente'} ${qty} x ${stockSymbol}`
             : isDividendTransaction && stockSymbol
               ? `Dividende ${stockSymbol}`
-              : ''),
+              : isConversion
+                ? `Conversion ${normalizedCurrency} -> ${normalizedTargetCurrency}`
+                : ''),
         date,
+        currency: normalizedCurrency,
       };
 
       if (isStockTransaction) {
@@ -243,6 +276,10 @@ export function EditTransactionModal({
       }
       if (isDividendTransaction && stockSymbol) {
         payload.stock_symbol = stockSymbol.toUpperCase();
+      }
+      if (isConversion) {
+        payload.target_amount = targetAmt;
+        payload.target_currency = normalizedTargetCurrency;
       }
 
       const res = await fetch(`/api/transactions/${transaction.id}`, {
@@ -439,7 +476,7 @@ export function EditTransactionModal({
               </div>
               <div>
                 <label className="block text-xs sm:text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-                  Prix unitaire (€)
+                  Prix unitaire ({currency})
                 </label>
                 <input
                   type="number"
@@ -453,26 +490,85 @@ export function EditTransactionModal({
             </div>
           )}
 
-          <div>
-            <label className="block text-xs sm:text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-              Montant (€) {isStockTransaction && <span className="text-zinc-400 text-xs">(auto)</span>}
-            </label>
-            <input
-              type="number"
-              step="0.01"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              placeholder="0.00"
-              required
-              readOnly={isStockTransaction}
-              className={`w-full px-3 py-2 text-sm sm:text-base border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent ${isStockTransaction ? 'bg-zinc-50 dark:bg-zinc-900' : ''}`}
-            />
-          </div>
-
-          {type !== 'FEE' && (
+          <div className="grid grid-cols-3 gap-2 sm:gap-3">
+            <div className="col-span-2">
+              <label className="block text-xs sm:text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                {isConversion ? `Montant débité (${currency})` : `Montant (${currency})`}{' '}
+                {isStockTransaction && <span className="text-zinc-400 text-xs">(auto)</span>}
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                placeholder="0.00"
+                required
+                readOnly={isStockTransaction}
+                className={`w-full px-3 py-2 text-sm sm:text-base border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent ${isStockTransaction ? 'bg-zinc-50 dark:bg-zinc-900' : ''}`}
+              />
+            </div>
             <div>
               <label className="block text-xs sm:text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-                Frais (€) <span className="text-zinc-400 text-xs">optionnel</span>
+                Devise
+              </label>
+              <input
+                type="text"
+                list="common-currencies-edit-source"
+                value={currency}
+                onChange={(e) => setCurrency(e.target.value.toUpperCase())}
+                maxLength={10}
+                className="w-full px-2 py-2 text-sm sm:text-base border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent uppercase"
+              />
+              <datalist id="common-currencies-edit-source">
+                {COMMON_CURRENCIES.map((c) => <option key={c} value={c} />)}
+              </datalist>
+            </div>
+          </div>
+
+          {isConversion && (
+            <div className="grid grid-cols-3 gap-2 sm:gap-3 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+              <div className="col-span-2">
+                <label className="block text-xs sm:text-sm font-medium text-amber-800 dark:text-amber-200 mb-1">
+                  Montant crédité ({targetCurrency})
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={targetAmount}
+                  onChange={(e) => setTargetAmount(e.target.value)}
+                  placeholder="0.00"
+                  required
+                  className="w-full px-3 py-2 text-sm sm:text-base border border-amber-300 dark:border-amber-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-amber-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs sm:text-sm font-medium text-amber-800 dark:text-amber-200 mb-1">
+                  Devise cible
+                </label>
+                <input
+                  type="text"
+                  list="common-currencies-edit-target"
+                  value={targetCurrency}
+                  onChange={(e) => setTargetCurrency(e.target.value.toUpperCase())}
+                  maxLength={10}
+                  className="w-full px-2 py-2 text-sm sm:text-base border border-amber-300 dark:border-amber-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-amber-500 uppercase"
+                />
+                <datalist id="common-currencies-edit-target">
+                  {COMMON_CURRENCIES.map((c) => <option key={c} value={c} />)}
+                </datalist>
+              </div>
+              {parseFloat(amount) > 0 && parseFloat(targetAmount) > 0 && (
+                <div className="col-span-3 text-xs text-amber-700 dark:text-amber-300">
+                  Taux implicite : 1 {currency} = {(parseFloat(targetAmount) / parseFloat(amount)).toFixed(4)} {targetCurrency}
+                </div>
+              )}
+            </div>
+          )}
+
+          {type !== 'FEE' && !isConversion && (
+            <div>
+              <label className="block text-xs sm:text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                Frais ({currency}) <span className="text-zinc-400 text-xs">optionnel</span>
               </label>
               <input
                 type="number"

@@ -6,8 +6,9 @@ import { ArrowLeft, Upload, FileText, ClipboardPaste, Loader2, CheckCircle2, Ale
 import { useAccounts, useStockSearch, useTransactions } from '@/lib/hooks';
 import type { ProposedTransaction, ImportNote } from '@/lib/import/types';
 import type { Transaction, TransactionType } from '@/lib/types';
-import { accountSupportsPositions, accountTypeAllowsAsset, assetAccountMismatchMessage, formatDate, isCryptoSymbol } from '@/lib/utils';
+import { accountSupportsPositions, accountTypeAllowsAsset, assetAccountMismatchMessage, formatCurrency, formatDate, isCryptoSymbol } from '@/lib/utils';
 import { findDuplicateTransaction } from '@/lib/transaction-duplicates';
+import { buildImportCashPreview } from '@/lib/import/cash-preview';
 
 type Step = 'upload' | 'preview' | 'done';
 
@@ -19,6 +20,7 @@ const TX_TYPES: Array<{ value: TransactionType; label: string }> = [
   { value: 'DIVIDEND', label: 'Dividende' },
   { value: 'INTEREST', label: 'Intérêts' },
   { value: 'FEE', label: 'Frais' },
+  { value: 'CONVERSION', label: 'Conversion' },
 ];
 
 function buildSymbolSearchHint(description?: string): string {
@@ -29,6 +31,11 @@ function buildSymbolSearchHint(description?: string): string {
     .replace(/\s+/g, ' ')
     .trim()
     .slice(0, 60);
+}
+
+function formatSignedCurrency(amount: number, currency: string): string {
+  const sign = amount > 0 ? '+' : amount < 0 ? '-' : '';
+  return `${sign}${formatCurrency(Math.abs(amount), currency)}`;
 }
 
 type TickerStatus = 'valid' | 'invalid' | 'pending' | 'unknown' | 'mismatch';
@@ -169,7 +176,7 @@ export function ImportWizard() {
   // Transactions existantes du compte cible : alimentent la détection de
   // doublons lors du preview. Filtré côté hook par accountId pour éviter
   // de charger l'historique d'autres comptes.
-  const { transactions: existingTxs } = useTransactions(accountId || undefined);
+  const { transactions: existingTxs, loading: existingTxsLoading } = useTransactions(accountId || undefined);
   const [mode, setMode] = useState<'file' | 'text'>('file');
   const [file, setFile] = useState<File | null>(null);
   const [pastedText, setPastedText] = useState('');
@@ -177,7 +184,6 @@ export function ImportWizard() {
   const [error, setError] = useState<string | null>(null);
 
   const [jobId, setJobId] = useState<string | null>(null);
-  const [detectedFormat, setDetectedFormat] = useState<string | null>(null);
   const [rows, setRows] = useState<ProposedTransaction[]>([]);
   const [notes, setNotes] = useState<ImportNote[]>([]);
   const [committedSummary, setCommittedSummary] = useState<{ inserted: number; total: number } | null>(null);
@@ -200,6 +206,17 @@ export function ImportWizard() {
     [accounts, accountId]
   );
   const accountAcceptsPositions = selectedAccount ? accountSupportsPositions(selectedAccount) : false;
+  const cashPreview = useMemo(
+    () =>
+      buildImportCashPreview(
+        existingTxs,
+        rows,
+        accountId,
+        selectedAccount?.currency ?? 'EUR'
+      ),
+    [existingTxs, rows, accountId, selectedAccount?.currency]
+  );
+  const cashPreviewIssue = existingTxsLoading ? null : cashPreview.firstIssue;
 
   // Vérifie un lot de tickers contre Yahoo via /api/stocks/quotes.
   // Marque comme 'pending' immédiatement, puis 'valid'/'invalid' selon réponse.
@@ -333,7 +350,6 @@ export function ImportWizard() {
 
       const data = await res.json();
       setJobId(data.import_job_id);
-      setDetectedFormat(data.detected_format ?? null);
       const proposed: ProposedTransaction[] = data.transactions ?? [];
       setRows(proposed);
       setNotes(data.notes ?? []);
@@ -395,8 +411,24 @@ export function ImportWizard() {
     rows.forEach((r, i) => {
       if (!r.date || !/^\d{4}-\d{2}-\d{2}$/.test(r.date)) errors.push(i);
       else if (!Number.isFinite(r.amount) || r.amount <= 0) errors.push(i);
+      else if (r.currency && !/^[A-Z]{3,10}$/.test(r.currency)) errors.push(i);
       else if ((r.type === 'BUY' || r.type === 'SELL') && (!r.stock_symbol || !r.quantity || !r.price_per_unit)) errors.push(i);
       else if (r.type === 'DIVIDEND' && !r.stock_symbol) errors.push(i);
+      else if (
+        r.type === 'CONVERSION' &&
+        (!r.target_amount || r.target_amount <= 0 || !r.target_currency || !/^[A-Z]{3,10}$/.test(r.target_currency))
+      ) {
+        errors.push(i);
+      }
+      else if (r.type === 'CONVERSION' && r.stock_symbol) {
+        errors.push(i);
+      }
+      else if (
+        r.type === 'CONVERSION' &&
+        (r.currency ?? selectedAccount?.currency ?? 'EUR').toUpperCase() === r.target_currency?.toUpperCase()
+      ) {
+        errors.push(i);
+      }
       else if (
         (r.type === 'BUY' || r.type === 'SELL' || r.type === 'DIVIDEND') &&
         r.stock_symbol &&
@@ -427,6 +459,7 @@ export function ImportWizard() {
   }, [rows, selectedAccount]);
 
   async function handleCommit() {
+    if (submitting) return;
     setError(null);
     if (!jobId) return;
     if (invalidRows.length > 0) {
@@ -595,12 +628,6 @@ export function ImportWizard() {
                   <div className="text-sm sm:text-base font-medium text-zinc-900 dark:text-zinc-100">
                     {rows.length} transaction(s) extraite(s)
                   </div>
-                  <div className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 mt-0.5 sm:mt-1">
-                    Format détecté :{' '}
-                    <code className="px-1.5 py-0.5 bg-zinc-100 dark:bg-zinc-800 rounded">
-                      {detectedFormat ?? 'inconnu'}
-                    </code>
-                  </div>
                   {duplicatesByRow.size > 0 && (
                     <div className="mt-1.5 inline-flex items-center gap-1 text-xs sm:text-sm text-amber-700 dark:text-amber-400">
                       <Copy className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
@@ -633,6 +660,84 @@ export function ImportWizard() {
               </div>
             )}
 
+            {rows.length > 0 && (
+              <div
+                className={`rounded-xl border p-3 sm:p-4 text-sm ${
+                  cashPreviewIssue
+                    ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-800 dark:text-red-200'
+                    : 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200'
+                }`}
+              >
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="font-medium inline-flex items-center gap-1.5 sm:text-base">
+                    {cashPreviewIssue ? (
+                      <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5 shrink-0" />
+                    ) : (
+                      <Info className="h-4 w-4 sm:h-5 sm:w-5 shrink-0" />
+                    )}
+                    Tr&eacute;sorerie projet&eacute;e apr&egrave;s import
+                  </div>
+                  {existingTxsLoading && (
+                    <span className="inline-flex items-center gap-1 text-xs opacity-80">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      Chargement des transactions existantes
+                    </span>
+                  )}
+                </div>
+
+                {cashPreviewIssue && (
+                  <p className="mt-2 text-xs sm:text-sm">
+                    Premier blocage : solde {cashPreviewIssue.currency} &agrave;{' '}
+                    {formatSignedCurrency(cashPreviewIssue.balance, cashPreviewIssue.currency)} le{' '}
+                    {cashPreviewIssue.date}
+                    {cashPreviewIssue.rowIndex !== null
+                      ? ` sur la ligne ${cashPreviewIssue.rowIndex + 1}`
+                      : ' sur une transaction existante'}
+                    . Le solde final peut &ecirc;tre positif si le cr&eacute;dit arrive apr&egrave;s ce d&eacute;bit.
+                  </p>
+                )}
+
+                {existingTxsLoading ? (
+                  <p className="mt-2 text-xs sm:text-sm opacity-80">
+                    Les soldes seront affich&eacute;s d&egrave;s que les transactions existantes du compte seront charg&eacute;es.
+                  </p>
+                ) : cashPreview.buckets.length > 0 ? (
+                  <div className="mt-3 overflow-x-auto">
+                    <table className="w-full min-w-[34rem] text-xs sm:text-sm">
+                      <thead className={cashPreviewIssue ? 'text-red-700/80 dark:text-red-200/80' : 'text-emerald-700/80 dark:text-emerald-200/80'}>
+                        <tr className="text-left">
+                          <th className="py-1.5 pr-3 font-medium">Devise</th>
+                          <th className="py-1.5 px-3 font-medium text-right">Avant import</th>
+                          <th className="py-1.5 px-3 font-medium text-right">Impact import</th>
+                          <th className="py-1.5 pl-3 font-medium text-right">Apr&egrave;s import</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {cashPreview.buckets.map((bucket) => (
+                          <tr key={bucket.currency} className="border-t border-current/15">
+                            <td className="py-1.5 pr-3 font-medium">{bucket.currency}</td>
+                            <td className="py-1.5 px-3 text-right tabular-nums">
+                              {formatCurrency(bucket.before, bucket.currency)}
+                            </td>
+                            <td className="py-1.5 px-3 text-right tabular-nums">
+                              {formatSignedCurrency(bucket.importDelta, bucket.currency)}
+                            </td>
+                            <td className={`py-1.5 pl-3 text-right tabular-nums font-medium ${bucket.after < -0.005 ? 'text-red-700 dark:text-red-200' : ''}`}>
+                              {formatCurrency(bucket.after, bucket.currency)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="mt-2 text-xs sm:text-sm opacity-80">
+                    Aucun mouvement cash d&eacute;tect&eacute; dans les lignes extraites.
+                  </p>
+                )}
+              </div>
+            )}
+
             <div className="bg-white dark:bg-zinc-900 rounded-xl sm:rounded-2xl border border-zinc-200 dark:border-zinc-800 overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-xs sm:text-sm">
@@ -644,6 +749,9 @@ export function ImportWizard() {
                       <th className="px-3 py-2.5 sm:py-3 font-medium text-right">Qté</th>
                       <th className="px-3 py-2.5 sm:py-3 font-medium text-right">Prix</th>
                       <th className="px-3 py-2.5 sm:py-3 font-medium text-right">Montant</th>
+                      <th className="px-3 py-2.5 sm:py-3 font-medium">Devise</th>
+                      <th className="px-3 py-2.5 sm:py-3 font-medium text-right">Cible</th>
+                      <th className="px-3 py-2.5 sm:py-3 font-medium">Devise cible</th>
                       <th className="px-3 py-2.5 sm:py-3 font-medium text-right">Frais</th>
                       <th className="px-3 py-2.5 sm:py-3 font-medium">Description</th>
                       <th className="px-3 py-2.5 sm:py-3 w-8" />
@@ -654,6 +762,8 @@ export function ImportWizard() {
                       const invalid = invalidRows.includes(idx);
                       const isStock = r.type === 'BUY' || r.type === 'SELL';
                       const isDividend = r.type === 'DIVIDEND';
+                      const isConversion = r.type === 'CONVERSION';
+                      const rowCurrency = (r.currency ?? selectedAccount?.currency ?? 'EUR').toUpperCase();
                       const duplicate = duplicatesByRow.get(idx);
                       const rowBg = invalid
                         ? 'bg-red-50/50 dark:bg-red-900/10'
@@ -672,7 +782,7 @@ export function ImportWizard() {
                             {duplicate && (
                               <p
                                 className="mt-1 max-w-[8rem] sm:max-w-[9rem] text-[10px] sm:text-[11px] text-amber-700 dark:text-amber-400 inline-flex items-start gap-1"
-                                title={`Existante : ${duplicate.type} ${duplicate.amount}€ le ${formatDate(duplicate.date)}${duplicate.stock_symbol ? ` · ${duplicate.stock_symbol}` : ''}`}
+                                title={`Existante : ${duplicate.type} ${formatCurrency(duplicate.amount, duplicate.currency)} le ${formatDate(duplicate.date)}${duplicate.stock_symbol ? ` · ${duplicate.stock_symbol}` : ''}`}
                               >
                                 <Copy className="h-2.5 w-2.5 sm:h-3 sm:w-3 mt-0.5 shrink-0" />
                                 Doublon possible
@@ -682,7 +792,15 @@ export function ImportWizard() {
                           <td className="px-2 py-2 sm:py-2.5">
                             <select
                               value={r.type}
-                              onChange={(e) => updateRow(idx, { type: e.target.value as TransactionType })}
+                              onChange={(e) => {
+                                const nextType = e.target.value as TransactionType;
+                                updateRow(idx, {
+                                  type: nextType,
+                                  ...(nextType === 'CONVERSION'
+                                    ? { stock_symbol: null, quantity: null, price_per_unit: null, fees: 0 }
+                                    : { target_amount: null, target_currency: null }),
+                                });
+                              }}
                               className="px-1.5 py-1 sm:py-1.5 text-xs sm:text-sm border border-zinc-200 dark:border-zinc-700 rounded bg-white dark:bg-zinc-800"
                             >
                               {TX_TYPES.map((t) => (
@@ -735,6 +853,35 @@ export function ImportWizard() {
                               className="w-24 sm:w-28 px-1.5 py-1 sm:py-1.5 text-xs sm:text-sm text-right border border-zinc-200 dark:border-zinc-700 rounded bg-white dark:bg-zinc-800"
                             />
                           </td>
+                          <td className="px-2 py-2 sm:py-2.5">
+                            <input
+                              type="text"
+                              value={rowCurrency}
+                              onChange={(e) => updateRow(idx, { currency: e.target.value.toUpperCase() })}
+                              maxLength={10}
+                              className="w-16 sm:w-20 px-1.5 py-1 sm:py-1.5 text-xs sm:text-sm border border-zinc-200 dark:border-zinc-700 rounded bg-white dark:bg-zinc-800 uppercase"
+                            />
+                          </td>
+                          <td className="px-2 py-2 sm:py-2.5 text-right">
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={r.target_amount ?? ''}
+                              onChange={(e) => updateRow(idx, { target_amount: e.target.value ? Number(e.target.value) : null })}
+                              disabled={!isConversion}
+                              className="w-24 sm:w-28 px-1.5 py-1 sm:py-1.5 text-xs sm:text-sm text-right border border-zinc-200 dark:border-zinc-700 rounded bg-white dark:bg-zinc-800 disabled:opacity-40"
+                            />
+                          </td>
+                          <td className="px-2 py-2 sm:py-2.5">
+                            <input
+                              type="text"
+                              value={r.target_currency ?? ''}
+                              onChange={(e) => updateRow(idx, { target_currency: e.target.value.toUpperCase() })}
+                              disabled={!isConversion}
+                              maxLength={10}
+                              className="w-16 sm:w-20 px-1.5 py-1 sm:py-1.5 text-xs sm:text-sm border border-zinc-200 dark:border-zinc-700 rounded bg-white dark:bg-zinc-800 uppercase disabled:opacity-40"
+                            />
+                          </td>
                           <td className="px-2 py-2 sm:py-2.5 text-right">
                             <input
                               type="number"
@@ -742,7 +889,7 @@ export function ImportWizard() {
                               min="0"
                               value={r.fees ?? 0}
                               onChange={(e) => updateRow(idx, { fees: Number(e.target.value) })}
-                              disabled={r.type === 'FEE'}
+                              disabled={r.type === 'FEE' || isConversion}
                               className="w-20 sm:w-24 px-1.5 py-1 sm:py-1.5 text-xs sm:text-sm text-right border border-zinc-200 dark:border-zinc-700 rounded bg-white dark:bg-zinc-800 disabled:opacity-40"
                             />
                           </td>
@@ -768,7 +915,7 @@ export function ImportWizard() {
                     })}
                     {rows.length === 0 && (
                       <tr>
-                        <td colSpan={9} className="px-3 py-6 text-center text-zinc-500 dark:text-zinc-400 text-sm">
+                        <td colSpan={12} className="px-3 py-6 text-center text-zinc-500 dark:text-zinc-400 text-sm">
                           Aucune transaction extraite. Reprenez un autre fichier ou ajustez le contenu.
                         </td>
                       </tr>
@@ -830,7 +977,7 @@ export function ImportWizard() {
                 onClick={() => {
                   setStep('upload');
                   setRows([]); setNotes([]); setFile(null); setPastedText('');
-                  setJobId(null); setCommittedSummary(null); setDetectedFormat(null);
+                  setJobId(null); setCommittedSummary(null);
                 }}
                 className="px-4 sm:px-5 py-2 sm:py-2.5 text-sm sm:text-base border border-zinc-300 dark:border-zinc-700 rounded-lg text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800"
               >

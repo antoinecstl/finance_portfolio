@@ -3,7 +3,8 @@
 import React, { useState, useMemo } from 'react';
 import { StockPosition, StockQuote, Transaction } from '@/lib/types';
 import { EnrichedAccount } from '@/lib/hooks';
-import { accountSupportsPositions, formatCurrency, formatNumber, formatPercent } from '@/lib/utils';
+import { accountSupportsPositions, formatCurrency, formatCurrencyBreakdown, formatNumber, formatPercent } from '@/lib/utils';
+import { convertToBase, type FxRateMap } from '@/lib/fx';
 import { Wallet, History, ChevronDown, ChevronUp, BarChart2 } from 'lucide-react';
 
 // Type pour les positions clôturées (vendues)
@@ -14,11 +15,13 @@ interface ClosedPosition {
   accountId: string;
   accountName: string;
   accountType: string;
+  currency: string;
   totalBought: number;
   totalSold: number;
   avgBuyPrice: number;
   avgSellPrice: number;
   realizedGain: number;
+  realizedGainInBase: number;
   realizedGainPercent: number;
   lastSellDate: string;
 }
@@ -31,6 +34,7 @@ interface PositionsTableProps {
   showCash?: boolean;
   showHistory?: boolean;
   groupByAccount?: boolean;
+  fxRates?: FxRateMap;
 }
 
 export function PositionsTable({
@@ -41,6 +45,7 @@ export function PositionsTable({
   showCash = true,
   showHistory = true,
   groupByAccount = false,
+  fxRates = {},
 }: PositionsTableProps) {
   const [showClosedPositions, setShowClosedPositions] = useState(false);
 
@@ -53,6 +58,18 @@ export function PositionsTable({
   const cashBalance = useMemo(() => {
     return stockAccounts.reduce((sum, a) => sum + (a.calculatedCash ?? 0), 0);
   }, [stockAccounts]);
+
+  const cashByCurrency = useMemo(() => {
+    const buckets: Record<string, number> = {};
+    for (const account of stockAccounts) {
+      for (const [currency, amount] of Object.entries(account.calculatedCashByCurrency ?? {})) {
+        buckets[currency] = (buckets[currency] ?? 0) + amount;
+      }
+    }
+    return buckets;
+  }, [stockAccounts]);
+
+  const cashBalanceLabel = formatCurrencyBreakdown(cashByCurrency);
 
   const accountById = useMemo(() => {
     const map = new Map<string, EnrichedAccount>();
@@ -76,13 +93,14 @@ export function PositionsTable({
       accountId: string;
       symbol: string;
       name: string;
-      closedTrades: Array<{
-        buyQty: number;
-        buyTotal: number;
-        sellQty: number;
-        sellTotal: number;
-        sellDate: string;
-      }>;
+        closedTrades: Array<{
+          buyQty: number;
+          buyTotal: number;
+          sellQty: number;
+          sellTotal: number;
+          sellDate: string;
+          currency: string;
+        }>;
     }>();
 
     // Trier les transactions par date pour suivre les cycles
@@ -121,6 +139,7 @@ export function PositionsTable({
             sellQty: sellQty,
             sellTotal: amount,
             sellDate: t.date,
+            currency: (t.currency ?? 'EUR').toUpperCase(),
           });
 
           running.qty -= sellQty;
@@ -138,11 +157,18 @@ export function PositionsTable({
         const totalSold = data.closedTrades.reduce((sum, t) => sum + t.sellQty, 0);
         const totalSellAmount = data.closedTrades.reduce((sum, t) => sum + t.sellTotal, 0);
         const lastSellDate = data.closedTrades[data.closedTrades.length - 1].sellDate;
+        const currency = data.closedTrades[data.closedTrades.length - 1].currency;
 
         const avgBuyPrice = totalBought > 0 ? totalBuyAmount / totalBought : 0;
         const avgSellPrice = totalSold > 0 ? totalSellAmount / totalSold : 0;
         const realizedGain = totalSellAmount - totalBuyAmount;
         const realizedGainPercent = totalBuyAmount > 0 ? (realizedGain / totalBuyAmount) * 100 : 0;
+        // Conversion EUR au taux du jour de chaque vente : permet d'agréger les
+        // gains réalisés multi-devises (USD/USDC) en une seule plus-value cohérente.
+        const realizedGainInBase = data.closedTrades.reduce((sum, t) => {
+          const tradeGain = t.sellTotal - t.buyTotal;
+          return sum + convertToBase(tradeGain, t.currency, t.sellDate, fxRates);
+        }, 0);
 
         const account = accountById.get(data.accountId);
         closed.push({
@@ -152,11 +178,13 @@ export function PositionsTable({
           accountId: data.accountId,
           accountName: account?.name ?? '—',
           accountType: account?.type ?? '',
+          currency,
           totalBought,
           totalSold,
           avgBuyPrice,
           avgSellPrice,
           realizedGain,
+          realizedGainInBase,
           realizedGainPercent,
           lastSellDate,
         });
@@ -164,20 +192,27 @@ export function PositionsTable({
     });
 
     return closed.sort((a, b) => b.lastSellDate.localeCompare(a.lastSellDate));
-  }, [transactions, accountById]);
+  }, [transactions, accountById, fxRates]);
 
-  // Calculer les totaux
+  // Calculer les totaux. On somme en EUR (base) pour rester cohérent quand
+  // les positions / cash mélangent plusieurs devises (USD, USDC, …).
+  const today = new Date().toISOString().slice(0, 10);
   let totalValue = 0;
   positions.forEach((position) => {
-    const currentPrice = quotes[position.symbol]?.price ?? position.average_price;
-    totalValue += position.quantity * currentPrice;
+    const quote = quotes[position.symbol];
+    const currentPrice = quote?.price ?? position.average_price;
+    const valueCurrency = (quote?.currency ?? position.currency ?? 'EUR').toUpperCase();
+    totalValue += convertToBase(position.quantity * currentPrice, valueCurrency, today, fxRates);
   });
 
-  // Total avec cash
-  const totalWithCash = totalValue + (showCash ? cashBalance : 0);
+  // Cash déjà sommé en EUR via stockAccounts.calculatedCashInBase quand dispo.
+  const cashBalanceInBase = useMemo(() => {
+    return stockAccounts.reduce((sum, a) => sum + (a.calculatedCashInBase ?? a.calculatedCash ?? 0), 0);
+  }, [stockAccounts]);
+  const totalWithCash = totalValue + (showCash ? cashBalanceInBase : 0);
 
-  // Total des gains réalisés
-  const totalRealizedGain = closedPositions.reduce((sum, p) => sum + p.realizedGain, 0);
+  // Total des gains réalisés en EUR (chaque trade FX-converti à sa date de vente).
+  const totalRealizedGain = closedPositions.reduce((sum, p) => sum + p.realizedGainInBase, 0);
 
   if (positions.length === 0 && closedPositions.length === 0 && cashBalance === 0) {
     return (
@@ -216,14 +251,16 @@ export function PositionsTable({
                       <div>
                         <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400">Liquidités</p>
                         <p className="text-lg sm:text-xl font-bold text-zinc-900 dark:text-zinc-100">
-                          {formatCurrency(acc.calculatedCash ?? 0)}
+                          {formatCurrencyBreakdown(acc.calculatedCashByCurrency, acc.currency)}
                         </p>
                       </div>
                     </div>
                     <div className="text-left sm:text-right pl-8 sm:pl-0">
                       <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400">Total compte</p>
                       <p className="text-lg sm:text-xl font-bold text-zinc-900 dark:text-zinc-100">
-                        {formatCurrency((acc.calculatedCash ?? 0) + accStocksValue)}
+                        {accStocksValue === 0
+                          ? formatCurrencyBreakdown(acc.calculatedCashByCurrency, acc.currency)
+                          : formatCurrency((acc.calculatedCash ?? 0) + accStocksValue, acc.currency)}
                       </p>
                     </div>
                   </div>
@@ -241,14 +278,14 @@ export function PositionsTable({
                 <div>
                   <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400">Liquidités</p>
                   <p className="text-lg sm:text-xl font-bold text-zinc-900 dark:text-zinc-100">
-                    {formatCurrency(cashBalance)}
+                    {cashBalanceLabel}
                   </p>
                 </div>
               </div>
               <div className="text-left sm:text-right pl-8 sm:pl-0">
                 <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400">Total portefeuille</p>
                 <p className="text-lg sm:text-xl font-bold text-zinc-900 dark:text-zinc-100">
-                  {formatCurrency(totalWithCash)}
+                  {totalValue === 0 ? cashBalanceLabel : formatCurrency(totalWithCash)}
                 </p>
               </div>
             </div>
@@ -326,7 +363,7 @@ export function PositionsTable({
                             </div>
                             <div className="text-right">
                               <p className={`font-semibold ${pos.realizedGain >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                                {formatCurrency(pos.realizedGain)}
+                                {formatCurrency(pos.realizedGain, pos.currency)}
                               </p>
                               <p className={`text-xs ${pos.realizedGain >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                                 {formatPercent(pos.realizedGainPercent)}
@@ -334,7 +371,7 @@ export function PositionsTable({
                             </div>
                           </div>
                           <div className="flex justify-between text-xs text-zinc-500">
-                            <span>Achat: {formatCurrency(pos.avgBuyPrice)} → Vente: {formatCurrency(pos.avgSellPrice)}</span>
+                            <span>Achat: {formatCurrency(pos.avgBuyPrice, pos.currency)} → Vente: {formatCurrency(pos.avgSellPrice, pos.currency)}</span>
                             <span>{new Date(pos.lastSellDate).toLocaleDateString('fr-FR')}</span>
                           </div>
                         </div>
@@ -402,10 +439,10 @@ export function PositionsTable({
                                 {formatNumber(pos.totalSold, 0)}
                               </td>
                               <td className="py-2 sm:py-3 px-3 sm:px-4 text-right text-sm text-zinc-900 dark:text-zinc-100">
-                                {formatCurrency(pos.avgBuyPrice)}
+                                {formatCurrency(pos.avgBuyPrice, pos.currency)}
                               </td>
                               <td className="py-2 sm:py-3 px-3 sm:px-4 text-right text-sm text-zinc-900 dark:text-zinc-100">
-                                {formatCurrency(pos.avgSellPrice)}
+                                {formatCurrency(pos.avgSellPrice, pos.currency)}
                               </td>
                               <td className="py-2 sm:py-3 px-3 sm:px-4 text-right text-xs sm:text-sm text-zinc-500 dark:text-zinc-400">
                                 {new Date(pos.lastSellDate).toLocaleDateString('fr-FR')}
@@ -413,7 +450,7 @@ export function PositionsTable({
                               <td className={`py-2 sm:py-3 px-3 sm:px-4 text-right font-semibold text-sm ${
                                 pos.realizedGain >= 0 ? 'text-emerald-600' : 'text-red-600'
                               }`}>
-                                {formatCurrency(pos.realizedGain)}
+                                {formatCurrency(pos.realizedGain, pos.currency)}
                                 <span className="text-xs font-normal ml-1">
                                   ({formatPercent(pos.realizedGainPercent)})
                                 </span>

@@ -11,11 +11,12 @@ import { ProBlur } from './ProBlur';
 interface DividendSummary {
   symbol: string;
   name: string;
+  currency: string;
   totalDividends: number;
   dividendCount: number;
   lastDividendDate: string;
   lastDividendAmount: number;
-  avgDividendPerShare?: number; // €/action moyen sur la période
+  avgDividendPerShare?: number; // moyenne par action dans la devise du dividende
   avgYieldOnCost?: number; // Rdt/Coût moyen sur la période
 }
 
@@ -44,6 +45,20 @@ function DividendSummaryCard({
   );
 }
 
+function txCurrency(tx: Transaction): string {
+  return (tx.currency ?? 'EUR').toUpperCase();
+}
+
+function addCurrencyAmount(map: Map<string, number>, currency: string, amount: number) {
+  map.set(currency, (map.get(currency) ?? 0) + amount);
+}
+
+function formatCurrencyMap(map: Map<string, number>): string {
+  const entries = Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b));
+  if (entries.length === 0) return formatCurrency(0);
+  return entries.map(([currency, amount]) => formatCurrency(amount, currency)).join(' + ');
+}
+
 export function DividendsTable({ transactions, positions }: DividendsTableProps) {
   const [showDetails, setShowDetails] = useState(false);
   const [selectedYear, setSelectedYear] = useState<number | 'all'>('all');
@@ -52,7 +67,7 @@ export function DividendsTable({ transactions, positions }: DividendsTableProps)
 
   // Calculer les années disponibles et totaux par année
   const { dividendsByYear, years } = useMemo(() => {
-    const byYear = new Map<number, number>();
+    const byYear = new Map<number, Map<string, number>>();
     const yearsSet = new Set<number>();
 
     const dividendTransactions = transactions.filter(t => t.type === 'DIVIDEND');
@@ -60,7 +75,9 @@ export function DividendsTable({ transactions, positions }: DividendsTableProps)
     dividendTransactions.forEach(t => {
       const year = new Date(t.date).getFullYear();
       yearsSet.add(year);
-      byYear.set(year, (byYear.get(year) || 0) + t.amount);
+      const yearTotals = byYear.get(year) ?? new Map<string, number>();
+      addCurrencyAmount(yearTotals, txCurrency(t), t.amount);
+      byYear.set(year, yearTotals);
     });
 
     const sortedYears = Array.from(yearsSet).sort((a, b) => b - a);
@@ -72,8 +89,10 @@ export function DividendsTable({ transactions, positions }: DividendsTableProps)
   }, [transactions]);
 
   // Calculer les statistiques des dividendes FILTRÉES par année
-  const { dividendsByStock, totalDividends } = useMemo(() => {
+  const { dividendsByStock, totalDividendsByCurrency, dividendCountsByCurrency } = useMemo(() => {
     const byStock = new Map<string, DividendSummary>();
+    const totalsByCurrency = new Map<string, number>();
+    const countsByCurrency = new Map<string, number>();
 
     // Filtrer les transactions de type dividende ET par année si sélectionnée
     const dividendTransactions = transactions.filter(t => {
@@ -84,11 +103,14 @@ export function DividendsTable({ transactions, positions }: DividendsTableProps)
 
     dividendTransactions.forEach(t => {
       const symbol = t.stock_symbol?.toUpperCase() || 'NON_ATTRIBUE';
+      const currency = txCurrency(t);
+      const key = `${symbol}:${currency}`;
 
       // Par action
-      const existing = byStock.get(symbol) || {
+      const existing = byStock.get(key) || {
         symbol,
         name: symbol,
+        currency,
         totalDividends: 0,
         dividendCount: 0,
         lastDividendDate: '',
@@ -97,17 +119,20 @@ export function DividendsTable({ transactions, positions }: DividendsTableProps)
 
       existing.totalDividends += t.amount;
       existing.dividendCount += 1;
+      addCurrencyAmount(totalsByCurrency, currency, t.amount);
+      countsByCurrency.set(currency, (countsByCurrency.get(currency) ?? 0) + 1);
       
       if (t.date > existing.lastDividendDate) {
         existing.lastDividendDate = t.date;
         existing.lastDividendAmount = t.amount;
       }
 
-      byStock.set(symbol, existing);
+      byStock.set(key, existing);
     });
 
     // Enrichir avec les noms et calculer les moyennes
-    byStock.forEach((summary, symbol) => {
+    byStock.forEach((summary) => {
+      const symbol = summary.symbol;
       const position = positions.find(p => p.symbol.toUpperCase() === symbol);
       if (position) {
         summary.name = position.name;
@@ -116,6 +141,7 @@ export function DividendsTable({ transactions, positions }: DividendsTableProps)
       // Calculer les moyennes €/action et Rdt/Coût sur la période
       const symbolDividends = dividendTransactions.filter(t => 
         (t.stock_symbol?.toUpperCase() || 'NON_ATTRIBUE') === symbol
+        && txCurrency(t) === summary.currency
       );
       
       let totalDividendPerShare = 0;
@@ -149,13 +175,21 @@ export function DividendsTable({ transactions, positions }: DividendsTableProps)
       }
     });
 
-    const total = dividendTransactions.reduce((sum, t) => sum + t.amount, 0);
-
     return {
       dividendsByStock: Array.from(byStock.values()).sort((a, b) => b.totalDividends - a.totalDividends),
-      totalDividends: total,
+      totalDividendsByCurrency: totalsByCurrency,
+      dividendCountsByCurrency: countsByCurrency,
     };
   }, [transactions, positions, selectedYear]);
+
+  const averageDividendLabel = useMemo(() => {
+    const averages = new Map<string, number>();
+    dividendCountsByCurrency.forEach((count, currency) => {
+      const total = totalDividendsByCurrency.get(currency) ?? 0;
+      if (count > 0) averages.set(currency, total / count);
+    });
+    return formatCurrencyMap(averages);
+  }, [dividendCountsByCurrency, totalDividendsByCurrency]);
 
   // Filtrer par année si sélectionné (pour l'historique détaillé)
   const filteredTransactions = useMemo(() => {
@@ -213,7 +247,7 @@ export function DividendsTable({ transactions, positions }: DividendsTableProps)
       <div className="grid grid-cols-2 gap-2 sm:gap-4 mb-4 sm:mb-6">
         <DividendSummaryCard
           label="Total dividendes"
-          value={formatCurrency(totalDividends)}
+          value={formatCurrencyMap(totalDividendsByCurrency)}
         />
         <DividendSummaryCard
           label="Nb. versements"
@@ -221,15 +255,11 @@ export function DividendsTable({ transactions, positions }: DividendsTableProps)
         />
         <DividendSummaryCard
           label="Actions payeuses"
-          value={dividendsByStock.filter(d => d.symbol !== 'NON_ATTRIBUE').length}
+          value={new Set(dividendsByStock.filter(d => d.symbol !== 'NON_ATTRIBUE').map(d => d.symbol)).size}
         />
         <DividendSummaryCard
           label="Moyenne / versement"
-          value={
-            filteredTransactions.length > 0
-              ? formatCurrency(totalDividends / filteredTransactions.length)
-              : '0 €'
-          }
+          value={filteredTransactions.length > 0 ? averageDividendLabel : formatCurrency(0)}
         />
       </div>
 
@@ -242,9 +272,15 @@ export function DividendsTable({ transactions, positions }: DividendsTableProps)
           </h4>
           <div className="flex gap-2 flex-wrap">
             {years.map(year => {
-              const amount = dividendsByYear.get(year) || 0;
-              const maxAmount = Math.max(...Array.from(dividendsByYear.values()));
-              const percentage = maxAmount > 0 ? (amount / maxAmount) * 100 : 0;
+              const amountsByCurrency = dividendsByYear.get(year) ?? new Map<string, number>();
+              const displayAmount = formatCurrencyMap(amountsByCurrency);
+              const amountForHeight = Array.from(amountsByCurrency.values()).reduce((sum, amount) => sum + amount, 0);
+              const maxAmount = Math.max(
+                ...Array.from(dividendsByYear.values()).map((totals) =>
+                  Array.from(totals.values()).reduce((sum, amount) => sum + amount, 0)
+                )
+              );
+              const percentage = maxAmount > 0 ? (amountForHeight / maxAmount) * 100 : 0;
               
               return (
                 <div key={year} className="flex-1 min-w-[80px]">
@@ -256,7 +292,7 @@ export function DividendsTable({ transactions, positions }: DividendsTableProps)
                     />
                   </div>
                   <div className="text-xs font-medium text-zinc-700 dark:text-zinc-300 mt-1">
-                    {formatCurrency(amount)}
+                    {displayAmount}
                   </div>
                 </div>
               );
@@ -275,7 +311,7 @@ export function DividendsTable({ transactions, positions }: DividendsTableProps)
               <th className="text-right py-2 px-2 text-sm font-medium text-zinc-500 dark:text-zinc-400">Total reçu</th>
               <th className="text-right py-2 px-2 text-sm font-medium text-zinc-500 dark:text-zinc-400">Versements</th>
               <th className="text-right py-2 px-2 text-sm font-medium text-zinc-500 dark:text-zinc-400 hidden md:table-cell">
-                {isProUser ? 'Moy. €/action' : <span className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400"><Lock className="h-3 w-3" />Moy. €/action</span>}
+                {isProUser ? 'Moy. /action' : <span className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400"><Lock className="h-3 w-3" />Moy. /action</span>}
               </th>
               <th className="text-right py-2 px-2 text-sm font-medium text-zinc-500 dark:text-zinc-400 hidden lg:table-cell">
                 {isProUser ? 'Moy. Rdt/Coût' : <span className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400"><Lock className="h-3 w-3" />Moy. Rdt/Coût</span>}
@@ -296,7 +332,7 @@ export function DividendsTable({ transactions, positions }: DividendsTableProps)
                 </td>
                 <td className="py-3 px-2 text-right">
                   <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                    {formatCurrency(dividend.totalDividends)}
+                    {formatCurrency(dividend.totalDividends, dividend.currency)}
                   </span>
                 </td>
                 <td className="py-3 px-2 text-right text-zinc-700 dark:text-zinc-300">
@@ -305,7 +341,7 @@ export function DividendsTable({ transactions, positions }: DividendsTableProps)
                 <td className="py-3 px-2 text-right hidden md:table-cell">
                   {dividend.avgDividendPerShare !== undefined ? (
                     <span className={`text-sm font-medium text-violet-600 dark:text-violet-400 ${isProUser ? '' : 'blur-sm select-none'}`}>
-                      {dividend.avgDividendPerShare.toFixed(2)} €
+                      {formatCurrency(dividend.avgDividendPerShare, dividend.currency)}
                     </span>
                   ) : (
                     <span className="text-zinc-400">-</span>
@@ -322,7 +358,7 @@ export function DividendsTable({ transactions, positions }: DividendsTableProps)
                 </td>
                 <td className="py-3 px-2 text-right text-zinc-500 hidden xl:table-cell">
                   <div className="text-xs">{formatDate(dividend.lastDividendDate)}</div>
-                  <div className="text-xs text-emerald-600">{formatCurrency(dividend.lastDividendAmount)}</div>
+                  <div className="text-xs text-emerald-600">{formatCurrency(dividend.lastDividendAmount, dividend.currency)}</div>
                 </td>
               </tr>
             ))}
@@ -345,16 +381,16 @@ export function DividendsTable({ transactions, positions }: DividendsTableProps)
               </div>
               <div className="text-right">
                 <div className="font-semibold text-sm text-emerald-600 dark:text-emerald-400">
-                  {formatCurrency(dividend.totalDividends)}
+                  {formatCurrency(dividend.totalDividends, dividend.currency)}
                 </div>
                 <div className="text-xs text-zinc-500">{dividend.dividendCount} versements</div>
               </div>
             </div>
             <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
               <div>
-                <span className="text-zinc-500">Moy. €/action: </span>
+                <span className="text-zinc-500">Moy. /action: </span>
                 <span className={`font-medium text-violet-600 dark:text-violet-400 ${isProUser ? '' : 'blur-sm select-none'}`}>
-                  {dividend.avgDividendPerShare !== undefined ? `${dividend.avgDividendPerShare.toFixed(2)} €` : '-'}
+                  {dividend.avgDividendPerShare !== undefined ? formatCurrency(dividend.avgDividendPerShare, dividend.currency) : '-'}
                 </span>
               </div>
               <div>
@@ -387,7 +423,7 @@ export function DividendsTable({ transactions, positions }: DividendsTableProps)
                   <th className="text-left py-2 px-2 text-xs font-medium text-zinc-500">Action</th>
                   <th className="text-right py-2 px-2 text-xs font-medium text-zinc-500">Montant</th>
                   <th className="text-right py-2 px-2 text-xs font-medium text-zinc-500">Qté</th>
-                  <th className="text-right py-2 px-2 text-xs font-medium text-zinc-500">€/action</th>
+                  <th className="text-right py-2 px-2 text-xs font-medium text-zinc-500">/action</th>
                   <th className="text-right py-2 px-2 text-xs font-medium text-zinc-500 hidden md:table-cell">Rdt/Coût</th>
                 </tr>
               </thead>
@@ -426,13 +462,13 @@ export function DividendsTable({ transactions, positions }: DividendsTableProps)
                           {t.stock_symbol || '(Non attribué)'}
                         </td>
                         <td className="py-2 px-2 text-right text-emerald-600 font-medium">
-                          {formatCurrency(t.amount)}
+                          {formatCurrency(t.amount, txCurrency(t))}
                         </td>
                         <td className="py-2 px-2 text-right text-zinc-600 dark:text-zinc-400">
                           {quantityAtDate > 0 ? quantityAtDate : '-'}
                         </td>
                         <td className="py-2 px-2 text-right text-violet-600 dark:text-violet-400 font-medium">
-                          {dividendPerShare > 0 ? `${dividendPerShare.toFixed(2)} €` : '-'}
+                          {dividendPerShare > 0 ? formatCurrency(dividendPerShare, txCurrency(t)) : '-'}
                         </td>
                         <td className="py-2 px-2 text-right text-blue-600 dark:text-blue-400 font-medium hidden md:table-cell">
                           {yieldOnCost > 0 ? `${yieldOnCost.toFixed(2)}%` : '-'}
@@ -471,7 +507,7 @@ export function DividendsTable({ transactions, positions }: DividendsTableProps)
                     <div key={t.id} className="rounded-lg border border-zinc-200 dark:border-zinc-800 p-3 bg-zinc-50 dark:bg-zinc-900/40">
                       <div className="flex items-center justify-between gap-2">
                         <div className="text-xs text-zinc-500">{formatDate(t.date)}</div>
-                        <div className="font-semibold text-sm text-emerald-600">{formatCurrency(t.amount)}</div>
+                        <div className="font-semibold text-sm text-emerald-600">{formatCurrency(t.amount, txCurrency(t))}</div>
                       </div>
                       <div className="mt-1 text-sm font-medium text-zinc-900 dark:text-zinc-100">
                         {t.stock_symbol || '(Non attribue)'}
@@ -482,8 +518,8 @@ export function DividendsTable({ transactions, positions }: DividendsTableProps)
                           <span className="text-zinc-700 dark:text-zinc-300">{quantityAtDate > 0 ? quantityAtDate : '-'}</span>
                         </div>
                         <div>
-                          <span className="text-zinc-500">€/action: </span>
-                          <span className="text-violet-600 dark:text-violet-400">{dividendPerShare > 0 ? `${dividendPerShare.toFixed(2)} €` : '-'}</span>
+                          <span className="text-zinc-500">/action: </span>
+                          <span className="text-violet-600 dark:text-violet-400">{dividendPerShare > 0 ? formatCurrency(dividendPerShare, txCurrency(t)) : '-'}</span>
                         </div>
                         <div className="col-span-2">
                           <span className="text-zinc-500">Rdt/Coût: </span>

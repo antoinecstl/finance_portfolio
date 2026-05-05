@@ -23,6 +23,7 @@ import {
   Pencil,
   AlertTriangle,
   Wallet,
+  ArrowLeftRight,
 } from 'lucide-react';
 import { useToast } from './Toast';
 import { EditTransactionModal } from './EditTransactionModal';
@@ -34,13 +35,14 @@ type TxStyle = {
 };
 
 const TX_STYLE: Record<string, TxStyle> = {
-  DEPOSIT:    { Icon: ArrowDownLeft, tone: 'emerald', sign: '+' },
-  WITHDRAWAL: { Icon: ArrowUpRight,  tone: 'red',     sign: '-' },
-  BUY:        { Icon: ShoppingCart,  tone: 'blue',    sign: '-' },
-  SELL:       { Icon: Banknote,      tone: 'violet',  sign: '+' },
-  DIVIDEND:   { Icon: Coins,         tone: 'emerald', sign: '+' },
-  INTEREST:   { Icon: Percent,       tone: 'emerald', sign: '+' },
-  FEE:        { Icon: Receipt,       tone: 'red',     sign: '-' },
+  DEPOSIT:    { Icon: ArrowDownLeft,  tone: 'emerald', sign: '+' },
+  WITHDRAWAL: { Icon: ArrowUpRight,   tone: 'red',     sign: '-' },
+  BUY:        { Icon: ShoppingCart,   tone: 'blue',    sign: '-' },
+  SELL:       { Icon: Banknote,       tone: 'violet',  sign: '+' },
+  DIVIDEND:   { Icon: Coins,          tone: 'emerald', sign: '+' },
+  INTEREST:   { Icon: Percent,        tone: 'emerald', sign: '+' },
+  FEE:        { Icon: Receipt,        tone: 'red',     sign: '-' },
+  CONVERSION: { Icon: ArrowLeftRight, tone: 'amber',   sign: '-' },
 };
 
 // Static Tailwind classes per tone (JIT needs literal strings).
@@ -61,6 +63,10 @@ const TONE_CLASSES: Record<string, { chip: string; amount: string }> = {
     chip: 'bg-violet-100 dark:bg-violet-900/30 text-violet-600',
     amount: 'text-violet-600',
   },
+  amber: {
+    chip: 'bg-amber-100 dark:bg-amber-900/30 text-amber-600',
+    amount: 'text-amber-600',
+  },
 };
 
 function getTxStyle(type: string): TxStyle {
@@ -75,6 +81,7 @@ const transactionTypes = [
   { value: 'DIVIDEND', label: 'Dividende' },
   { value: 'INTEREST', label: 'Intérêts' },
   { value: 'FEE', label: 'Frais' },
+  { value: 'CONVERSION', label: 'Conversion' },
 ];
 
 interface TransactionRowProps {
@@ -150,7 +157,7 @@ function TransactionRow({
           {feesAmount > 0 && (
             <span className="text-[10px] sm:text-xs font-medium text-zinc-500 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-1.5 sm:px-2 py-0.5 rounded-full inline-flex items-center gap-1">
               <Receipt className="h-2.5 w-2.5" />
-              Frais {formatCurrency(feesAmount)}
+              Frais {formatCurrency(feesAmount, transaction.currency)}
             </span>
           )}
         </div>
@@ -159,14 +166,30 @@ function TransactionRow({
         </p>
         {transaction.quantity && transaction.price_per_unit && (
           <p className="text-[10px] sm:text-xs text-zinc-500 dark:text-zinc-500">
-            {transaction.quantity} × {formatCurrency(transaction.price_per_unit)}
+            {transaction.quantity} × {formatCurrency(transaction.price_per_unit, transaction.currency)}
+          </p>
+        )}
+        {transaction.type === 'CONVERSION' && transaction.target_amount && transaction.target_currency && (
+          <p className="text-[10px] sm:text-xs text-amber-600 dark:text-amber-400">
+            Taux : 1 {transaction.currency} = {(Number(transaction.target_amount) / transaction.amount).toFixed(4)} {transaction.target_currency}
           </p>
         )}
       </div>
       <div className="text-right flex-shrink-0 max-w-[38%]">
-        <p className={`text-sm sm:text-base font-semibold ${classes.amount}`}>
-          {sign}{formatCurrency(Math.abs(transaction.amount))}
-        </p>
+        {transaction.type === 'CONVERSION' && transaction.target_amount && transaction.target_currency ? (
+          <div className="text-xs sm:text-sm">
+            <p className="font-semibold text-red-600">
+              −{formatCurrency(Math.abs(transaction.amount), transaction.currency)}
+            </p>
+            <p className="font-semibold text-emerald-600">
+              +{formatCurrency(Number(transaction.target_amount), transaction.target_currency)}
+            </p>
+          </div>
+        ) : (
+          <p className={`text-sm sm:text-base font-semibold ${classes.amount}`}>
+            {sign}{formatCurrency(Math.abs(transaction.amount), transaction.currency)}
+          </p>
+        )}
         <p className="text-[10px] sm:text-xs text-zinc-500 dark:text-zinc-400">
           {formatDate(transaction.date)}
         </p>
@@ -231,7 +254,7 @@ function DeleteConfirmDialog({
               Supprimer cette transaction ?
             </h3>
             <p className="mt-1 text-xs sm:text-sm text-zinc-500 dark:text-zinc-400">
-              {getTransactionTypeLabel(transaction.type)} du {formatDate(transaction.date)} — {formatCurrency(transaction.amount)}
+              {getTransactionTypeLabel(transaction.type)} du {formatDate(transaction.date)} — {formatCurrency(transaction.amount, transaction.currency)}
               {transaction.stock_symbol ? ` · ${transaction.stock_symbol}` : ''}
             </p>
             <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
@@ -538,20 +561,32 @@ export function TransactionsList({
             </div>
           )}
 
-          {/* Résumé des résultats */}
+          {/* Résumé des résultats : agrégation par devise (un total par bucket
+              pour ne pas mélanger EUR et USDC) */}
           {hasActiveFilters && (
             <div className="mt-3 pt-3 border-t border-zinc-200 dark:border-zinc-700 text-xs sm:text-sm text-zinc-500">
               {filteredTransactions.length} transaction{filteredTransactions.length > 1 ? 's' : ''} trouvée{filteredTransactions.length > 1 ? 's' : ''}
-              {filteredTransactions.length > 0 && (
-                <span className="ml-2">
-                  • Total: {formatCurrency(
-                    filteredTransactions.reduce((sum, t) => {
-                      const { sign } = getTxStyle(t.type);
-                      return sum + (sign === '-' ? -Math.abs(t.amount) : Math.abs(t.amount));
-                    }, 0)
-                  )}
-                </span>
-              )}
+              {filteredTransactions.length > 0 && (() => {
+                const totals = new Map<string, number>();
+                for (const t of filteredTransactions) {
+                  const c = (t.currency ?? 'EUR').toUpperCase();
+                  if (t.type === 'CONVERSION' && t.target_amount && t.target_currency) {
+                    // Une CONVERSION débite la devise source et crédite la devise cible
+                    // (1 ligne = 2 mouvements). Sans ça, le total filtré ignore le crédit.
+                    totals.set(c, (totals.get(c) ?? 0) - Math.abs(t.amount));
+                    const tc = t.target_currency.toUpperCase();
+                    totals.set(tc, (totals.get(tc) ?? 0) + Math.abs(Number(t.target_amount)));
+                  } else {
+                    const { sign } = getTxStyle(t.type);
+                    const delta = sign === '-' ? -Math.abs(t.amount) : Math.abs(t.amount);
+                    totals.set(c, (totals.get(c) ?? 0) + delta);
+                  }
+                }
+                const parts = Array.from(totals.entries()).map(
+                  ([currency, value]) => formatCurrency(value, currency)
+                );
+                return <span className="ml-2">• Total : {parts.join(' · ')}</span>;
+              })()}
             </div>
           )}
         </div>

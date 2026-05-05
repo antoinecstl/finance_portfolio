@@ -5,6 +5,7 @@ import {
   calculatePositionsAtDate,
   calculateAllPositionsAtDate,
   aggregatePositionsBySymbol,
+  calculateAccountCashByCurrencyAtDate,
   calculateAccountCashAtDate,
   calculateAccountCashFromTransactions,
   calculateAccountTotalValue,
@@ -25,11 +26,14 @@ function tx(partial: Partial<Transaction>): Transaction {
     account_id: partial.account_id ?? 'acc-1',
     type: partial.type ?? 'BUY',
     amount: partial.amount ?? 0,
+    currency: partial.currency ?? 'EUR',
     description: partial.description ?? '',
     date: partial.date ?? '2025-01-01',
     stock_symbol: partial.stock_symbol,
     quantity: partial.quantity,
     price_per_unit: partial.price_per_unit,
+    target_amount: partial.target_amount ?? null,
+    target_currency: partial.target_currency ?? null,
     created_at: partial.created_at ?? '2025-01-01T00:00:00Z',
     fee_transaction_id: partial.fee_transaction_id ?? null,
   };
@@ -196,6 +200,28 @@ describe('cash calculations', () => {
     expect(calculateAccountCashFromTransactions(txs, 'a1')).toBe(1000);
     expect(calculateAccountCashFromTransactions(txs, 'a2')).toBe(500);
   });
+
+  it('keeps cash buckets separate by currency and credits conversion targets', () => {
+    const txs = [
+      tx({ type: 'DEPOSIT', amount: 1000, currency: 'EUR', date: '2025-01-01' }),
+      tx({
+        type: 'CONVERSION',
+        amount: 500,
+        currency: 'EUR',
+        target_amount: 540,
+        target_currency: 'USDC',
+        date: '2025-01-02',
+      }),
+      tx({ type: 'BUY', amount: 100, currency: 'USDC', stock_symbol: 'BTC-USD', quantity: 0.001, price_per_unit: 100000, date: '2025-01-03' }),
+    ];
+
+    expect(calculateAccountCashFromTransactions(txs, 'acc-1', 'EUR')).toBe(500);
+    expect(calculateAccountCashFromTransactions(txs, 'acc-1', 'USDC')).toBe(440);
+
+    const buckets = calculateAccountCashByCurrencyAtDate(txs, 'acc-1', '2025-01-03');
+    expect(buckets.get('EUR')).toBe(500);
+    expect(buckets.get('USDC')).toBe(440);
+  });
 });
 
 describe('calculateAccountTotalValue', () => {
@@ -255,6 +281,51 @@ describe('calculatePortfolioHistory', () => {
     // Jour 2 : stocks = 10 * 110 = 1100. Total = 10100
     expect(history[0].totalValue).toBe(10000);
     expect(history[1].totalValue).toBe(10100);
+  });
+
+  it('converts non-EUR cash buckets and crypto positions to EUR via fxRates', () => {
+    // Compte CRYPTO 100 % USDC : DEPOSIT 1000 USDC + BUY BTC 0.01 @ 50000 USDC.
+    // Avec EURUSD=X.close = 1.10 (1 EUR = 1.10 USD), 1 USDC ≈ 1 USD,
+    // 1 USDC vaut 1/1.10 ≈ 0.9091 EUR.
+    const txs = [
+      tx({ account_id: 'crypto', type: 'DEPOSIT', amount: 1000, currency: 'USDC', date: '2025-01-01' }),
+      tx({
+        account_id: 'crypto', type: 'BUY', amount: 500, currency: 'USDC',
+        stock_symbol: 'BTC-USD', quantity: 0.01, price_per_unit: 50000, date: '2025-01-01',
+      }),
+    ];
+    const accounts = [acc({ id: 'crypto', type: 'CRYPTO', currency: 'USDC' })];
+    const historical: Record<string, HistoricalQuote[]> = {
+      'BTC-USD': [
+        { date: '2025-01-01', open: 50000, high: 50000, low: 50000, close: 50000, volume: 0, adjustedClose: 50000 },
+      ],
+    };
+    const fxRates: Record<string, HistoricalQuote[]> = {
+      USD: [
+        { date: '2025-01-01', open: 1.1, high: 1.1, low: 1.1, close: 1.1, volume: 0, adjustedClose: 1.1 },
+      ],
+    };
+
+    const history = calculatePortfolioHistory(
+      txs, accounts, historical, '2025-01-01', '2025-01-01', 'daily', fxRates
+    );
+
+    // Cash : 1000 - 500 = 500 USDC ≈ 500 / 1.1 EUR
+    // Stocks : 0.01 * 50000 = 500 USD ≈ 500 / 1.1 EUR
+    // Total : 1000 / 1.1 ≈ 909.09 EUR
+    const expected = 1000 / 1.1;
+    expect(history[0].totalValue).toBeCloseTo(expected, 2);
+    expect(history[0].positions[0].value).toBeCloseTo(500 / 1.1, 4);
+  });
+
+  it('falls back to 1:1 when no fxRates supplied (preserves legacy behaviour)', () => {
+    const txs = [
+      tx({ account_id: 'crypto', type: 'DEPOSIT', amount: 1000, currency: 'USDC', date: '2025-01-01' }),
+    ];
+    const accounts = [acc({ id: 'crypto', type: 'CRYPTO', currency: 'USDC' })];
+    const history = calculatePortfolioHistory(txs, accounts, {}, '2025-01-01', '2025-01-01', 'daily');
+    // Pas de fxRates → 1 USDC compté pour 1 EUR (ancien comportement).
+    expect(history[0].totalValue).toBe(1000);
   });
 });
 
@@ -335,6 +406,33 @@ describe('calculatePortfolioPerformance (Modified Dietz)', () => {
 
     expect(ytd.gainLossPercent).toBeCloseTo(annual.gainLossPercent, 5);
     expect(ytd.gainLoss).toBeCloseTo(annual.gainLoss, 5);
+  });
+
+  it('converts USDC deposits to EUR so a pure-deposit portfolio shows 0% gain', () => {
+    // Régression : un dépôt USDC + un dépôt EUR ne doit pas générer de
+    // pseudo-performance simplement parce que la sommation naïve des apports
+    // (en USDC = 1 EUR) diverge de l'endValue FX-converti.
+    const accounts = [acc({ id: 'crypto', type: 'CRYPTO', currency: 'USDC' })];
+    const txs = [
+      tx({ account_id: 'crypto', type: 'DEPOSIT', amount: 1000, currency: 'EUR', date: '2026-02-01' }),
+      tx({ account_id: 'crypto', type: 'DEPOSIT', amount: 1100, currency: 'USDC', date: '2026-02-01' }),
+    ];
+    // Au taux 1 EUR = 1.10 USD, 1100 USDC ≈ 1000 EUR. Le portefeuille vaut 2000 EUR.
+    const fxRates = {
+      USD: [
+        { date: '2026-02-01', open: 1.1, high: 1.1, low: 1.1, close: 1.1, volume: 0, adjustedClose: 1.1 },
+      ],
+    };
+    // History déjà FX-converti en amont par calculatePortfolioHistory : 2000 EUR.
+    const history = [
+      { date: '2026-02-01', totalValue: 2000, stocksValue: 2000, savingsValue: 0, positions: [] },
+      { date: '2026-12-31', totalValue: 2000, stocksValue: 2000, savingsValue: 0, positions: [] },
+    ];
+
+    const p = calculatePortfolioPerformance(txs, history, accounts, fxRates);
+    expect(p.netDeposits).toBeCloseTo(2000, 2); // 1000 EUR + 1100 USDC × (1/1.1)
+    expect(p.absoluteGain).toBeCloseTo(0, 2);
+    expect(p.absoluteGainPercent).toBeCloseTo(0, 2);
   });
 
   it('aggregates dividends in totalDividends but does not double-count in gain', () => {

@@ -77,9 +77,11 @@ export async function GET(request: NextRequest) {
   // Calcul des positions actuelles
   const positionsMap = calculateAllPositionsAtDate(allTransactions, today);
 
-  // Calcul de la valeur par compte (cash = transactions replay)
+  // Calcul de la valeur par compte (cash = transactions replay).
+  // Multi-devise : pour le PDF on agrège dans la devise du compte ; les soldes
+  // des autres devises ne sont pas convertis (à faire en Phase 3.5).
   const accountValues = accounts.map((acc) => {
-    const cash = calculateAccountCashFromTransactions(allTransactions, acc.id);
+    const cash = calculateAccountCashFromTransactions(allTransactions, acc.id, acc.currency);
     return { account: acc, cash };
   });
 

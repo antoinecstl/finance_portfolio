@@ -1,15 +1,55 @@
 import { type ClassValue, clsx } from 'clsx';
 import type { Account, AccountType } from './types';
 
+const HIGH_PRECISION_CURRENCY_CODES = new Set([
+  'BTC', 'ETH', 'SOL', 'BNB', 'ADA', 'XRP', 'DOGE', 'DOT', 'AVAX', 'MATIC',
+  'USDC', 'USDT', 'BUSD', 'DAI',
+]);
+
 export function cn(...inputs: ClassValue[]) {
   return clsx(inputs);
 }
 
 export function formatCurrency(amount: number, currency: string = 'EUR'): string {
-  return new Intl.NumberFormat('fr-FR', {
-    style: 'currency',
-    currency: currency,
-  }).format(amount);
+  const normalizedCurrency = (currency || 'EUR').toUpperCase();
+  const fallbackDecimals = amount !== 0 && Math.abs(amount) < 1 ? 8 : 2;
+
+  // Intl.NumberFormat only accepts 3-letter currency codes. Stablecoins such as
+  // USDC/USDT are account currencies in this app, so format them as amounts plus
+  // code instead of throwing a RangeError in the UI.
+  if (!/^[A-Z]{3}$/.test(normalizedCurrency)) {
+    return `${formatNumber(amount, fallbackDecimals)} ${normalizedCurrency}`;
+  }
+
+  if (fallbackDecimals > 2 && HIGH_PRECISION_CURRENCY_CODES.has(normalizedCurrency)) {
+    return `${formatNumber(amount, fallbackDecimals)} ${normalizedCurrency}`;
+  }
+
+  try {
+    return new Intl.NumberFormat('fr-FR', {
+      style: 'currency',
+      currency: normalizedCurrency,
+    }).format(amount);
+  } catch {
+    return `${formatNumber(amount, fallbackDecimals)} ${normalizedCurrency}`;
+  }
+}
+
+export function formatCurrencyBreakdown(
+  buckets: Record<string, number> | undefined,
+  fallbackCurrency: string = 'EUR'
+): string {
+  const entries = Object.entries(buckets ?? {})
+    .filter(([, amount]) => Math.abs(amount) > 0.0001)
+    .sort(([a], [b]) => a.localeCompare(b));
+
+  if (entries.length === 0) {
+    return formatCurrency(0, fallbackCurrency);
+  }
+
+  return entries
+    .map(([currency, amount]) => formatCurrency(amount, currency))
+    .join(' + ');
 }
 
 export function formatNumber(num: number, decimals: number = 2): string {
@@ -65,6 +105,7 @@ export function getTransactionTypeLabel(type: string): string {
     DIVIDEND: 'Dividende',
     INTEREST: 'Intérêts',
     FEE: 'Frais',
+    CONVERSION: 'Conversion',
   };
   return labels[type] || type;
 }
@@ -78,6 +119,7 @@ export function getTransactionColor(type: string): string {
     DIVIDEND: 'text-emerald-600',
     INTEREST: 'text-emerald-600',
     FEE: 'text-red-600',
+    CONVERSION: 'text-amber-600',
   };
   return colors[type] || 'text-zinc-600';
 }

@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS accounts (
   name VARCHAR(255) NOT NULL,
   type VARCHAR(50) NOT NULL CHECK (type IN ('PEA', 'LIVRET_A', 'LDDS', 'CTO', 'ASSURANCE_VIE', 'PEL', 'AUTRE')),
   balance DECIMAL(15, 2) DEFAULT 0,
-  currency VARCHAR(3) DEFAULT 'EUR',
+  currency VARCHAR(10) DEFAULT 'EUR',
   supports_positions BOOLEAN,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -24,12 +24,12 @@ CREATE TABLE IF NOT EXISTS transactions (
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   account_id UUID REFERENCES accounts(id) ON DELETE CASCADE,
   type VARCHAR(50) NOT NULL CHECK (type IN ('DEPOSIT', 'WITHDRAWAL', 'BUY', 'SELL', 'DIVIDEND', 'INTEREST', 'FEE')),
-  amount DECIMAL(15, 2) NOT NULL,
+  amount NUMERIC(24, 10) NOT NULL,
   description TEXT,
   date DATE NOT NULL,
   stock_symbol VARCHAR(20),
-  quantity DECIMAL(15, 6),
-  price_per_unit DECIMAL(15, 4),
+  quantity NUMERIC(24, 12),
+  price_per_unit NUMERIC(24, 10),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -40,10 +40,10 @@ CREATE TABLE IF NOT EXISTS stock_positions (
   account_id UUID REFERENCES accounts(id) ON DELETE CASCADE,
   symbol VARCHAR(20) NOT NULL,
   name VARCHAR(255) NOT NULL,
-  quantity DECIMAL(15, 6) NOT NULL,
-  average_price DECIMAL(15, 4) NOT NULL,
+  quantity NUMERIC(24, 12) NOT NULL,
+  average_price NUMERIC(24, 10) NOT NULL,
   current_price DECIMAL(15, 4) DEFAULT 0,
-  currency VARCHAR(3) DEFAULT 'EUR',
+  currency VARCHAR(10) DEFAULT 'EUR',
   sector VARCHAR(100),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),

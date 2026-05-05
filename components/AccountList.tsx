@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { EnrichedAccount } from '@/lib/hooks';
-import { accountSupportsPositions, formatCurrency, formatDate, getAccountTypeLabel } from '@/lib/utils';
+import { accountSupportsPositions, formatCurrency, formatCurrencyBreakdown, formatDate, getAccountTypeLabel } from '@/lib/utils';
 import {
   Building2,
   Landmark,
@@ -17,6 +17,7 @@ import {
   Calendar,
   Trash2,
   AlertTriangle,
+  Coins,
 } from 'lucide-react';
 import { useToast } from './Toast';
 
@@ -27,6 +28,7 @@ const accountIcons: Record<string, typeof Building2> = {
   CTO: Building2,
   ASSURANCE_VIE: Shield,
   PEL: Home,
+  CRYPTO: Coins,
   AUTRE: MoreHorizontal,
 };
 
@@ -37,6 +39,7 @@ const accountColors: Record<string, string> = {
   CTO: 'bg-violet-500',
   ASSURANCE_VIE: 'bg-amber-500',
   PEL: 'bg-rose-500',
+  CRYPTO: 'bg-orange-500',
   AUTRE: 'bg-zinc-500',
 };
 
@@ -55,6 +58,21 @@ export function AccountCard({
   const Icon = accountIcons[account.type] || MoreHorizontal;
   const bgColor = accountColors[account.type] || 'bg-zinc-500';
   const supportsPositions = accountSupportsPositions(account);
+  const cashLabel = formatCurrencyBreakdown(account.calculatedCashByCurrency, account.currency);
+  // Compte multi-devises (USDC + EUR sur Binance, par ex.) ou positions cotées
+  // dans une autre devise que celle du compte → on affiche la valeur totale en
+  // EUR (base) plutôt qu'une somme naïve qui mélange USDC et EUR à 1:1.
+  const cashCurrencies = Object.keys(account.calculatedCashByCurrency ?? {});
+  const isMultiCurrency = cashCurrencies.length > 1
+    || cashCurrencies.some(c => c.toUpperCase() !== (account.currency ?? 'EUR').toUpperCase());
+  const totalInBase = account.calculatedTotalValueInBase ?? account.calculatedTotalValue;
+  const stocksValueInBase = account.calculatedStocksValueInBase ?? account.calculatedStocksValue ?? 0;
+  const headlineValue =
+    !supportsPositions || (account.calculatedStocksValue ?? 0) === 0
+      ? cashLabel
+      : isMultiCurrency
+        ? formatCurrency(totalInBase, 'EUR')
+        : formatCurrency(account.calculatedTotalValue, account.currency);
 
   return (
     <div className="w-full max-w-full overflow-hidden bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm hover:shadow-md transition-all">
@@ -78,7 +96,7 @@ export function AccountCard({
           </div>
           <div className="text-right flex-shrink-0 max-w-[42%]">
             <p className="font-bold text-sm sm:text-base lg:text-lg text-zinc-900 dark:text-zinc-100 truncate">
-              {formatCurrency(account.calculatedTotalValue, account.currency)}
+              {headlineValue}
             </p>
             {supportsPositions && (
               <p className="text-[10px] sm:text-xs text-zinc-500 dark:text-zinc-400">
@@ -104,7 +122,7 @@ export function AccountCard({
                   <div className="min-w-0">
                     <dt className="text-zinc-500 dark:text-zinc-400">Liquidités</dt>
                     <dd className="font-medium text-zinc-900 dark:text-zinc-100 truncate">
-                      {formatCurrency(account.calculatedCash, account.currency)}
+                      {cashLabel}
                     </dd>
                   </div>
                 </div>
@@ -113,7 +131,9 @@ export function AccountCard({
                   <div className="min-w-0">
                     <dt className="text-zinc-500 dark:text-zinc-400">Actions</dt>
                     <dd className="font-medium text-zinc-900 dark:text-zinc-100 truncate">
-                      {formatCurrency(account.calculatedStocksValue || 0, account.currency)}
+                      {isMultiCurrency
+                        ? formatCurrency(stocksValueInBase, 'EUR')
+                        : formatCurrency(account.calculatedStocksValue || 0, account.currency)}
                     </dd>
                   </div>
                 </div>

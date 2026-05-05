@@ -8,7 +8,7 @@ export const accountTypeSchema = z.enum([
 ]);
 
 export const transactionTypeSchema = z.enum([
-  'DEPOSIT', 'WITHDRAWAL', 'BUY', 'SELL', 'DIVIDEND', 'INTEREST', 'FEE',
+  'DEPOSIT', 'WITHDRAWAL', 'BUY', 'SELL', 'DIVIDEND', 'INTEREST', 'FEE', 'CONVERSION',
 ]);
 
 // Un symbole Yahoo Finance est alphanumérique + points/tirets (ex. "AAPL", "MC.PA", "BRK-B").
@@ -73,10 +73,16 @@ export const isoDateSchema = z
     return year >= 1970 && year <= 2100;
   }, 'Date hors plage [1970, 2100]');
 
-// ISO currency 3 lettres majuscules (EUR, USD, GBP).
-export const currencySchema = z
+// Devise : ISO 4217 (EUR, USD, GBP) ou stablecoin/crypto (USDC, USDT, BUSD).
+// Limite 3-10 caractères majuscules pour couvrir les codes courants sans
+// s'enfermer dans l'ISO strict — Binance émet des transactions en USDC.
+export const currencyCodeSchema = z
   .string()
-  .regex(/^[A-Z]{3}$/, 'Code devise ISO 4217 requis (ex: EUR, USD)')
+  .trim()
+  .transform((s) => s.toUpperCase())
+  .pipe(z.string().regex(/^[A-Z]{3,10}$/, 'Code devise invalide (3-10 majuscules, ex: EUR, USD, USDC)'));
+
+export const currencySchema = currencyCodeSchema
   .default('EUR');
 
 export const createAccountSchema = z.object({
@@ -90,7 +96,9 @@ export const createAccountSchema = z.object({
 export type CreateAccountInput = z.infer<typeof createAccountSchema>;
 
 // Transaction : montants positifs (le signe est déterminé par le type de transaction).
-// Les frais peuvent être 0 ou positifs.
+// Les frais peuvent être 0 ou positifs. La devise est optionnelle (défaut côté
+// API = devise du compte) ; pour CONVERSION, target_amount + target_currency
+// sont obligatoires et target_currency doit être différent de currency.
 export const createTransactionSchema = z
   .object({
     account_id: z.string().uuid('Compte invalide'),
@@ -102,6 +110,9 @@ export const createTransactionSchema = z
     stock_symbol: stockSymbolSchema.optional(),
     quantity: z.number().positive('Quantité > 0 requise').finite().optional(),
     price_per_unit: z.number().positive('Prix unitaire > 0 requis').finite().optional(),
+    currency: currencySchema.optional(),
+    target_amount: z.number().positive('Montant cible > 0 requis').finite().optional(),
+    target_currency: currencyCodeSchema.optional(),
   })
   // Pour BUY/SELL : symbole, quantité et prix unitaire sont obligatoires.
   .refine(
@@ -118,6 +129,40 @@ export const createTransactionSchema = z
     {
       message: 'DIVIDEND requiert stock_symbol',
       path: ['stock_symbol'],
+    }
+  )
+  // CONVERSION : exige target_amount + target_currency, refuse stock_symbol.
+  .refine(
+    (v) => v.type === 'CONVERSION'
+      ? Boolean(v.target_amount && v.target_currency)
+      : true,
+    {
+      message: 'CONVERSION requiert target_amount et target_currency',
+      path: ['target_currency'],
+    }
+  )
+  .refine(
+    (v) => v.type === 'CONVERSION' && v.currency && v.target_currency
+      ? v.currency !== v.target_currency
+      : true,
+    {
+      message: 'CONVERSION : la devise cible doit être différente de la source',
+      path: ['target_currency'],
+    }
+  )
+  .refine(
+    (v) => v.type === 'CONVERSION' ? !v.stock_symbol : true,
+    {
+      message: 'CONVERSION ne peut pas porter de stock_symbol',
+      path: ['stock_symbol'],
+    }
+  )
+  // Inversement : les types non-CONVERSION ne portent pas target_*.
+  .refine(
+    (v) => v.type !== 'CONVERSION' ? !v.target_amount && !v.target_currency : true,
+    {
+      message: 'target_amount/target_currency réservés au type CONVERSION',
+      path: ['target_currency'],
     }
   );
 export type CreateTransactionInput = z.infer<typeof createTransactionSchema>;

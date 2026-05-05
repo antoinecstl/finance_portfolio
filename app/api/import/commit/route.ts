@@ -10,6 +10,7 @@ import { commitRequestSchema } from '@/lib/import/types';
 import { getLimits, hasUserFeature } from '@/lib/subscription';
 import { getStockQuotes } from '@/lib/stock-api';
 import { accountSupportsPositions, accountTypeAllowsAsset, assetAccountMismatchMessage } from '@/lib/utils';
+import { formatInvalidAccountSequenceMessage } from '@/lib/sequence-errors';
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -38,12 +39,19 @@ export async function POST(request: Request) {
   // Vérifie le job ET son appartenance. Status doit être previewing pour committer.
   const { data: job } = await supabase
     .from('import_jobs')
-    .select('id, status, account_id')
+    .select('id, status, account_id, rows_imported, rows_total')
     .eq('id', import_job_id)
     .eq('user_id', user.id)
     .maybeSingle();
   if (!job) {
     return NextResponse.json({ error: 'job_not_found' }, { status: 404 });
+  }
+  if (job.status === 'committed') {
+    return NextResponse.json({
+      inserted: job.rows_imported ?? 0,
+      total: job.rows_total ?? transactions.length,
+      already_committed: true,
+    });
   }
   if (job.status !== 'previewing') {
     return NextResponse.json(
@@ -57,7 +65,7 @@ export async function POST(request: Request) {
 
   const { data: account } = await supabase
     .from('accounts')
-    .select('id,type,supports_positions')
+    .select('id,type,supports_positions,currency')
     .eq('id', account_id)
     .eq('user_id', user.id)
     .maybeSingle();
@@ -65,11 +73,28 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'invalid_account' }, { status: 403 });
   }
 
+  const accountCurrency = (account.currency ?? 'EUR').toUpperCase();
+
   // Re-validation stricte de chaque ligne via le schéma de transactions classique.
   // Le payload peut différer de ce qu'on a renvoyé au client (édition manuelle).
-  const validated: typeof transactions = [];
+  // Si tx.currency est absente, on retombe sur la devise du compte.
+  const validated: Array<{
+    type: string;
+    amount: number;
+    fees: number;
+    description: string;
+    date: string;
+    stock_symbol: string | null;
+    quantity: number | null;
+    price_per_unit: number | null;
+    currency: string;
+    target_amount: number | null;
+    target_currency: string | null;
+  }> = [];
   const issues: Array<{ row: number; path: string; message: string }> = [];
   transactions.forEach((tx, idx) => {
+    const txCurrency = (tx.currency ?? accountCurrency).toUpperCase();
+    const txTargetCurrency = tx.target_currency ? tx.target_currency.toUpperCase() : undefined;
     const tCheck = createTransactionSchema.safeParse({
       account_id,
       type: tx.type,
@@ -80,6 +105,9 @@ export async function POST(request: Request) {
       stock_symbol: tx.stock_symbol ?? undefined,
       quantity: tx.quantity ?? undefined,
       price_per_unit: tx.price_per_unit ?? undefined,
+      currency: txCurrency,
+      target_amount: tx.target_amount ?? undefined,
+      target_currency: txTargetCurrency,
     });
     if (!tCheck.success) {
       tCheck.error.issues.forEach((i) => {
@@ -96,6 +124,9 @@ export async function POST(request: Request) {
       stock_symbol: tCheck.data.stock_symbol ?? null,
       quantity: tCheck.data.quantity ?? null,
       price_per_unit: tCheck.data.price_per_unit ?? null,
+      currency: tCheck.data.currency ?? accountCurrency,
+      target_amount: tCheck.data.target_amount ?? null,
+      target_currency: tCheck.data.target_currency ?? null,
     });
   });
 
@@ -228,7 +259,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'account_does_not_support_positions' }, { status: 403 });
     }
     if (msg.includes('INVALID_ACCOUNT_SEQUENCE')) {
-      return NextResponse.json({ error: 'invalid_state', message: msg }, { status: 409 });
+      return NextResponse.json(
+        { error: 'invalid_state', message: formatInvalidAccountSequenceMessage(msg) },
+        { status: 409 }
+      );
     }
     if (msg.includes('unauthorized')) {
       return NextResponse.json({ error: 'unauthorized' }, { status: 401 });

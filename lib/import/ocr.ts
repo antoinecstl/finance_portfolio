@@ -46,22 +46,25 @@ const OCR_EXTRACTION_SCHEMA = {
           'stock_symbol',
           'quantity',
           'price_per_unit',
+          'currency',
+          'target_amount',
+          'target_currency',
         ],
         properties: {
           type: {
             type: 'string',
-            enum: ['DEPOSIT', 'WITHDRAWAL', 'BUY', 'SELL', 'DIVIDEND', 'INTEREST', 'FEE'],
+            enum: ['DEPOSIT', 'WITHDRAWAL', 'BUY', 'SELL', 'DIVIDEND', 'INTEREST', 'FEE', 'CONVERSION'],
             description:
-              "ACHAT ACTION/TITRE → BUY. VENTE ACTION/TITRE → SELL. VIREMENT entrant → DEPOSIT, sortant → WITHDRAWAL. DIVIDENDE/COUPON → DIVIDEND. INTERETS → INTEREST. FRAIS DE COURTAGE / DROITS DE GARDE / COMMISSION → FEE.",
+              "ACHAT ACTION/TITRE → BUY. VENTE ACTION/TITRE → SELL. VIREMENT entrant → DEPOSIT, sortant → WITHDRAWAL. DIVIDENDE/COUPON → DIVIDEND. INTERETS → INTEREST. FRAIS DE COURTAGE / DROITS DE GARDE / COMMISSION → FEE. CONVERSION = échange explicite de devises (EUR→USD, EUR→USDC).",
           },
           amount: {
             type: 'number',
             description:
-              "Montant absolu positif en EUR. Si la devise originale est USD/GBP/CHF, convertis avec un taux raisonnable et signale-le dans notes.",
+              "Montant absolu positif dans la devise NATIVE du document (champ currency). Ne convertis JAMAIS toi-même en EUR — préserve la devise telle qu'elle apparaît.",
           },
           fees: {
             type: 'number',
-            description: "Frais associés (commission, droits de garde). 0 si non précisé.",
+            description: "Frais associés dans la même devise que amount. 0 si non précisé. Si les frais sont indiqués dans une autre devise (ex: amount USDC, frais SOL), mets 0 et signale cette devise dans notes.",
           },
           description: {
             type: 'string',
@@ -71,12 +74,12 @@ const OCR_EXTRACTION_SCHEMA = {
           date: {
             type: 'string',
             description:
-              "Date au format ISO YYYY-MM-DD strict. Format européen DD/MM/YYYY par défaut si ambigu.",
+              "Date au format ISO YYYY-MM-DD strict. Format européen DD/MM/YYYY ou DD-MM-YY par défaut si lisible ; ne le signale pas en note sauf ambiguïté réelle.",
           },
           stock_symbol: {
             type: ['string', 'null'],
             description:
-              "Pour BUY/SELL/DIVIDEND uniquement : ticker Yahoo Finance (suffixes .PA Euronext Paris, .DE Xetra, .L London, .MI Milan, .SW SIX). Convertis l'ISIN en ticker quand possible (ex: FR0000121014→MC.PA, FR0000120271→TTE.PA, NL0000235190→AIR.PA, US5949181045→MSFT, US0378331005→AAPL). Si l'ISIN est inconnu, mets null et signale-le dans notes. Null pour DEPOSIT/WITHDRAWAL/INTEREST/FEE.",
+              "Pour BUY/SELL/DIVIDEND uniquement : ticker Yahoo Finance (suffixes .PA Euronext Paris, .DE Xetra, .L London, .MI Milan, .SW SIX). Convertis l'ISIN en ticker quand possible. Si l'ISIN est inconnu, mets null et signale-le dans notes. Null pour DEPOSIT/WITHDRAWAL/INTEREST/FEE/CONVERSION. Pour une paire devise↔stable type EURUSDC/USDEUR/USDCUSDT, mets type=CONVERSION et stock_symbol=null ; n'utilise jamais '-USD' comme ticker par défaut.",
           },
           quantity: {
             type: ['number', 'null'],
@@ -86,7 +89,22 @@ const OCR_EXTRACTION_SCHEMA = {
           price_per_unit: {
             type: ['number', 'null'],
             description:
-              "Pour BUY/SELL uniquement : prix unitaire EUR. Calcule (amount - fees) / quantity si quantity est connu, sinon null. Null pour les autres types.",
+              "Pour BUY/SELL uniquement : prix unitaire dans la devise native. Calcule (amount - fees) / quantity si quantity est connu, sinon null. Null pour les autres types.",
+          },
+          currency: {
+            type: 'string',
+            description:
+              "Code devise du montant (3-10 majuscules, ex: EUR, USD, GBP, USDC, USDT). Préserve la devise NATIVE du document. Si non explicite, utilise EUR par défaut et signale-le dans notes.",
+          },
+          target_amount: {
+            type: ['number', 'null'],
+            description:
+              "CONVERSION uniquement : montant crédité dans la devise cible (ex: si 1000 EUR donnent 1085 USDC, target_amount=1085). Null pour tous les autres types.",
+          },
+          target_currency: {
+            type: ['string', 'null'],
+            description:
+              "CONVERSION uniquement : code devise cible (3-10 majuscules), différent de currency. Null pour tous les autres types.",
           },
         },
       },
@@ -94,7 +112,7 @@ const OCR_EXTRACTION_SCHEMA = {
     notes: {
       type: 'array',
       description:
-        "Toute remarque utile : ISIN non reconnu, conversion de devise, ligne ambigüe ignorée, hypothèse faite. row = numéro de ligne 0-based si pertinent, sinon null.",
+        "Remarques utiles uniquement : ISIN non reconnu, frais dans une autre devise que amount, ligne ambigüe ignorée, hypothèse réellement incertaine. Ne note pas une devise explicitement visible ni une date DD-MM-YY clairement convertible. row = numéro de ligne 0-based si pertinent, sinon null.",
       items: {
         type: 'object',
         additionalProperties: false,

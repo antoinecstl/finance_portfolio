@@ -10,6 +10,9 @@ export type ImportSourceType = 'csv' | 'xlsx' | 'pdf' | 'text';
 // Transaction normalisée proposée par un parseur (déclaratif ou LLM), avant validation Zod stricte.
 // Les champs sont volontairement permissifs : la conversion en CreateTransactionInput se fait
 // au moment du commit (et c'est là qu'on rejette les lignes invalides).
+//
+// `currency` est optionnel : si absent, le commit utilisera la devise du compte.
+// Pour CONVERSION : target_amount + target_currency obligatoires (validation au commit).
 export const proposedTransactionSchema = z.object({
   type: transactionTypeSchema,
   amount: z.number().finite(),
@@ -19,6 +22,9 @@ export const proposedTransactionSchema = z.object({
   stock_symbol: z.string().nullable().optional(),
   quantity: z.number().finite().positive().nullable().optional(),
   price_per_unit: z.number().finite().positive().nullable().optional(),
+  currency: z.string().regex(/^[A-Z]{3,10}$/).nullable().optional(),
+  target_amount: z.number().finite().positive().nullable().optional(),
+  target_currency: z.string().regex(/^[A-Z]{3,10}$/).nullable().optional(),
 });
 export type ProposedTransaction = z.infer<typeof proposedTransactionSchema>;
 
@@ -46,6 +52,9 @@ export interface LLMExtractionInput {
   rows?: Array<Record<string, string>>;
   text?: string;
   hint?: string;                // ex: nom du fichier, indice broker
+  // Devise par défaut du compte cible. Le LLM y retombe si la devise n'est
+  // pas explicite dans le document. Sinon il préserve la devise native.
+  accountCurrency?: string;
 }
 
 // Schémas pour les routes API.

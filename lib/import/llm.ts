@@ -31,22 +31,38 @@ const EXTRACTION_JSON_SCHEMA = {
       items: {
         type: 'object',
         additionalProperties: false,
-        required: ['type', 'amount', 'fees', 'description', 'date', 'stock_symbol', 'quantity', 'price_per_unit'],
+        required: [
+          'type', 'amount', 'fees', 'description', 'date',
+          'stock_symbol', 'quantity', 'price_per_unit',
+          'currency', 'target_amount', 'target_currency',
+        ],
         properties: {
           type: {
             type: 'string',
-            enum: ['DEPOSIT', 'WITHDRAWAL', 'BUY', 'SELL', 'DIVIDEND', 'INTEREST', 'FEE'],
+            enum: ['DEPOSIT', 'WITHDRAWAL', 'BUY', 'SELL', 'DIVIDEND', 'INTEREST', 'FEE', 'CONVERSION'],
           },
-          amount: { type: 'number', description: 'Montant absolu en EUR (toujours positif). Le signe est porté par le type.' },
-          fees: { type: 'number', description: 'Frais associés en EUR. 0 si aucun.' },
+          amount: { type: 'number', description: 'Montant absolu positif dans la devise native (champ currency). Le signe est porté par le type.' },
+          fees: { type: 'number', description: 'Frais dans la même devise que amount/currency. Si le document indique des frais dans une AUTRE devise, mets 0 et signale cette devise dans notes.' },
           description: { type: 'string', description: 'Libellé original ou reformulé (max 500 char).' },
           date: { type: 'string', description: 'Date au format ISO YYYY-MM-DD.' },
           stock_symbol: {
             type: ['string', 'null'],
-            description: 'Symbole Yahoo Finance pour BUY/SELL/DIVIDEND. Null sinon. Utiliser .PA pour Euronext Paris (ex: MC.PA), .DE pour Xetra, etc.',
+            description: 'Symbole Yahoo Finance pour BUY/SELL/DIVIDEND. Null sinon. Actions: .PA (Paris), .DE (Xetra), .L (Londres). Crypto: BTC-USD, ETH-USD, SOL-USD (jamais de paire stable -USDC, mappée sur -USD). Null pour CONVERSION.',
           },
-          quantity: { type: ['number', 'null'], description: 'Nombre de titres (BUY/SELL uniquement). Null sinon.' },
-          price_per_unit: { type: ['number', 'null'], description: 'Prix unitaire EUR (BUY/SELL uniquement). Null sinon.' },
+          quantity: { type: ['number', 'null'], description: 'Nombre de titres / quantité de crypto (BUY/SELL uniquement). Null sinon.' },
+          price_per_unit: { type: ['number', 'null'], description: 'Prix unitaire dans la devise native (BUY/SELL uniquement). Null sinon.' },
+          currency: {
+            type: 'string',
+            description: 'Code devise du montant (3-10 majuscules). Préserve la devise NATIVE du document : EUR, USD, USDC, USDT, GBP, etc. Ne convertis JAMAIS toi-même. Si non précisée, retombe sur la devise du compte fournie en hint.',
+          },
+          target_amount: {
+            type: ['number', 'null'],
+            description: 'CONVERSION uniquement : montant crédité dans la devise cible (ex: 1085 si 1000 EUR donnent 1085 USDC). Null pour tous les autres types.',
+          },
+          target_currency: {
+            type: ['string', 'null'],
+            description: 'CONVERSION uniquement : code devise cible (3-10 majuscules), différent de currency. Null pour tous les autres types.',
+          },
         },
       },
     },
@@ -70,12 +86,14 @@ const EXTRACTION_JSON_SCHEMA = {
 const SYSTEM_PROMPT = `Tu es un assistant qui extrait des transactions financières structurées depuis des exports CSV/Excel ou du texte collé. (Les PDF sont traités séparément par un OCR document-aware en amont — tu ne les vois jamais ici.)
 
 Règles d'extraction :
-- type : mappe précisément vers DEPOSIT (versement de cash, virement entrant), WITHDRAWAL (retrait, virement sortant), BUY (achat de titre), SELL (vente de titre), DIVIDEND, INTEREST, FEE.
-- amount : montant absolu positif en EUR. Convertis si la devise est USD/GBP en utilisant un taux raisonnable, et signale-le dans notes.
-- fees : frais associés à la transaction (commissions de courtage, droits de garde). 0 si non précisé.
-- date : YYYY-MM-DD strict. Si la date est ambigüe (DD/MM vs MM/DD), choisis le format européen DD/MM/YYYY par défaut, et signale-le dans notes.
-- stock_symbol : pour BUY/SELL/DIVIDEND uniquement. Utilise les suffixes Yahoo Finance (.PA, .DE, .L, .MI, .SW). Null sinon.
-- quantity, price_per_unit : pour BUY/SELL uniquement. Si le document ne donne pas la quantité (relevés bancaires "ACHAT ACTION X" sans détail), laisse les deux à null mais conserve le montant. Sinon calcule price_per_unit = (amount - fees) / quantity.
+- type : DEPOSIT (versement cash entrant), WITHDRAWAL (retrait/virement sortant), BUY (achat titre/crypto), SELL (vente titre/crypto), DIVIDEND, INTEREST, FEE, CONVERSION (échange de devises explicite, ex: EUR→USDC, USD→EUR).
+- amount : montant absolu positif **dans la devise native du document**. Ne convertis JAMAIS toi-même en EUR ou autre devise — la conversion réelle est faite par le système avec le taux du marché. Signale dans notes si la devise est ambiguë.
+- currency : code 3-10 majuscules (EUR, USD, GBP, USDC, USDT, BUSD, BTC, ETH...). Préserve la devise NATIVE telle qu'elle apparaît dans le document. Si non explicite, retombe sur la devise du compte fournie en hint et signale-le.
+- fees : frais associés, **dans la même devise que amount**. 0 si non précisé. Si les frais sont dans une autre devise (ex: amount en USDC, frais en SOL), mets fees=0 et signale-le dans notes : le champ fees ne peut pas représenter une autre devise.
+- date : YYYY-MM-DD strict. Si la date est lisible en format européen courant (DD-MM-YY ou DD/MM/YYYY), convertis-la sans note. Signale seulement une ambiguïté réelle (ex: 03/04/24 sans contexte).
+- stock_symbol : pour BUY/SELL/DIVIDEND uniquement. Actions Yahoo (.PA, .DE, .L, .MI, .SW). Crypto Yahoo : -USD (BTC-USD, ETH-USD, SOL-USD) — même si l'exchange affiche -USDC ou -USDT, mappe-le sur -USD car c'est le ticker Yahoo standard et signale la devise réelle dans currency. Null sinon (et toujours null pour CONVERSION).
+- quantity, price_per_unit : pour BUY/SELL uniquement. price_per_unit dans la devise native (currency), calculée = (amount - fees) / quantity si non donnée explicitement.
+- target_amount, target_currency : **uniquement** pour type=CONVERSION. amount = montant débité (devise source), target_amount = montant crédité (devise cible). Ex : EUR→USDC pour 1000 EUR → 1085 USDC : { type: CONVERSION, amount: 1000, currency: EUR, target_amount: 1085, target_currency: USDC }. target_currency doit être différent de currency. Null pour tous les autres types.
 - description : conserve le libellé original tronqué à 500 char.
 
 Reconnaissance des relevés bancaires français :
@@ -83,15 +101,25 @@ Reconnaissance des relevés bancaires français :
 - Le code ISIN (FR..., US..., NL..., DE..., LU..., IE...) figure souvent sur la ligne suivante du libellé. Convertis-le en ticker Yahoo Finance que tu connais (ex: FR0000121014 → MC.PA, FR0000120271 → TTE.PA, NL0000235190 → AIR.PA, US5949181045 → MSFT, US0378331005 → AAPL). Si l'ISIN est inconnu, mets stock_symbol à null et signale-le dans notes.
 - Colonnes Débit/Crédit : Débit → BUY/WITHDRAWAL/FEE, Crédit → SELL/DEPOSIT/DIVIDEND/INTEREST. Le solde n'est PAS une transaction.
 - "FRAIS DE COURTAGE", "DROITS DE GARDE", "COMMISSION" → FEE.
-- "VIREMENT", "VRT" entrant → DEPOSIT ; sortant → WITHDRAWAL.
+- "VIREMENT", "VRT" entrant → DEPOSIT ; sortant → WITHDRAWAL (note : un VIREMENT EUR→USD ou un échange de devise explicite serait CONVERSION).
 - "COUPON", "DIVIDENDE" → DIVIDEND.
+- "ÉCHANGE", "CONVERSION", "CHANGE EUR/USD", "CONVERT" → CONVERSION.
 
-Notes : remonte toute ligne ignorée (avec row index 0-based si tabulaire), toute hypothèse faite, toute conversion de devise, tout ISIN non reconnu. Sois honnête sur l'incertitude.
+Reconnaissance des relevés crypto (Binance, Kraken, Coinbase) :
+- Colonnes "Pair / Market" type "SOLUSDC", "BTCUSDC" : BUY/SELL d'actif sur compte crypto. stock_symbol = ticker Yahoo (SOL-USD, BTC-USD), currency = devise réelle (USDC). amount/price_per_unit en USDC.
+- Pair devise↔devise/stable type "EURUSDC", "USDEUR", "USDCUSDT", "EURUSDT" : type=CONVERSION, stock_symbol=null, quantity=null, price_per_unit=null. N'utilise JAMAIS "-USD" comme ticker par défaut. Pour une paire Binance BASEQUOTE : côté SELL = BASE débité, QUOTE crédité ; côté BUY = QUOTE débité, BASE crédité. amount = montant débité, currency = devise débitée, target_amount = montant crédité, target_currency = devise créditée.
+- "Buy Crypto" / "Sell Crypto" depuis fiat (EUR→BTC en une étape) : émets une CONVERSION (EUR→USDC implicite ou EUR→BTC selon le doc) puis si pertinent un BUY. Si le doc fusionne les deux, traite-le comme une seule CONVERSION pour préserver le taux réel.
+- Frais payés dans une crypto ou autre devise (BNB, SOL, USDC...) différente de currency : mets fees=0 et signale la devise/le montant dans notes.
+
+Notes : remonte les lignes ignorées, les données non représentables (ex: frais dans une autre devise), les ISIN/tickers non reconnus et les ambiguïtés réelles. Ne crée pas de note pour une devise explicitement visible dans le montant, ni pour une date DD-MM-YY clairement convertible.
 
 Sois exhaustif : extrais TOUTES les lignes d'opération du tableau, pas seulement les premières. Ne renvoie un tableau vide que si le document ne contient réellement aucune transaction (ex: page de garde, conditions générales). N'invente jamais de transaction.`;
 
 function buildUserPrompt(input: LLMExtractionInput): string {
   const hint = input.hint ? `\n\nIndice contextuel : ${input.hint}` : '';
+  const currencyHint = input.accountCurrency
+    ? `\n\nDevise par défaut du compte cible : ${input.accountCurrency} (utilise-la uniquement si la devise n'est pas explicite dans le document).`
+    : '';
   if (input.kind === 'tabular') {
     const headers = input.headers ?? [];
     const rows = input.rows ?? [];
@@ -100,14 +128,14 @@ function buildUserPrompt(input: LLMExtractionInput): string {
     return `Format : tabulaire (CSV/Excel).
 En-têtes : ${JSON.stringify(headers)}
 Lignes (${rows.length} au total) :
-${sample}${truncated}${hint}
+${sample}${truncated}${hint}${currencyHint}
 
 Extrais toutes les transactions visibles.`;
   }
   const text = input.text ?? '';
   const MAX = 80_000;
   const truncated = text.length > MAX ? text.slice(0, MAX) + '\n[... contenu tronqué ...]' : text;
-  return `Format : texte libre (collé).${hint}
+  return `Format : texte libre (collé).${hint}${currencyHint}
 
 Contenu :
 """

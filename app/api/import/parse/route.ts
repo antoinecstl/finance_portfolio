@@ -7,6 +7,7 @@
 // - application/json    : { account_id, text } pour le texte collé
 
 import { NextRequest, NextResponse } from 'next/server';
+import { randomUUID } from 'crypto';
 import { createClient } from '@/lib/supabase/server';
 import { rateLimit, clientKey } from '@/lib/rate-limit';
 import { runImportPipeline, buildIdempotencyKey } from '@/lib/import/orchestrator';
@@ -102,9 +103,10 @@ export async function POST(request: NextRequest) {
   }
 
   // Vérifie l'appartenance du compte avant de déclencher un appel LLM coûteux.
+  // La devise du compte est utilisée comme défaut LLM quand le doc ne la précise pas.
   const { data: account } = await supabase
     .from('accounts')
-    .select('id, name')
+    .select('id, name, currency')
     .eq('id', accountId)
     .eq('user_id', user.id)
     .maybeSingle();
@@ -112,10 +114,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'invalid_account' }, { status: 403 });
   }
 
-  // Idempotency : (user, idempotency_key) est unique. On bloque uniquement les
-  // re-imports d'un fichier déjà committed — c'est le seul cas qui crée des
-  // doublons en base. Les jobs en previewing/failed/cancelled sont éphémères
-  // (transactions non persistées) : on les re-parse et on remplace le job.
+  // Idempotency : (user, idempotency_key) est unique. Les jobs non commités
+  // sont remplacés. Un fichier déjà committed peut être réanalysé : on crée
+  // alors un nouveau job avec une clé dérivée au lieu de bloquer l'utilisateur.
   const idempotencyKey = buildIdempotencyKey(accountId, sourceType, buffer ?? text ?? '');
   const { data: existing } = await supabase
     .from('import_jobs')
@@ -123,13 +124,12 @@ export async function POST(request: NextRequest) {
     .eq('user_id', user.id)
     .eq('idempotency_key', idempotencyKey)
     .maybeSingle();
-
-  if (existing && existing.status === 'committed') {
-    return NextResponse.json(
-      { error: 'already_committed', message: 'Ce fichier a déjà été importé.' },
-      { status: 409 }
-    );
-  }
+  const canReuseExistingJob = existing && existing.status !== 'committed';
+  const effectiveIdempotencyKey = canReuseExistingJob
+    ? idempotencyKey
+    : existing?.status === 'committed'
+      ? `${idempotencyKey}:rerun:${randomUUID()}`
+      : idempotencyKey;
 
   let pipelineResult;
   try {
@@ -138,6 +138,7 @@ export async function POST(request: NextRequest) {
       buffer,
       text,
       filename,
+      accountCurrency: account.currency ?? 'EUR',
     });
   } catch (err) {
     console.error('[api/import/parse] pipeline failed', err);
@@ -156,13 +157,12 @@ export async function POST(request: NextRequest) {
     status: 'previewing' as const,
     rows_total: pipelineResult.transactions.length,
     rows_imported: 0,
-    idempotency_key: idempotencyKey,
+    idempotency_key: effectiveIdempotencyKey,
     raw_excerpt: pipelineResult.rawExcerpt,
-    detected_format: pipelineResult.detectedFormat,
     notes: pipelineResult.notes,
   };
 
-  const { data: job, error: upsertError } = existing
+  const { data: job, error: upsertError } = canReuseExistingJob
     ? await supabase
         .from('import_jobs')
         .update(jobPayload)
@@ -185,8 +185,6 @@ export async function POST(request: NextRequest) {
     import_job_id: job.id,
     transactions: pipelineResult.transactions,
     notes: pipelineResult.notes,
-    detected_format: pipelineResult.detectedFormat,
-    raw_excerpt: pipelineResult.rawExcerpt,
-    reused: Boolean(existing),
+    reused: Boolean(canReuseExistingJob),
   });
 }

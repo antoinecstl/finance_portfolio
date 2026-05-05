@@ -90,29 +90,29 @@ export function Dashboard() {
   // Positions enrichies avec quantités calculées depuis les transactions
   const enrichedPositions = usePositionsWithCalculatedValues(positions, transactions);
 
-  // Comptes enrichis avec valeurs calculées (PEA/CTO recalculés dynamiquement)
-  const enrichedAccounts = useAccountsWithCalculatedValues(accounts, transactions, enrichedPositions, quotes);
-
-  // Calculer le résumé du portefeuille (utiliser les positions enrichies)
-  const portfolioSummary = usePortfolioSummary(enrichedPositions, quotes);
-
   // Historique du portefeuille (calculé dynamiquement)
-  const { history: portfolioHistory, loading: loadingHistory } = usePortfolioHistory(
+  const { history: portfolioHistory, fxRates: dashboardFxRates, loading: loadingHistory } = usePortfolioHistory(
     transactions,
     accounts,
-    historyPeriod
+    historyPeriod,
+    { enabled: activeTab === 'dashboard' }
   );
 
+  // Comptes et résumé calculés avec les mêmes taux FX que l'historique dashboard.
+  const enrichedAccounts = useAccountsWithCalculatedValues(accounts, transactions, enrichedPositions, quotes, dashboardFxRates);
+  const portfolioSummary = usePortfolioSummary(enrichedPositions, quotes, dashboardFxRates);
   // Calculer le total épargne (comptes non-actions)
   const savingsTotal = useMemo(() => {
     return enrichedAccounts
       .filter(a => !accountSupportsPositions(a))
-      .reduce((sum, a) => sum + a.calculatedTotalValue, 0);
+      .reduce((sum, a) => sum + (a.calculatedTotalValueInBase ?? a.calculatedTotalValue), 0);
   }, [enrichedAccounts]);
 
   // Valeur globale du portefeuille = somme de tous les comptes (source de vérité unifiée)
   const totalPortfolioValue = useMemo(() => {
-    return enrichedAccounts.reduce((sum, account) => sum + account.calculatedTotalValue, 0);
+    return enrichedAccounts.reduce((sum, account) => {
+      return sum + (account.calculatedTotalValueInBase ?? account.calculatedTotalValue);
+    }, 0);
   }, [enrichedAccounts]);
 
   // Valeur de l'univers actions = positions + cash PEA/CTO
@@ -145,19 +145,29 @@ export function Dashboard() {
   }, [selectedPositionsAccountFilter, enrichedPositions, transactions, enrichedAccounts, stockAccounts]);
 
   // Historique complet du scope Positions (tous les comptes actions ou compte sélectionné).
-  const { history: positionsFullPortfolioHistory, loading: loadingPositionsFullHistory } = useFullPortfolioHistory(
+  const {
+    history: positionsFullPortfolioHistory,
+    fxRates: positionsFxRates,
+    loading: loadingPositionsFullHistory,
+  } = useFullPortfolioHistory(
     positionsScoped.transactions,
-    positionsScoped.accounts
+    positionsScoped.accounts,
+    { enabled: activeTab === 'positions' }
   );
+  const latestPositionsPoint = positionsFullPortfolioHistory.length > 0
+    ? positionsFullPortfolioHistory[positionsFullPortfolioHistory.length - 1]
+    : null;
 
   // Résumé recalculé selon le scope (pour les KPIs des charts du tab Positions)
-  const scopedPortfolioSummary = usePortfolioSummary(positionsScoped.positions, quotes);
+  const scopedPortfolioSummary = usePortfolioSummary(positionsScoped.positions, quotes, positionsFxRates);
   const scopedStockCashTotal = useMemo(() => {
     return positionsScoped.accounts
       .filter(accountSupportsPositions)
-      .reduce((sum, a) => sum + (a.calculatedCash ?? 0), 0);
+      .reduce((sum, a) => sum + (a.calculatedCashInBase ?? a.calculatedCash ?? 0), 0);
   }, [positionsScoped.accounts]);
-  const scopedStockPortfolioValue = scopedPortfolioSummary.totalValue + scopedStockCashTotal;
+  const scopedStockPortfolioValue = latestPositionsPoint
+    ? latestPositionsPoint.stocksValue
+    : scopedPortfolioSummary.totalValue + scopedStockCashTotal;
 
   const refreshAllData = useCallback(async () => {
     const [nextAccounts, nextPositions, nextTransactions] = await Promise.all([
@@ -316,7 +326,7 @@ export function Dashboard() {
             <div className="grid gap-4 sm:gap-6 md:grid-cols-2">
               <ErrorBoundary label="Répartition">
                 <ProBlur feature="advanced_analytics" label="Répartition détaillée — Pro">
-                  <AllocationChart positions={enrichedPositions} quotes={quotes} />
+                  <AllocationChart positions={enrichedPositions} quotes={quotes} fxRates={dashboardFxRates} />
                 </ProBlur>
               </ErrorBoundary>
               <ErrorBoundary label="Allocation par compte">
@@ -459,11 +469,12 @@ export function Dashboard() {
                 transactions={positionsScoped.transactions}
                 accounts={positionsScoped.accounts}
                 groupByAccount={selectedPositionsAccountFilter === null && stockAccounts.length > 1}
-                portfolioTotalValue={scopedStockPortfolioValue}
+                portfolioTotalValue={scopedPortfolioSummary.totalValue}
                 portfolioTotalInvested={scopedPortfolioSummary.totalInvested}
                 portfolioTotalGain={scopedPortfolioSummary.totalGain}
                 portfolioTotalGainPercent={scopedPortfolioSummary.totalGainPercent}
                 portfolioDayChange={scopedPortfolioSummary.dayChange}
+                fxRates={positionsFxRates}
               />
             </ErrorBoundary>
 
@@ -474,6 +485,7 @@ export function Dashboard() {
                 loading={loadingPositionsFullHistory}
                 currentTotalValue={scopedPortfolioSummary.totalValue}
                 currentTotalInvested={scopedPortfolioSummary.totalInvested}
+                fxRates={positionsFxRates}
               />
             </ErrorBoundary>
 
@@ -485,6 +497,7 @@ export function Dashboard() {
                   accounts={positionsScoped.accounts}
                   loading={loadingPositionsFullHistory}
                   currentPortfolioValue={scopedStockPortfolioValue}
+                  fxRates={positionsFxRates}
                 />
               </ProBlur>
             </ErrorBoundary>
@@ -496,6 +509,7 @@ export function Dashboard() {
                   transactions={positionsScoped.transactions}
                   loading={loadingPositionsFullHistory}
                   currentPortfolioValue={scopedStockPortfolioValue}
+                  fxRates={positionsFxRates}
                 />
               </ProBlur>
             </ErrorBoundary>
@@ -507,6 +521,7 @@ export function Dashboard() {
                 accounts={positionsScoped.accounts}
                 transactions={positionsScoped.transactions}
                 groupByAccount={selectedPositionsAccountFilter === null && stockAccounts.length > 1}
+                fxRates={positionsFxRates}
               />
             </ErrorBoundary>
           </div>

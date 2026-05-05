@@ -6,6 +6,7 @@ import { TrendingUp } from 'lucide-react';
 import { calculateModifiedDietzPerformance, type PortfolioHistoryPoint } from '@/lib/portfolio-calculator';
 import type { HistoricalQuote } from '@/lib/stock-api';
 import type { Transaction } from '@/lib/types';
+import type { FxRateMap } from '@/lib/fx';
 import { findClosestQuote } from '@/lib/stock-api';
 
 const BENCHMARKS = {
@@ -25,7 +26,7 @@ type BenchmarkKey = keyof typeof BENCHMARKS;
 
 type PeriodOption = '1M' | '3M' | '6M' | '1A' | 'YTD' | 'Max';
 
-const PERIODS: PeriodOption[] = ['1M', '3M', '6M', '1A', 'YTD', 'Max'];
+const PERIODS: PeriodOption[] = ['1M', '3M', '6M', 'YTD', '1A', 'Max'];
 
 function formatLocalDate(date: Date): string {
   const year = date.getFullYear();
@@ -48,11 +49,23 @@ function periodCutoff(period: PeriodOption): string | null {
 
 const fmtPct = (n: number) => `${n >= 0 ? '+' : ''}${n.toFixed(2)}%`;
 
+// Multi-devise détecté → on ajoute un badge "valeurs en EUR" mais le graphe
+// reste affiché : la conversion FX est appliquée en amont par calculatePortfolioHistory.
+function hasMultiCurrency(transactions: Transaction[]): boolean {
+  const currencies = new Set<string>();
+  for (const tx of transactions) {
+    currencies.add((tx.currency ?? 'EUR').toUpperCase());
+    if (tx.target_currency) currencies.add(tx.target_currency.toUpperCase());
+  }
+  return currencies.size > 1;
+}
+
 // Computes a Modified Dietz index (base 100), matching the annual performance card.
 function buildPortfolioDietzIndex(
   history: PortfolioHistoryPoint[],
   transactions: Transaction[],
-  startDate: string
+  startDate: string,
+  fxRates: FxRateMap
 ): Array<{ date: string; index: number }> {
   if (history.length === 0) return [];
 
@@ -69,7 +82,8 @@ function buildPortfolioDietzIndex(
       transactions,
       startDate,
       point.date,
-      'stocksValue'
+      'stocksValue',
+      fxRates
     );
 
     return {
@@ -84,24 +98,34 @@ export function BenchmarkComparisonChart({
   transactions,
   loading,
   currentPortfolioValue,
+  fxRates = {},
 }: {
   portfolioHistory: PortfolioHistoryPoint[];
   transactions: Transaction[];
   loading?: boolean;
   currentPortfolioValue?: number;
+  fxRates?: FxRateMap;
 }) {
   const [selectedBenchmark, setSelectedBenchmark] = useState<BenchmarkKey>('^FCHI');
   const [selectedPeriod, setSelectedPeriod] = useState<PeriodOption>('YTD');
   const [benchmarkQuotes, setBenchmarkQuotes] = useState<Record<string, HistoricalQuote[]>>({});
   const [benchmarkLoading, setBenchmarkLoading] = useState(false);
   const [benchmarkError, setBenchmarkError] = useState<string | null>(null);
+  const isMultiCurrency = useMemo(
+    () => hasMultiCurrency(transactions),
+    [transactions]
+  );
   // Évite le warning Recharts width(-1)/height(-1) au rendu SSR : on attend
   // que le DOM soit monté pour que ResponsiveContainer puisse mesurer.
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
 
   const performanceHistory = useMemo(() => {
-    if (currentPortfolioValue === undefined || portfolioHistory.length === 0) {
+    // Multi-devise : on garde le dernier point historique (déjà FX-converti)
+    // plutôt que d'écraser avec currentPortfolioValue (sommation EUR+USDC
+    // non FX-aware côté Dashboard).
+    const skipOverride = isMultiCurrency || currentPortfolioValue === undefined;
+    if (skipOverride || portfolioHistory.length === 0) {
       return portfolioHistory;
     }
 
@@ -121,7 +145,7 @@ export function BenchmarkComparisonChart({
     return portfolioHistory.map((point, index) =>
       index === portfolioHistory.length - 1 ? updatedLastPoint : point
     );
-  }, [portfolioHistory, currentPortfolioValue]);
+  }, [portfolioHistory, currentPortfolioValue, isMultiCurrency]);
 
   const filteredHistory = useMemo(() => {
     const cutoff = periodCutoff(selectedPeriod);
@@ -171,7 +195,7 @@ export function BenchmarkComparisonChart({
 
     // Build the same Modified Dietz return used by the annual performance card.
     const windowStart = periodCutoff(selectedPeriod) ?? filteredHistory[0].date;
-    const dietzIndex = buildPortfolioDietzIndex(performanceHistory, transactions, windowStart);
+    const dietzIndex = buildPortfolioDietzIndex(performanceHistory, transactions, windowStart, fxRates);
     if (dietzIndex.length === 0) return [];
 
     const dietzMap = new Map<string, number>();
@@ -192,7 +216,7 @@ export function BenchmarkComparisonChart({
         benchmark: Number(benchValue.toFixed(2)),
       };
     });
-  }, [filteredHistory, performanceHistory, transactions, benchmarkQuotes, selectedBenchmark, selectedPeriod]);
+  }, [filteredHistory, performanceHistory, transactions, benchmarkQuotes, selectedBenchmark, selectedPeriod, fxRates]);
 
   const finalPerf = useMemo(() => {
     if (chartData.length === 0) return { portfolio: 0, benchmark: 0, delta: 0 };
@@ -209,11 +233,19 @@ export function BenchmarkComparisonChart({
   return (
     <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-4 sm:p-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-0 mb-3 sm:mb-4">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
           <h3 className="font-semibold text-sm sm:text-base text-zinc-900 dark:text-zinc-100">
             Performance (hors apports) vs Benchmark
           </h3>
+          {isMultiCurrency && (
+            <span
+              className="text-[10px] sm:text-xs px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300"
+              title="Les buckets non-EUR (USDC, USD, …) sont convertis en EUR au taux Yahoo du jour. Les stablecoins sont peggés 1:1 sur leur fiat."
+            >
+              Valeurs converties en EUR
+            </span>
+          )}
         </div>
 
         {/* Sélecteur de période — même format que les autres graphs */}

@@ -9,11 +9,36 @@ import {
   getUniqueSymbolsFromTransactions,
   getFirstTransactionDate,
   PortfolioHistoryPoint,
-  calculateAccountTotalValue,
+  calculateAccountCashByCurrencyAtDate,
   calculateAllPositionsAtDate,
 } from '@/lib/portfolio-calculator';
 import { readSnapshots, upsertSnapshots } from '@/lib/portfolio-snapshots';
 import { accountSupportsPositions } from '@/lib/utils';
+import { convertToBase, uniqueForeignFiats, type FxRateMap } from '@/lib/fx';
+
+async function fetchFxRates(
+  fiats: string[],
+  startDate: string,
+  endDate: string
+): Promise<FxRateMap> {
+  if (fiats.length === 0) return {};
+  try {
+    const params = new URLSearchParams({
+      currencies: fiats.join(','),
+      startDate,
+      endDate,
+    });
+    const res = await fetch(`/api/fx/history?${params.toString()}`);
+    if (!res.ok) {
+      console.warn('[fx] history fetch failed:', res.status);
+      return {};
+    }
+    return (await res.json()) as FxRateMap;
+  } catch (e) {
+    console.warn('[fx] history fetch error:', e);
+    return {};
+  }
+}
 
 function formatLocalDate(date: Date): string {
   const year = date.getFullYear();
@@ -179,7 +204,13 @@ export function usePositions(accountId?: string) {
 }
 
 // Hook pour récupérer les cours d'actions
-export function useStockQuotes(symbols: string[]) {
+type StockQuotesOptions = {
+  enabled?: boolean;
+  refreshMs?: number | null;
+};
+
+export function useStockQuotes(symbols: string[], options: StockQuotesOptions = {}) {
+  const { enabled = true, refreshMs = null } = options;
   const [quotes, setQuotes] = useState<Record<string, StockQuote>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -220,19 +251,29 @@ export function useStockQuotes(symbols: string[]) {
   }, [symbolsKey]);
 
   useEffect(() => {
+    if (!enabled) return;
+
     fetchQuotes();
 
-    // Rafraîchir toutes les 60 secondes
-    const interval = setInterval(() => { fetchQuotes(); }, 60000);
+    if (!refreshMs) return;
+
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') fetchQuotes();
+    }, refreshMs);
     return () => clearInterval(interval);
-  }, [fetchQuotes]);
+  }, [enabled, fetchQuotes, refreshMs]);
 
   return { quotes, loading, error, refetch: fetchQuotes };
 }
 
 // Hook pour calculer le résumé du portefeuille
-export function usePortfolioSummary(positions: StockPosition[], quotes: Record<string, StockQuote>): PortfolioSummary {
+export function usePortfolioSummary(
+  positions: StockPosition[],
+  quotes: Record<string, StockQuote>,
+  fxRates: FxRateMap = {}
+): PortfolioSummary {
   return useMemo(() => {
+    const today = formatLocalDate(new Date());
     let totalValue = 0;
     let totalInvested = 0;
     let dayChange = 0;
@@ -241,13 +282,18 @@ export function usePortfolioSummary(positions: StockPosition[], quotes: Record<s
       const quote = quotes[position.symbol];
       const currentPrice = quote?.price ?? position.average_price;
       const previousClose = quote?.previousClose || currentPrice;
+      // `position.currency` est `'EUR'` par défaut en base même pour BTC-USD ou
+      // SOL-USD, donc la cotation Yahoo (`quote.currency`) est plus fiable.
+      // Sans ça, un PRU stocké en USD est traité comme EUR et gonfle la +/- value.
+      const tradeCurrency = (quote?.currency ?? position.currency ?? 'EUR').toUpperCase();
 
-      const positionValue = position.quantity * currentPrice;
-      const positionInvested = position.quantity * position.average_price;
+      const positionValue = convertToBase(position.quantity * currentPrice, tradeCurrency, today, fxRates);
+      const positionInvested = convertToBase(position.quantity * position.average_price, tradeCurrency, today, fxRates);
+      const positionDayChange = convertToBase(position.quantity * (currentPrice - previousClose), tradeCurrency, today, fxRates);
 
       totalValue += positionValue;
       totalInvested += positionInvested;
-      dayChange += position.quantity * (currentPrice - previousClose);
+      dayChange += positionDayChange;
     });
 
     const totalGain = totalValue - totalInvested;
@@ -264,7 +310,7 @@ export function usePortfolioSummary(positions: StockPosition[], quotes: Record<s
       dayChange,
       dayChangePercent,
     };
-  }, [positions, quotes]);
+  }, [positions, quotes, fxRates]);
 }
 
 // Hook pour la recherche d'actions
@@ -303,25 +349,28 @@ export function useStockSearch() {
 export function usePortfolioHistory(
   transactions: Transaction[],
   accounts: Account[],
-  periodDays: number = 30
+  periodDays: number = 30,
+  options: { enabled?: boolean } = {}
 ) {
+  const { enabled = true } = options;
   const [history, setHistory] = useState<PortfolioHistoryPoint[]>([]);
+  const [fxRates, setFxRates] = useState<FxRateMap>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Déterminer les dates et les symboles nécessaires
-  const { startDate, endDate, symbols } = useMemo(() => {
+  // Déterminer les dates, symboles et devises non-EUR nécessaires
+  const { startDate, endDate, symbols, foreignFiats } = useMemo(() => {
     const end = formatLocalDate(new Date());
-    
+
     // Trouver la première transaction ou utiliser la période demandée
     const firstTxDate = getFirstTransactionDate(transactions);
     let start: string;
-    
+
     if (firstTxDate) {
       const periodStart = new Date();
       periodStart.setDate(periodStart.getDate() - periodDays);
       const periodStartStr = formatLocalDate(periodStart);
-      
+
       // Prendre la date la plus récente entre la première transaction et le début de période
       start = firstTxDate > periodStartStr ? firstTxDate : periodStartStr;
     } else {
@@ -331,12 +380,17 @@ export function usePortfolioHistory(
     }
 
     const syms = getUniqueSymbolsFromTransactions(transactions);
+    const fiats = uniqueForeignFiats(transactions);
 
-    return { startDate: start, endDate: end, symbols: syms };
+    return { startDate: start, endDate: end, symbols: syms, foreignFiats: fiats };
   }, [transactions, periodDays]);
+
+  const foreignFiatsKey = useMemo(() => [...foreignFiats].sort().join(','), [foreignFiats]);
 
   // Récupérer les cours historiques et calculer l'historique
   const fetchHistory = useCallback(async () => {
+    if (!enabled) return;
+
     if (transactions.length === 0) {
       setHistory([]);
       return;
@@ -367,6 +421,9 @@ export function usePortfolioHistory(
 
       let historicalQuotes: Record<string, HistoricalQuote[]> = {};
 
+      // Cours actions + taux FX en parallèle (deux requêtes Yahoo distinctes).
+      const fxPromise = fetchFxRates(foreignFiats, startDate, endDate);
+
       if (symbols.length > 0) {
         const response = await fetch(
           `/api/stocks/history?symbols=${symbols.join(',')}&startDate=${startDate}&endDate=${endDate}&interval=1d`
@@ -379,6 +436,8 @@ export function usePortfolioHistory(
         historicalQuotes = await response.json();
       }
 
+      const fetchedFxRates = await fxPromise;
+
       // Calculer l'historique avec l'intervalle approprié
       const interval = periodDays > 90 ? 'weekly' : 'daily';
       const calculatedHistory = calculatePortfolioHistory(
@@ -387,10 +446,12 @@ export function usePortfolioHistory(
         historicalQuotes,
         startDate,
         endDate,
-        interval
+        interval,
+        fetchedFxRates
       );
 
       setHistory(calculatedHistory);
+      setFxRates(fetchedFxRates);
 
       // 2) Upsert du cache (non bloquant). Le trigger DB invalide automatiquement
       // quand une transaction est ajoutée/modifiée/supprimée.
@@ -405,13 +466,14 @@ export function usePortfolioHistory(
     } finally {
       setLoading(false);
     }
-  }, [transactions, accounts, symbols, startDate, endDate, periodDays]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enabled, transactions, accounts, symbols, startDate, endDate, periodDays, foreignFiatsKey]);
 
   useEffect(() => {
     fetchHistory();
   }, [fetchHistory]);
 
-  return { history, loading, error, refetch: fetchHistory };
+  return { history, fxRates, loading, error, refetch: fetchHistory };
 }
 
 /**
@@ -420,20 +482,23 @@ export function usePortfolioHistory(
  */
 export function useFullPortfolioHistory(
   transactions: Transaction[],
-  accounts: Account[]
+  accounts: Account[],
+  options: { enabled?: boolean } = {}
 ) {
+  const { enabled = true } = options;
   const [history, setHistory] = useState<PortfolioHistoryPoint[]>([]);
+  const [fxRates, setFxRates] = useState<FxRateMap>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Déterminer les dates et les symboles nécessaires
-  const { startDate, endDate, symbols } = useMemo(() => {
+  // Déterminer les dates, les symboles et les devises non-EUR nécessaires
+  const { startDate, endDate, symbols, foreignFiats } = useMemo(() => {
     const end = formatLocalDate(new Date());
-    
+
     // Trouver la première transaction
     const firstTxDate = getFirstTransactionDate(transactions);
     let start: string;
-    
+
     if (firstTxDate) {
       // Commencer au 1er janvier de l'année de la première transaction
       const firstYear = new Date(firstTxDate).getFullYear();
@@ -445,12 +510,17 @@ export function useFullPortfolioHistory(
     }
 
     const syms = getUniqueSymbolsFromTransactions(transactions);
+    const fiats = uniqueForeignFiats(transactions);
 
-    return { startDate: start, endDate: end, symbols: syms };
+    return { startDate: start, endDate: end, symbols: syms, foreignFiats: fiats };
   }, [transactions]);
+
+  const foreignFiatsKey = useMemo(() => [...foreignFiats].sort().join(','), [foreignFiats]);
 
   // Récupérer les cours historiques et calculer l'historique
   const fetchHistory = useCallback(async () => {
+    if (!enabled) return;
+
     if (transactions.length === 0) {
       setHistory([]);
       return;
@@ -461,6 +531,8 @@ export function useFullPortfolioHistory(
 
     try {
       let historicalQuotes: Record<string, HistoricalQuote[]> = {};
+
+      const fxPromise = fetchFxRates(foreignFiats, startDate, endDate);
 
       if (symbols.length > 0) {
         const response = await fetch(
@@ -474,6 +546,8 @@ export function useFullPortfolioHistory(
         historicalQuotes = await response.json();
       }
 
+      const fetchedFxRates = await fxPromise;
+
       // Calculer l'historique avec intervalle quotidien pour plus de précision sur les graphiques
       const calculatedHistory = calculatePortfolioHistory(
         transactions,
@@ -481,23 +555,26 @@ export function useFullPortfolioHistory(
         historicalQuotes,
         startDate,
         endDate,
-        'daily' // Quotidien pour avoir plus de points sur les graphiques
+        'daily', // Quotidien pour avoir plus de points sur les graphiques
+        fetchedFxRates
       );
 
       setHistory(calculatedHistory);
+      setFxRates(fetchedFxRates);
     } catch (err) {
       console.error('Error calculating full portfolio history:', err);
       setError(err instanceof Error ? err.message : 'Erreur');
     } finally {
       setLoading(false);
     }
-  }, [transactions, accounts, symbols, startDate, endDate]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enabled, transactions, accounts, symbols, startDate, endDate, foreignFiatsKey]);
 
   useEffect(() => {
     fetchHistory();
   }, [fetchHistory]);
 
-  return { history, loading, error, refetch: fetchHistory };
+  return { history, fxRates, loading, error, refetch: fetchHistory };
 }
 
 /**
@@ -505,8 +582,34 @@ export function useFullPortfolioHistory(
  */
 export interface EnrichedAccount extends Account {
   calculatedCash?: number;
+  calculatedCashInBase?: number;
+  calculatedCashByCurrency?: Record<string, number>;
   calculatedStocksValue?: number;
+  calculatedStocksValueInBase?: number;
   calculatedTotalValue: number;
+  calculatedTotalValueInBase?: number;
+}
+
+function cashMapToObject(cashByCurrency: Map<string, number>): Record<string, number> {
+  return Object.fromEntries(
+    Array.from(cashByCurrency.entries()).sort(([a], [b]) => a.localeCompare(b))
+  );
+}
+
+function sumCashBuckets(cashByCurrency: Map<string, number>): number {
+  return Array.from(cashByCurrency.values()).reduce((sum, value) => sum + value, 0);
+}
+
+function sumCashBucketsInBase(
+  cashByCurrency: Map<string, number>,
+  date: string,
+  fxRates: FxRateMap
+): number {
+  let total = 0;
+  cashByCurrency.forEach((amount, currency) => {
+    total += convertToBase(amount, currency, date, fxRates);
+  });
+  return total;
 }
 
 /**
@@ -517,51 +620,61 @@ export function useAccountsWithCalculatedValues(
   accounts: Account[],
   transactions: Transaction[],
   positions: StockPosition[],
-  quotes: Record<string, StockQuote>
+  quotes: Record<string, StockQuote>,
+  fxRates: FxRateMap = {}
 ): EnrichedAccount[] {
   return useMemo(() => {
+    const today = formatLocalDate(new Date());
+
     return accounts.map(account => {
+      const cashByCurrency = calculateAccountCashByCurrencyAtDate(
+        transactions,
+        account.id,
+        today
+      );
+      const calculatedCash = sumCashBuckets(cashByCurrency);
+      const calculatedCashInBase = sumCashBucketsInBase(cashByCurrency, today, fxRates);
+      const calculatedCashByCurrency = cashMapToObject(cashByCurrency);
+
       if (accountSupportsPositions(account)) {
         const accountPositions = positions.filter(p => p.account_id === account.id);
-        const calculated = calculateAccountTotalValue(
-          transactions,
-          account.id,
-          accountPositions,
-          quotes
-        );
+        let calculatedStocksValue = 0;
+        let calculatedStocksValueInBase = 0;
+
+        for (const position of accountPositions) {
+          const quote = quotes[position.symbol];
+          const currentPrice = quote?.price ?? position.average_price;
+          const positionValue = position.quantity * currentPrice;
+          const valueCurrency = (quote?.currency ?? position.currency ?? account.currency ?? 'EUR').toUpperCase();
+
+          calculatedStocksValue += positionValue;
+          calculatedStocksValueInBase += convertToBase(positionValue, valueCurrency, today, fxRates);
+        }
 
         return {
           ...account,
-          calculatedCash: calculated.cash,
-          calculatedStocksValue: calculated.stocksValue,
-          calculatedTotalValue: calculated.totalValue,
+          calculatedCash,
+          calculatedCashInBase,
+          calculatedCashByCurrency,
+          calculatedStocksValue,
+          calculatedStocksValueInBase,
+          calculatedTotalValue: calculatedCash + calculatedStocksValue,
+          calculatedTotalValueInBase: calculatedCashInBase + calculatedStocksValueInBase,
         };
       }
 
-      // Pour les autres comptes (épargne), calculer le solde depuis les transactions
-      const accountTransactions = transactions.filter(t => t.account_id === account.id);
-      let calculatedBalance = 0;
-
-      for (const tx of accountTransactions) {
-        switch (tx.type) {
-          case 'DEPOSIT':
-          case 'DIVIDEND':
-          case 'INTEREST':
-            calculatedBalance += tx.amount;
-            break;
-          case 'WITHDRAWAL':
-          case 'FEE':
-            calculatedBalance -= tx.amount;
-            break;
-        }
-      }
-
+      // Pour les autres comptes (épargne), calculer le solde depuis les
+      // Crédite la devise du compte si elle est cible d'une CONVERSION.
       return {
         ...account,
-        calculatedTotalValue: calculatedBalance,
+        calculatedCash,
+        calculatedCashInBase,
+        calculatedCashByCurrency,
+        calculatedTotalValue: calculatedCash,
+        calculatedTotalValueInBase: calculatedCashInBase,
       };
     });
-  }, [accounts, transactions, positions, quotes]);
+  }, [accounts, transactions, positions, quotes, fxRates]);
 }
 
 /**
