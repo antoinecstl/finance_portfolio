@@ -4,6 +4,7 @@
 // éviter un état partiel.
 
 import { NextResponse } from 'next/server';
+import { enforceAuthenticatedJsonMutation } from '@/lib/api-security';
 import { createClient } from '@/lib/supabase/server';
 import { createTransactionSchema, formatZodError } from '@/lib/schemas';
 import { commitRequestSchema } from '@/lib/import/types';
@@ -13,6 +14,9 @@ import { accountSupportsPositions, accountTypeAllowsAsset, assetAccountMismatchM
 import { formatInvalidAccountSequenceMessage } from '@/lib/sequence-errors';
 
 export async function POST(request: Request) {
+  const securityError = enforceAuthenticatedJsonMutation(request);
+  if (securityError) return securityError;
+
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {

@@ -13,6 +13,7 @@ import { rateLimit, clientKey } from '@/lib/rate-limit';
 import { runImportPipeline, buildIdempotencyKey } from '@/lib/import/orchestrator';
 import type { ImportSourceType } from '@/lib/import/types';
 import { hasUserFeature } from '@/lib/subscription';
+import { enforceAuthenticatedMutation } from '@/lib/api-security';
 
 export const runtime = 'nodejs';
 
@@ -28,6 +29,9 @@ function detectSourceType(filename: string, contentType: string | null): ImportS
 }
 
 export async function POST(request: NextRequest) {
+  const securityError = enforceAuthenticatedMutation(request);
+  if (securityError) return securityError;
+
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {

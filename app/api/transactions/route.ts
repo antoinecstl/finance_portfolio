@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { enforceAuthenticatedJsonMutation } from '@/lib/api-security';
 import { createClient } from '@/lib/supabase/server';
 import { getLimits } from '@/lib/subscription';
 import { createTransactionSchema, paginationSchema, formatZodError } from '@/lib/schemas';
@@ -67,6 +68,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: Request) {
+  const securityError = enforceAuthenticatedJsonMutation(request);
+  if (securityError) return securityError;
+
   const supabase = await createClient();
   const {
     data: { user },

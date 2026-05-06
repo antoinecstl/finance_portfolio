@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { enforceAuthenticatedJsonMutation, enforceAuthenticatedMutation } from '@/lib/api-security';
 import { createClient } from '@/lib/supabase/server';
 import type { Transaction } from '@/lib/types';
 import { simulateAccountSequence } from '@/lib/transaction-validation';
@@ -8,7 +9,10 @@ import { formatInvalidAccountSequenceMessage } from '@/lib/sequence-errors';
 
 type RouteContext = { params: Promise<{ id: string }> };
 
-export async function DELETE(_request: Request, { params }: RouteContext) {
+export async function DELETE(request: Request, { params }: RouteContext) {
+  const securityError = enforceAuthenticatedMutation(request);
+  if (securityError) return securityError;
+
   const { id } = await params;
   const supabase = await createClient();
   const {
@@ -85,6 +89,9 @@ export async function DELETE(_request: Request, { params }: RouteContext) {
 // La ligne FEE liée est gérée atomiquement par le RPC update_transaction_with_fee
 // (création / mise à jour / suppression selon le nouveau montant de frais).
 export async function PATCH(request: Request, { params }: RouteContext) {
+  const securityError = enforceAuthenticatedJsonMutation(request);
+  if (securityError) return securityError;
+
   const { id } = await params;
   const supabase = await createClient();
   const {

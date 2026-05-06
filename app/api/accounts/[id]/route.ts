@@ -1,10 +1,14 @@
 import { NextResponse } from 'next/server';
+import { enforceAuthenticatedJsonMutation } from '@/lib/api-security';
 import { createClient } from '@/lib/supabase/server';
 import { deleteAccountSchema, formatZodError } from '@/lib/schemas';
 
 type RouteContext = { params: Promise<{ id: string }> };
 
 export async function DELETE(request: Request, { params }: RouteContext) {
+  const securityError = enforceAuthenticatedJsonMutation(request);
+  if (securityError) return securityError;
+
   const { id } = await params;
   const supabase = await createClient();
   const {
