@@ -93,6 +93,7 @@ export function calculatePositionsAtDate(
  */
 export interface CalculatedPositionWithAccount extends CalculatedPosition {
   accountId: string;
+  currency: string;
 }
 
 /**
@@ -133,6 +134,7 @@ export function calculateAllPositionsAtDate(
           quantity: newQuantity,
           averagePrice: newAveragePrice,
           totalInvested: newTotalInvested,
+          currency: existing.currency,
         });
       } else {
         positions.set(key, {
@@ -141,6 +143,7 @@ export function calculateAllPositionsAtDate(
           quantity: qty,
           averagePrice: price,
           totalInvested: qty * price,
+          currency: (tx.currency ?? 'EUR').toUpperCase(),
         });
       }
     } else if (tx.type === 'SELL' && existing) {
@@ -155,6 +158,7 @@ export function calculateAllPositionsAtDate(
           quantity: newQuantity,
           averagePrice: existing.averagePrice,
           totalInvested: newQuantity * existing.averagePrice,
+          currency: existing.currency,
         });
       }
     }

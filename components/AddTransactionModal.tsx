@@ -25,6 +25,7 @@ interface AddTransactionModalProps {
   positions: StockPosition[];
   transactions: Transaction[];
   defaultAccountId?: string;
+  defaultType?: Transaction['type'];
 }
 
 const transactionTypes = [
@@ -52,9 +53,10 @@ export function AddTransactionModal({
   positions,
   transactions,
   defaultAccountId,
+  defaultType,
 }: AddTransactionModalProps) {
   const [accountId, setAccountId] = useState(defaultAccountId || '');
-  const [type, setType] = useState('DEPOSIT');
+  const [type, setType] = useState<Transaction['type']>(defaultType ?? 'DEPOSIT');
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [date, setDate] = useState(todayISO());
@@ -93,7 +95,7 @@ export function AddTransactionModal({
 
   const resetForm = () => {
     setAccountId(defaultAccountId || '');
-    setType('DEPOSIT');
+    setType(defaultType ?? 'DEPOSIT');
     setAmount('');
     setDescription('');
     setDate(todayISO());
@@ -131,6 +133,12 @@ export function AddTransactionModal({
       setCurrency(selectedAccount.currency.toUpperCase());
     }
   }, [selectedAccount?.currency]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setAccountId(defaultAccountId || '');
+    setType(defaultType ?? 'DEPOSIT');
+  }, [defaultAccountId, defaultType, isOpen]);
 
   // Fermer le dropdown au clic extérieur
   useEffect(() => {
@@ -358,12 +366,8 @@ export function AddTransactionModal({
 
       if (res.status === 402) {
         const data = await res.json().catch(() => ({}));
-        // Le scope vient du backend : un BUY peut buter sur la limite
-        // positions (cap 5) plutôt que transactions (cap 50).
-        const scope: 'transactions' | 'positions' =
-          data.scope === 'positions' ? 'positions' : 'transactions';
         limitReached.show({
-          scope,
+          scope: 'transactions',
           current: data.current,
           max: data.limit,
           reason: 'blocked',
@@ -462,7 +466,7 @@ export function AddTransactionModal({
             <select
               value={type}
               onChange={(e) => {
-                const nextType = e.target.value;
+                const nextType = e.target.value as Transaction['type'];
                 setType(nextType);
                 if (
                   ['BUY', 'SELL', 'DIVIDEND'].includes(nextType) &&

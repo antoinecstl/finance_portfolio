@@ -29,10 +29,8 @@ import { BenchmarkComparisonChart } from './BenchmarkComparisonChart';
 import { useSubscription } from '@/lib/subscription-client';
 import { AddAccountModal } from './AddAccountModal';
 import { AddTransactionModal } from './AddTransactionModal';
-import { AddPositionModal } from './AddPositionModal';
 import { 
   useAccounts, 
-  usePositions, 
   useTransactions, 
   useStockQuotes,
   usePortfolioSummary,
@@ -44,6 +42,7 @@ import {
 import { accountSupportsPositions, formatDateTime } from '@/lib/utils';
 import { useAuth } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
+import type { Transaction } from '@/lib/types';
 
 type TabType = 'dashboard' | 'accounts' | 'positions' | 'transactions' | 'dividends';
 
@@ -51,7 +50,8 @@ export function Dashboard() {
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
   const [showAddAccount, setShowAddAccount] = useState(false);
   const [showAddTransaction, setShowAddTransaction] = useState(false);
-  const [showAddPosition, setShowAddPosition] = useState(false);
+  const [addTransactionDefaultAccountId, setAddTransactionDefaultAccountId] = useState<string | undefined>();
+  const [addTransactionDefaultType, setAddTransactionDefaultType] = useState<Transaction['type'] | undefined>();
   const [lastUpdate, setLastUpdate] = useState(() => new Date());
   const [historyPeriod, setHistoryPeriod] = useState(30);
   const [txVersion, setTxVersion] = useState(0);
@@ -64,14 +64,16 @@ export function Dashboard() {
   const canImportTransactions = hasFeature('import_transactions');
 
   const { accounts, loading: loadingAccounts, refetch: refetchAccounts } = useAccounts();
-  const { positions, loading: loadingPositions, refetch: refetchPositions } = usePositions();
   const { transactions, loading: loadingTransactions, refetch: refetchTransactions } = useTransactions();
 
-  // Extraire les symboles pour les cotations (positions + transactions)
+  // Positions enrichies avec quantites calculees depuis les transactions
+  const enrichedPositions = usePositionsWithCalculatedValues(transactions);
+
+  // Extraire les symboles pour les cotations (positions derivees + transactions)
   const symbols = useMemo(() => {
     const symbolSet = new Set<string>();
 
-    positions.forEach((position) => {
+    enrichedPositions.forEach((position) => {
       if (position.symbol) {
         symbolSet.add(position.symbol.toUpperCase());
       }
@@ -84,11 +86,8 @@ export function Dashboard() {
     });
 
     return Array.from(symbolSet);
-  }, [positions, transactions]);
+  }, [enrichedPositions, transactions]);
   const { quotes, refetch: refetchQuotes } = useStockQuotes(symbols);
-
-  // Positions enrichies avec quantités calculées depuis les transactions
-  const enrichedPositions = usePositionsWithCalculatedValues(positions, transactions);
 
   // Historique du portefeuille (calculé dynamiquement)
   const { history: portfolioHistory, fxRates: dashboardFxRates, loading: loadingHistory } = usePortfolioHistory(
@@ -170,24 +169,22 @@ export function Dashboard() {
     : scopedPortfolioSummary.totalValue + scopedStockCashTotal;
 
   const refreshAllData = useCallback(async () => {
-    const [nextAccounts, nextPositions, nextTransactions] = await Promise.all([
+    const [nextAccounts, nextTransactions] = await Promise.all([
       refetchAccounts(),
-      refetchPositions(),
       refetchTransactions(),
     ]);
 
     // Force les quotes à utiliser les symboles fraîchement récupérés.
-    const nextSymbols = [...new Set([
-      ...nextPositions.map((position) => position.symbol.toUpperCase()),
-      ...nextTransactions
+    const nextSymbols = [...new Set(
+      nextTransactions
         .map((transaction) => transaction.stock_symbol?.toUpperCase())
-        .filter((symbol): symbol is string => Boolean(symbol)),
-    ])];
+        .filter((symbol): symbol is string => Boolean(symbol))
+    )];
     await refetchQuotes(nextSymbols);
 
     setLastUpdate(new Date());
-    return { nextAccounts, nextPositions, nextTransactions };
-  }, [refetchAccounts, refetchPositions, refetchTransactions, refetchQuotes]);
+    return { nextAccounts, nextTransactions };
+  }, [refetchAccounts, refetchTransactions, refetchQuotes]);
 
   const handleRefresh = async () => {
     await refreshAllData();
@@ -199,6 +196,14 @@ export function Dashboard() {
     router.refresh();
   };
 
+  const openAddTransaction = useCallback((
+    defaults: { accountId?: string; type?: Transaction['type'] } = {}
+  ) => {
+    setAddTransactionDefaultAccountId(defaults.accountId);
+    setAddTransactionDefaultType(defaults.type);
+    setShowAddTransaction(true);
+  }, []);
+
   // Unique point d'entrée post-mutation : refetch tout + bump txVersion pour
   // que la liste paginée (cursor-based, state local) reparte du curseur initial.
   const handleMutationSuccess = useCallback(async () => {
@@ -206,7 +211,7 @@ export function Dashboard() {
     await refreshAllData();
   }, [refreshAllData]);
 
-  const isLoading = loadingAccounts || loadingPositions || loadingTransactions;
+  const isLoading = loadingAccounts || loadingTransactions;
 
   const tabs = [
     { id: 'dashboard' as TabType, label: 'Dashboard', icon: BarChart2 },
@@ -306,7 +311,7 @@ export function Dashboard() {
               <div className="grid gap-2 sm:grid-cols-3">
                 <UsageMeter label="Comptes" current={accounts.length} max={limits.maxAccounts} />
                 <UsageMeter label="Transactions" current={transactions.length} max={limits.maxTransactions} />
-                <UsageMeter label="Positions" current={positions.length} max={limits.maxPositions} />
+                <UsageMeter label="Positions" current={enrichedPositions.length} max={limits.maxPositions} />
               </div>
             )}
             {/* Stats */}
@@ -375,7 +380,7 @@ export function Dashboard() {
                     Dernières Transactions
                   </h2>
                   <button
-                    onClick={() => setShowAddTransaction(true)}
+                    onClick={() => openAddTransaction()}
                     className="shrink-0 inline-flex items-center gap-1 text-xs sm:text-sm text-blue-600 hover:text-blue-700"
                     title="Ajouter une transaction"
                   >
@@ -425,11 +430,14 @@ export function Dashboard() {
                   Mes Positions
                 </h2>
                 <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 mt-1">
-                  Ajoutez une position manuelle ou gérez vos positions via l&apos;onglet Transactions
+                  Ajoutez une position via une transaction d&apos;achat
                 </p>
               </div>
               <button
-                onClick={() => setShowAddPosition(true)}
+                onClick={() => openAddTransaction({
+                  accountId: selectedPositionsAccountFilter ?? undefined,
+                  type: 'BUY',
+                })}
                 className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm sm:text-base"
               >
                 <Plus className="h-4 w-4" />
@@ -562,7 +570,7 @@ export function Dashboard() {
                   </Link>
                 )}
                 <button
-                  onClick={() => setShowAddTransaction(true)}
+                  onClick={() => openAddTransaction()}
                   className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm sm:text-base"
                 >
                   <Plus className="h-4 w-4" />
@@ -611,16 +619,10 @@ export function Dashboard() {
         onClose={() => setShowAddTransaction(false)}
         onSuccess={handleMutationSuccess}
         accounts={accounts}
-        positions={positions}
+        positions={enrichedPositions}
         transactions={transactions}
-      />
-
-      <AddPositionModal
-        isOpen={showAddPosition}
-        onClose={() => setShowAddPosition(false)}
-        onSuccess={handleMutationSuccess}
-        accounts={accounts}
-        defaultAccountId={selectedPositionsAccountFilter ?? undefined}
+        defaultAccountId={addTransactionDefaultAccountId}
+        defaultType={addTransactionDefaultType}
       />
     </div>
   );

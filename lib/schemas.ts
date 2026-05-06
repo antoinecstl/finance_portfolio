@@ -13,8 +13,8 @@ export const transactionTypeSchema = z.enum([
 
 // Un symbole Yahoo Finance est alphanumérique + points/tirets (ex. "AAPL", "MC.PA", "BRK-B").
 // Limite à 15 char pour laisser de la marge (symboles européens ~6-7 char).
-// Volontairement strict (mirror des contraintes DB transactions_stock_symbol_format /
-// stock_positions_symbol_format) : pas de `^` ici car on ne stocke pas d'indices.
+// Volontairement strict (mirror de la contrainte DB transactions_stock_symbol_format) :
+// pas de `^` ici car on ne stocke pas d'indices.
 export const stockSymbolSchema = z
   .string()
   .trim()

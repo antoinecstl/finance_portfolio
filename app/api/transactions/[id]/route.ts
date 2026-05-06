@@ -69,7 +69,7 @@ export async function DELETE(_request: Request, { params }: RouteContext) {
   }
 
   const { error: delError } = await supabase
-    .rpc('delete_transaction_with_rebuild', { p_transaction_id: id });
+    .rpc('delete_transaction', { p_transaction_id: id });
 
   if (delError) {
     console.error('[api/transactions/:id] delete failed', delError);

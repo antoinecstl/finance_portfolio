@@ -33,23 +33,6 @@ CREATE TABLE IF NOT EXISTS transactions (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Table des positions actions
-CREATE TABLE IF NOT EXISTS stock_positions (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-  account_id UUID REFERENCES accounts(id) ON DELETE CASCADE,
-  symbol VARCHAR(20) NOT NULL,
-  name VARCHAR(255) NOT NULL,
-  quantity NUMERIC(24, 12) NOT NULL,
-  average_price NUMERIC(24, 10) NOT NULL,
-  current_price DECIMAL(15, 4) DEFAULT 0,
-  currency VARCHAR(10) DEFAULT 'EUR',
-  sector VARCHAR(100),
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  UNIQUE(user_id, account_id, symbol)
-);
-
 -- Table historique du portefeuille (OPTIONNEL - peut être calculé dynamiquement)
 -- Cette table n'est plus nécessaire car l'historique est calculé à partir des transactions
 -- et des cours historiques via Yahoo Finance API
@@ -69,9 +52,6 @@ CREATE INDEX IF NOT EXISTS idx_accounts_user_id ON accounts(user_id);
 CREATE INDEX IF NOT EXISTS idx_transactions_user_id ON transactions(user_id);
 CREATE INDEX IF NOT EXISTS idx_transactions_account_id ON transactions(account_id);
 CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date);
-CREATE INDEX IF NOT EXISTS idx_stock_positions_user_id ON stock_positions(user_id);
-CREATE INDEX IF NOT EXISTS idx_stock_positions_account_id ON stock_positions(account_id);
-CREATE INDEX IF NOT EXISTS idx_stock_positions_symbol ON stock_positions(symbol);
 -- CREATE INDEX IF NOT EXISTS idx_portfolio_history_user_id ON portfolio_history(user_id);
 -- CREATE INDEX IF NOT EXISTS idx_portfolio_history_date ON portfolio_history(date);
 
@@ -91,19 +71,12 @@ CREATE TRIGGER update_accounts_updated_at
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
 
-DROP TRIGGER IF EXISTS update_stock_positions_updated_at ON stock_positions;
-CREATE TRIGGER update_stock_positions_updated_at
-  BEFORE UPDATE ON stock_positions
-  FOR EACH ROW
-  EXECUTE FUNCTION update_updated_at_column();
-
 -- ============================================
 -- ÉTAPE 2 : Activer Row Level Security (RLS)
 -- ============================================
 
 ALTER TABLE accounts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE stock_positions ENABLE ROW LEVEL SECURITY;
 -- ALTER TABLE portfolio_history ENABLE ROW LEVEL SECURITY;
 
 -- ============================================
@@ -134,19 +107,6 @@ CREATE POLICY "Users can update own transactions" ON transactions
   FOR UPDATE USING (auth.uid() = user_id);
 
 CREATE POLICY "Users can delete own transactions" ON transactions
-  FOR DELETE USING (auth.uid() = user_id);
-
--- Politiques pour la table stock_positions
-CREATE POLICY "Users can view own positions" ON stock_positions
-  FOR SELECT USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can insert own positions" ON stock_positions
-  FOR INSERT WITH CHECK (auth.uid() = user_id);
-
-CREATE POLICY "Users can update own positions" ON stock_positions
-  FOR UPDATE USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can delete own positions" ON stock_positions
   FOR DELETE USING (auth.uid() = user_id);
 
 -- Politiques pour la table portfolio_history (OPTIONNEL - table non utilisée)

@@ -9,4 +9,3 @@ export { ErrorBoundary } from './ErrorBoundary';
 export { AllocationChart, SectorAllocationChart, AccountAllocationChart, PortfolioHistoryChart, PositionPerformanceChart, StockHistoryChart, PortfolioPerformanceChart } from './Charts';
 export { AddAccountModal } from './AddAccountModal';
 export { AddTransactionModal } from './AddTransactionModal';
-export { AddPositionModal } from './AddPositionModal';

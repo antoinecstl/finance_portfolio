@@ -165,44 +165,6 @@ export function useTransactions(accountId?: string) {
 }
 
 // Hook pour récupérer les positions
-export function usePositions(accountId?: string) {
-  const [positions, setPositions] = useState<StockPosition[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchPositions = useCallback(async (): Promise<StockPosition[]> => {
-    try {
-      setLoading(true);
-      let query = supabase
-        .from('stock_positions')
-        .select('*')
-        .order('symbol', { ascending: true });
-
-      if (accountId) {
-        query = query.eq('account_id', accountId);
-      }
-
-      const { data, error } = await query;
-
-      if (error) throw error;
-      const nextPositions = data || [];
-      setPositions(nextPositions);
-      return nextPositions;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur lors du chargement');
-      return [];
-    } finally {
-      setLoading(false);
-    }
-  }, [accountId]);
-
-  useEffect(() => {
-    fetchPositions();
-  }, [fetchPositions]);
-
-  return { positions, loading, error, refetch: fetchPositions };
-}
-
 // Hook pour récupérer les cours d'actions
 type StockQuotesOptions = {
   enabled?: boolean;
@@ -692,45 +654,15 @@ export interface EnrichedPosition extends StockPosition {
  * Évite le problème d'agrégation multi-comptes pour un même symbole
  */
 export function usePositionsWithCalculatedValues(
-  positions: StockPosition[],
   transactions: Transaction[]
 ): EnrichedPosition[] {
   return useMemo(() => {
     const today = formatLocalDate(new Date());
 
     const calculatedByAccount = calculateAllPositionsAtDate(transactions, today);
-    const existingKeys = new Set<string>();
-
-    const enrichedFromStoredPositions = positions.map(position => {
-      const key = `${position.account_id}:${position.symbol.toUpperCase()}`;
-      existingKeys.add(key);
-      const calculated = calculatedByAccount.get(key);
-
-      if (calculated) {
-        return {
-          ...position,
-          calculatedQuantity: calculated.quantity,
-          calculatedAveragePrice: calculated.averagePrice,
-          calculatedTotalInvested: calculated.totalInvested,
-          // Remplacer les valeurs par les valeurs calculées
-          quantity: calculated.quantity,
-          average_price: calculated.averagePrice,
-        };
-      }
-
-      // Si pas de transactions trouvées pour ce compte, garder les valeurs stockées
-      return {
-        ...position,
-        calculatedQuantity: position.quantity,
-        calculatedAveragePrice: position.average_price,
-        calculatedTotalInvested: position.quantity * position.average_price,
-      };
-    });
-
-    // Ajouter les positions présentes dans les transactions mais absentes de stock_positions.
     const derivedFromTransactions: EnrichedPosition[] = [];
-    calculatedByAccount.forEach((calculated, key) => {
-      if (existingKeys.has(key) || calculated.quantity <= 0) {
+    calculatedByAccount.forEach((calculated) => {
+      if (calculated.quantity <= 0) {
         return;
       }
 
@@ -741,7 +673,7 @@ export function usePositionsWithCalculatedValues(
         name: calculated.symbol,
         quantity: calculated.quantity,
         average_price: calculated.averagePrice,
-        currency: 'EUR',
+        currency: calculated.currency,
         created_at: today,
         updated_at: today,
         calculatedQuantity: calculated.quantity,
@@ -750,6 +682,6 @@ export function usePositionsWithCalculatedValues(
       });
     });
 
-    return [...enrichedFromStoredPositions, ...derivedFromTransactions];
-  }, [positions, transactions]);
+    return derivedFromTransactions;
+  }, [transactions]);
 }
