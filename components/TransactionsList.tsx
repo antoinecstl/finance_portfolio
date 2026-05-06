@@ -5,6 +5,7 @@ import { Transaction, Account } from '@/lib/types';
 import {
   formatCurrency,
   formatDate,
+  formatTime,
   getAccountTypeLabel,
   getTransactionTypeLabel,
 } from '@/lib/utils';
@@ -192,6 +193,11 @@ function TransactionRow({
         )}
         <p className="text-[10px] sm:text-xs text-zinc-500 dark:text-zinc-400">
           {formatDate(transaction.date)}
+          {transaction.time && (
+            <span className="ml-1 text-zinc-400 dark:text-zinc-500">
+              {formatTime(transaction.time)}
+            </span>
+          )}
         </p>
       </div>
       {canMutate && isSelected && (

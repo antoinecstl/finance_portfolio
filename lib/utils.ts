@@ -72,6 +72,15 @@ export function formatDate(date: string | Date): string {
   }).format(new Date(date));
 }
 
+// Formate une heure stockée en TIME (HH:MM:SS) pour affichage : HH:MM.
+// Renvoie '' si null/undefined.
+export function formatTime(time: string | null | undefined): string {
+  if (!time) return '';
+  // Accepte HH:MM ou HH:MM:SS, ne garde que HH:MM.
+  const match = /^(\d{2}:\d{2})/.exec(time);
+  return match ? match[1] : time;
+}
+
 export function formatDateTime(date: string | Date): string {
   return new Intl.DateTimeFormat('fr-FR', {
     day: '2-digit',

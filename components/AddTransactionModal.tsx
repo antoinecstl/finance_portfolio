@@ -60,6 +60,7 @@ export function AddTransactionModal({
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [date, setDate] = useState(todayISO());
+  const [time, setTime] = useState('');
   const [stockSymbol, setStockSymbol] = useState('');
   const [stockName, setStockName] = useState('');
   const [quantity, setQuantity] = useState('');
@@ -99,6 +100,7 @@ export function AddTransactionModal({
     setAmount('');
     setDescription('');
     setDate(todayISO());
+    setTime('');
     setStockSymbol('');
     setStockName('');
     setQuantity('');
@@ -317,6 +319,7 @@ export function AddTransactionModal({
         fees: number;
         description: string;
         date: string;
+        time: string | null;
         currency: string;
         stock_symbol?: string;
         quantity?: number;
@@ -328,6 +331,9 @@ export function AddTransactionModal({
         type,
         amount: totalAmount,
         fees: feesAmount,
+        // Heure optionnelle pour ordonner explicitement les opérations du jour.
+        // null => l'ordre retombe sur l'heure synthétique dérivée du type.
+        time: time.trim() ? time.trim() : null,
         description:
           description ||
           (isStockTransaction
@@ -486,17 +492,35 @@ export function AddTransactionModal({
             </select>
           </div>
 
-          <div>
-            <label className="block text-xs sm:text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-              Date
-            </label>
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              required
-              className="w-full px-3 py-2 text-sm sm:text-base border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
+          <div className="grid grid-cols-3 gap-2 sm:gap-3">
+            <div className="col-span-2">
+              <label className="block text-xs sm:text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                Date
+              </label>
+              <input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                required
+                className="w-full px-3 py-2 text-sm sm:text-base border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            <div>
+              <label className="block text-xs sm:text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                Heure <span className="text-zinc-400 text-xs">(optionnel)</span>
+              </label>
+              <input
+                type="time"
+                value={time}
+                onChange={(e) => setTime(e.target.value)}
+                className="w-full px-2 py-2 text-sm sm:text-base border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            {time && (
+              <p className="col-span-3 -mt-1 text-[11px] text-zinc-500 dark:text-zinc-400">
+                L&apos;heure permet d&apos;ordonner précisément les opérations d&apos;un même jour.
+              </p>
+            )}
           </div>
 
           {isDividendTransaction && dividendPositions.length > 0 && (

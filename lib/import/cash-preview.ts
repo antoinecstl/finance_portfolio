@@ -1,6 +1,6 @@
 import type { ProposedTransaction } from './types';
 import type { Transaction, TransactionType } from '@/lib/types';
-import { transactionSameDayPriority } from '@/lib/transaction-ordering';
+import { effectiveTime } from '@/lib/transaction-ordering';
 
 export type ImportCashPreviewBucket = {
   currency: string;
@@ -26,7 +26,7 @@ export type ImportCashPreview = {
 
 type CashEvent = {
   date: string;
-  priority: number;
+  effectiveTime: string;
   sourceOrder: number;
   createdAt: string;
   id: string;
@@ -76,7 +76,11 @@ function cashDeltasForTransaction(tx: Pick<Transaction, 'type' | 'amount' | 'cur
 }
 
 function eventForDelta(
-  tx: Pick<Transaction, 'type' | 'amount' | 'currency' | 'description' | 'date'> & { created_at?: string; id?: string },
+  tx: Pick<Transaction, 'type' | 'amount' | 'currency' | 'description' | 'date'> & {
+    created_at?: string;
+    id?: string;
+    time?: string | null;
+  },
   delta: { currency: string; delta: number },
   sourceOrder: number,
   order: number,
@@ -84,7 +88,13 @@ function eventForDelta(
 ): CashEvent {
   return {
     date: tx.date,
-    priority: transactionSameDayPriority(tx.type),
+    effectiveTime: effectiveTime({
+      date: tx.date,
+      type: tx.type,
+      time: tx.time ?? null,
+      created_at: tx.created_at ?? '',
+      id: tx.id ?? '',
+    }),
     sourceOrder,
     createdAt: tx.created_at ?? '',
     id: tx.id ?? '',
@@ -170,7 +180,9 @@ export function buildImportCashPreview(
   let firstIssue: ImportCashPreviewIssue | null = null;
   const ordered = [...events].sort((a, b) => {
     if (a.date !== b.date) return a.date.localeCompare(b.date);
-    if (a.priority !== b.priority) return a.priority - b.priority;
+    if (a.effectiveTime !== b.effectiveTime) {
+      return a.effectiveTime.localeCompare(b.effectiveTime);
+    }
     if (a.sourceOrder !== b.sourceOrder) return a.sourceOrder - b.sourceOrder;
     if (a.createdAt !== b.createdAt) return a.createdAt.localeCompare(b.createdAt);
     if (a.id !== b.id) return a.id.localeCompare(b.id);

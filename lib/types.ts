@@ -27,6 +27,13 @@ export interface Transaction {
   fee_transaction_id?: string | null;
   description: string;
   date: string;
+  // Heure optionnelle (HH:MM:SS) saisie par l'utilisateur pour ordonner
+  // explicitement les transactions du même jour. Null => l'ordre retombe sur
+  // l'heure synthétique dérivée du type (effective_time côté DB).
+  time?: string | null;
+  // Colonne calculée côté DB : time si renseignée, sinon heure synthétique
+  // dérivée du type. Sert à trier (date, effective_time, id) côté API et SQL.
+  effective_time?: string | null;
   stock_symbol?: string;
   quantity?: number;
   price_per_unit?: number;

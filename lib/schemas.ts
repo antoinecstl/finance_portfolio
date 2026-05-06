@@ -73,6 +73,14 @@ export const isoDateSchema = z
     return year >= 1970 && year <= 2100;
   }, 'Date hors plage [1970, 2100]');
 
+// Heure HH:MM ou HH:MM:SS. Optionnelle sur les transactions : utilisée pour
+// ordonner explicitement les opérations d'un même jour. Normalisée en HH:MM:SS
+// pour matcher le type TIME PostgreSQL.
+export const timeOfDaySchema = z
+  .string()
+  .regex(/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/, 'Format attendu: HH:MM ou HH:MM:SS')
+  .transform((v) => (v.length === 5 ? `${v}:00` : v));
+
 // Devise : ISO 4217 (EUR, USD, GBP) ou stablecoin/crypto (USDC, USDT, BUSD).
 // Limite 3-10 caractères majuscules pour couvrir les codes courants sans
 // s'enfermer dans l'ISO strict — Binance émet des transactions en USDC.
@@ -107,6 +115,14 @@ export const createTransactionSchema = z
     fees: z.number().nonnegative().finite().optional(),
     description: z.string().max(500, 'Description trop longue').optional(),
     date: isoDateSchema,
+    // Heure optionnelle pour fixer l'ordre des transactions d'un même jour.
+    // null/'' => suppression de l'heure ; absent => même résultat côté POST
+    // (et géré spécifiquement côté PATCH via 'time' in raw pour préserver
+    // l'heure existante si le champ n'est pas envoyé).
+    time: z
+      .union([timeOfDaySchema, z.literal(''), z.null()])
+      .nullish()
+      .transform((v) => (v == null || v === '' ? null : v)),
     stock_symbol: stockSymbolSchema.optional(),
     quantity: z.number().positive('Quantité > 0 requise').finite().optional(),
     price_per_unit: z.number().positive('Prix unitaire > 0 requis').finite().optional(),

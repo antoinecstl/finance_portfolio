@@ -50,6 +50,7 @@ export function EditTransactionModal({
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [date, setDate] = useState('');
+  const [time, setTime] = useState('');
   const [stockSymbol, setStockSymbol] = useState('');
   const [stockName, setStockName] = useState('');
   const [quantity, setQuantity] = useState('');
@@ -89,6 +90,8 @@ export function EditTransactionModal({
     setAmount(transaction.amount.toString());
     setDescription(transaction.description ?? '');
     setDate(transaction.date);
+    // Pré-remplit l'heure : on tronque les secondes pour le <input type="time">.
+    setTime(transaction.time ? transaction.time.slice(0, 5) : '');
     setStockSymbol(transaction.stock_symbol ?? '');
     setStockName('');
     setQuantity(transaction.quantity != null ? transaction.quantity.toString() : '');
@@ -246,6 +249,7 @@ export function EditTransactionModal({
         fees: number;
         description: string;
         date: string;
+        time: string | null;
         currency: string;
         stock_symbol?: string;
         quantity?: number;
@@ -256,6 +260,8 @@ export function EditTransactionModal({
         type,
         amount: totalAmount,
         fees: isConversion ? 0 : feesAmount,
+        // null = effacement explicite (le PATCH applique alors la nullité côté DB).
+        time: time.trim() ? time.trim() : null,
         description:
           description ||
           (isStockTransaction
@@ -376,17 +382,30 @@ export function EditTransactionModal({
               )}
           </div>
 
-          <div>
-            <label className="block text-xs sm:text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-              Date
-            </label>
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              required
-              className="w-full px-3 py-2 text-sm sm:text-base border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
+          <div className="grid grid-cols-3 gap-2 sm:gap-3">
+            <div className="col-span-2">
+              <label className="block text-xs sm:text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                Date
+              </label>
+              <input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                required
+                className="w-full px-3 py-2 text-sm sm:text-base border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            <div>
+              <label className="block text-xs sm:text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                Heure <span className="text-zinc-400 text-xs">(optionnel)</span>
+              </label>
+              <input
+                type="time"
+                value={time}
+                onChange={(e) => setTime(e.target.value)}
+                className="w-full px-2 py-2 text-sm sm:text-base border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
           </div>
 
           {(isStockTransaction || isDividendTransaction) && (

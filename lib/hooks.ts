@@ -137,7 +137,9 @@ export function useTransactions(accountId?: string) {
       let query = supabase
         .from('transactions')
         .select('*')
-        .order('date', { ascending: false });
+        .order('date', { ascending: false })
+        .order('effective_time', { ascending: false })
+        .order('id', { ascending: false });
 
       if (accountId) {
         query = query.eq('account_id', accountId);

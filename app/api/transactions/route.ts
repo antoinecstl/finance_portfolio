@@ -10,8 +10,10 @@ import { accountSupportsPositions, accountTypeAllowsAsset, assetAccountMismatchM
 import { formatInvalidAccountSequenceMessage } from '@/lib/sequence-errors';
 
 // GET /api/transactions?cursor=<opaque>&limit=50&accountId=<uuid>
-// Pagination cursor-based sur (date DESC, id DESC) pour rester stable
-// même quand de nouvelles transactions sont insérées en tête.
+// Pagination cursor-based sur (date DESC, effective_time DESC, id DESC) :
+// l'effective_time côté DB unifie l'heure saisie et l'heure synthétique
+// dérivée du type, ce qui garantit que l'affichage correspond à l'ordre
+// utilisé par la validation et les calculs de PRU.
 export async function GET(request: NextRequest) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -36,6 +38,7 @@ export async function GET(request: NextRequest) {
     .select('*')
     .eq('user_id', user.id)
     .order('date', { ascending: false })
+    .order('effective_time', { ascending: false })
     .order('id', { ascending: false })
     .limit(limit + 1); // +1 pour savoir s'il y a encore des pages
 
@@ -44,10 +47,14 @@ export async function GET(request: NextRequest) {
   }
 
   if (cursor) {
-    // (date, id) < (cursor.date, cursor.id) en lexicographie ordre desc.
-    // Supabase/PostgREST n'a pas d'opérateur tuple natif : on utilise .or().
+    // (date, effective_time, id) < (cursor) en lexicographie desc.
+    // PostgREST n'a pas d'opérateur tuple natif : décomposition via .or().
     query = query.or(
-      `date.lt.${cursor.date},and(date.eq.${cursor.date},id.lt.${cursor.id})`
+      [
+        `date.lt.${cursor.date}`,
+        `and(date.eq.${cursor.date},effective_time.lt.${cursor.effective_time})`,
+        `and(date.eq.${cursor.date},effective_time.eq.${cursor.effective_time},id.lt.${cursor.id})`,
+      ].join(',')
     );
   }
 
@@ -62,7 +69,13 @@ export async function GET(request: NextRequest) {
   const items = hasMore ? rows.slice(0, limit) : rows;
   const last = items[items.length - 1];
   const nextCursor =
-    hasMore && last ? encodeCursor({ date: last.date, id: last.id }) : null;
+    hasMore && last
+      ? encodeCursor({
+          date: last.date,
+          effective_time: last.effective_time,
+          id: last.id,
+        })
+      : null;
 
   return NextResponse.json({ items, nextCursor });
 }
@@ -161,6 +174,7 @@ export async function POST(request: Request) {
   }
 
   const now = new Date().toISOString();
+  const txTime = body.time ?? null;
   const proposed: Transaction[] = [...((existingTxs ?? []) as Transaction[])];
   if (feesAmount > 0) {
     proposed.push({
@@ -171,6 +185,7 @@ export async function POST(request: Request) {
       currency: txCurrency,
       description: '',
       date: body.date,
+      time: txTime,
       created_at: now,
     });
   }
@@ -182,6 +197,7 @@ export async function POST(request: Request) {
     currency: txCurrency,
     description: body.description ?? '',
     date: body.date,
+    time: txTime,
     stock_symbol: body.stock_symbol,
     quantity: body.quantity,
     price_per_unit: body.price_per_unit,
@@ -218,6 +234,7 @@ export async function POST(request: Request) {
     p_currency: txCurrency,
     p_target_amount: body.target_amount ?? null,
     p_target_currency: body.target_currency ?? null,
+    p_time: txTime,
   });
 
   if (error) {

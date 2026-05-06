@@ -172,6 +172,10 @@ export async function PATCH(request: Request, { params }: RouteContext) {
   // Devise : si le PATCH n'en fournit pas, on garde celle de la cible.
   const txCurrency = (body.currency ?? target.currency ?? account.currency ?? 'EUR').toUpperCase();
   const newFees = body.type !== 'FEE' && body.fees && body.fees > 0 ? body.fees : 0;
+  // Heure : 'time' absent du body => on conserve l'heure existante (back-compat
+  // pour les clients qui n'envoient pas le champ). null/'' => effacement explicite.
+  const txTime: string | null =
+    'time' in (raw as Record<string, unknown>) ? body.time ?? null : target.time ?? null;
 
   // Pré-validation côté JS de la séquence : on remplace la cible (et son
   // FEE lié si existant) par les nouvelles valeurs, on simule, on refuse si
@@ -199,6 +203,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
       currency: txCurrency,
       description: body.description ?? '',
       date: body.date,
+      time: txTime,
       stock_symbol: body.stock_symbol,
       quantity: body.quantity,
       price_per_unit: body.price_per_unit,
@@ -215,6 +220,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
       currency: txCurrency,
       description: '',
       date: body.date,
+      time: txTime,
       // Conserve le created_at original si on update une FEE existante, pour
       // que l'ordre dans la séquence reste celui de la transaction principale.
       created_at: target.created_at ?? new Date().toISOString(),
@@ -247,6 +253,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     p_currency: txCurrency,
     p_target_amount: body.target_amount ?? null,
     p_target_currency: body.target_currency ?? null,
+    p_time: txTime,
   });
 
   if (error) {

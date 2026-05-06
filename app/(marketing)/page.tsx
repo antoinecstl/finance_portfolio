@@ -766,13 +766,13 @@ function PortfolioMockup() {
               <span className="text-[13px] text-[color:var(--ink-2)] flex-1 truncate">
                 {row.lbl}
               </span>
-              <div className="flex-1 h-1 max-w-[100px] bg-[color:var(--rule)] overflow-hidden">
+              <div className="w-[80px] shrink-0 h-1 bg-[color:var(--rule)] overflow-hidden">
                 <div
                   className="h-full"
                   style={{ width: `${row.pct}%`, background: row.color }}
                 />
               </div>
-              <span className="mono text-[12px] text-[color:var(--ink)] tabular-nums">
+              <span className="mono text-[12px] text-[color:var(--ink)] tabular-nums w-[80px] shrink-0 text-right">
                 {row.val}&nbsp;€
               </span>
             </div>
