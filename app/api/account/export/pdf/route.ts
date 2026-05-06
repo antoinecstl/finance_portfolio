@@ -7,7 +7,12 @@ import {
   calculateAccountCashByCurrencyAtDate,
 } from '@/lib/portfolio-calculator';
 import { compareTransactionSequence } from '@/lib/transaction-ordering';
-import { formatCurrency, formatCurrencyBreakdown } from '@/lib/utils';
+import {
+  formatPdfCurrency,
+  formatPdfCurrencyBreakdown,
+  formatPdfNumber,
+  toPdfText,
+} from '@/lib/pdf-format';
 import type { Account, Transaction } from '@/lib/types';
 
 const PERIOD_DAYS: Record<string, number | null> = {
@@ -57,7 +62,15 @@ function mapToBuckets(cashByCurrency: Map<string, number>): CurrencyBuckets {
 }
 
 function formatBuckets(buckets: CurrencyBuckets, fallbackCurrency = 'EUR'): string {
-  return formatCurrencyBreakdown(buckets, fallbackCurrency);
+  return formatPdfCurrencyBreakdown(buckets, fallbackCurrency);
+}
+
+function pdfRow(values: unknown[]): string[] {
+  return values.map(toPdfText);
+}
+
+function pdfRows(rows: unknown[][]): string[][] {
+  return rows.map(pdfRow);
 }
 
 function fmtDate(d: string | Date): string {
@@ -247,29 +260,29 @@ export async function GET(request: NextRequest) {
   doc.rect(0, 0, pageWidth, 120, 'F');
   doc.setTextColor(...PDF_PAPER);
   doc.setFontSize(24);
-  doc.text('Rapport Patrimoine', 40, 60);
+  doc.text(toPdfText('Rapport Patrimoine'), 40, 60);
   doc.setFontSize(12);
-  doc.text(`fi-hub — ${user.email ?? user.id}`, 40, 85);
-  doc.text(`Généré le ${fmtDate(new Date())}`, 40, 105);
+  doc.text(toPdfText(`fi-hub — ${user.email ?? user.id}`), 40, 85);
+  doc.text(toPdfText(`Généré le ${fmtDate(new Date())}`), 40, 105);
 
   doc.setTextColor(...PDF_INK);
   let cursorY = 160;
 
   doc.setFontSize(14);
-  doc.text('Synthèse patrimoniale', 40, cursorY);
+  doc.text(toPdfText('Synthèse patrimoniale'), 40, cursorY);
   cursorY += 10;
 
   autoTable(doc, {
     startY: cursorY + 5,
-    head: [['Indicateur', 'Valeur']],
-    body: [
+    head: [pdfRow(['Indicateur', 'Valeur'])],
+    body: pdfRows([
       ['Valeur totale du portefeuille', formatBuckets(totalPortfolioByCurrency)],
       ['Cash disponible (tous comptes)', formatBuckets(totalCashByCurrency)],
       ['Valeur des actions (au PRU)', formatBuckets(totalStocksAtPRUByCurrency)],
       ['Nombre de comptes', String(accounts.length)],
       ['Nombre de positions actives', String(positionsMap.size)],
       ['Nombre total de transactions', String(allTransactions.length)],
-    ],
+    ]),
     theme: 'striped',
     headStyles: { fillColor: PDF_ACCENT },
     styles: { fontSize: 10 },
@@ -281,19 +294,19 @@ export async function GET(request: NextRequest) {
 
   if (accountValues.length > 0) {
     doc.setFontSize(14);
-    doc.text('Détail des comptes', 40, cursorY);
+    doc.text(toPdfText('Détail des comptes'), 40, cursorY);
     cursorY += 5;
 
     autoTable(doc, {
       startY: cursorY + 5,
-      head: [['Compte', 'Type', 'Cash', 'Positions (PRU)', 'Total']],
-      body: accountValues.map(({ account, cashByCurrency, stocksByCurrency, totalByCurrency }) => [
+      head: [pdfRow(['Compte', 'Type', 'Cash', 'Positions (PRU)', 'Total'])],
+      body: pdfRows(accountValues.map(({ account, cashByCurrency, stocksByCurrency, totalByCurrency }) => [
         account.name,
         ACC_LABEL[account.type] ?? account.type,
         formatBuckets(cashByCurrency, account.currency),
         formatBuckets(stocksByCurrency, account.currency),
         formatBuckets(totalByCurrency, account.currency),
-      ]),
+      ])),
       theme: 'striped',
       headStyles: { fillColor: PDF_ACCENT },
       styles: { fontSize: 10 },
@@ -310,20 +323,20 @@ export async function GET(request: NextRequest) {
       cursorY = 40;
     }
     doc.setFontSize(14);
-    doc.text('Positions actuelles', 40, cursorY);
+    doc.text(toPdfText('Positions actuelles'), 40, cursorY);
     cursorY += 5;
 
     autoTable(doc, {
       startY: cursorY + 5,
-      head: [['Compte', 'Symbole', 'Quantité', 'Devise', 'PRU', 'Montant investi']],
-      body: positionRows.map((pos) => [
+      head: [pdfRow(['Compte', 'Symbole', 'Quantité', 'Devise', 'PRU', 'Montant investi'])],
+      body: pdfRows(positionRows.map((pos) => [
         pos.accountName,
         pos.symbol,
-        pos.quantity.toFixed(4),
+        formatPdfNumber(pos.quantity, 4),
         pos.currency,
-        formatCurrency(pos.averagePrice, pos.currency),
-        formatCurrency(pos.totalInvested, pos.currency),
-      ]),
+        formatPdfCurrency(pos.averagePrice, pos.currency),
+        formatPdfCurrency(pos.totalInvested, pos.currency),
+      ])),
       theme: 'striped',
       headStyles: { fillColor: PDF_ACCENT },
       styles: { fontSize: 10 },
@@ -340,17 +353,17 @@ export async function GET(request: NextRequest) {
   const periodLabel = period === 'all' ? 'depuis le début' :
     period === 'month' ? 'sur le mois écoulé' :
     period === 'quarter' ? 'sur le trimestre écoulé' : 'sur l\'année écoulée';
-  doc.text(`Activité ${periodLabel}`, 40, cursorY);
+  doc.text(toPdfText(`Activité ${periodLabel}`), 40, cursorY);
   cursorY += 5;
 
   autoTable(doc, {
     startY: cursorY + 5,
-    head: [['Type', 'Nombre', 'Mouvement cash cumulé']],
-    body: Object.entries(aggByType).map(([type, value]) => [
+    head: [pdfRow(['Type', 'Nombre', 'Mouvement cash cumulé'])],
+    body: pdfRows(Object.entries(aggByType).map(([type, value]) => [
       TX_LABEL[type] ?? type,
       String(value.count),
       formatBuckets(value.buckets),
-    ]),
+    ])),
     theme: 'striped',
     headStyles: { fillColor: PDF_ACCENT },
     styles: { fontSize: 10 },
@@ -367,7 +380,7 @@ export async function GET(request: NextRequest) {
     }
     doc.setFontSize(12);
     doc.text(
-      `Liste des transactions (${transactions.length > 100 ? 'les 100 plus récentes' : transactions.length})`,
+      toPdfText(`Liste des transactions (${transactions.length > 100 ? 'les 100 plus récentes' : transactions.length})`),
       40,
       cursorY
     );
@@ -375,8 +388,8 @@ export async function GET(request: NextRequest) {
 
     autoTable(doc, {
       startY: cursorY + 5,
-      head: [['Date', 'Type', 'Compte', 'Symbole', 'Montant / mouvement']],
-      body: transactions.slice(0, 100).map((t) => {
+      head: [pdfRow(['Date', 'Type', 'Compte', 'Symbole', 'Montant / mouvement'])],
+      body: pdfRows(transactions.slice(0, 100).map((t) => {
         const acc = accountsById.get(t.account_id);
         return [
           fmtDate(t.date),
@@ -385,7 +398,7 @@ export async function GET(request: NextRequest) {
           t.stock_symbol ?? '—',
           formatTransactionMovement(t),
         ];
-      }),
+      })),
       theme: 'striped',
       headStyles: { fillColor: PDF_ACCENT },
       styles: { fontSize: 9 },
@@ -399,7 +412,7 @@ export async function GET(request: NextRequest) {
     doc.setFontSize(9);
     doc.setTextColor(...PDF_MUTED);
     doc.text(
-      `fi-hub — page ${i} / ${totalPages}`,
+      toPdfText(`fi-hub — page ${i} / ${totalPages}`),
       pageWidth - 40,
       doc.internal.pageSize.getHeight() - 20,
       { align: 'right' }
