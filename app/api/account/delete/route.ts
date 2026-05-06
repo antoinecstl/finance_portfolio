@@ -1,8 +1,12 @@
 import { NextResponse } from 'next/server';
+import { enforceAuthenticatedMutation } from '@/lib/api-security';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { sendAccountDeletion } from '@/lib/email';
 
-export async function POST() {
+export async function POST(request: Request) {
+  const securityError = enforceAuthenticatedMutation(request);
+  if (securityError) return securityError;
+
   const supabase = await createClient();
   const {
     data: { user },

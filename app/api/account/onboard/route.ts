@@ -1,10 +1,14 @@
 import { NextResponse } from 'next/server';
+import { enforceAuthenticatedJsonMutation } from '@/lib/api-security';
 import { createClient } from '@/lib/supabase/server';
 import { sendWelcome } from '@/lib/email';
 
 export const runtime = 'nodejs';
 
 export async function POST(request: Request) {
+  const securityError = enforceAuthenticatedJsonMutation(request);
+  if (securityError) return securityError;
+
   const supabase = await createClient();
   const {
     data: { user },
