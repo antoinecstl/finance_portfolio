@@ -9,8 +9,9 @@ const contentSecurityPolicy = [
   "img-src 'self' data: blob: https:",
   "font-src 'self' data:",
   "style-src 'self' 'unsafe-inline'",
-  "script-src 'self' 'unsafe-inline'",
+  "script-src 'self' 'unsafe-inline' https://cdn.paddle.com",
   "connect-src 'self' https: wss:",
+  "frame-src 'self' https://*.paddle.com",
   "upgrade-insecure-requests",
 ].join('; ');
 
