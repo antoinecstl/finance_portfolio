@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS transactions (
 
 -- Table historique du portefeuille (OPTIONNEL - peut être calculé dynamiquement)
 -- Cette table n'est plus nécessaire car l'historique est calculé à partir des transactions
--- et des cours historiques via Yahoo Finance API
+-- et des cours historiques via API de marché
 -- Gardée ici pour référence mais peut être supprimée
 
 -- CREATE TABLE IF NOT EXISTS portfolio_history (

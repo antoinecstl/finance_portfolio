@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { useToast } from './Toast';
 import { EditTransactionModal } from './EditTransactionModal';
+import { getApiErrorMessage } from '@/lib/api-errors';
 
 type TxStyle = {
   Icon: typeof ArrowDownLeft;
@@ -389,12 +390,12 @@ export function TransactionsList({
       });
       if (res.status === 409) {
         const data = await res.json().catch(() => ({}));
-        setDeleteError(data.reason ?? 'Suppression impossible : elle créerait un état invalide.');
+        setDeleteError(getApiErrorMessage(data, 'Suppression impossible : elle créerait un état invalide.', res.status));
         return;
       }
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setDeleteError(data.error ?? 'Erreur lors de la suppression.');
+        setDeleteError(getApiErrorMessage(data, 'Erreur lors de la suppression de la transaction.', res.status));
         return;
       }
       toast.show({ kind: 'success', message: 'Transaction supprimée.' });

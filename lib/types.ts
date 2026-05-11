@@ -95,8 +95,8 @@ export interface PortfolioHistory {
   created_at: string;
 }
 
-// Types pour l'API Yahoo Finance
-export interface YahooQuoteResponse {
+// Types pour l'API de cotation
+export interface QuoteApiResponse {
   quoteResponse: {
     result: Array<{
       symbol: string;

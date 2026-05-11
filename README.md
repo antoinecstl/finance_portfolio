@@ -4,7 +4,7 @@ Plateforme SaaS de suivi de patrimoine personnel :
 
 - 📊 **Dashboard** — vue d'ensemble (valorisation totale, P&L, répartition)
 - 💰 **Comptes multiples** — PEA, CTO, Livret A, LDDS, Assurance-Vie, PEL, autres
-- 📈 **Cours en temps réel** — Yahoo Finance (cache 60s)
+- 📈 **Cours en temps réel** — données de marché (cache 60s)
 - 📉 **Graphiques** — répartition par position, par secteur, historique
 - 📝 **Transactions & dividendes** — historique complet
 - 🔐 **Authentification Supabase** — session + RLS côté DB
@@ -36,7 +36,7 @@ finance_portfolio/
 │   │   ├── accounts/         # CRUD comptes
 │   │   ├── positions/
 │   │   ├── transactions/
-│   │   ├── stocks/           # quotes, search, history (Yahoo)
+│   │   ├── stocks/           # quotes, search, history
 │   │   ├── billing/portal/   # Paddle customer portal
 │   │   └── webhooks/paddle/  # webhook signé Paddle
 │   ├── auth/callback/        # callback OAuth Supabase
@@ -47,7 +47,7 @@ finance_portfolio/
 ├── lib/
 │   ├── auth.tsx              # AuthProvider (contexte session)
 │   ├── supabase/             # clients server + middleware
-│   ├── stock-api.ts          # Yahoo Finance (fetch timeout + cache)
+│   ├── stock-api.ts          # données de marché (fetch timeout + cache)
 │   ├── rate-limit.ts         # rate limiter in-memory
 │   ├── paddle.ts
 │   ├── plans.ts              # FREE / PRO (limites d'usage)
@@ -103,11 +103,11 @@ Voir [.env.example](./.env.example). En résumé :
 
 ## 📈 Cours boursiers
 
-Récupérés via Yahoo Finance. Les routes `/api/stocks/*` :
+Récupérés via une API de marché. Les routes `/api/stocks/*` :
 
 - sont **authentifiées** (401 sans session)
 - ont un **rate limit** par utilisateur (60 quotes/min, 30 search/min, 20 history/min)
-- utilisent **`next: { revalidate: 60 }`** côté fetch → cache 60s Yahoo par symbole
+- utilisent **`next: { revalidate: 60 }`** côté fetch → cache 60s par symbole
 - ont un **timeout** réseau (5s quotes/search, 10s history)
 
 Pour les actions françaises, suffixe `.PA` : `MC.PA` (LVMH), `OR.PA` (L'Oréal), `TTE.PA` (TotalEnergies), `AIR.PA` (Airbus)…

@@ -34,7 +34,7 @@ Particulier français, 25–45 ans, salarié ou indépendant, qui gère activeme
 
 **Canaux où il se trouve :** Reddit r/vosfinances, Twitter/X (communauté #FinancePersonnelle), YouTube (chaînes finance FR), forums Boursorama / MoneyVox, LinkedIn.
 
-**Stade d'achat :** Considération — il connaît le problème, cherche une solution, compare avec Excel ou des apps existantes (Finary, Wealthier, Yahoo Finance).
+**Stade d'achat :** Considération — il connaît le problème, cherche une solution, compare avec Excel ou des apps existantes (Finary, Wealthier).
 
 ### Profil secondaire — "Le débutant ambitieux"
 
@@ -57,7 +57,7 @@ Particulier français, 25–45 ans, salarié ou indépendant, qui gère activeme
 4. **Prix honnête** — "4,99 €/mois — soit moins qu'un café — pour un suivi de patrimoine complet et sans limite." *(ancre le prix Pro sur une référence accessible)*
 
 **Preuve / éléments de crédibilité :**
-- Cours boursiers Yahoo Finance en temps réel (avec suffixes .PA pour les actions françaises)
+- Cours boursiers en temps réel (avec suffixes .PA pour les actions françaises)
 - Support natif des enveloppes fiscales françaises : PEA, CTO, Livret A, LDDS, Assurance-Vie, PEL
 - Benchmark vs CAC 40 et S&P 500 intégré
 - Export CSV des transactions (plan Pro)
@@ -82,7 +82,7 @@ Avec aucun budget publicitaire, la stratégie repose à 100 % sur les canaux **o
 **Pourquoi :** La page existe déjà. C'est le canal le plus crédible pour un produit SaaS et l'audience finance-investissement y est active.
 
 **Format recommandé :**
-- Posts "coulisses du produit" — montrer des captures d'écran, expliquer une feature (ex : *"Comment on calcule le P&L en temps réel avec Yahoo Finance"*)
+- Posts "coulisses du produit" — montrer des captures d'écran, expliquer une feature (ex : *"Comment on calcule le P&L en temps réel avec les données de marché"*)
 - Posts pédagogiques — *"Pourquoi votre PEA et votre CTO ne devraient pas être suivis séparément"*
 - Posts de lancement et jalons — premiers utilisateurs, chiffres d'usage
 

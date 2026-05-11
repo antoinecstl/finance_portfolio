@@ -65,7 +65,7 @@ DROP POLICY IF EXISTS "Users can insert own transactions" ON transactions;
 DROP POLICY IF EXISTS "Users can update own transactions" ON transactions;
 DROP POLICY IF EXISTS "Users can delete own transactions" ON transactions;
 
--- NOTE: portfolio_history n'est plus utilisé (historique calculé via transactions + Yahoo Finance)
+-- NOTE: portfolio_history n'est plus utilisé (historique calculé via transactions + données de marché)
 
 -- Politiques pour accounts
 CREATE POLICY "Users can view own accounts" ON accounts

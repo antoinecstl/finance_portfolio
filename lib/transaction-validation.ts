@@ -1,5 +1,6 @@
 import type { Transaction } from './types';
 import { compareTransactionSequence } from './transaction-ordering';
+import { formatCurrency, formatDate, formatNumber, getTransactionTypeLabel } from './utils';
 
 export type ValidationFailure = {
   ok: false;
@@ -18,12 +19,31 @@ export type ValidationSuccess = { ok: true };
 
 export type ValidationResult = ValidationSuccess | ValidationFailure;
 
+function formatSequenceDate(date: string): string {
+  try {
+    return formatDate(`${date}T00:00:00`);
+  } catch {
+    return date;
+  }
+}
+
+function formatCashFailure(tx: Transaction, currency: string): string {
+  const amount = Math.abs(cashDelta(tx));
+  const label = getTransactionTypeLabel(tx.type).toLowerCase();
+  return `Solde ${currency} insuffisant au ${formatSequenceDate(tx.date)}. Cette opération (${label} de ${formatCurrency(amount, currency)}) dépasserait le solde disponible à cette date.`;
+}
+
+function formatShareFailure(tx: Transaction, symbol: string): string {
+  const quantity = Math.abs(sharesDelta(tx));
+  return `Position ${symbol} insuffisante au ${formatSequenceDate(tx.date)}. Cette vente de ${formatNumber(quantity, 4)} titres dépasserait la quantité disponible à cette date.`;
+}
+
 // Cash impact of a transaction on its account, dans sa devise source.
 // Les frais sont portés par une ligne FEE séparée (liée via fee_transaction_id) :
-// cette fonction n'en tient donc pas compte directement — elle verra la ligne FEE
+// cette fonction n'en tient donc pas compte directement. Elle verra la ligne FEE
 // passer dans la séquence et la traitera comme un débit standard.
-// CONVERSION : débit dans la devise source uniquement (le crédit cible est
-// appliqué séparément dans simulateAccountSequence).
+// CONVERSION : débit dans la devise source uniquement ; le crédit cible est
+// appliqué séparément dans simulateAccountSequence.
 export function cashDelta(tx: Transaction): number {
   const amount = Number(tx.amount) || 0;
   switch (tx.type) {
@@ -60,7 +80,6 @@ export function simulateAccountSequence(
   epsilon = 0.005
 ): ValidationResult {
   const ordered = [...txs].sort(compareTransactionSequence);
-  // Bucket cash par devise : EUR séparé d'USDC, etc.
   const cashByCurrency = new Map<string, number>();
   const shares = new Map<string, number>();
 
@@ -74,7 +93,7 @@ export function simulateAccountSequence(
         return {
           ok: false,
           code: tx.type === 'SELL' ? 'shares_negative' : 'orphan_sell',
-          reason: `Position insuffisante : ${symbol} descendrait à ${next.toFixed(4)} titres au ${tx.date}.`,
+          reason: formatShareFailure(tx, symbol),
           offendingTxId: tx.id,
           offendingDate: tx.date,
         };
@@ -89,14 +108,14 @@ export function simulateAccountSequence(
       return {
         ok: false,
         code: 'cash_negative',
-        reason: `Solde ${currency} négatif (${nextCash.toFixed(2)}) au ${tx.date} — la transaction ${tx.type} ${tx.id.slice(0, 8)} n'est plus finançable.`,
+        reason: formatCashFailure(tx, currency),
         offendingTxId: tx.id,
         offendingDate: tx.date,
       };
     }
     cashByCurrency.set(currency, nextCash);
 
-    // CONVERSION : crédite la devise cible.
+    // CONVERSION credits the target currency after the source debit.
     if (tx.type === 'CONVERSION' && tx.target_currency && tx.target_amount) {
       const targetCurrency = tx.target_currency.toUpperCase();
       const targetCurrent = cashByCurrency.get(targetCurrency) ?? 0;

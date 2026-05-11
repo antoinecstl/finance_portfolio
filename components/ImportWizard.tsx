@@ -7,6 +7,7 @@ import { useAccounts, useStockSearch, useTransactions } from '@/lib/hooks';
 import type { ProposedTransaction, ImportNote } from '@/lib/import/types';
 import type { Transaction, TransactionType } from '@/lib/types';
 import { accountSupportsPositions, accountTypeAllowsAsset, assetAccountMismatchMessage, formatCurrency, formatDate, isCryptoSymbol } from '@/lib/utils';
+import { getApiErrorMessage } from '@/lib/api-errors';
 import { findDuplicateTransaction } from '@/lib/transaction-duplicates';
 import { buildImportCashPreview } from '@/lib/import/cash-preview';
 
@@ -218,7 +219,7 @@ export function ImportWizard() {
   );
   const cashPreviewIssue = existingTxsLoading ? null : cashPreview.firstIssue;
 
-  // Vérifie un lot de tickers contre Yahoo via /api/stocks/quotes.
+  // Vérifie un lot de tickers via /api/stocks/quotes.
   // Marque comme 'pending' immédiatement, puis 'valid'/'invalid' selon réponse.
   const verifyTickers = useCallback(async (symbols: string[]) => {
     const cleaned = Array.from(
@@ -344,7 +345,7 @@ export function ImportWizard() {
       }
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setError(data.message ?? data.error ?? 'Erreur lors de l\'analyse.');
+        setError(getApiErrorMessage(data, 'Erreur lors de l\'analyse.', res.status));
         return;
       }
 
@@ -407,7 +408,7 @@ export function ImportWizard() {
   }, [rows, existingTxs, accountId, selectedAccount?.currency]);
 
   // Validation locale rapide pour griser le bouton commit s'il y a des lignes invalides.
-  // Inclut la vérification du ticker contre Yahoo : BUY/SELL/DIVIDEND avec un
+  // Inclut la vérification du ticker : BUY/SELL/DIVIDEND avec un
   // symbole non 'valid' (inconnu OU vérification en cours) bloque le commit.
   const invalidRows = useMemo(() => {
     const errors: number[] = [];
@@ -487,7 +488,7 @@ export function ImportWizard() {
       }
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setError(data.message ?? data.error ?? 'Erreur lors de l\'import.');
+        setError(getApiErrorMessage(data, 'Erreur lors de l\'import.', res.status));
         return;
       }
       const data = await res.json();

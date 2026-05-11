@@ -7,6 +7,7 @@ import { useStockSearch } from '@/lib/hooks';
 import { useLimitReached } from './LimitReachedModal';
 import { POPULAR_FRENCH_STOCKS, POPULAR_CRYPTOS } from '@/lib/stock-api';
 import { calculatePositionsAtDate } from '@/lib/portfolio-calculator';
+import { getApiErrorMessage } from '@/lib/api-errors';
 import {
   accountSupportsPositions,
   accountTypeAllowsAsset,
@@ -383,12 +384,12 @@ export function AddTransactionModal({
 
       if (res.status === 409) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.reason ?? 'État du compte invalide après cette transaction.');
+        throw new Error(getApiErrorMessage(data, 'État du compte invalide après cette transaction.', res.status));
       }
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error ?? 'Erreur lors de la création');
+        throw new Error(getApiErrorMessage(data, 'Erreur lors de la création de la transaction.', res.status));
       }
 
       const txPayload = await res.json().catch(() => ({}));

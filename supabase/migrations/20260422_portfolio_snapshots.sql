@@ -1,5 +1,5 @@
 -- Snapshots journaliers du portefeuille : évite de recalculer toute l'historique
--- (transactions + quotes Yahoo) à chaque chargement.
+-- (transactions + quotes de marché) à chaque chargement.
 --
 -- Stratégie :
 --  - une ligne par (user_id, date)

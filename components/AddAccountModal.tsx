@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { X } from 'lucide-react';
 import { AccountType } from '@/lib/types';
 import { useAuth } from '@/lib/auth';
+import { getApiErrorMessage } from '@/lib/api-errors';
 import { useLimitReached } from './LimitReachedModal';
 
 interface AddAccountModalProps {
@@ -85,7 +86,7 @@ export function AddAccountModal({ isOpen, onClose, onSuccess }: AddAccountModalP
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error ?? 'Erreur lors de la création');
+        throw new Error(getApiErrorMessage(data, 'Erreur lors de la création du compte.', res.status));
       }
 
       const payload = await res.json().catch(() => ({}));

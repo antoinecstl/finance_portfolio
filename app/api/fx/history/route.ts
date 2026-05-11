@@ -3,11 +3,11 @@ import { getMultipleHistoricalQuotes, type HistoricalQuote } from '@/lib/stock-a
 import { createClient } from '@/lib/supabase/server';
 import { rateLimit, clientKey } from '@/lib/rate-limit';
 import { isoDateSchema } from '@/lib/schemas';
-import { fxYahooSymbol, normalizeToFiat, BASE_CURRENCY } from '@/lib/fx';
+import { fxRateSymbol, normalizeToFiat, BASE_CURRENCY } from '@/lib/fx';
 
-// Renvoie les séries Yahoo `EUR{fiat}=X` pour une liste de devises. La route
+// Renvoie les séries FX `EUR{fiat}=X` pour une liste de devises. La route
 // /api/stocks/history rejette le `=` du symbole FX (regex stockSymbolSchema),
-// d'où cette route dédiée qui traduit code devise → symbole Yahoo en interne.
+// d'où cette route dédiée qui traduit code devise → symbole de marché en interne.
 
 const MAX_FIATS = 10;
 
@@ -90,24 +90,24 @@ export async function GET(request: NextRequest) {
 
   const symbolByFiat = new Map<string, string>();
   for (const fiat of fiats) {
-    const sym = fxYahooSymbol(fiat);
+    const sym = fxRateSymbol(fiat);
     if (sym) symbolByFiat.set(fiat, sym);
   }
 
   try {
     const symbols = Array.from(symbolByFiat.values());
-    const yahooData = await getMultipleHistoricalQuotes(
+    const marketData = await getMultipleHistoricalQuotes(
       symbols,
       parsedStartDate.data,
       parsedEndDate.data,
       '1d'
     );
 
-    // Réindexe par code fiat plutôt que par symbole Yahoo (côté client on
+    // Réindexe par code fiat plutôt que par symbole de marché (côté client on
     // pense en USD/GBP, pas en EURUSD=X).
     const result: Record<string, HistoricalQuote[]> = {};
     for (const [fiat, sym] of symbolByFiat.entries()) {
-      result[fiat] = yahooData[sym] ?? [];
+      result[fiat] = marketData[sym] ?? [];
     }
 
     return NextResponse.json(result);

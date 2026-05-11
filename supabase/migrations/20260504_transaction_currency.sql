@@ -7,7 +7,7 @@
 -- Modèle adopté : chaque transaction porte sa propre `currency` (ISO 4217). Les
 -- conversions de devise sont des transactions de type 'CONVERSION' qui débitent
 -- une devise et créditent une autre — le taux est implicite (target_amount /
--- amount), donc on garde le taux *réellement payé*, pas un taux Yahoo
+-- amount), donc on garde le taux *réellement payé*, pas un taux de marché
 -- approximatif. C'est la comptabilité en partie double appliquée aux devises.
 --
 -- Ex : EUR→USDC pour un trade Binance.

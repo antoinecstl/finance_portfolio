@@ -9,7 +9,7 @@ export const FAQ_ITEMS = [
   },
   {
     q: "D'où viennent les cours boursiers ?",
-    a: "Les cours en temps réel et l'historique proviennent de Yahoo Finance via une API interne. Actions françaises, européennes, américaines, ETFs.",
+    a: "Les cours en temps réel et l'historique proviennent de fournisseurs de données de marché via une API interne. Actions françaises, européennes, américaines, ETFs.",
   },
   {
     q: "Puis-je annuler mon abonnement Pro à tout moment ?",

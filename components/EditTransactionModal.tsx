@@ -6,6 +6,7 @@ import { Account, Transaction, TransactionType } from '@/lib/types';
 import { useStockSearch } from '@/lib/hooks';
 import { POPULAR_FRENCH_STOCKS, POPULAR_CRYPTOS } from '@/lib/stock-api';
 import { calculatePositionsAtDate } from '@/lib/portfolio-calculator';
+import { getApiErrorMessage } from '@/lib/api-errors';
 import {
   accountSupportsPositions,
   accountTypeAllowsAsset,
@@ -296,13 +297,11 @@ export function EditTransactionModal({
 
       if (res.status === 409) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(
-          data.reason ?? data.message ?? 'Cette modification rendrait la séquence du compte invalide.'
-        );
+        throw new Error(getApiErrorMessage(data, 'Cette modification rendrait la séquence du compte invalide.', res.status));
       }
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.message ?? data.error ?? 'Erreur lors de la modification');
+        throw new Error(getApiErrorMessage(data, 'Erreur lors de la modification de la transaction.', res.status));
       }
 
       await onSuccess();

@@ -2,7 +2,17 @@
 
 import { useState } from 'react';
 import { EnrichedAccount } from '@/lib/hooks';
-import { accountSupportsPositions, formatCurrency, formatCurrencyBreakdown, formatDate, getAccountTypeLabel } from '@/lib/utils';
+import type { AccountType } from '@/lib/types';
+import { getApiErrorMessage } from '@/lib/api-errors';
+import {
+  accountSupportsPositions,
+  canChangeAccountType,
+  defaultSupportsPositions,
+  formatCurrency,
+  formatCurrencyBreakdown,
+  formatDate,
+  getAccountTypeLabel,
+} from '@/lib/utils';
 import {
   Building2,
   Landmark,
@@ -18,8 +28,20 @@ import {
   Trash2,
   AlertTriangle,
   Coins,
+  Pencil,
 } from 'lucide-react';
 import { useToast } from './Toast';
+
+const accountTypeValues: AccountType[] = [
+  'PEA',
+  'LIVRET_A',
+  'LDDS',
+  'CTO',
+  'ASSURANCE_VIE',
+  'PEL',
+  'CRYPTO',
+  'AUTRE',
+];
 
 const accountIcons: Record<string, typeof Building2> = {
   PEA: Briefcase,
@@ -46,12 +68,14 @@ const accountColors: Record<string, string> = {
 interface AccountCardProps {
   account: EnrichedAccount;
   defaultExpanded?: boolean;
+  onRequestEdit?: (account: EnrichedAccount) => void;
   onRequestDelete?: (account: EnrichedAccount) => void;
 }
 
 export function AccountCard({
   account,
   defaultExpanded = false,
+  onRequestEdit,
   onRequestDelete,
 }: AccountCardProps) {
   const [expanded, setExpanded] = useState(defaultExpanded);
@@ -161,20 +185,174 @@ export function AccountCard({
             </div>
           </dl>
 
-          {onRequestDelete && (
-            <div className="mt-4 pt-3 border-t border-zinc-100 dark:border-zinc-800">
-              <button
-                type="button"
-                onClick={() => onRequestDelete(account)}
-                className="inline-flex items-center gap-2 text-xs sm:text-sm text-red-600 hover:text-red-700 font-medium"
-              >
-                <Trash2 className="h-4 w-4" />
-                Supprimer ce compte
-              </button>
+          {(onRequestEdit || onRequestDelete) && (
+            <div className="mt-4 pt-3 border-t border-zinc-100 dark:border-zinc-800 flex flex-wrap gap-3">
+              {onRequestEdit && (
+                <button
+                  type="button"
+                  onClick={() => onRequestEdit(account)}
+                  className="inline-flex items-center gap-2 text-xs sm:text-sm text-blue-600 hover:text-blue-700 font-medium"
+                >
+                  <Pencil className="h-4 w-4" />
+                  Modifier ce compte
+                </button>
+              )}
+              {onRequestDelete && (
+                <button
+                  type="button"
+                  onClick={() => onRequestDelete(account)}
+                  className="inline-flex items-center gap-2 text-xs sm:text-sm text-red-600 hover:text-red-700 font-medium"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Supprimer ce compte
+                </button>
+              )}
             </div>
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+function EditAccountDialog({
+  account,
+  busy,
+  error,
+  name,
+  setName,
+  type,
+  setType,
+  supportsPositions,
+  setSupportsPositions,
+  hasPositionActivity,
+  onCancel,
+  onConfirm,
+}: {
+  account: EnrichedAccount;
+  busy: boolean;
+  error: string | null;
+  name: string;
+  setName: (v: string) => void;
+  type: AccountType;
+  setType: (v: AccountType) => void;
+  supportsPositions: boolean;
+  setSupportsPositions: (v: boolean) => void;
+  hasPositionActivity: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const availableTypes = accountTypeValues.filter((value) => {
+    if (!canChangeAccountType(account.type, value)) return false;
+    if (!hasPositionActivity) return true;
+    return value === account.type || value === 'AUTRE' || defaultSupportsPositions(value);
+  });
+  const nextSupportsPositions = type === 'AUTRE' ? supportsPositions : defaultSupportsPositions(type);
+  const canSubmit =
+    name.trim().length > 0
+    && canChangeAccountType(account.type, type)
+    && (!hasPositionActivity || nextSupportsPositions)
+    && !busy;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+      <div className="absolute inset-0 bg-black/50" onClick={busy ? undefined : onCancel} />
+      <div className="relative bg-white dark:bg-zinc-900 rounded-t-xl sm:rounded-xl shadow-xl w-full sm:max-w-md mx-0 sm:mx-4 p-4 sm:p-6">
+        <h3 className="text-base sm:text-lg font-bold text-zinc-900 dark:text-zinc-100 mb-4">
+          Modifier le compte
+        </h3>
+
+        <form
+          className="space-y-3 sm:space-y-4"
+          onSubmit={(e) => {
+            e.preventDefault();
+            onConfirm();
+          }}
+        >
+          <div>
+            <label className="block text-xs sm:text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+              Nom du compte
+            </label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              disabled={busy}
+              required
+              className="w-full px-3 py-2 text-sm sm:text-base border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
+              autoFocus
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs sm:text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+              Type de compte
+            </label>
+            <select
+              value={type}
+              onChange={(e) => setType(e.target.value as AccountType)}
+              disabled={busy}
+              className="w-full px-3 py-2 text-sm sm:text-base border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
+            >
+              {availableTypes.map((value) => (
+                <option key={value} value={value}>
+                  {getAccountTypeLabel(value)}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {hasPositionActivity && (
+            <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 bg-zinc-50 dark:bg-zinc-800 p-2 sm:p-3 rounded-lg">
+              Ce compte contient déjà une activité titres. Seuls les types compatibles avec les positions sont disponibles.
+            </p>
+          )}
+
+          {type === 'AUTRE' && (
+            <label className="flex items-start gap-3 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 p-3 text-xs sm:text-sm text-zinc-700 dark:text-zinc-300">
+              <input
+                type="checkbox"
+                checked={supportsPositions}
+                onChange={(e) => setSupportsPositions(e.target.checked)}
+                disabled={busy}
+                className="mt-0.5 h-4 w-4 rounded border-zinc-300 text-blue-600 focus:ring-blue-500 disabled:opacity-50"
+              />
+              <span>
+                <span className="block font-medium text-zinc-900 dark:text-zinc-100">
+                  Ce compte peut d&eacute;tenir des positions
+                </span>
+                <span className="block mt-0.5 text-zinc-500 dark:text-zinc-400">
+                  Activez cette option pour un compte titres non standard.
+                </span>
+              </span>
+            </label>
+          )}
+
+          {error && (
+            <div className="p-2 rounded-lg bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-xs sm:text-sm text-red-700 dark:text-red-300">
+              {error}
+            </div>
+          )}
+
+          <div className="flex gap-2 sm:gap-3 pt-2">
+            <button
+              type="button"
+              onClick={onCancel}
+              disabled={busy}
+              className="flex-1 px-3 sm:px-4 py-2 text-sm sm:text-base border border-zinc-300 dark:border-zinc-700 rounded-lg text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-50 transition-colors"
+            >
+              Annuler
+            </button>
+            <button
+              type="submit"
+              disabled={!canSubmit}
+              className="flex-1 px-3 sm:px-4 py-2 text-sm sm:text-base bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            >
+              {busy ? 'Enregistrement...' : 'Enregistrer'}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }
@@ -260,15 +438,46 @@ function DeleteAccountDialog({
 
 interface AccountListProps {
   accounts: EnrichedAccount[];
+  positionActivityAccountIds?: ReadonlySet<string>;
+  onChanged?: () => void | Promise<void>;
   onDeleted?: () => void | Promise<void>;
 }
 
-export function AccountList({ accounts, onDeleted }: AccountListProps) {
+export function AccountList({
+  accounts,
+  positionActivityAccountIds,
+  onChanged,
+  onDeleted,
+}: AccountListProps) {
+  const onMutated = onChanged ?? onDeleted;
+  const [pendingEdit, setPendingEdit] = useState<EnrichedAccount | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editType, setEditType] = useState<AccountType>('LIVRET_A');
+  const [editSupportsPositions, setEditSupportsPositions] = useState(false);
+  const [editBusy, setEditBusy] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<EnrichedAccount | null>(null);
   const [confirmName, setConfirmName] = useState('');
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const toast = useToast();
+
+  const openEdit = (acc: EnrichedAccount) => {
+    setPendingEdit(acc);
+    setEditName(acc.name);
+    setEditType(acc.type);
+    setEditSupportsPositions(accountSupportsPositions(acc));
+    setEditError(null);
+  };
+
+  const cancelEdit = () => {
+    if (editBusy) return;
+    setPendingEdit(null);
+    setEditName('');
+    setEditType('LIVRET_A');
+    setEditSupportsPositions(false);
+    setEditError(null);
+  };
 
   const openDelete = (acc: EnrichedAccount) => {
     setPendingDelete(acc);
@@ -283,6 +492,55 @@ export function AccountList({ accounts, onDeleted }: AccountListProps) {
     setDeleteError(null);
   };
 
+  const confirmEdit = async () => {
+    if (!pendingEdit) return;
+
+    const nextName = editName.trim();
+    const hasPositionActivity = positionActivityAccountIds?.has(pendingEdit.id) ?? false;
+    const nextSupportsPositions = editType === 'AUTRE'
+      ? editSupportsPositions
+      : defaultSupportsPositions(editType);
+    if (!nextName) {
+      setEditError('Nom requis.');
+      return;
+    }
+    if (!canChangeAccountType(pendingEdit.type, editType)) {
+      setEditError('Un compte Crypto ne peut pas être transformé en compte classique, et inversement.');
+      return;
+    }
+
+    if (hasPositionActivity && !nextSupportsPositions) {
+      setEditError('Ce compte contient déjà une activité titres. Choisissez un type compatible avec les positions.');
+      return;
+    }
+
+    setEditBusy(true);
+    setEditError(null);
+    try {
+      const res = await fetch(`/api/accounts/${pendingEdit.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: nextName,
+          type: editType,
+          supports_positions: editType === 'AUTRE' ? editSupportsPositions : null,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setEditError(getApiErrorMessage(data, 'Erreur lors de la modification du compte.', res.status));
+        return;
+      }
+      toast.show({ kind: 'success', message: 'Compte modifié.' });
+      setPendingEdit(null);
+      await onMutated?.();
+    } catch (err) {
+      setEditError(err instanceof Error ? err.message : 'Erreur inattendue.');
+    } finally {
+      setEditBusy(false);
+    }
+  };
+
   const confirmDelete = async () => {
     if (!pendingDelete) return;
     setDeleteBusy(true);
@@ -295,13 +553,13 @@ export function AccountList({ accounts, onDeleted }: AccountListProps) {
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setDeleteError(data.reason ?? data.error ?? 'Erreur lors de la suppression.');
+        setDeleteError(getApiErrorMessage(data, 'Erreur lors de la suppression du compte.', res.status));
         return;
       }
       toast.show({ kind: 'success', message: 'Compte supprimé.' });
       setPendingDelete(null);
       setConfirmName('');
-      await onDeleted?.();
+      await onMutated?.();
     } catch (err) {
       setDeleteError(err instanceof Error ? err.message : 'Erreur inattendue.');
     } finally {
@@ -329,9 +587,26 @@ export function AccountList({ accounts, onDeleted }: AccountListProps) {
         <AccountCard
           key={account.id}
           account={account}
-          onRequestDelete={onDeleted ? openDelete : undefined}
+          onRequestEdit={onMutated ? openEdit : undefined}
+          onRequestDelete={onMutated ? openDelete : undefined}
         />
       ))}
+      {pendingEdit && (
+        <EditAccountDialog
+          account={pendingEdit}
+          busy={editBusy}
+          error={editError}
+          name={editName}
+          setName={setEditName}
+          type={editType}
+          setType={setEditType}
+          supportsPositions={editSupportsPositions}
+          setSupportsPositions={setEditSupportsPositions}
+          hasPositionActivity={positionActivityAccountIds?.has(pendingEdit.id) ?? false}
+          onCancel={cancelEdit}
+          onConfirm={confirmEdit}
+        />
+      )}
       {pendingDelete && (
         <DeleteAccountDialog
           account={pendingDelete}

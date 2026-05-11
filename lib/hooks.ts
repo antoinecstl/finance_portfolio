@@ -247,7 +247,7 @@ export function usePortfolioSummary(
       const currentPrice = quote?.price ?? position.average_price;
       const previousClose = quote?.previousClose || currentPrice;
       // `position.currency` est `'EUR'` par défaut en base même pour BTC-USD ou
-      // SOL-USD, donc la cotation Yahoo (`quote.currency`) est plus fiable.
+      // SOL-USD, donc la devise de cotation (`quote.currency`) est plus fiable.
       // Sans ça, un PRU stocké en USD est traité comme EUR et gonfle la +/- value.
       const tradeCurrency = (quote?.currency ?? position.currency ?? 'EUR').toUpperCase();
 
@@ -367,7 +367,7 @@ export function usePortfolioHistory(
       const { data: { user } } = await supabase.auth.getUser();
 
       // 1) Tentative de lecture du cache snapshots. Si on a couvert toute la plage,
-      // on évite l'appel Yahoo Finance et le recalcul complet.
+      // on évite l'appel de cotation et le recalcul complet.
       if (user) {
         const cached = await readSnapshots(user.id, startDate, endDate);
         if (cached.length > 0) {
@@ -385,7 +385,7 @@ export function usePortfolioHistory(
 
       let historicalQuotes: Record<string, HistoricalQuote[]> = {};
 
-      // Cours actions + taux FX en parallèle (deux requêtes Yahoo distinctes).
+      // Cours actions + taux FX en parallèle (deux requêtes de marché distinctes).
       const fxPromise = fetchFxRates(foreignFiats, startDate, endDate);
 
       if (symbols.length > 0) {

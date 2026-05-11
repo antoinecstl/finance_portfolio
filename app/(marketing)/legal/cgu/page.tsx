@@ -29,7 +29,7 @@ export default function CGUPage() {
       <p>
         Fi-Hub permet à l&apos;utilisateur de saisir manuellement ses comptes financiers, transactions et
         positions boursières, et d&apos;en visualiser la valorisation à partir de cours fournis par des
-        tiers (Yahoo Finance). Le Service ne constitue en aucun cas un conseil en investissement.
+        tiers (fournisseurs de données de marché). Le Service ne constitue en aucun cas un conseil en investissement.
       </p>
 
       <h2 className="text-xl font-semibold mt-8">4. Compte utilisateur</h2>

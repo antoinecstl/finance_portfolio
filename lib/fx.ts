@@ -38,10 +38,10 @@ export function isSupportedFiat(currency: string): boolean {
 }
 
 /**
- * Symbole Yahoo Finance pour le taux EUR ↔ {fiat}. Renvoie null pour la devise
- * de base. Convention Yahoo : `EURUSD=X` ⇒ close = USD pour 1 EUR.
+ * Symbole de marché pour le taux EUR ↔ {fiat}. Renvoie null pour la devise
+ * de base. Convention : `EURUSD=X` ⇒ close = USD pour 1 EUR.
  */
-export function fxYahooSymbol(fiatCode: string): string | null {
+export function fxRateSymbol(fiatCode: string): string | null {
   const normalized = normalizeToFiat(fiatCode);
   if (normalized === BASE_CURRENCY) return null;
   return `${BASE_CURRENCY}${normalized}=X`;
@@ -69,7 +69,7 @@ export function uniqueForeignFiats(
 }
 
 /**
- * Convertit `amount` libellé en `currency` vers EUR au taux Yahoo le plus
+ * Convertit `amount` libellé en `currency` vers EUR au taux de marché le plus
  * proche de `date`. Si pas de série dispo (devise inconnue, bug réseau), on
  * fallback à l'identité 1:1 — meilleur que zéroïser le portefeuille.
  *

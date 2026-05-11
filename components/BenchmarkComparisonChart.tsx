@@ -241,7 +241,7 @@ export function BenchmarkComparisonChart({
           {isMultiCurrency && (
             <span
               className="text-[10px] sm:text-xs px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300"
-              title="Les buckets non-EUR (USDC, USD, …) sont convertis en EUR au taux Yahoo du jour. Les stablecoins sont peggés 1:1 sur leur fiat."
+              title="Les buckets non-EUR (USDC, USD, …) sont convertis en EUR au taux de marché du jour. Les stablecoins sont peggés 1:1 sur leur fiat."
             >
               Valeurs converties en EUR
             </span>

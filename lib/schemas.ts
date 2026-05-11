@@ -11,7 +11,7 @@ export const transactionTypeSchema = z.enum([
   'DEPOSIT', 'WITHDRAWAL', 'BUY', 'SELL', 'DIVIDEND', 'INTEREST', 'FEE', 'CONVERSION',
 ]);
 
-// Un symbole Yahoo Finance est alphanumérique + points/tirets (ex. "AAPL", "MC.PA", "BRK-B").
+// Un symbole de marché est alphanumérique + points/tirets (ex. "AAPL", "MC.PA", "BRK-B").
 // Limite à 15 char pour laisser de la marge (symboles européens ~6-7 char).
 // Volontairement strict (mirror de la contrainte DB transactions_stock_symbol_format) :
 // pas de `^` ici car on ne stocke pas d'indices.
@@ -23,7 +23,7 @@ export const stockSymbolSchema = z
   .regex(/^[A-Za-z0-9.\-]+$/, 'Symbole invalide (A-Z, 0-9, . et - uniquement)')
   .transform((s) => s.toUpperCase());
 
-// Schéma plus permissif réservé aux lookups Yahoo (cours, historique, benchmarks).
+// Schéma plus permissif réservé aux lookups de marché (cours, historique, benchmarks).
 // Accepte un préfixe `^` optionnel pour les indices (^FCHI, ^GSPC, ^NDX, ...).
 // À NE PAS utiliser pour les transactions/positions persistées en BDD.
 export const stockLookupSymbolSchema = z
@@ -102,6 +102,13 @@ export const createAccountSchema = z.object({
   supports_positions: z.boolean().nullable().optional(),
 });
 export type CreateAccountInput = z.infer<typeof createAccountSchema>;
+
+export const updateAccountSchema = z.object({
+  name: z.string().trim().min(1, 'Nom requis').max(100, 'Nom trop long'),
+  type: accountTypeSchema,
+  supports_positions: z.boolean().nullable().optional(),
+});
+export type UpdateAccountInput = z.infer<typeof updateAccountSchema>;
 
 // Transaction : montants positifs (le signe est déterminé par le type de transaction).
 // Les frais peuvent être 0 ou positifs. La devise est optionnelle (défaut côté

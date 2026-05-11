@@ -2295,7 +2295,7 @@ export function PortfolioPerformanceChart({
         {isMultiCurrency && (
           <span
             className="text-[10px] sm:text-xs px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300"
-            title="Les buckets non-EUR (USDC, USD, …) sont convertis en EUR au taux Yahoo du jour. Les stablecoins sont peggés 1:1 sur leur fiat."
+            title="Les buckets non-EUR (USDC, USD, …) sont convertis en EUR au taux de marché du jour. Les stablecoins sont peggés 1:1 sur leur fiat."
           >
             Valeurs converties en EUR
           </span>
@@ -2444,7 +2444,7 @@ export function PortfolioPerformanceChart({
                 <td className={`py-2 px-3 text-right font-bold ${year.gainLossPercent >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                   {year.gainLossPercent >= 0 ? '+' : ''}{year.gainLossPercent.toFixed(2)}%
                 </td>
-                <td className="py-2 px-3 text-right text-blue-600">
+                <td className="py-2 px-3 text-right font-medium text-[color:var(--gain)]">
                   +{formatCurrency(year.dividends)}
                 </td>
               </tr>
@@ -2492,7 +2492,7 @@ export function PortfolioPerformanceChart({
               <td className={`py-2 px-3 text-right ${performance.absoluteGainPercent >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                 {performance.absoluteGainPercent >= 0 ? '+' : ''}{performance.absoluteGainPercent.toFixed(2)}%
               </td>
-              <td className="py-2 px-3 text-right text-blue-600">
+              <td className="py-2 px-3 text-right font-medium text-[color:var(--gain)]">
                 +{formatCurrency(performance.totalDividends)}
               </td>
             </tr>

@@ -13,7 +13,7 @@ type Props = {
 type State = { error: Error | null };
 
 // Error boundary React classique : cible chaque section du Dashboard pour qu'une
-// erreur isolée (ex: Yahoo timeout sur un chart) n'abatte pas tout l'écran.
+// erreur isolée (ex: timeout sur un chart) n'abatte pas tout l'écran.
 export class ErrorBoundary extends Component<Props, State> {
   state: State = { error: null };
 

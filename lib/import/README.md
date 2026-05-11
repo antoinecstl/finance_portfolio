@@ -57,7 +57,7 @@ Les PDF (souvent des scans de relevés bancaires) sont envoyés à
 extraction structurée en **un seul appel**. Pas de pipeline `pdfjs → LLM` :
 - Le schéma JSON strict ([ocr.ts:28](ocr.ts#L28)) impose la forme de sortie.
 - Toute la guidance d'extraction (mapping FR → types, conversion ISIN →
-  ticker Yahoo, format de date) tient dans les `description` des champs car
+  ticker de marché, format de date) tient dans les `description` des champs car
   Mistral OCR n'a pas de "system prompt" séparé.
 - La sortie est validée par Zod ([ocr.ts:112](ocr.ts#L112)) — si le schéma
   diverge, on remonte une erreur typée plutôt que d'invent des données.
@@ -103,7 +103,7 @@ a un index unique `(user_id, idempotency_key)` :
 | Appartenance compte     | Vérif `account.user_id === user.id` avant LLM        |
 | Validation des lignes   | Zod strict côté `/commit` (`createTransactionSchema`) |
 | Quotas plan             | Pré-check côté API + re-vérif atomique côté RPC      |
-| Tickers inconnus        | `getStockQuotes` Yahoo → 422 si symbole non reconnu  |
+| Tickers inconnus        | `getStockQuotes` → 422 si symbole non reconnu  |
 | Compatibilité compte    | Asset/account match (PEA ↔ actions UE, etc.)         |
 
 ## Configuration
@@ -181,7 +181,7 @@ Idem pour OCR : implémenter `OCRProvider` ([ocr.ts:17](ocr.ts#L17)).
 |        | `account_does_not_support_positions` |                                                 |
 | 404    | `job_not_found`                      | Job inexistant ou pas à l'utilisateur           |
 | 409    | `job_already_committed`              | Status ≠ previewing                             |
-| 422    | `unknown_symbols`                    | Ticker non reconnu par Yahoo                    |
+| 422    | `unknown_symbols`                    | Ticker non reconnu                              |
 | 500    | `internal_error`                     | RPC en erreur (job marqué `failed`)             |
 
 ## Fichiers

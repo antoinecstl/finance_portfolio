@@ -70,6 +70,47 @@ describe('simulateAccountSequence', () => {
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.code).toBe('cash_negative');
+      expect(result.reason).toContain('Solde EUR insuffisant au 01/01/2026');
+    }
+  });
+
+  it('formats pending withdrawal failures without leaking implementation ids', () => {
+    const result = simulateAccountSequence([
+      tx({
+        id: '__pending_tx__',
+        type: 'WITHDRAWAL',
+        amount: 11111111111111111,
+        currency: 'EUR',
+        date: '2026-05-07',
+      }),
+    ]);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.reason).toContain('Solde EUR insuffisant au 07/05/2026');
+      expect(result.reason).toContain('retrait');
+      expect(result.reason).not.toContain('__pending');
+      expect(result.reason).not.toContain('WITHDRAWAL');
+    }
+  });
+
+  it('formats share failures without raw negative balances', () => {
+    const result = simulateAccountSequence([
+      tx({
+        id: '__pending_tx__',
+        type: 'SELL',
+        amount: 100,
+        stock_symbol: 'AAPL',
+        quantity: 2,
+      }),
+    ]);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.reason).toContain('Position AAPL insuffisante');
+      expect(result.reason).toContain('vente de 2,0000 titres');
+      expect(result.reason).not.toContain('__pending');
+      expect(result.reason).not.toContain('descendrait');
     }
   });
 });

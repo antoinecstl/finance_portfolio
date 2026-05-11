@@ -303,7 +303,7 @@ function sumCurrencyBucketsInBase(
  * Devise effective de chaque position, dérivée des transactions BUY (la première
  * vue gagne — un même symbole ne devrait pas changer de devise dans la vraie vie).
  * Sert à savoir dans quelle devise sont libellées les valeurs `quote.close *
- * quantity` que retourne Yahoo, donc à les convertir en EUR proprement.
+ * quantity` que retourne l'API de marché, donc à les convertir en EUR proprement.
  */
 function buildPositionCurrencyMap(transactions: Transaction[]): Map<string, string> {
   const stateBySymbol = new Map<string, { quantity: number; currency?: string }>();
@@ -367,7 +367,7 @@ export function calculatePortfolioHistory(
   const stockTransactions = transactions.filter(t => stockAccountIds.has(t.account_id));
 
   // Devise de référence par symbole (USDC, USD, EUR…). Capturée une fois.
-  // Yahoo renvoie `quote.close` dans la devise native du ticker (ex: USD pour
+  // L'API de marché renvoie `quote.close` dans la devise native du ticker (ex: USD pour
   // BTC-USD). On utilise la devise des transactions BUY pour aligner et
   // convertir en EUR via le taux du jour.
   const symbolCurrency = buildPositionCurrencyMap(stockTransactions);
@@ -401,7 +401,7 @@ export function calculatePortfolioHistory(
     });
 
     // Calculer le cash disponible sur les comptes PEA/CTO à cette date,
-    // converti en EUR bucket par bucket (USDC → USD → EUR via Yahoo). Sans
+    // converti en EUR bucket par bucket (USDC → USD → EUR via taux de marché). Sans
     // fxRates fournis, on retombe sur la sommation simple-additive.
     let stockAccountsCash = 0;
     for (const acc of stockAccounts) {

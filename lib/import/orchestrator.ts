@@ -93,7 +93,7 @@ function normalizeExtractedTransactions(
       nextNotes.push({
         code: 'conversion_normalized',
         row: index,
-        message: `Paire de devises détectée${pair ? ` (${pair.base}/${pair.quote})` : ''} : ligne traitée comme conversion, sans ticker Yahoo.`,
+        message: `Paire de devises détectée${pair ? ` (${pair.base}/${pair.quote})` : ''} : ligne traitée comme conversion, sans ticker.`,
       });
     }
 

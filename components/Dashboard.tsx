@@ -68,6 +68,18 @@ export function Dashboard() {
 
   // Positions enrichies avec quantites calculees depuis les transactions
   const enrichedPositions = usePositionsWithCalculatedValues(transactions);
+  const positionActivityAccountIds = useMemo(() => {
+    const ids = new Set<string>();
+    transactions.forEach((transaction) => {
+      if (transaction.type === 'BUY' || transaction.type === 'SELL' || transaction.type === 'DIVIDEND') {
+        ids.add(transaction.account_id);
+      }
+    });
+    enrichedPositions.forEach((position) => {
+      ids.add(position.account_id);
+    });
+    return ids;
+  }, [transactions, enrichedPositions]);
 
   // Extraire les symboles pour les cotations (positions derivees + transactions)
   const symbols = useMemo(() => {
@@ -369,7 +381,11 @@ export function Dashboard() {
                 </div>
                 <div className="w-full max-w-full overflow-hidden">
                   <ErrorBoundary label="Comptes">
-                    <AccountList accounts={enrichedAccounts} onDeleted={handleMutationSuccess} />
+                    <AccountList
+                      accounts={enrichedAccounts}
+                      positionActivityAccountIds={positionActivityAccountIds}
+                      onChanged={handleMutationSuccess}
+                    />
                   </ErrorBoundary>
                 </div>
               </div>
@@ -418,7 +434,11 @@ export function Dashboard() {
                 <span>Ajouter un compte</span>
               </button>
             </div>
-            <AccountList accounts={enrichedAccounts} onDeleted={handleMutationSuccess} />
+            <AccountList
+              accounts={enrichedAccounts}
+              positionActivityAccountIds={positionActivityAccountIds}
+              onChanged={handleMutationSuccess}
+            />
           </div>
         )}
 

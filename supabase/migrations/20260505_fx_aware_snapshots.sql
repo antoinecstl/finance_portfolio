@@ -6,7 +6,7 @@
 -- déjà cachés portent ces valeurs faussées.
 --
 -- À partir de cette migration : on convertit chaque bucket et chaque position
--- en EUR au taux Yahoo du jour. On vide donc les snapshots existants pour
+-- en EUR au taux de marché du jour. On vide donc les snapshots existants pour
 -- forcer un recompute au prochain accès — le trigger habituel n'est pas
 -- déclenché ici puisque les transactions n'ont pas changé.
 

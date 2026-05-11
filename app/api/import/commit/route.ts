@@ -193,7 +193,7 @@ export async function POST(request: Request) {
             .map(({ tx, row }) => ({
               row,
               path: 'stock_symbol',
-              message: `Ticker non reconnu par Yahoo Finance : ${tx.stock_symbol}`,
+              message: `Ticker non reconnu : ${tx.stock_symbol}`,
             })),
           message: `Ticker non reconnu : ${unknownSymbols.join(', ')}. Corrigez le symbole avant de valider l'import.`,
         },

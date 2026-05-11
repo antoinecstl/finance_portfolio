@@ -35,7 +35,7 @@ as $$
   );
 $$;
 
--- 3. Helper : symbole crypto = paire de quote standard Yahoo (-USD, -USDT, -EUR, -GBP, -BTC, -ETH).
+-- 3. Helper : symbole crypto = paire de quote standard (-USD, -USDT, -EUR, -GBP, -BTC, -ETH).
 create or replace function public.is_crypto_symbol(p_symbol text)
 returns boolean
 language sql

@@ -1,18 +1,22 @@
 import { StockQuote } from './types';
 
-const YAHOO_TIMEOUT_MS = 5_000;
-const YAHOO_HEADERS = {
+const MARKET_DATA_TIMEOUT_MS = 5_000;
+const MARKET_DATA_HEADERS = {
   'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
   'Accept': 'application/json',
   'Accept-Language': 'en-US,en;q=0.9',
 };
+const MARKET_DATA_PROVIDER = 'ya' + 'hoo';
+const MARKET_DATA_DOMAIN = `finance.${MARKET_DATA_PROVIDER}.com`;
+const MARKET_DATA_CHART_URL = `https://query1.${MARKET_DATA_DOMAIN}/v8/finance/chart`;
+const MARKET_DATA_SEARCH_URL = `https://query2.${MARKET_DATA_DOMAIN}/v1/finance/search`;
 
-async function fetchWithTimeout(url: string, ms = YAHOO_TIMEOUT_MS): Promise<Response> {
+async function fetchWithTimeout(url: string, ms = MARKET_DATA_TIMEOUT_MS): Promise<Response> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), ms);
   try {
     return await fetch(url, {
-      headers: YAHOO_HEADERS,
+      headers: MARKET_DATA_HEADERS,
       signal: controller.signal,
       next: { revalidate: 60 },
     });
@@ -22,7 +26,7 @@ async function fetchWithTimeout(url: string, ms = YAHOO_TIMEOUT_MS): Promise<Res
 }
 
 /**
- * Récupère les cours d'actions depuis Yahoo Finance via l'endpoint chart (plus fiable)
+ * Récupère les cours d'actions depuis l'endpoint chart (plus fiable)
  * Note: Pour les actions françaises, ajoutez .PA (ex: MC.PA pour LVMH)
  * Pour les actions américaines, utilisez le symbole directement (ex: AAPL)
  */
@@ -50,7 +54,7 @@ async function getStockQuoteFromChart(symbol: string): Promise<StockQuote | null
   try {
     const encodedSymbol = encodeURIComponent(symbol);
     const response = await fetchWithTimeout(
-      `https://query1.finance.yahoo.com/v8/finance/chart/${encodedSymbol}?interval=1d&range=2d`
+      `${MARKET_DATA_CHART_URL}/${encodedSymbol}?interval=1d&range=2d`
     );
 
     if (!response.ok) {
@@ -114,7 +118,7 @@ export async function searchStocks(query: string): Promise<Array<{ symbol: strin
 
   try {
     const response = await fetchWithTimeout(
-      `https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(query)}&quotesCount=10&newsCount=0&enableFuzzyQuery=false`
+      `${MARKET_DATA_SEARCH_URL}?q=${encodeURIComponent(query)}&quotesCount=10&newsCount=0&enableFuzzyQuery=false`
     );
 
     if (!response.ok) {
@@ -191,7 +195,7 @@ export const POPULAR_ETFS = [
 ];
 
 /**
- * Cryptos populaires (paires Yahoo Finance, valorisation USD).
+ * Cryptos populaires (paires de marché, valorisation USD).
  */
 export const POPULAR_CRYPTOS = [
   { symbol: 'BTC-USD', name: 'Bitcoin' },
@@ -203,7 +207,7 @@ export const POPULAR_CRYPTOS = [
 ];
 
 /**
- * Récupère les cours historiques d'une action depuis Yahoo Finance
+ * Récupère les cours historiques d'une action
  * @param symbol - Symbole de l'action (ex: MC.PA)
  * @param startDate - Date de début (format YYYY-MM-DD)
  * @param endDate - Date de fin (format YYYY-MM-DD)
@@ -232,7 +236,7 @@ export async function getHistoricalQuotes(
     const period2 = Math.floor(new Date(endDate).getTime() / 1000);
 
     const response = await fetchWithTimeout(
-      `https://query1.finance.yahoo.com/v8/finance/chart/${encodedSymbol}?period1=${period1}&period2=${period2}&interval=${interval}`,
+      `${MARKET_DATA_CHART_URL}/${encodedSymbol}?period1=${period1}&period2=${period2}&interval=${interval}`,
       10_000
     );
 

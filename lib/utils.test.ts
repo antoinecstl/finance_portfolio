@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { isCryptoSymbol, accountTypeAllowsAsset, defaultSupportsPositions, formatCurrency, formatCurrencyBreakdown } from './utils';
+import {
+  isCryptoSymbol,
+  accountTypeAllowsAsset,
+  canChangeAccountType,
+  defaultSupportsPositions,
+  formatCurrency,
+  formatCurrencyBreakdown,
+} from './utils';
 
 describe('isCryptoSymbol', () => {
   it.each(['BTC-USD', 'eth-usd', 'SOL-USDT', 'XRP-EUR', 'ADA-GBP', 'ETH-BTC'])(
@@ -48,6 +55,19 @@ describe('defaultSupportsPositions', () => {
     expect(defaultSupportsPositions('LDDS')).toBe(false);
     expect(defaultSupportsPositions('PEL')).toBe(false);
     expect(defaultSupportsPositions('AUTRE')).toBe(false);
+  });
+});
+
+describe('canChangeAccountType', () => {
+  it('allows non-crypto account type changes', () => {
+    expect(canChangeAccountType('PEA', 'CTO')).toBe(true);
+    expect(canChangeAccountType('LIVRET_A', 'AUTRE')).toBe(true);
+  });
+
+  it('keeps CRYPTO isolated from regular account types', () => {
+    expect(canChangeAccountType('CRYPTO', 'CRYPTO')).toBe(true);
+    expect(canChangeAccountType('CRYPTO', 'CTO')).toBe(false);
+    expect(canChangeAccountType('PEA', 'CRYPTO')).toBe(false);
   });
 });
 

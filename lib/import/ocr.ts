@@ -79,7 +79,7 @@ const OCR_EXTRACTION_SCHEMA = {
           stock_symbol: {
             type: ['string', 'null'],
             description:
-              "Pour BUY/SELL/DIVIDEND uniquement : ticker Yahoo Finance (suffixes .PA Euronext Paris, .DE Xetra, .L London, .MI Milan, .SW SIX). Convertis l'ISIN en ticker quand possible. Si l'ISIN est inconnu, mets null et signale-le dans notes. Null pour DEPOSIT/WITHDRAWAL/INTEREST/FEE/CONVERSION. Pour une paire devise↔stable type EURUSDC/USDEUR/USDCUSDT, mets type=CONVERSION et stock_symbol=null ; n'utilise jamais '-USD' comme ticker par défaut.",
+              "Pour BUY/SELL/DIVIDEND uniquement : ticker de marché (suffixes .PA Euronext Paris, .DE Xetra, .L London, .MI Milan, .SW SIX). Convertis l'ISIN en ticker quand possible. Si l'ISIN est inconnu, mets null et signale-le dans notes. Null pour DEPOSIT/WITHDRAWAL/INTEREST/FEE/CONVERSION. Pour une paire devise↔stable type EURUSDC/USDEUR/USDCUSDT, mets type=CONVERSION et stock_symbol=null ; n'utilise jamais '-USD' comme ticker par défaut.",
           },
           quantity: {
             type: ['number', 'null'],

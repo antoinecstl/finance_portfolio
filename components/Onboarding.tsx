@@ -11,6 +11,7 @@ import {
   Loader2,
   Check,
 } from 'lucide-react';
+import { getApiErrorMessage } from '@/lib/api-errors';
 
 export function Onboarding({ email }: { email: string }) {
   const [step, setStep] = useState(0);
@@ -33,7 +34,7 @@ export function Onboarding({ email }: { email: string }) {
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({ error: 'Erreur' }));
-        throw new Error(data.error ?? 'Erreur');
+        throw new Error(getApiErrorMessage(data, 'Erreur lors de la configuration du compte.', res.status));
       }
       router.refresh();
     } catch (e) {
@@ -133,7 +134,7 @@ export function Onboarding({ email }: { email: string }) {
                       2. Saisissez vos positions et transactions
                     </p>
                     <p className="text-sm text-[color:var(--ink-soft)]">
-                      Vos titres sont valorisés en temps réel via Yahoo Finance.
+                      Vos titres sont valorisés en temps réel via des données de marché.
                     </p>
                   </div>
                 </li>

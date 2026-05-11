@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   BASE_CURRENCY,
   convertToBase,
-  fxYahooSymbol,
+  fxRateSymbol,
   normalizeToFiat,
   uniqueForeignFiats,
 } from './fx';
@@ -35,18 +35,18 @@ describe('normalizeToFiat', () => {
   });
 });
 
-describe('fxYahooSymbol', () => {
+describe('fxRateSymbol', () => {
   it('builds EUR{X}=X for non-base fiats', () => {
-    expect(fxYahooSymbol('USD')).toBe('EURUSD=X');
-    expect(fxYahooSymbol('GBP')).toBe('EURGBP=X');
+    expect(fxRateSymbol('USD')).toBe('EURUSD=X');
+    expect(fxRateSymbol('GBP')).toBe('EURGBP=X');
   });
 
   it('returns null for the base currency', () => {
-    expect(fxYahooSymbol('EUR')).toBeNull();
+    expect(fxRateSymbol('EUR')).toBeNull();
   });
 
   it('normalizes stablecoins before building the symbol', () => {
-    expect(fxYahooSymbol('USDC')).toBe('EURUSD=X');
+    expect(fxRateSymbol('USDC')).toBe('EURUSD=X');
   });
 });
 

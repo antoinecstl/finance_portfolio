@@ -168,7 +168,7 @@ export function accountSupportsPositions(account: Pick<Account, 'type' | 'suppor
 }
 
 // Détection : un symbole est crypto si son suffixe -USD/-USDT/-EUR/-GBP/-BTC/-ETH
-// correspond à une paire de quote Yahoo (ex: BTC-USD, ETH-USDT). Les actions
+// correspond à une paire de cotation (ex: BTC-USD, ETH-USDT). Les actions
 // utilisent des suffixes de bourse (.PA, .L, .DE, ...) qui ne matchent pas.
 const CRYPTO_QUOTE_SUFFIXES = /-(USD|USDT|EUR|GBP|BTC|ETH)$/i;
 
@@ -188,6 +188,10 @@ export function accountTypeAllowsAsset(
   const isCrypto = isCryptoSymbol(stockSymbol);
   if (accountType === 'CRYPTO') return isCrypto;
   return !isCrypto;
+}
+
+export function canChangeAccountType(currentType: AccountType, nextType: AccountType): boolean {
+  return currentType === nextType || (currentType !== 'CRYPTO' && nextType !== 'CRYPTO');
 }
 
 export function assetAccountMismatchMessage(accountType: AccountType): string {

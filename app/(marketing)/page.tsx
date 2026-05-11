@@ -35,30 +35,30 @@ export const metadata: Metadata = {
     url: SITE_URL,
     title: 'Fi-Hub — Le journal de votre patrimoine, tenu en temps réel',
     description:
-      "Regroupez tous vos comptes français. Import en un clic, valorisation Yahoo Finance, dividendes, benchmark CAC 40 / S&P 500.",
+      "Regroupez tous vos comptes français. Import en un clic, valorisation en temps réel, dividendes, benchmark CAC 40 / S&P 500.",
   },
 };
 
-/* ─────────── Ticker tape data (fallback, rafraîchi via Yahoo Finance) ─────────── */
+/* ─────────── Ticker tape data (fallback, rafraîchi via l'API de marché) ─────────── */
 type TickerItem = {
   sym: string;
-  yahoo: string;
+  symbol: string;
   val: string;
   delta: string;
   up: boolean;
 };
 
 const TICKER: TickerItem[] = [
-  { sym: 'CAC 40', yahoo: '^FCHI', val: '7 924,12', delta: '+0,42%', up: true },
-  { sym: 'S&P 500', yahoo: '^GSPC', val: '5 287,40', delta: '+0,18%', up: true },
-  { sym: 'MC.PA', yahoo: 'MC.PA', val: '702,30', delta: '−0,51%', up: false },
-  { sym: 'ASML.AS', yahoo: 'ASML.AS', val: '987,60', delta: '+1,24%', up: true },
-  { sym: 'CW8.PA', yahoo: 'CW8.PA', val: '631,84', delta: '+0,33%', up: true },
-  { sym: 'AAPL', yahoo: 'AAPL', val: '224,18', delta: '+0,07%', up: true },
-  { sym: 'BNP.PA', yahoo: 'BNP.PA', val: '64,12', delta: '−0,22%', up: false },
-  { sym: 'AIR.PA', yahoo: 'AIR.PA', val: '178,94', delta: '+0,68%', up: true },
-  { sym: 'TTE.PA', yahoo: 'TTE.PA', val: '60,28', delta: '+0,15%', up: true },
-  { sym: 'NVDA', yahoo: 'NVDA', val: '887,40', delta: '+1,92%', up: true },
+  { sym: 'CAC 40', symbol: '^FCHI', val: '7 924,12', delta: '+0,42%', up: true },
+  { sym: 'S&P 500', symbol: '^GSPC', val: '5 287,40', delta: '+0,18%', up: true },
+  { sym: 'MC.PA', symbol: 'MC.PA', val: '702,30', delta: '−0,51%', up: false },
+  { sym: 'ASML.AS', symbol: 'ASML.AS', val: '987,60', delta: '+1,24%', up: true },
+  { sym: 'CW8.PA', symbol: 'CW8.PA', val: '631,84', delta: '+0,33%', up: true },
+  { sym: 'AAPL', symbol: 'AAPL', val: '224,18', delta: '+0,07%', up: true },
+  { sym: 'BNP.PA', symbol: 'BNP.PA', val: '64,12', delta: '−0,22%', up: false },
+  { sym: 'AIR.PA', symbol: 'AIR.PA', val: '178,94', delta: '+0,68%', up: true },
+  { sym: 'TTE.PA', symbol: 'TTE.PA', val: '60,28', delta: '+0,15%', up: true },
+  { sym: 'NVDA', symbol: 'NVDA', val: '887,40', delta: '+1,92%', up: true },
 ];
 
 const NUMBER_FORMATTER = new Intl.NumberFormat('fr-FR', {
@@ -93,13 +93,13 @@ function buildTickerItem(item: TickerItem, quote?: StockQuote): TickerItem {
 
 async function getTickerTape(): Promise<TickerItem[]> {
   try {
-    const quotes = await getStockQuotes(TICKER.map((item) => item.yahoo));
+    const quotes = await getStockQuotes(TICKER.map((item) => item.symbol));
     const quotesBySymbol = new Map(
       quotes.map((quote) => [tickerQuoteKey(quote.symbol), quote])
     );
 
     return TICKER.map((item) =>
-      buildTickerItem(item, quotesBySymbol.get(tickerQuoteKey(item.yahoo)))
+      buildTickerItem(item, quotesBySymbol.get(tickerQuoteKey(item.symbol)))
     );
   } catch (error) {
     console.error('Marketing ticker refresh failed:', error);
@@ -165,7 +165,7 @@ function buildJsonLd() {
     ],
     featureList: [
       'Suivi PEA, CTO, livrets, assurance-vie',
-      'Cours en temps réel via Yahoo Finance',
+      'Cours en temps réel',
       'Module dividendes',
       'Historique complet du portefeuille',
       'Import de transactions avec reconnaissance de tickers',
@@ -336,7 +336,7 @@ export default async function LandingPage() {
             </h3>
             <p className="text-[15px] leading-relaxed text-[color:var(--ink-2)] mb-6">
               Glissez votre relevé Bourse Direct, Boursorama, Trade Republic ou Degiro.
-              Fi-Hub lit le PDF ou le CSV, mappe les ISIN aux tickers Yahoo, contrôle
+              Fi-Hub lit le PDF ou le CSV, mappe les ISIN aux tickers, contrôle
               la cohérence, et vous laisse valider chaque ligne — frais inclus.
             </p>
             <ul className="space-y-2.5 text-sm text-[color:var(--ink-2)]">
@@ -463,7 +463,7 @@ export default async function LandingPage() {
               icon={LineChart}
               accent
               items={[
-                { ok: true, t: 'Cours Yahoo Finance, en direct' },
+                { ok: true, t: 'Cours en direct' },
                 { ok: true, t: 'Triggers Postgres : impossible de casser la séquence' },
                 { ok: true, t: 'Frais auto-attachés, PRU recalculé' },
                 { ok: true, t: 'Alpha vs CAC 40 / S&P / MSCI World' },
