@@ -15,6 +15,15 @@ export default async function BillingPage() {
 
   const ctx = await getUserSubscription(user!.id);
   const pro = PLANS.pro;
+  const paddleConfig = {
+    clientToken: process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN ?? '',
+    monthlyPriceId: process.env.NEXT_PUBLIC_PADDLE_PRO_PRICE_ID ?? process.env.PADDLE_PRO_PRICE_ID ?? '',
+    yearlyPriceId:
+      process.env.NEXT_PUBLIC_PADDLE_PRO_YEARLY_PRICE_ID ??
+      process.env.PADDLE_PRO_YEARLY_PRICE_ID ??
+      '',
+    environment: process.env.NEXT_PUBLIC_PADDLE_ENV === 'production' ? 'production' : 'sandbox',
+  } as const;
 
   const statusLabel: Record<string, { text: string; color: string }> = {
     active: { text: 'Actif', color: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300' },
@@ -129,6 +138,7 @@ export default async function BillingPage() {
           userId={user!.id}
           email={user!.email ?? ''}
           isFounder={ctx.isFounder}
+          paddleConfig={paddleConfig}
         />
       </Suspense>
     </div>

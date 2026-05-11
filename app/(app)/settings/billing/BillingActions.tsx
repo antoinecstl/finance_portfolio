@@ -23,6 +23,13 @@ type PaddleGlobal = {
   Checkout: { open: PaddleCheckoutOpen; close?: () => void };
 };
 
+type PaddleClientConfig = {
+  clientToken: string;
+  monthlyPriceId: string;
+  yearlyPriceId: string;
+  environment: 'sandbox' | 'production';
+};
+
 declare global {
   interface Window {
     Paddle?: PaddleGlobal;
@@ -31,17 +38,22 @@ declare global {
 
 const POLL_INTERVAL_MS = 3000;
 const POLL_MAX_DURATION_MS = 10 * 60 * 1000;
+const PADDLE_SDK_READY_TIMEOUT_MS = 10000;
+const PADDLE_SDK_READY_POLL_MS = 100;
+type PaddleLoadState = 'loading' | 'ready' | 'error';
 
 export function BillingActions({
   planId,
   userId,
   email,
   isFounder,
+  paddleConfig,
 }: {
   planId: 'free' | 'pro';
   userId: string;
   email: string;
   isFounder: boolean;
+  paddleConfig: PaddleClientConfig;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -50,6 +62,7 @@ export function BillingActions({
   }, [searchParams]);
 
   const [paddleReady, setPaddleReady] = useState(false);
+  const [paddleLoadState, setPaddleLoadState] = useState<PaddleLoadState>('loading');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [interval, setInterval] = useState<BillingInterval>(initialInterval);
@@ -57,12 +70,47 @@ export function BillingActions({
   const [polling, setPolling] = useState(false);
   const celebratingRef = useRef(false);
 
-  const clientToken = process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN;
-  const monthlyPriceId = process.env.NEXT_PUBLIC_PADDLE_PRO_PRICE_ID;
-  const yearlyPriceId = process.env.NEXT_PUBLIC_PADDLE_PRO_YEARLY_PRICE_ID;
-  const env = process.env.NEXT_PUBLIC_PADDLE_ENV ?? 'sandbox';
+  const clientToken = paddleConfig.clientToken;
+  const monthlyPriceId = paddleConfig.monthlyPriceId;
+  const yearlyPriceId = paddleConfig.yearlyPriceId;
+  const env = paddleConfig.environment;
 
   const savings = getYearlySavingsPercent(PLANS.pro);
+  const selectedPriceId = interval === 'year' ? yearlyPriceId : monthlyPriceId;
+  const missingClientToken = !clientToken;
+  const missingSelectedPrice = !selectedPriceId;
+  const canUpgrade = paddleReady && !missingClientToken && !missingSelectedPrice;
+
+  const markPaddleUnavailable = useCallback((message = 'SDK Paddle indisponible (cdn.paddle.com non chargé)') => {
+    setPaddleReady(false);
+    setPaddleLoadState('error');
+    setError(message);
+  }, []);
+
+  const waitForPaddleSdk = useCallback(() => {
+    const startedAt = Date.now();
+
+    const tick = () => {
+      const paddle = window.Paddle;
+      if (paddle && typeof paddle.Initialize === 'function' && typeof paddle.Checkout?.open === 'function') {
+        setPaddleReady(true);
+        setPaddleLoadState('ready');
+        setError((current) =>
+          current === 'SDK Paddle indisponible (cdn.paddle.com non chargé)' ? null : current
+        );
+        return;
+      }
+
+      if (Date.now() - startedAt >= PADDLE_SDK_READY_TIMEOUT_MS) {
+        markPaddleUnavailable();
+        return;
+      }
+
+      window.setTimeout(tick, PADDLE_SDK_READY_POLL_MS);
+    };
+
+    tick();
+  }, [markPaddleUnavailable]);
 
   const startCelebration = useCallback(() => {
     if (celebratingRef.current) return;
@@ -80,10 +128,25 @@ export function BillingActions({
   }, [router]);
 
   useEffect(() => {
-    if (typeof window !== 'undefined' && window.Paddle) {
-      setPaddleReady(true);
+    if (typeof window !== 'undefined') {
+      waitForPaddleSdk();
     }
-  }, []);
+  }, [waitForPaddleSdk]);
+
+  useEffect(() => {
+    if (paddleLoadState !== 'loading') return;
+    const timer = window.setTimeout(() => {
+      if (
+        !window.Paddle ||
+        typeof window.Paddle.Initialize !== 'function' ||
+        typeof window.Paddle.Checkout?.open !== 'function'
+      ) {
+        markPaddleUnavailable();
+      }
+    }, PADDLE_SDK_READY_TIMEOUT_MS);
+
+    return () => window.clearTimeout(timer);
+  }, [markPaddleUnavailable, paddleLoadState]);
 
   useEffect(() => {
     if (!paddleReady || !window.Paddle || !clientToken) return;
@@ -97,6 +160,17 @@ export function BillingActions({
       },
     });
   }, [paddleReady, clientToken, env, startCelebration]);
+
+  useEffect(() => {
+    if (planId !== 'free') return;
+    if (!missingClientToken && !missingSelectedPrice) return;
+
+    setError(
+      interval === 'year' && missingSelectedPrice
+        ? 'Paddle non configuré (PRICE_ID annuel manquant)'
+        : 'Paddle non configuré (CLIENT_TOKEN / PRICE_ID manquants)'
+    );
+  }, [interval, missingClientToken, missingSelectedPrice, planId]);
 
   // Polling fallback: once a checkout is opened, poll the server until the
   // subscription flips to 'pro'. This guarantees the celebration triggers even
@@ -136,21 +210,34 @@ export function BillingActions({
   }, [polling, startCelebration]);
 
   const handleUpgrade = () => {
-    const priceId = interval === 'year' ? yearlyPriceId : monthlyPriceId;
-    if (!window.Paddle || !priceId) {
+    if (!clientToken || !selectedPriceId) {
       setError(
         interval === 'year'
-          ? 'Paddle non configuré (NEXT_PUBLIC_PADDLE_PRO_YEARLY_PRICE_ID manquant)'
-          : 'Paddle non configuré (NEXT_PUBLIC_PADDLE_CLIENT_TOKEN / PRICE_ID manquants)'
+          ? 'Paddle non configuré (PRICE_ID annuel manquant)'
+          : 'Paddle non configuré (CLIENT_TOKEN / PRICE_ID manquants)'
       );
       return;
     }
+
+    if (!window.Paddle?.Checkout?.open) {
+      markPaddleUnavailable();
+      return;
+    }
+
     window.Paddle.Checkout.open({
-      items: [{ priceId, quantity: 1 }],
+      items: [{ priceId: selectedPriceId, quantity: 1 }],
       customer: { email },
       customData: { user_id: userId },
     });
     setPolling(true);
+  };
+
+  const handlePaddleReady = () => {
+    waitForPaddleSdk();
+  };
+
+  const handlePaddleError = () => {
+    markPaddleUnavailable();
   };
 
   const handleManage = async () => {
@@ -187,9 +274,9 @@ export function BillingActions({
       <Script
         src="https://cdn.paddle.com/paddle/v2/paddle.js"
         strategy="afterInteractive"
-        onLoad={() => setPaddleReady(true)}
-        onReady={() => setPaddleReady(true)}
-        onError={() => setError('Impossible de charger Paddle (bloqueur de pub ?)')}
+        onLoad={handlePaddleReady}
+        onReady={handlePaddleReady}
+        onError={handlePaddleError}
       />
 
       {celebrating && <ProOnboarding onClose={handleOnboardingClose} />}
@@ -241,11 +328,13 @@ export function BillingActions({
             <div className="flex flex-col gap-2">
               <button
                 onClick={handleUpgrade}
-                disabled={!paddleReady}
+                disabled={!canUpgrade}
                 className="btn-ink inline-flex items-center gap-2 py-2.5 px-5 disabled:opacity-50 rounded-lg w-fit"
               >
-                {!paddleReady && <Loader2 className="h-4 w-4 animate-spin" />}
-                Passer Pro — {formatPriceFor(PLANS.pro, interval)}
+                {paddleLoadState === 'loading' && <Loader2 className="h-4 w-4 animate-spin" />}
+                {paddleLoadState === 'error'
+                  ? 'Paiement indisponible'
+                  : `Passer Pro — ${formatPriceFor(PLANS.pro, interval)}`}
               </button>
               <p className="text-xs text-[color:var(--ink-soft)]">
                 Les factures seront envoyées à l&apos;adresse email indiquée lors du paiement.
