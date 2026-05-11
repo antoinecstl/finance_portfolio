@@ -1,13 +1,13 @@
 <claude-mem-context>
 # Memory Context
 
-# [finance_portfolio] recent context, 2026-05-11 7:54pm GMT+2
+# [finance_portfolio] recent context, 2026-05-11 11:05pm GMT+2
 
 Legend: 🎯session 🔴bugfix 🟣feature 🔄refactor ✅change 🔵discovery ⚖️decision 🚨security_alert 🔐security_note
 Format: ID TIME TYPE TITLE
 Fetch details: get_observations([IDs]) | Search: mem-search skill
 
-Stats: 31 obs (13 278t read) | 440 107t work | 97% savings
+Stats: 43 obs (18 049t read) | 674 342t work | 97% savings
 
 ### May 6, 2026
 1 10:57p 🔵 finance_portfolio Project Structure Identified
@@ -46,6 +46,19 @@ S3 Fix misaligned progress bars in portfolio mockup on landing page—bars shoul
 ### May 8, 2026
 43 12:00a 🟣 Account Edit Feature with Crypto Type Restriction
 44 " 🔵 Lint Passes with One Unused Variable Warning
+### May 11, 2026
+77 10:25p 🟣 Free First Month for New Subscriptions
+78 10:31p ⚖️ One-Month Trial Period Restricted to Monthly Plan Only
+79 10:48p 🟣 Marketing Landing & Billing Page Upgrade for Free Users
+80 " 🔵 Pricing & Billing Page Architecture Mapped
+81 10:52p 🟣 Pricing UI enhanced with trial and savings labels sourced from shared constants
+82 10:54p 🟣 Billing settings upgrade prompt redesigned into a rich three-panel section
+83 " 🟣 BillingActions.tsx interval toggle and CTA button updated with trial and savings labels
+84 10:55p 🟣 Billing & Marketing Pages Updated with Trial/Value Messaging
+85 11:02p ✅ Copy update: "un mois gratuit" → "premier mois gratuit"
+86 " 🟣 Centralized pricing label constants + billing/marketing UI overhaul
+87 " ✅ MONTHLY_TRIAL_LABEL updated to 'Premier mois gratuit'
+88 " 🔵 Windows dev environment: TLS cert verification fails for stock chart API during Next.js build
 
-Access 440k tokens of past work via get_observations([IDs]) or mem-search skill.
+Access 674k tokens of past work via get_observations([IDs]) or mem-search skill.
 </claude-mem-context>

@@ -6,7 +6,12 @@ import { useSearchParams } from 'next/navigation';
 import { Loader2, ExternalLink } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { ProOnboarding } from '@/components/ProOnboarding';
-import { PLANS, formatPriceFor, getYearlySavingsPercent, type BillingInterval } from '@/lib/plans';
+import {
+  PLANS,
+  formatPriceFor,
+  getYearlySavingsPercent,
+  type BillingInterval,
+} from '@/lib/plans';
 
 type PaddleCheckoutOpen = (opts: {
   items: { priceId: string; quantity: number }[];
@@ -334,7 +339,9 @@ export function BillingActions({
                 {paddleLoadState === 'loading' && <Loader2 className="h-4 w-4 animate-spin" />}
                 {paddleLoadState === 'error'
                   ? 'Paiement indisponible'
-                  : `Passer Pro — ${formatPriceFor(PLANS.pro, interval)}`}
+                  : interval === 'month'
+                    ? `Démarrer l'essai Pro — ${formatPriceFor(PLANS.pro, interval)}`
+                    : `Passer Pro annuel — ${formatPriceFor(PLANS.pro, interval)}`}
               </button>
               <p className="text-xs text-[color:var(--ink-soft)]">
                 Les factures seront envoyées à l&apos;adresse email indiquée lors du paiement.

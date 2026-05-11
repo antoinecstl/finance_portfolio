@@ -1,7 +1,14 @@
 import { Suspense } from 'react';
 import { createClient } from '@/lib/supabase/server';
 import { getUserSubscription } from '@/lib/subscription';
-import { formatPrice, PLANS } from '@/lib/plans';
+import {
+  MONTHLY_TRIAL_LABEL,
+  PLANS,
+  YEARLY_VALUE_LABEL,
+  formatPrice,
+  formatPriceFor,
+  getYearlySavingsPercent,
+} from '@/lib/plans';
 import { BillingActions } from './BillingActions';
 import { Check, Sparkles } from 'lucide-react';
 
@@ -15,6 +22,7 @@ export default async function BillingPage() {
 
   const ctx = await getUserSubscription(user!.id);
   const pro = PLANS.pro;
+  const yearlySavings = getYearlySavingsPercent(pro);
   const paddleConfig = {
     clientToken: process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN ?? '',
     monthlyPriceId: process.env.NEXT_PUBLIC_PADDLE_PRO_PRICE_ID ?? process.env.PADDLE_PRO_PRICE_ID ?? '',
@@ -107,29 +115,72 @@ export default async function BillingPage() {
       </div>
 
       {ctx.planId === 'free' && !ctx.isFounder && (
-        <div className="rounded-xl border border-[color:var(--rule)] bg-[color:var(--paper-2)] p-6 mb-6">
-          <div className="flex items-center gap-2 mb-2">
-            <Sparkles className="h-5 w-5 text-[color:var(--accent)]" />
-            <h3 className="font-semibold text-[color:var(--ink)]">
-              Passez Pro pour débloquer tout Fi-Hub
+        <section className="rounded-xl border border-[color:var(--rule)] bg-[color:var(--paper-2)] overflow-hidden mb-6">
+          <div className="p-6 border-b border-[color:var(--rule)]">
+            <div className="flex flex-wrap items-center gap-2 mb-3">
+              <Sparkles className="h-5 w-5 text-[color:var(--accent)]" />
+              <span className="mono text-[11px] tracking-[0.16em] uppercase text-[color:var(--accent)]">
+                Pro
+              </span>
+              <span className="mono text-[10px] tracking-[0.14em] uppercase px-2 py-0.5 rounded-full bg-[color:var(--gain-soft)] text-[color:var(--gain)]">
+                Mensuel : {MONTHLY_TRIAL_LABEL}
+              </span>
+            </div>
+            <h3 className="display text-3xl leading-tight text-[color:var(--ink)]">
+              Passez d&apos;un suivi de test à un vrai pilotage de patrimoine.
             </h3>
+            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-[color:var(--ink-soft)]">
+              Votre plan Free est parfait pour démarrer. Pro enlève les limites qui bloquent
+              un portefeuille réel : comptes multiples, historique complet, import de transactions,
+              dividendes et analyses avancées.
+            </p>
           </div>
-          <p className="text-sm text-[color:var(--ink-soft)] mb-4">
-            Comptes, transactions et positions illimités, analytics avancées, export CSV, module
-            dividendes.
-          </p>
-          <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-5">
-            {pro.highlights.map((h) => (
-              <li
-                key={h}
-                className="flex items-start gap-2 text-sm text-[color:var(--ink)]"
-              >
-                <Check className="h-4 w-4 text-[color:var(--accent)] mt-0.5 flex-shrink-0" />
-                {h}
-              </li>
-            ))}
-          </ul>
-        </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-px bg-[color:var(--rule)]">
+            <div className="bg-[color:var(--paper)] p-5">
+              <p className="mono text-[10px] tracking-[0.16em] uppercase text-[color:var(--ink-soft)]">
+                Aujourd&apos;hui
+              </p>
+              <p className="mt-2 text-sm text-[color:var(--ink)]">
+                Free : 1 compte, 50 transactions et 5 positions.
+              </p>
+            </div>
+            <div className="bg-[color:var(--paper)] p-5">
+              <p className="mono text-[10px] tracking-[0.16em] uppercase text-[color:var(--ink-soft)]">
+                Mensuel
+              </p>
+              <p className="mt-2 text-sm text-[color:var(--ink)]">
+                {MONTHLY_TRIAL_LABEL}, puis {formatPriceFor(pro, 'month')}.
+              </p>
+            </div>
+            <div className="bg-[color:var(--paper)] p-5">
+              <p className="mono text-[10px] tracking-[0.16em] uppercase text-[color:var(--ink-soft)]">
+                Annuel
+              </p>
+              <p className="mt-2 text-sm text-[color:var(--ink)]">
+                {formatPriceFor(pro, 'year')}
+                {yearlySavings !== null ? `, -${yearlySavings}%` : ''} avec {YEARLY_VALUE_LABEL.toLowerCase()}.
+              </p>
+            </div>
+          </div>
+
+          <div className="p-6">
+            <h4 className="font-semibold text-[color:var(--ink)] mb-4">
+              Ce que Pro débloque concrètement
+            </h4>
+            <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
+              {pro.highlights.map((h) => (
+                <li
+                  key={h}
+                  className="flex items-start gap-2 text-sm leading-relaxed text-[color:var(--ink)]"
+                >
+                  <Check className="h-4 w-4 text-[color:var(--accent)] mt-0.5 flex-shrink-0" />
+                  <span>{h}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
       )}
 
       <Suspense fallback={null}>

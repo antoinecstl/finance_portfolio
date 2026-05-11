@@ -24,6 +24,8 @@ export type Plan = {
 };
 
 const INF = Number.POSITIVE_INFINITY;
+export const MONTHLY_TRIAL_LABEL = 'Premier mois gratuit';
+export const YEARLY_VALUE_LABEL = '2 mois offerts';
 
 export const PLANS: Record<PlanId, Plan> = {
   free: {

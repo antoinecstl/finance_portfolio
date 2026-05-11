@@ -2,7 +2,13 @@
 
 import { useState } from 'react';
 import { PricingCard } from './PricingCard';
-import { PLANS, type BillingInterval, getYearlySavingsPercent } from '@/lib/plans';
+import {
+  MONTHLY_TRIAL_LABEL,
+  PLANS,
+  YEARLY_VALUE_LABEL,
+  type BillingInterval,
+  getYearlySavingsPercent,
+} from '@/lib/plans';
 
 export function PricingSection() {
   const [interval, setInterval] = useState<BillingInterval>('year');
@@ -24,7 +30,8 @@ export function PricingSection() {
             Tarifs simples
           </h2>
           <p className="mt-4 text-[15px] leading-relaxed text-[color:var(--ink-2)]">
-            Commencez gratuitement, passez Pro quand vous voulez.
+            Commencez gratuitement, puis essayez Pro avec {MONTHLY_TRIAL_LABEL.toLowerCase()} en mensuel.
+            L&apos;annuel garde son avantage : {YEARLY_VALUE_LABEL.toLowerCase()}.
           </p>
         </div>
 

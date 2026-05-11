@@ -1,8 +1,10 @@
 import Link from 'next/link';
 import { ArrowRight, Check } from 'lucide-react';
 import {
+  MONTHLY_TRIAL_LABEL,
   type BillingInterval,
   type Plan,
+  YEARLY_VALUE_LABEL,
   formatPrice,
   formatPriceFor,
   getYearlySavingsPercent,
@@ -20,6 +22,7 @@ export function PricingCard({
   const isPro = plan.id === 'pro';
   const priceLabel = isPro ? formatPriceFor(plan, interval) : formatPrice(plan);
   const savings = isPro && interval === 'year' ? getYearlySavingsPercent(plan) : null;
+  const showMonthlyTrial = isPro && interval === 'month';
   const showPopular = highlight && interval === 'year';
   const monthlyEquivalent =
     isPro && interval === 'year' && plan.priceCentsYearly
@@ -54,15 +57,30 @@ export function PricingCard({
           <span className="display text-4xl leading-none text-[color:var(--ink)]">
             {priceLabel}
           </span>
+          {showMonthlyTrial && (
+            <span className="mono text-[10px] tracking-[0.14em] uppercase px-2 py-1 rounded-full bg-[color:var(--gain-soft)] text-[color:var(--gain)]">
+              {MONTHLY_TRIAL_LABEL}
+            </span>
+          )}
           {savings !== null && (
             <span className="mono text-[10px] tracking-[0.14em] uppercase px-2 py-1 rounded-full bg-[color:var(--gain-soft)] text-[color:var(--gain)]">
               -{savings}%
             </span>
           )}
         </div>
+        {showMonthlyTrial && (
+          <p className="mono text-[11px] text-[color:var(--ink-soft)] mt-2">
+            Essayez Pro sans payer aujourd&apos;hui, puis {priceLabel}.
+          </p>
+        )}
         {monthlyEquivalent && (
           <p className="mono text-[11px] text-[color:var(--ink-soft)] mt-2">
             Soit {monthlyEquivalent} € / mois facturés annuellement
+          </p>
+        )}
+        {savings !== null && (
+          <p className="mono text-[11px] text-[color:var(--ink-soft)] mt-2">
+            {YEARLY_VALUE_LABEL} par rapport au mensuel.
           </p>
         )}
       </div>
@@ -89,7 +107,11 @@ export function PricingCard({
           highlight ? 'btn-ink' : 'btn-outline'
         }`}
       >
-        {plan.id === 'free' ? 'Commencer gratuitement' : 'Passer Pro'}
+        {plan.id === 'free'
+          ? 'Commencer gratuitement'
+          : interval === 'month'
+            ? 'Essayer Pro gratuitement'
+            : 'Passer Pro annuel'}
         <ArrowRight className="w-4 h-4" aria-hidden="true" />
       </Link>
     </article>
