@@ -6,6 +6,7 @@ import "./globals.css";
 import { AuthProvider } from "@/lib/auth";
 
 const SITE_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://fi-hub.subleet.com";
+const SEARCH_SITE_NAME = "fi-hub.subleet.com";
 
 const fraunces = Fraunces({
   subsets: ["latin"],
@@ -55,7 +56,7 @@ export const metadata: Metadata = {
     type: "website",
     locale: "fr_FR",
     url: SITE_URL,
-    siteName: "Fi-Hub",
+    siteName: SEARCH_SITE_NAME,
     title: "Fi-Hub — Suivez votre patrimoine sans Excel",
     description:
       "PEA, CTO, livrets, assurances-vie : un tableau de bord unique, valorisé en temps réel. Dividendes, historique complet, multi-comptes.",

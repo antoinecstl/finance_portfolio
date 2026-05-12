@@ -1,17 +1,16 @@
 <claude-mem-context>
 # Memory Context
 
-# [finance_portfolio] recent context, 2026-05-11 11:05pm GMT+2
+# [finance_portfolio] recent context, 2026-05-12 10:21pm GMT+2
 
 Legend: 🎯session 🔴bugfix 🟣feature 🔄refactor ✅change 🔵discovery ⚖️decision 🚨security_alert 🔐security_note
 Format: ID TIME TYPE TITLE
 Fetch details: get_observations([IDs]) | Search: mem-search skill
 
-Stats: 43 obs (18 049t read) | 674 342t work | 97% savings
+Stats: 50 obs (21 029t read) | 842 694t work | 98% savings
 
 ### May 6, 2026
-1 10:57p 🔵 finance_portfolio Project Structure Identified
-2 " 🔵 Existing Transaction Ordering System: Fixed Type-Priority + created_at Fallback
+2 10:57p 🔵 Existing Transaction Ordering System: Fixed Type-Priority + created_at Fallback
 3 10:58p 🔵 Full Transaction System Architecture Mapped Before Ordering Refactor
 4 " 🔵 compareTransactionSequence Used in Four lib/ Modules — Full Impact Scope
 5 " 🔵 useTransactions Hook Orders Only by date DESC — Missing Secondary Sort Key
@@ -59,6 +58,15 @@ S3 Fix misaligned progress bars in portfolio mockup on landing page—bars shoul
 86 " 🟣 Centralized pricing label constants + billing/marketing UI overhaul
 87 " ✅ MONTHLY_TRIAL_LABEL updated to 'Premier mois gratuit'
 88 " 🔵 Windows dev environment: TLS cert verification fails for stock chart API during Next.js build
+89 11:05p 🟣 Vercel Analytics and Speed Insights integrated into layout
+90 " 🔵 CSP in next.config.ts blocks third-party scripts by default
+91 11:09p 🟣 Vercel Analytics and Speed Insights integrated into Fi-Hub
+92 " 🔵 Local build SSL errors on stock chart fetches — UNABLE_TO_VERIFY_LEAF_SIGNATURE
+### May 12, 2026
+93 10:19p 🔵 Google Indexes Root Domain Instead of Subdomain for fi-hub
+94 " 🔵 Marketing Landing Page Uses Hardcoded SITE_URL Pointing to fi-hub.subleet.com
+95 10:20p 🔵 metadataBase Is Correctly Set to fi-hub.subleet.com in Root Layout — Google Issue Is Not a Code Problem
+96 " ✅ OpenGraph siteName Changed to Subdomain String to Influence Google Search Appearance
 
-Access 674k tokens of past work via get_observations([IDs]) or mem-search skill.
+Access 843k tokens of past work via get_observations([IDs]) or mem-search skill.
 </claude-mem-context>

@@ -23,6 +23,7 @@ import { PLANS } from '@/lib/plans';
 import type { StockQuote } from '@/lib/types';
 
 const SITE_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://fi-hub.subleet.com';
+const SEARCH_SITE_NAME = 'fi-hub.subleet.com';
 export const revalidate = 60;
 
 export const metadata: Metadata = {
@@ -33,6 +34,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     url: SITE_URL,
+    siteName: SEARCH_SITE_NAME,
     title: 'Fi-Hub — Le journal de votre patrimoine, tenu en temps réel',
     description:
       "Regroupez tous vos comptes français. Import en un clic, valorisation en temps réel, dividendes, benchmark CAC 40 / S&P 500.",
@@ -188,7 +190,8 @@ function buildJsonLd() {
   const website = {
     '@context': 'https://schema.org',
     '@type': 'WebSite',
-    name: 'Fi-Hub',
+    name: SEARCH_SITE_NAME,
+    alternateName: 'Fi-Hub',
     url: SITE_URL,
     inLanguage: 'fr-FR',
     potentialAction: {
