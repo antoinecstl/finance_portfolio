@@ -18,8 +18,6 @@ export default function MentionsLegalesPage() {
         <br />
         Adresse : 173 rue de Courcelles, 75017 Paris, France
         <br />
-        Directeur de la publication : Antoine Castel
-        <br />
         Contact : contact@subleet.com
       </p>
 

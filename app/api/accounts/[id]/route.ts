@@ -3,10 +3,9 @@ import { enforceAuthenticatedJsonMutation } from '@/lib/api-security';
 import { createClient } from '@/lib/supabase/server';
 import { deleteAccountSchema, formatZodError, updateAccountSchema } from '@/lib/schemas';
 import { accountSupportsPositions, canChangeAccountType } from '@/lib/utils';
+import type { IdRouteContext } from '@/lib/route-types';
 
-type RouteContext = { params: Promise<{ id: string }> };
-
-export async function PATCH(request: Request, { params }: RouteContext) {
+export async function PATCH(request: Request, { params }: IdRouteContext) {
   const securityError = enforceAuthenticatedJsonMutation(request);
   if (securityError) return securityError;
 
@@ -111,7 +110,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
   return NextResponse.json({ account: data });
 }
 
-export async function DELETE(request: Request, { params }: RouteContext) {
+export async function DELETE(request: Request, { params }: IdRouteContext) {
   const securityError = enforceAuthenticatedJsonMutation(request);
   if (securityError) return securityError;
 

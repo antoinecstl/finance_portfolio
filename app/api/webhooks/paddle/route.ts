@@ -5,7 +5,7 @@ import { sendSubscriptionReceipt, sendPaymentFailed } from '@/lib/email';
 
 export const runtime = 'nodejs';
 
-type PaddleEvent = {
+type PaddleWebhookEvent = {
   event_id: string;
   event_type: string;
   data: {
@@ -28,7 +28,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'invalid signature' }, { status: 401 });
   }
 
-  let event: PaddleEvent;
+  let event: PaddleWebhookEvent;
   try {
     event = JSON.parse(raw);
   } catch {

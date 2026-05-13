@@ -20,11 +20,11 @@ type PaddleCheckoutOpen = (opts: {
   settings?: { displayMode?: 'overlay' | 'inline'; theme?: 'light' | 'dark' };
 }) => void;
 
-type PaddleEvent = { name: string; data?: unknown };
+type PaddleCheckoutEvent = { name: string; data?: unknown };
 
 type PaddleGlobal = {
   Environment: { set: (env: 'sandbox' | 'production') => void };
-  Initialize: (opts: { token: string; eventCallback?: (ev: PaddleEvent) => void }) => void;
+  Initialize: (opts: { token: string; eventCallback?: (ev: PaddleCheckoutEvent) => void }) => void;
   Checkout: { open: PaddleCheckoutOpen; close?: () => void };
 };
 

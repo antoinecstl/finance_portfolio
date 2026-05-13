@@ -6,10 +6,9 @@ import { simulateAccountSequence } from '@/lib/transaction-validation';
 import { createTransactionSchema, formatZodError } from '@/lib/schemas';
 import { accountSupportsPositions, accountTypeAllowsAsset, assetAccountMismatchMessage } from '@/lib/utils';
 import { formatInvalidAccountSequenceMessage } from '@/lib/sequence-errors';
+import type { IdRouteContext } from '@/lib/route-types';
 
-type RouteContext = { params: Promise<{ id: string }> };
-
-export async function DELETE(request: Request, { params }: RouteContext) {
+export async function DELETE(request: Request, { params }: IdRouteContext) {
   const securityError = enforceAuthenticatedMutation(request);
   if (securityError) return securityError;
 
@@ -88,7 +87,7 @@ export async function DELETE(request: Request, { params }: RouteContext) {
 // deux côtés ; pour ça l'utilisateur supprime puis recrée).
 // La ligne FEE liée est gérée atomiquement par le RPC update_transaction_with_fee
 // (création / mise à jour / suppression selon le nouveau montant de frais).
-export async function PATCH(request: Request, { params }: RouteContext) {
+export async function PATCH(request: Request, { params }: IdRouteContext) {
   const securityError = enforceAuthenticatedJsonMutation(request);
   if (securityError) return securityError;
 

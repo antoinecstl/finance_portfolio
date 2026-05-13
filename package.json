@@ -11,7 +11,6 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@napi-rs/canvas": "^0.1.80",
     "@paddle/paddle-node-sdk": "^3.7.0",
     "@supabase/ssr": "^0.10.2",
     "@supabase/supabase-js": "^2.89.0",
@@ -26,7 +25,6 @@
     "next": "16.1.0",
     "openai": "^6.35.0",
     "papaparse": "^5.5.3",
-    "pdf-parse": "^2.4.5",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "recharts": "^3.6.0",
@@ -36,7 +34,6 @@
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/papaparse": "^5.5.2",
-    "@types/pdf-parse": "^1.1.5",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitest/ui": "^2.1.9",
