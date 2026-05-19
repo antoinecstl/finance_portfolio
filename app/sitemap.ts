@@ -9,6 +9,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
   return [
     { url: `${BASE}/`, lastModified: HOME_DATE, changeFrequency: 'weekly', priority: 1 },
     { url: `${BASE}/signup`, lastModified: HOME_DATE, changeFrequency: 'monthly', priority: 0.8 },
+    { url: `${BASE}/alternative-finary`, lastModified: HOME_DATE, changeFrequency: 'monthly', priority: 0.8 },
+    { url: `${BASE}/suivi-portefeuille-excel`, lastModified: HOME_DATE, changeFrequency: 'monthly', priority: 0.75 },
     { url: `${BASE}/login`, lastModified: HOME_DATE, changeFrequency: 'yearly', priority: 0.3 },
     { url: `${BASE}/legal/cgu`, lastModified: LEGAL_DATE, changeFrequency: 'yearly', priority: 0.2 },
     { url: `${BASE}/legal/confidentialite`, lastModified: LEGAL_DATE, changeFrequency: 'yearly', priority: 0.2 },

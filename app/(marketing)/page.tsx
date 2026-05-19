@@ -263,6 +263,11 @@ export default async function LandingPage() {
               valorisés en direct, toujours face au marché.
             </p>
 
+            <div className="mt-6 max-w-2xl text-sm leading-relaxed text-[color:var(--ink-soft)]">
+              Outil de suivi de portefeuille boursier pour investisseurs particuliers : PEA, CTO,
+              assurance-vie et dividendes, sans maintenance de fichier Excel.
+            </div>
+
             <div className="mt-9 flex flex-wrap items-center gap-3">
               <Link
                 href="/signup"
@@ -515,6 +520,20 @@ export default async function LandingPage() {
       </section>
 
       {/* ───────── PRICING ───────── */}
+      <section className="max-w-6xl mx-auto px-5 pb-14">
+        <div className="ink-card rounded-2xl p-6 sm:p-8">
+          <h2 className="text-2xl font-semibold text-[color:var(--ink)]">Ressources pour bien démarrer</h2>
+          <div className="mt-4 flex flex-wrap gap-3 text-sm">
+            <Link href="/alternative-finary" className="btn-outline px-4 py-2 rounded-full font-medium">
+              Alternative à Finary
+            </Link>
+            <Link href="/suivi-portefeuille-excel" className="btn-outline px-4 py-2 rounded-full font-medium">
+              Remplacer Excel pour suivre son portefeuille
+            </Link>
+          </div>
+        </div>
+      </section>
+
       <PricingSection />
 
       {/* ───────── FAQ ───────── */}
