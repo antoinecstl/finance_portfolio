@@ -1,13 +1,13 @@
 <claude-mem-context>
 # Memory Context
 
-# [finance_portfolio] recent context, 2026-05-20 2:47pm GMT+2
+# [finance_portfolio] recent context, 2026-05-20 3:14pm GMT+2
 
 Legend: 🎯session 🔴bugfix 🟣feature 🔄refactor ✅change 🔵discovery ⚖️decision 🚨security_alert 🔐security_note
 Format: ID TIME TYPE TITLE
 Fetch details: get_observations([IDs]) | Search: mem-search skill
 
-Stats: 50 obs (19 454t read) | 1 408 333t work | 99% savings
+Stats: 50 obs (19 384t read) | 1 418 337t work | 99% savings
 
 ### May 6, 2026
 S2 Fix progress bar alignment in portfolio mockup (May 6, 11:31 PM)
@@ -17,12 +17,8 @@ S8 Global codebase analysis and cleanup of finance_portfolio (Fi-Hub) Next.js ap
 ### May 12, 2026
 S11 RGPD/GDPR compliance audit of Fi-Hub (finance_portfolio Next.js app) — full codebase review (May 12, 11:14 PM)
 ### May 13, 2026
-185 5:05p 🔵 RGPD Audit Complete — Fi-Hub Assessed as Production-Ready with Four Documented Gaps
 S12 Mise à jour de la stratégie de campagne de lancement Fi-Hub pour refléter les actions déjà réalisées le 13 mai 2026 (posts LinkedIn, Instagram, TikTok sur le compte Subleet) (May 13, 5:06 PM)
-186 7:06p ✅ Campagne de lancement FI Hub — mise à jour de l'avancement
-187 " 🔵 Contenu complet de la stratégie de campagne Fi-Hub (campagne-lancement-fi-hub.md)
-188 7:07p 🔵 URL réelle du post LinkedIn de lancement Subleet / Fi-Hub
-189 " 🔵 Contenu exact du post LinkedIn de lancement Fi-Hub (2026-05-13)
+189 7:07p 🔵 Contenu exact du post LinkedIn de lancement Fi-Hub (2026-05-13)
 190 7:09p ✅ Mise à jour majeure de campagne-lancement-fi-hub.md au jour J du lancement
 S13 Social media content strategy for Fi-Hub (fi-hub.subleet.com) — Reddit posts + TikTok/Instagram POV scripts to showcase investment performance and grow product awareness organically (May 13, 7:09 PM)
 191 7:49p 🟣 Social Media Content Strategy: Reddit/TikTok/Instagram Finance Posts
@@ -72,6 +68,10 @@ S15 Exploration complète du portfolio fi-hub.subleet.com (antoinecstl@gmail.com
 367 " ✅ SEO Copy for import-transactions Feature Page Updated to Highlight AI
 368 2:32p ✅ Homepage Import Section Copy Updated to Surface AI, ImportMockup Enhanced with AI Badges
 369 2:43p ✅ Marketing Landing Page UI Feedback & Screenshot Migration Plan
+370 2:47p 🟣 Replaced coded mockups with real product screenshots
+371 " ✅ Renamed "Suivi PEA" feature to "Positions et PRU" across codebase
+372 3:06p 🔵 SEO Architecture Audit Initiated on Next.js Marketing App
+373 3:13p 🔵 Next.js Build Fails Due to Remotion Config Included in TypeScript Compilation
 
-Access 1408k tokens of past work via get_observations([IDs]) or mem-search skill.
+Access 1418k tokens of past work via get_observations([IDs]) or mem-search skill.
 </claude-mem-context>
