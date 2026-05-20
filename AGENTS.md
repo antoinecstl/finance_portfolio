@@ -1,73 +1,77 @@
 <claude-mem-context>
 # Memory Context
 
-# [finance_portfolio] recent context, 2026-05-13 3:12pm GMT+2
+# [finance_portfolio] recent context, 2026-05-20 2:47pm GMT+2
 
 Legend: 🎯session 🔴bugfix 🟣feature 🔄refactor ✅change 🔵discovery ⚖️decision 🚨security_alert 🔐security_note
 Format: ID TIME TYPE TITLE
 Fetch details: get_observations([IDs]) | Search: mem-search skill
 
-Stats: 50 obs (19 049t read) | 667 946t work | 97% savings
+Stats: 50 obs (19 454t read) | 1 408 333t work | 99% savings
 
 ### May 6, 2026
 S2 Fix progress bar alignment in portfolio mockup (May 6, 11:31 PM)
 S1 Replace fixed type-priority transaction ordering with optional explicit time field (HH:MM) so users can control same-day transaction order, affecting PRU and cash replay calculations (May 6, 11:31 PM)
 S3 Fix misaligned progress bars in portfolio mockup on landing page—bars should align with each other, not with adjacent numbers (May 6, 11:37 PM)
-### May 8, 2026
-44 12:00a 🔵 Lint Passes with One Unused Variable Warning
-### May 11, 2026
-77 10:25p 🟣 Free First Month for New Subscriptions
-78 10:31p ⚖️ One-Month Trial Period Restricted to Monthly Plan Only
-79 10:48p 🟣 Marketing Landing & Billing Page Upgrade for Free Users
-80 " 🔵 Pricing & Billing Page Architecture Mapped
-81 10:52p 🟣 Pricing UI enhanced with trial and savings labels sourced from shared constants
-82 10:54p 🟣 Billing settings upgrade prompt redesigned into a rich three-panel section
-83 " 🟣 BillingActions.tsx interval toggle and CTA button updated with trial and savings labels
-84 10:55p 🟣 Billing & Marketing Pages Updated with Trial/Value Messaging
-85 11:02p ✅ Copy update: "un mois gratuit" → "premier mois gratuit"
-86 " 🟣 Centralized pricing label constants + billing/marketing UI overhaul
-87 " ✅ MONTHLY_TRIAL_LABEL updated to 'Premier mois gratuit'
-88 " 🔵 Windows dev environment: TLS cert verification fails for stock chart API during Next.js build
-89 11:05p 🟣 Vercel Analytics and Speed Insights integrated into layout
-90 " 🔵 CSP in next.config.ts blocks third-party scripts by default
-91 11:09p 🟣 Vercel Analytics and Speed Insights integrated into Fi-Hub
-92 " 🔵 Local build SSL errors on stock chart fetches — UNABLE_TO_VERIFY_LEAF_SIGNATURE
+S8 Global codebase analysis and cleanup of finance_portfolio (Fi-Hub) Next.js app (May 6, 11:38 PM)
 ### May 12, 2026
-93 10:19p 🔵 Google Indexes Root Domain Instead of Subdomain for fi-hub
-94 " 🔵 Marketing Landing Page Uses Hardcoded SITE_URL Pointing to fi-hub.subleet.com
-95 10:20p 🔵 metadataBase Is Correctly Set to fi-hub.subleet.com in Root Layout — Google Issue Is Not a Code Problem
-96 " ✅ OpenGraph siteName Changed to Subdomain String to Influence Google Search Appearance
-97 10:22p ✅ SEO: Google site name updated from "Fi-Hub" to "fi-hub.subleet.com"
-98 10:58p ✅ Removed Yahoo references from SEO metadata in fi-hub finance portfolio
-99 11:03p 🔵 No CLAUDE.md found in finance_portfolio; AGENTS.md exists at project root
-100 11:07p 🔵 finance_portfolio Codebase Structure Mapped
-101 " 🔵 Codebase Quality Scan: No Tech Debt Markers; Inconsistent Barrel Exports
-102 11:08p 🔵 Full External Service Integration Surface Documented in .env.example
-103 " 🔵 Likely Typo in LLM Default Model: 'gpt-5.4-nano' Does Not Exist
-104 " 🔵 Several Components Are Extremely Large Files — Refactoring Candidates
-105 11:09p 🔵 Largest Files by Line Count Identified; Barrel Export Gap Confirmed as Intentional
-106 11:10p 🔵 Domain Model: French Account Types, Multi-Currency Transactions, and CONVERSION Transaction Type
-107 " 🔵 lib/utils.ts API Surface and Migration History Mapped
-108 " 🔵 AddTransactionModal Uses Granular useState Per Field — Explains 859-Line Size
-109 11:11p 🔵 ProBlur Uses Server-Side Fake Placeholder to Prevent DevTools Paywall Bypass
-110 " 🔵 Two Unused Dependencies Identified: pdf-parse and @napi-rs/canvas
-111 11:12p 🔵 Two Dead Exports in lib/utils.ts: getTransactionColor and CHART_COLORS
-112 " 🔵 Refined: CHART_COLORS Is Internal-Only (Used by getSectorColor); getTransactionColor Truly Dead
-113 " 🔵 Charts.tsx Contains 7 Fully Distinct Components — Clear Split Target
-114 11:13p 🔵 API Route Map: 17 Routes with Notable account/ vs accounts/ Naming Split
-115 " 🔵 Comprehensive Cleanup Analysis Completed by Explore Sub-Agent
-S8 Global codebase analysis and cleanup of finance_portfolio (Fi-Hub) Next.js app (May 12, 11:14 PM)
-116 11:14p 🟣 CLAUDE.md Created for finance_portfolio (Fi-Hub)
+S11 RGPD/GDPR compliance audit of Fi-Hub (finance_portfolio Next.js app) — full codebase review (May 12, 11:14 PM)
 ### May 13, 2026
-117 12:16a ✅ Removed all Yahoo mentions from the project
-118 " 🔄 Extracted shared IdRouteContext type and cleaned up TypeScript types
-119 12:19a 🔄 Codebase Cleanup: Dead Dependencies, Unused Export, Type Deduplication
-132 12:29a ✅ Removed Yahoo References Project-Wide
-135 12:30a 🔄 Extracted Shared `IdRouteContext` Type into `lib/route-types.ts`
-136 " 🔄 Renamed Ambiguous `PaddleEvent` Types to Context-Specific Names
-137 " 🔄 Removed Dead `getTransactionColor` Export from `lib/utils.ts`
-138 " ✅ Removed `pdf-parse`, `@napi-rs/canvas`, and `@types/pdf-parse` Dependencies
-139 " 🔵 Post-Cleanup Build and Test Verification: All Green
+185 5:05p 🔵 RGPD Audit Complete — Fi-Hub Assessed as Production-Ready with Four Documented Gaps
+S12 Mise à jour de la stratégie de campagne de lancement Fi-Hub pour refléter les actions déjà réalisées le 13 mai 2026 (posts LinkedIn, Instagram, TikTok sur le compte Subleet) (May 13, 5:06 PM)
+186 7:06p ✅ Campagne de lancement FI Hub — mise à jour de l'avancement
+187 " 🔵 Contenu complet de la stratégie de campagne Fi-Hub (campagne-lancement-fi-hub.md)
+188 7:07p 🔵 URL réelle du post LinkedIn de lancement Subleet / Fi-Hub
+189 " 🔵 Contenu exact du post LinkedIn de lancement Fi-Hub (2026-05-13)
+190 7:09p ✅ Mise à jour majeure de campagne-lancement-fi-hub.md au jour J du lancement
+S13 Social media content strategy for Fi-Hub (fi-hub.subleet.com) — Reddit posts + TikTok/Instagram POV scripts to showcase investment performance and grow product awareness organically (May 13, 7:09 PM)
+191 7:49p 🟣 Social Media Content Strategy: Reddit/TikTok/Instagram Finance Posts
+S14 User asked Claude to log into fi-hub.subleet.com and explore stats — credentials were shared in plain text in the session (May 13, 7:51 PM)
+192 8:12p 🔐 Credentials Shared in Plain Text in Session
+193 8:13p 🔵 Playwright MCP Tools Loaded for fi-hub.subleet.com Automation
+194 8:14p 🔵 fi-hub.subleet.com Login Page Confirmed Accessible
+195 " 🔵 Successful Login to fi-hub.subleet.com — Dashboard Reached
+196 8:15p 🔵 Fi-Hub Dashboard Full Portfolio Snapshot — 154 462 € Total Patrimoine
+197 " 🔵 Fi-Hub 1-Year Portfolio Performance: +48 436 € (+46.1%)
+198 8:16p 🔵 Fi-Hub Dashboard Screenshot Captured and Dividendes Section Navigated
+199 " 🔵 Dividendes Section Full-Page Screenshot Captured
+200 " 🔵 Fi-Hub Dividendes Section Full-Page Screenshot Analyzed
+S15 Exploration complète du portfolio fi-hub.subleet.com (antoinecstl@gmail.com) — login automatisé + extraction de toutes les stats financières + génération de contenu Reddit/TikTok/Instagram pour promouvoir fi-hub (May 13, 8:19 PM)
+### May 20, 2026
+336 12:19p 🔵 Next.js App Router Project — Sprint Work Initiated
+337 12:20p 🔵 Fi-Hub Full Project Structure — Next.js SaaS with French Personal Finance Focus
+338 " 🔵 Fi-Hub SEO Technical Foundation — What Is Already In Place
+339 " 🔵 Fi-Hub SEO Gaps Identified Before Sprint Work Begins
+340 " 🔵 Fi-Hub Auth Flow and Security Headers Architecture
+341 12:32p 🔵 SEO Architecture Audit Initiated on Next.js Marketing App
+342 12:33p 🔵 Fi-Hub Marketing Site SEO Audit Findings
+343 " 🟣 SEO Content Architecture: lib/seo-pages.ts Data Registry
+344 " 🟣 SEO Component Library: JsonLd, Breadcrumbs, SeoArticlePage, SeoIndexPage
+345 " 🟣 New SEO Route Collections: /guides, /fonctionnalites, /alternatives
+346 " ✅ Navbar, Footer, Sitemap, Robots, Redirects and Noindex Overhaul
+347 " 🔄 Marketing Homepage Decoupled from Live Stock API
+348 " 🟣 SEO Architecture Sprint: New Semantic URL Routes, Components, and Sitemap
+349 " 🔄 Marketing Landing Page Decoupled from Live Stock API
+350 " 🟣 Noindex Applied to All Private/Auth App Layouts
+351 " ✅ Legacy SEO URL Redirects and Internal Link Restructuring
+352 " 🔵 TypeScript Check Fails Due to Unrelated Remotion Subdirectory
+353 12:37p 🟣 Multi-Sprint SEO Infrastructure Implemented for Next.js Marketing Site
+354 " 🔵 Node.js EPERM on `lstat 'C:\Users\antoi'` Blocks Direct `npm run dev` in Sandbox
+355 12:38p 🔵 SEO Architecture Audit Initiated for Next.js Marketing App
+356 12:39p 🟣 Full SEO Architecture Implementation Across 4 Sprints
+357 " 🔵 Build Blocked by Unrelated Remotion Subproject Missing Dependencies
+358 " 🔵 Node.js EPERM lstat Error Blocks Sandboxed npm Commands on Windows
+359 2:27p 🟣 Marketing Feature Pages: Platform Mock-ups with Fake Data Requested
+360 2:28p ⚖️ Marketing Mock-up Implementation Plan Defined (4 Steps)
+361 " 🔵 Platform Component Audit for Marketing Mock-ups: 6 Key Views Identified
+362 2:30p 🟣 Marketing Feature Mockups with Fake Data Added to /fonctionnalites Pages
+363 " 🔵 Sandbox EPERM Blocks npm/Node Commands in finance_portfolio Worktree
+364 2:31p 🟣 Created components/marketing/FeatureMockups.tsx with 4 Fake-Data Platform Mock-ups
+365 " 🟣 SeoArticlePage.tsx Wired to Render Feature Mock-ups on Fonctionnalités Pages
+366 " 🔵 Windows EPERM lstat Error Blocks npm Scripts Without Escalated Sandbox Permissions
+367 " ✅ SEO Copy for import-transactions Feature Page Updated to Highlight AI
+368 2:32p ✅ Homepage Import Section Copy Updated to Surface AI, ImportMockup Enhanced with AI Badges
+369 2:43p ✅ Marketing Landing Page UI Feedback & Screenshot Migration Plan
 
-Access 668k tokens of past work via get_observations([IDs]) or mem-search skill.
+Access 1408k tokens of past work via get_observations([IDs]) or mem-search skill.
 </claude-mem-context>

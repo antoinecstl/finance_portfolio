@@ -45,6 +45,25 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  async redirects() {
+    return [
+      {
+        source: '/alternative-finary',
+        destination: '/alternatives/finary',
+        permanent: true,
+      },
+      {
+        source: '/suivi-portefeuille-excel',
+        destination: '/guides/suivi-portefeuille-boursier',
+        permanent: true,
+      },
+      {
+        source: '/fonctionnalites/suivi-pea',
+        destination: '/fonctionnalites/positions-pru',
+        permanent: true,
+      },
+    ];
+  },
 };
 
 export default nextConfig;

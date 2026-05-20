@@ -12,22 +12,28 @@ export function Navbar() {
         </Link>
         <div className="flex items-center gap-1 sm:gap-5 text-sm">
           <Link
-            href="/#features"
+            href="/fonctionnalites"
             className="hidden md:inline mono text-[11px] tracking-[0.18em] uppercase text-[color:var(--ink-soft)] hover:text-[color:var(--ink)] transition-colors"
           >
             Fonctionnalités
+          </Link>
+          <Link
+            href="/guides"
+            className="hidden md:inline mono text-[11px] tracking-[0.18em] uppercase text-[color:var(--ink-soft)] hover:text-[color:var(--ink)] transition-colors"
+          >
+            Guides
+          </Link>
+          <Link
+            href="/alternatives"
+            className="hidden lg:inline mono text-[11px] tracking-[0.18em] uppercase text-[color:var(--ink-soft)] hover:text-[color:var(--ink)] transition-colors"
+          >
+            Alternatives
           </Link>
           <Link
             href="/#pricing"
             className="hidden sm:inline mono text-[11px] tracking-[0.18em] uppercase text-[color:var(--ink-soft)] hover:text-[color:var(--ink)] transition-colors"
           >
             Tarifs
-          </Link>
-          <Link
-            href="/#faq"
-            className="hidden md:inline mono text-[11px] tracking-[0.18em] uppercase text-[color:var(--ink-soft)] hover:text-[color:var(--ink)] transition-colors"
-          >
-            FAQ
           </Link>
           <Link
             href="/login"

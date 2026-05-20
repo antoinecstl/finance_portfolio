@@ -18,13 +18,11 @@ import {
 import { PricingSection } from '@/components/marketing/PricingSection';
 import { FAQ } from '@/components/marketing/FAQ';
 import { FAQ_ITEMS } from '@/components/marketing/faq-data';
-import { getStockQuotes } from '@/lib/stock-api';
 import { PLANS } from '@/lib/plans';
-import type { StockQuote } from '@/lib/types';
 
 const SITE_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://fi-hub.subleet.com';
 const SEARCH_SITE_NAME = 'fi-hub.subleet.com';
-export const revalidate = 60;
+export const revalidate = 3600;
 
 export const metadata: Metadata = {
   title: 'Suivi de patrimoine PEA, CTO, livrets, AV — sans Excel',
@@ -41,7 +39,7 @@ export const metadata: Metadata = {
   },
 };
 
-/* ─────────── Ticker tape data (fallback, rafraîchi via l'API de marché) ─────────── */
+/* ─────────── Ticker tape data (static marketing sample, no critical market API fetch) ─────────── */
 type TickerItem = {
   sym: string;
   symbol: string;
@@ -62,54 +60,6 @@ const TICKER: TickerItem[] = [
   { sym: 'TTE.PA', symbol: 'TTE.PA', val: '60,28', delta: '+0,15%', up: true },
   { sym: 'NVDA', symbol: 'NVDA', val: '887,40', delta: '+1,92%', up: true },
 ];
-
-const NUMBER_FORMATTER = new Intl.NumberFormat('fr-FR', {
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-});
-
-const PERCENT_FORMATTER = new Intl.NumberFormat('fr-FR', {
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-  signDisplay: 'always',
-});
-
-function formatTickerPercent(value: number) {
-  return `${PERCENT_FORMATTER.format(value).replace('-', '−')}%`;
-}
-
-function tickerQuoteKey(symbol: string) {
-  return symbol.toUpperCase();
-}
-
-function buildTickerItem(item: TickerItem, quote?: StockQuote): TickerItem {
-  if (!quote || quote.price <= 0) return item;
-
-  return {
-    ...item,
-    val: NUMBER_FORMATTER.format(quote.price),
-    delta: formatTickerPercent(quote.changePercent),
-    up: quote.changePercent >= 0,
-  };
-}
-
-async function getTickerTape(): Promise<TickerItem[]> {
-  try {
-    const quotes = await getStockQuotes(TICKER.map((item) => item.symbol));
-    const quotesBySymbol = new Map(
-      quotes.map((quote) => [tickerQuoteKey(quote.symbol), quote])
-    );
-
-    return TICKER.map((item) =>
-      buildTickerItem(item, quotesBySymbol.get(tickerQuoteKey(item.symbol)))
-    );
-  } catch (error) {
-    console.error('Marketing ticker refresh failed:', error);
-    return TICKER;
-  }
-}
-
-const ENVELOPES = ['PEA', 'PEA-PME', 'CTO', 'Assurance-vie', 'Livret A', 'LDDS', 'PEL', 'CEL'];
 
 /* ─────────── JSON-LD ─────────── */
 function buildJsonLd() {
@@ -166,7 +116,7 @@ function buildJsonLd() {
         : []),
     ],
     featureList: [
-      'Suivi PEA, CTO, livrets, assurance-vie',
+      'Positions, PRU, CTO, livrets, assurance-vie',
       'Cours en temps réel',
       'Module dividendes',
       'Historique complet du portefeuille',
@@ -194,11 +144,6 @@ function buildJsonLd() {
     alternateName: 'Fi-Hub',
     url: SITE_URL,
     inLanguage: 'fr-FR',
-    potentialAction: {
-      '@type': 'SearchAction',
-      target: { '@type': 'EntryPoint', urlTemplate: `${SITE_URL}/signup?ref={search_term_string}` },
-      'query-input': 'required name=search_term_string',
-    },
   };
 
   return [organization, softwareApplication, faqPage, website];
@@ -206,9 +151,9 @@ function buildJsonLd() {
 
 /* ────────────────────────────────────────────────────────── */
 
-export default async function LandingPage() {
+export default function LandingPage() {
   const jsonLd = buildJsonLd();
-  const ticker = await getTickerTape();
+  const ticker = TICKER;
 
   return (
     <>
@@ -344,11 +289,13 @@ export default async function LandingPage() {
             </h3>
             <p className="text-[15px] leading-relaxed text-[color:var(--ink-2)] mb-6">
               Glissez votre relevé Bourse Direct, Boursorama, Trade Republic ou Degiro.
-              Fi-Hub lit le PDF ou le CSV, mappe les ISIN aux tickers, contrôle
-              la cohérence, et vous laisse valider chaque ligne — frais inclus.
+              L’IA de Fi-Hub lit le PDF ou le CSV, propose les transactions,
+              mappe les ISIN aux tickers, contrôle la cohérence, et vous laisse
+              valider chaque ligne — frais inclus.
             </p>
             <ul className="space-y-2.5 text-sm text-[color:var(--ink-2)]">
               {[
+                'Extraction assistée par IA depuis PDF, CSV ou texte collé',
                 'Reconnaissance ISIN → ticker (validation de cohérence)',
                 'Garde-fous : pas de cash ni de positions négatifs',
                 'Frais détectés et liés à la transaction parente',
@@ -524,11 +471,17 @@ export default async function LandingPage() {
         <div className="ink-card rounded-2xl p-6 sm:p-8">
           <h2 className="text-2xl font-semibold text-[color:var(--ink)]">Ressources pour bien démarrer</h2>
           <div className="mt-4 flex flex-wrap gap-3 text-sm">
-            <Link href="/alternative-finary" className="btn-outline px-4 py-2 rounded-full font-medium">
+            <Link href="/guides" className="btn-outline px-4 py-2 rounded-full font-medium">
+              Guides de suivi portefeuille
+            </Link>
+            <Link href="/alternatives/finary" className="btn-outline px-4 py-2 rounded-full font-medium">
               Alternative à Finary
             </Link>
-            <Link href="/suivi-portefeuille-excel" className="btn-outline px-4 py-2 rounded-full font-medium">
+            <Link href="/guides/suivi-portefeuille-boursier" className="btn-outline px-4 py-2 rounded-full font-medium">
               Remplacer Excel pour suivre son portefeuille
+            </Link>
+            <Link href="/fonctionnalites/import-transactions" className="btn-outline px-4 py-2 rounded-full font-medium">
+              Importer ses transactions
             </Link>
           </div>
         </div>

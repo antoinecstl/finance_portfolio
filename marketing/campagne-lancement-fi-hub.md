@@ -2,9 +2,27 @@
 
 **Produit :** Fi-Hub — Suivi de patrimoine personnel (SaaS)  
 **URL :** [fi-hub.subleet.com](https://fi-hub.subleet.com)  
-**Date du brief :** mai 2026  
+**Date du brief :** mai 2026 — mis à jour au 13 mai 2026  
 **Budget :** Zéro budget média (organique uniquement)  
 **Zone :** France uniquement
+
+---
+
+## Situation au 13 mai 2026
+
+Le lancement public a démarré aujourd'hui. Les premiers posts sont en ligne.
+
+**Canaux actifs :**
+- LinkedIn (page Subleet) — 1 post publié aujourd'hui, 13 abonnés, 5 réactions
+- Instagram (compte Subleet) — 1 post publié aujourd'hui
+- TikTok (compte Subleet) — 1 post publié aujourd'hui
+
+**Offre de lancement active :** Code **EARLY100** — 50 % de réduction sur le plan Pro, à vie, pour les 100 premiers inscrits.
+
+**Ce qui reste à faire en priorité :**
+- Reddit r/vosfinances (pas encore fait — fort potentiel, voir section 4)
+- Hashtags manquants sur le post LinkedIn — à corriger dès le prochain post
+- Contenu de suivi sur les 3 canaux actifs
 
 ---
 
@@ -14,10 +32,11 @@
 
 **Résumé en une phrase :** Faire connaître Fi-Hub auprès des particuliers français qui investissent et les convaincre de s'inscrire gratuitement — puis de passer Pro.
 
-**Objectif principal :** Atteindre 200 comptes créés (plan Free) dans les 3 premiers mois suivant le lancement public, avec un taux de conversion Free → Pro de 5 %.
+**Objectif principal :** Atteindre 200 comptes créés (plan Free) dans les 3 premiers mois, avec un taux de conversion Free → Pro de 5 %.
 
 **Objectifs secondaires :**
-- Obtenir une présence organique sur les communautés finance françaises (r/vosfinances, Twitter/X finance FR, forums Boursorama)
+- Épuiser les 100 places EARLY100 (50 % à vie) avant fin juin 2026
+- Obtenir une présence organique sur r/vosfinances
 - Générer 500 visites/mois organiques sur la landing page d'ici mois 3
 - Construire une audience LinkedIn de 300 abonnés qualifiés
 - Décrocher 2 à 3 mentions dans des blogs ou médias finance personnelle francophones
@@ -32,9 +51,7 @@ Particulier français, 25–45 ans, salarié ou indépendant, qui gère activeme
 
 > *Pain point central : "Je ne sais jamais exactement où j'en suis — j'ai des comptes partout et aucun tableau de bord global."*
 
-**Canaux où il se trouve :** Reddit r/vosfinances, Twitter/X (communauté #FinancePersonnelle), YouTube (chaînes finance FR), forums Boursorama / MoneyVox, LinkedIn.
-
-**Stade d'achat :** Considération — il connaît le problème, cherche une solution, compare avec Excel ou des apps existantes (Finary, Wealthier).
+**Canaux où il se trouve :** Reddit r/vosfinances, Instagram/TikTok finance FR, YouTube (chaînes finance FR), forums Boursorama / MoneyVox, LinkedIn.
 
 ### Profil secondaire — "Le débutant ambitieux"
 
@@ -47,20 +64,15 @@ Particulier français, 25–45 ans, salarié ou indépendant, qui gère activeme
 ## 3. Messages clés
 
 **Message central :**
-> Fi-Hub regroupe tous vos comptes (PEA, CTO, Livret A, AV…) en un seul tableau de bord — valorisation temps réel, dividendes, performance vs CAC 40.
+> Fi-Hub regroupe tous vos comptes (PEA, CTO, Livret A, AV…) en un seul tableau de bord — valorisation en temps réel, dividendes, performance vs CAC 40.
 
 **Messages de soutien :**
 
-1. **Fini l'Excel** — "Arrêtez de maintenir un tableur à la main. Fi-Hub importe, calcule et affiche tout automatiquement." *(s'adresse à la frustration n°1 de l'audience)*
-2. **Vue unifiée** — "PEA chez Fortuneo, CTO chez Degiro, Livret A au Crédit Agricole ? Tout est dans le même tableau de bord." *(répond au problème de fragmentation)*
-3. **Gratuit pour démarrer** — "Aucune carte bancaire requise pour l'offre Free. Testez, puis décidez." *(réduit la friction d'inscription)*
-4. **Prix honnête** — "4,99 €/mois — soit moins qu'un café — pour un suivi de patrimoine complet et sans limite." *(ancre le prix Pro sur une référence accessible)*
-
-**Preuve / éléments de crédibilité :**
-- Cours boursiers en temps réel (avec suffixes .PA pour les actions françaises)
-- Support natif des enveloppes fiscales françaises : PEA, CTO, Livret A, LDDS, Assurance-Vie, PEL
-- Benchmark vs CAC 40 et S&P 500 intégré
-- Export CSV des transactions (plan Pro)
+1. **Fini l'Excel** — "Arrêtez de maintenir un tableur à la main. Fi-Hub calcule et affiche tout automatiquement."
+2. **Vue unifiée** — "PEA chez Fortuneo, CTO chez Degiro, Livret A au Crédit Agricole ? Tout dans le même tableau de bord."
+3. **Gratuit pour démarrer** — "Aucune carte bancaire requise pour l'offre Free."
+4. **Offre fondateurs** — "Les 100 premiers passent Pro à -50 % à vie avec le code EARLY100."
+5. **Prix honnête** — "4,99 €/mois — soit moins qu'un café — pour un suivi de patrimoine complet."
 
 **Différenciation vs concurrents :**
 
@@ -68,306 +80,273 @@ Particulier français, 25–45 ans, salarié ou indépendant, qui gère activeme
 |--------|--------|-------|
 | Gratuit pour démarrer | Freemium limité | Gratuit mais manuel |
 | Enveloppes françaises natives | Oui | Non (à coder soi-même) |
-| Open / SaaS simple | App fermée | Fichier local |
 | 4,99 €/mois Pro | ~9,99 €/mois | 0 € mais zéro automatisation |
+| Offre EARLY100 -50 % à vie | Pas d'offre équivalente | — |
 
 ---
 
-## 4. Stratégie de canaux (zéro budget)
+## 4. Stratégie de canaux
 
 Avec aucun budget publicitaire, la stratégie repose à 100 % sur les canaux **owned** et **earned**.
 
-### LinkedIn (priorité 1)
+### LinkedIn — page Subleet (priorité 1)
 
-**Pourquoi :** La page existe déjà. C'est le canal le plus crédible pour un produit SaaS et l'audience finance-investissement y est active.
+**Situation :** Premier post publié. 13 abonnés, 5 réactions. L'audience est quasi inexistante à ce stade — le canal se construit sur la durée.
+
+**Problème identifié :** Le premier post ne contient pas de hashtags. Les hashtags sont le principal mécanisme de distribution organique sur LinkedIn pour une page sans audience. Les ajouter systématiquement à partir du prochain post.
+
+**Hashtags à utiliser systématiquement :**
+`#patrimoine` `#investissement` `#PEA` `#financePersonnelle` `#bourse` `#portefeuille`
 
 **Format recommandé :**
-- Posts "coulisses du produit" — montrer des captures d'écran, expliquer une feature (ex : *"Comment on calcule le P&L en temps réel avec les données de marché"*)
+- Posts "coulisses du produit" — captures d'écran, explication d'une feature
 - Posts pédagogiques — *"Pourquoi votre PEA et votre CTO ne devraient pas être suivis séparément"*
-- Posts de lancement et jalons — premiers utilisateurs, chiffres d'usage
+- Posts jalons — premiers utilisateurs, chiffres d'usage, milestone EARLY100
 
-**Cadence :** 3 posts/semaine minimum pendant le lancement (semaines 3–8), puis 2/semaine en régime de croisière.
+**Cadence :** 3 posts/semaine minimum pendant les semaines 1–8, puis 2/semaine.
 
-**Effort :** Moyen.
+---
 
 ### Reddit — r/vosfinances (priorité 1)
 
-**Pourquoi :** Communauté la plus active de particuliers français qui investissent. Fortement SEO. Une bonne publication peut générer plusieurs centaines de visites.
+**Situation :** Pas encore fait. C'est la prochaine action prioritaire.
+
+**Pourquoi c'est critique :** C'est la communauté la plus concentrée de particuliers français qui investissent. Un bon post génère 2 000–10 000 vues et plusieurs centaines de visites directes. C'est aussi fortement indexé par Google.
 
 **Format recommandé :**
-- Un post de lancement honnête et humble (*"J'ai construit un outil de suivi de patrimoine pour mes propres besoins, retours bienvenus"*)
-- Participation régulière aux discussions comme membre actif — recommander Fi-Hub uniquement quand c'est pertinent
-- AMA ("Ask Me Anything") une fois que quelques utilisateurs sont actifs
+Un post de lancement honnête et personnel (*"J'ai construit un outil de suivi de patrimoine pour mes propres besoins, retours bienvenus"*). Pas de jargon marketing. Montrer des screenshots réels.
 
-**Règle d'or Reddit :** Ne jamais apparaître comme du spam. Contribuer d'abord, promouvoir ensuite. Ratio recommandé : 80 % participation / 20 % promotion.
+**Règle d'or :** Ne jamais apparaître comme du spam. Idéalement, créer le compte Reddit personnel quelques jours avant et participer à quelques discussions avant de poster.
 
-**Effort :** Moyen (modération + réponses aux commentaires).
-
-### Twitter / X — communauté finance FR (priorité 2)
-
-**Pourquoi :** La communauté #FinancePersonnelle et #Bourse est active sur X. Les "build in public" fonctionnent très bien pour les SaaS.
-
-**Format recommandé :**
-- Thread "build in public" — partager le parcours de construction de Fi-Hub, les galères techniques, les décisions produit
-- Répondre aux posts de gens qui cherchent des outils de suivi de patrimoine
-- Partager des infographies simples (ex : *"PEA vs CTO : les 5 différences à connaître"*)
-
-**Comptes à cibler / mentions :** @nalo_finance, influenceurs finance FR (Mr Beast FR du patrimoine, etc.)
-
-**Cadence :** 1 tweet/jour ou 2–3 threads/semaine.
-
-**Effort :** Moyen.
-
-### SEO / Blog (priorité 2, investissement à long terme)
-
-**Pourquoi :** Les requêtes comme "suivi PEA", "tableau de bord portefeuille boursier", "application suivi patrimoine France" ont un volume de recherche régulier et peu de concurrence éditoriale.
-
-**Articles cibles (par ordre de priorité) :**
-1. *"Comment suivre son PEA sans Excel en 2026"* — cible la requête principale, montre Fi-Hub comme solution
-2. *"PEA, CTO, Livret A : comment centraliser le suivi de tous ses comptes"* — met en avant la différenciation clé
-3. *"Les meilleures applications de suivi de portefeuille boursier en France"* — article comparatif où Fi-Hub apparaît
-4. *"Calculer son P&L boursier : méthode et outil gratuit"* — article pédagogique avec appel à l'action
-
-**Cadence :** 1 article/semaine pendant les 8 premières semaines, puis 2/mois.
-
-**Effort :** Élevé (nécessite rédaction + optimisation SEO).
-
-### Product Hunt (priorité 2 — lancement ponctuel)
-
-**Pourquoi :** Audience tech/SaaS internationale mais avec trafic réel. Un lancement bien préparé peut générer 200–500 visites et des dizaines d'inscriptions en 24h.
-
-**Préparation nécessaire :**
-- Créer le profil maker en avance
-- Préparer visuels (screenshots, GIF du dashboard)
-- Mobiliser les premiers utilisateurs pour upvoter le jour J
-
-**Timing recommandé :** Semaine 8–10 de la campagne (après avoir des premiers utilisateurs et du retour).
-
-**Effort :** Élevé (préparation sur 2 semaines).
-
-### Presse / blogs finance FR (priorité 3 — earned media)
-
-**Pourquoi :** Une mention dans MoneyVox, Les Echos Investir, ou un blog comme "Avenue des Investisseurs" peut générer du trafic qualifié et améliorer l'autorité SEO.
-
-**Cibles :**
-- Avenue des Investisseurs (avenuedesinvestisseurs.fr) — blog de référence en France
-- MoneyVox
-- Epargne Actuelle
-- Blogueurs finance indépendants (Tanguy de Mr Banquier, Matthieu Louvet…)
-
-**Approche :** Email personnalisé + accès Pro offert pour test. Angle : *"Un outil fait par un développeur français pour les investisseurs français"* — l'histoire compte autant que le produit.
-
-**Effort :** Élevé, résultats incertains mais impactants si ça marche.
-
-### Forums Boursorama / MoneyVox (priorité 3)
-
-**Pourquoi :** Audience plus âgée mais très engagée sur les sujets d'épargne et d'investissement.
-
-**Approche :** Participation active dans les fils de discussion existants. Ne pas poster directement une publicité — répondre aux questions avec une valeur ajoutée et mentionner Fi-Hub en signature ou quand c'est directement pertinent.
+**Timing :** Semaine 2 (cette semaine ou la suivante).
 
 ---
 
-## 5. Calendrier de contenu — 12 semaines
+### Instagram (priorité 1 — déjà actif)
 
-| Semaine | Contenu / Action | Canal | Notes |
-|---------|-----------------|-------|-------|
-| S1 | Optimiser la page LinkedIn (bio, bannière, lien fi-hub) | LinkedIn | Fondation |
-| S1 | Créer le compte Twitter/X + bio | Twitter/X | Fondation |
-| S1 | Créer le compte Reddit (personnel, pas une marque) | Reddit | Fondation |
-| S1 | Prendre 5–10 screenshots du dashboard pour réseaux | — | Assets visuels |
-| S2 | Post LinkedIn : *"J'ai construit Fi-Hub — voici pourquoi"* | LinkedIn | Post de lancement doux |
-| S2 | Thread Twitter : *"Build in public — l'histoire de Fi-Hub"* | Twitter/X | Premier thread |
-| S2 | Rédiger article SEO #1 : "Suivre son PEA sans Excel" | Blog | À publier S3 |
-| S3 | Publier article SEO #1 | Blog | Avec CTA Fi-Hub |
-| S3 | Post LinkedIn : *"5 raisons de ne plus suivre son PEA sur Excel"* | LinkedIn | Pédagogie |
-| S3 | Post Reddit (r/vosfinances) : présentation honnête du projet | Reddit | **Lancement communauté** |
-| S4 | Répondre à tous les commentaires Reddit | Reddit | Critique — engagement = algorithme |
-| S4 | Post LinkedIn : capture d'écran dashboard + explication | LinkedIn | Preuve produit |
-| S4 | Rédiger article SEO #2 : "PEA, CTO, Livret A centralisé" | Blog | À publier S5 |
-| S5 | Publier article SEO #2 | Blog | |
-| S5 | Thread Twitter : *"Les 3 erreurs de suivi de portefeuille que j'ai faites"* | Twitter/X | Pédagogie |
-| S5 | Post LinkedIn : explication du module dividendes | LinkedIn | Feature spotlight |
-| S6 | Email outreach blogueurs finance (3–5 cibles) | Earned media | Accès Pro offert |
-| S6 | Post Reddit : partage d'une infographie sur les enveloppes fiscales FR | Reddit | Valeur sans promo directe |
-| S6 | Rédiger article SEO #3 : comparatif applications suivi portefeuille | Blog | À publier S7 |
-| S7 | Publier article SEO #3 | Blog | Fi-Hub dans le comparatif |
-| S7 | Post LinkedIn : *"1 mois de lancement — ce qu'on a appris"* | LinkedIn | Transparence / crédibilité |
-| S7 | Thread Twitter : build in public update #2 | Twitter/X | Chiffres, retours, roadmap |
-| S8 | Préparer dossier Product Hunt (visuels, description, tagline) | Product Hunt | 1 semaine de prep |
-| S8 | Rédiger article SEO #4 : "Calculer son P&L boursier" | Blog | À publier S9 |
-| S9 | **LANCEMENT PRODUCT HUNT** | Product Hunt | Mobiliser réseau pour upvotes |
-| S9 | Publier article SEO #4 | Blog | |
-| S9 | Post LinkedIn : *"On est sur Product Hunt aujourd'hui"* | LinkedIn | Cross-promotion |
-| S10 | Analyse Product Hunt + retours utilisateurs | — | Itération produit |
-| S10 | Post LinkedIn : résultats PH + cap utilisateurs | LinkedIn | Jalon |
-| S11 | Forum Boursorama : participer à 2–3 fils sur suivi patrimoine | Forums | Earned media |
-| S11 | Thread Twitter : *"Ce que nos utilisateurs nous ont appris"* | Twitter/X | Social proof |
-| S12 | Bilan de campagne + ajustement stratégie mois 4+ | — | Revue KPIs |
-| S12 | Post LinkedIn : *"3 mois de Fi-Hub — chiffres et suite"* | LinkedIn | Transparence |
+**Situation :** Premier post publié aujourd'hui.
 
----
+**Formats prioritaires :**
 
-## 6. Assets de contenu à produire
+**Format POV (priorité 1)** — le plus viralisable.
+- *"POV : tu ouvres ton dashboard et ton patrimoine a battu le CAC 40 ce mois-ci"*
+- *"POV : tu passes enfin de l'Excel au vrai tableau de bord"*
+- *"POV : tu reçois tes premiers dividendes et tu les vois apparaître en temps réel"*
+- *"POV : tu réalises que tu as 4 comptes éparpillés et aucune vue globale"*
 
-### Must-have (avant lancement)
-
-| Asset | Type | Description | Priorité |
-|-------|------|-------------|----------|
-| Screenshots dashboard | Visuel | 5–8 captures haute qualité du tableau de bord, graphiques, module dividendes | Critique |
-| GIF / vidéo démo | Vidéo courte (30s) | Montrer le parcours : inscription → ajout compte → dashboard | Critique |
-| Bannière LinkedIn | Image | 1584 × 396 px, branding Fi-Hub | Critique |
-| Texte "About" LinkedIn | Texte | Description produit claire avec CTA vers fi-hub.subleet.com | Critique |
-| Article SEO #1 | Blog post | "Suivre son PEA sans Excel en 2026" (1500 mots min) | Critique |
-| Post Reddit de lancement | Texte | Présentation honnête, histoire personnelle, screenshots | Critique |
-
-### Nice-to-have (mois 2–3)
-
-| Asset | Type | Description | Priorité |
-|-------|------|-------------|----------|
-| Infographie enveloppes fiscales FR | Image | PEA vs CTO vs AV vs Livret A — tableau comparatif visuel | Haute |
-| Articles SEO #2, #3, #4 | Blog posts | Voir calendrier ci-dessus | Haute |
-| Email outreach template | Texte | Template personnalisable pour les blogueurs | Moyenne |
-| Dossier Product Hunt | Pack visuels + textes | Tagline, description, images, first comment | Haute |
-| Vidéo YouTube courte (3 min) | Vidéo | "Présentation de Fi-Hub — comment ça marche" | Moyenne |
-
----
-
-## 7. KPIs et métriques de succès
-
-### KPI primaire
-
-**Inscriptions (plan Free) : objectif 200 en 3 mois**
-
-Cet indicateur mesure directement l'efficacité du funnel acquisition → conversion page → signup.
-
-### KPIs secondaires
-
-| Métrique | Objectif à 3 mois | Comment mesurer |
-|----------|-----------------|-----------------|
-| Conversion Free → Pro | 5 % (10 utilisateurs Pro) | Paddle dashboard |
-| Trafic organique landing page | 500 visites/mois | Google Analytics / Vercel Analytics |
-| Abonnés LinkedIn | 300 | LinkedIn Analytics |
-| Abonnés Twitter/X | 150 | Twitter Analytics |
-| Portée post Reddit de lancement | 5 000+ vues | Reddit Insights |
-| Backlinks obtenus | 3+ | Google Search Console |
-| Taux de rebond landing page | < 60 % | Google Analytics |
-
-### Cadence de reporting
-
-- Hebdomadaire : vérifier LinkedIn (portée, abonnés), Reddit (commentaires, upvotes), trafic site
-- Mensuel : bilan complet KPIs, ajustement calendrier, décisions sur les canaux sous-performants
-
----
-
-## 8. Risques et plans de mitigation
-
-### Risque 1 — Pas de retour de la communauté Reddit
-
-**Probabilité :** Moyenne. Reddit r/vosfinances est exigeant avec les auto-promotions.
-
-**Mitigation :** Préparer le post avec soin (histoire personnelle, pas de jargon marketing, screenshots réels). Lire les 20 derniers posts de la communauté avant de poster pour s'adapter au ton. Avoir le compte créé depuis au moins 2 semaines avec quelques commentaires avant de poster.
-
-### Risque 2 — Stagnation des inscriptions après le pic de lancement
-
-**Probabilité :** Élevée si on ne produit pas de contenu SEO régulier.
-
-**Mitigation :** Le SEO est le seul canal qui continue de générer du trafic sans effort répété. Prioriser les 4 articles comme socle durable, et les publier avec une vraie optimisation (balises title/meta, maillage interne, images alt).
-
-### Risque 3 — Manque de temps pour alimenter tous les canaux simultanément
-
-**Probabilité :** Très élevée pour un fondateur solo.
-
-**Mitigation :** Ne pas essayer de tout faire en même temps. Ordre de priorité strict : Reddit + LinkedIn d'abord (semaines 1–4), Twitter/X ensuite (semaines 3–8), SEO en parallèle mais au rythme possible, Product Hunt et blogs en dernier. Mieux vaut 2 canaux bien tenus que 5 canaux abandonnés.
-
----
-
-## 9. Prochaines actions immédiates
-
-Ces actions peuvent être réalisées cette semaine, avant tout contenu :
-
-1. **Compléter la page LinkedIn** — photo de couverture, description produit claire, lien vers fi-hub.subleet.com, premiers 3 posts programmés
-2. **Créer le compte Twitter/X** — bio + lien + épingler un tweet de présentation
-3. **Créer un compte Reddit personnel** — commencer à participer à r/vosfinances comme simple membre (pas encore de promotion)
-4. **Installer Google Analytics (ou Vercel Analytics)** — indispensable pour mesurer le trafic dès le lancement
-5. **Prendre des screenshots propres du dashboard** — avec des données fictives mais réalistes (valorisation, graphiques, positions)
-6. **Rédiger le post Reddit de lancement** — et le garder en brouillon 1 semaine pour le relire
-
----
-
-## 10. Approches gratuites à tester en mois 2–3
-
-Une fois les bases posées, ces tactiques peuvent amplifier la croissance sans budget :
-
-- **Référencer Fi-Hub dans les comparatifs existants** — Chercher les articles type "top 5 apps suivi portefeuille France" et contacter les auteurs pour demander d'être ajouté
-- **Créer une liste d'attente pour une feature premium** — génère de l'engagement et des emails
-- **Offrir 3 mois Pro gratuits aux 50 premiers inscrits** — crée de l'urgence et de la viralité organique
-- **Apparaître dans des newsletters finance** — The Big Whale, Snowball, Investir.ch (Swiss mais lus en France) acceptent parfois des mentions de produits gratuits
-
----
-
-*Brief rédigé en mai 2026 — à revisiter à la fin du mois 3 selon les résultats.*
-
----
-
-## Phase 2 — Instagram Reels & TikTok (mois 4+)
-
-À activer une fois que LinkedIn et Reddit tournent de façon autonome.
-
-### Positionnement vidéo
-
-Ne pas parler du produit directement. Parler de **l'émotion autour du patrimoine** — la satisfaction de voir ses comptes progresser, la frustration d'Excel, les milestones. Fi-Hub apparaît comme la solution naturelle, pas comme le sujet.
-
-### Formats prioritaires
-
-**Format POV (priorité 1)**
-Le plus viralisable sur Reels et TikTok finance. La caméra incarne le point de vue du viewer.
-
-Angles à tester :
-- *"POV : tu ouvres ton dashboard et ton patrimoine a battu le CAC 40 ce mois-ci"* — screen recording du tableau de bord avec animations
-- *"POV : tu passes enfin de l'Excel au vrai tableau de bord"* — transition avant/après
-- *"POV : tu reçois tes premiers dividendes et tu les vois apparaître en temps réel"* — module dividendes en action
-- *"POV : tu réalises que tu as 4 comptes éparpillés et aucune vue globale"* — pain point universel
-
-**Format éducatif court (priorité 2)**
-30–60 secondes, texte sur écran, voix off ou sous-titres.
-
+**Format éducatif court (priorité 2)** — 30–60 secondes, texte sur écran.
 - *"PEA vs CTO : 3 différences à connaître avant d'investir"*
 - *"Comment calculer son vrai rendement net après impôts"*
 - *"5 métriques à suivre sur son portefeuille (au-delà du +/−)"*
 
-Ces vidéos n'évoquent pas directement Fi-Hub mais positionnent le compte comme une référence finance. Le lien en bio fait le reste.
+**Bio :** Vérifier que le lien vers fi-hub.subleet.com est bien en bio. Mentionner le code EARLY100 tant que l'offre est active.
 
-### Production — sans se filmer
+**Cadence :** 2 Reels/semaine minimum.
+
+---
+
+### TikTok (priorité 1 — déjà actif)
+
+**Situation :** Premier post publié aujourd'hui.
+
+Mêmes formats que Instagram (POV + éducatif). Publier simultanément sur les deux plateformes — même vidéo, même texte.
+
+**Spécificité TikTok :** Les hashtags sont plus importants qu'Instagram pour la distribution. Utiliser : `#investissement` `#patrimoine` `#PEA` `#bourse` `#financePersonnelle` `#argent`.
+
+**Cadence :** 2 vidéos/semaine, en parallèle avec Instagram.
+
+---
+
+### Production vidéo — sans se filmer
 
 Tout peut se faire avec :
-- Un screen recording du dashboard Fi-Hub (QuickTime ou OBS, gratuit)
+- Un screen recording du dashboard Fi-Hub (OBS ou l'outil natif Windows, gratuit)
 - Du texte animé par-dessus (CapCut, gratuit — le standard TikTok)
 - Une musique finance/lo-fi de la bibliothèque TikTok/Meta
 - Des sous-titres auto-générés
 
 Temps estimé par vidéo : 30–45 min une fois le workflow en place.
 
-### Calendrier phase 2
+---
 
-| Semaine | Action |
-|---------|--------|
-| M4-S1 | Créer les comptes Instagram et TikTok, bio + lien Fi-Hub |
-| M4-S1 | Produire 3 vidéos POV de stock (dashboard, dividendes, avant/après) |
-| M4-S2 | Publier la première vidéo POV sur les deux plateformes simultanément |
-| M4 à M6 | Cadence : 2 vidéos/semaine (1 POV + 1 éducatif) |
-| M5 | Analyser les formats qui génèrent le plus de clics profil → bio → site |
-| M6 | Doubler la cadence sur le format gagnant, abandonner ce qui ne convertit pas |
+### Twitter / X (priorité 2)
 
-### KPIs phase 2
+**Format recommandé :**
+- Thread "build in public" — partager le parcours, les décisions produit, les chiffres
+- Répondre aux posts de gens qui cherchent des outils de suivi de patrimoine
 
-| Métrique | Objectif à 3 mois (M4–M6) |
-|----------|--------------------------|
-| Abonnés Instagram | 500 |
-| Abonnés TikTok | 500 |
-| Vues cumulées vidéos | 50 000 |
-| Clics vers fi-hub.subleet.com (depuis bio) | 300 |
-| Inscriptions attribuables aux réseaux vidéo | 50 |
+**Cadence :** 1–2 threads/semaine. À démarrer une fois LinkedIn + Reddit + Instagram/TikTok tournent.
 
 ---
 
-*Phase 2 ajoutée en mai 2026.*
+### SEO / Blog (priorité 2 — investissement long terme)
+
+**Articles cibles :**
+1. *"Comment suivre son PEA sans Excel en 2026"* — cible la requête principale
+2. *"PEA, CTO, Livret A : comment centraliser le suivi de tous ses comptes"*
+3. *"Les meilleures applications de suivi de portefeuille boursier en France"* — comparatif
+4. *"Calculer son P&L boursier : méthode et outil gratuit"*
+
+**Cadence :** 1 article/semaine pendant 8 semaines, puis 2/mois. À démarrer dès que possible.
+
+---
+
+### Product Hunt (priorité 2 — lancement ponctuel)
+
+**Timing recommandé :** Semaine 8–10 (après retours utilisateurs et premiers chiffres).
+
+**Préparation :** Visuels, GIF dashboard, mobiliser les premiers utilisateurs pour upvoter le jour J.
+
+---
+
+### Presse / blogs finance FR (priorité 3)
+
+**Cibles :**
+- Avenue des Investisseurs (avenuedesinvestisseurs.fr)
+- MoneyVox, Épargne Actuelle
+- Blogueurs indépendants : Mr Banquier, Matthieu Louvet, Snowball newsletter
+
+**Approche :** Email personnalisé + accès Pro offert pour test. Angle : *"Un outil fait par un développeur français pour les investisseurs français."*
+
+---
+
+## 5. Calendrier de contenu — à partir du 13 mai 2026
+
+| Semaine | Contenu / Action | Canal | Statut |
+|---------|-----------------|-------|--------|
+| S1 (13 mai) | Post de lancement | LinkedIn | ✅ Fait |
+| S1 (13 mai) | Premier post | Instagram | ✅ Fait |
+| S1 (13 mai) | Premier post | TikTok | ✅ Fait |
+| S1 | Ajouter hashtags systématiquement dès le prochain post | LinkedIn |✅ Fait |
+| S1 | Vérifier bio Instagram + TikTok avec lien fi-hub et code EARLY100 | Instagram / TikTok | ✅ Fait |
+| S1–S2 | Créer compte Reddit personnel, participer à r/vosfinances avant de poster | Reddit | À faire |
+| S2 | Post Reddit : présentation honnête du projet, screenshots | Reddit | **Priorité haute** |
+| S2 | Post LinkedIn : feature spotlight dashboard ou module dividendes + hashtags | LinkedIn | |
+| S2 | Reel POV #1 (ex : "POV tu passes de l'Excel au dashboard") | Instagram / TikTok | |
+| S3 | Répondre à tous les commentaires Reddit | Reddit | Critique |
+| S3 | Post LinkedIn : 5 raisons de ne plus suivre son PEA sur Excel | LinkedIn | |
+| S3 | Reel éducatif #1 (PEA vs CTO) | Instagram / TikTok | |
+| S3 | Rédiger article SEO #1 : "Suivre son PEA sans Excel en 2026" | Blog | |
+| S4 | Publier article SEO #1 | Blog | |
+| S4 | Post LinkedIn : capture d'écran dashboard + explication chiffrée | LinkedIn | |
+| S4 | Reel POV #2 (ex : "POV ton patrimoine bat le CAC 40") | Instagram / TikTok | |
+| S5 | Rédiger article SEO #2 | Blog | |
+| S5 | Post LinkedIn : jalon EARLY100 (ex : "X places restantes") | LinkedIn | |
+| S5 | Thread Twitter : build in public — l'histoire de Fi-Hub | Twitter/X | |
+| S6 | Email outreach blogueurs finance (3–5 cibles) | Earned media | |
+| S6 | Publier article SEO #2 | Blog | |
+| S6 | Post Reddit : infographie enveloppes fiscales (valeur sans promo directe) | Reddit | |
+| S7 | Post LinkedIn : "1 mois de lancement — ce qu'on a appris" | LinkedIn | |
+| S7 | Rédiger article SEO #3 : comparatif apps suivi portefeuille | Blog | |
+| S8 | Préparer dossier Product Hunt (visuels, tagline, description) | Product Hunt | |
+| S8 | Publier article SEO #3 | Blog | |
+| S9 | **LANCEMENT PRODUCT HUNT** | Product Hunt | Mobiliser réseau |
+| S9 | Post LinkedIn : "On est sur Product Hunt aujourd'hui" | LinkedIn | |
+| S10 | Analyse Product Hunt + retours | — | Itération produit |
+| S11 | Forum Boursorama : participer à 2–3 fils sur suivi patrimoine | Forums | |
+| S12 | Bilan de campagne + ajustement stratégie mois 4+ | — | Revue KPIs |
+
+---
+
+## 6. Code promo EARLY100
+
+**Offre :** 50 % de réduction sur le plan Pro, **à vie**, pour les 100 premiers inscrits.
+
+**Comment l'utiliser dans le contenu :**
+- Mentionner systématiquement dans les posts de lancement
+- Afficher le compteur restant quand c'est pertinent (ex : "Il reste X places")
+- Mettre en bio Instagram/TikTok tant que l'offre est active
+- Créer un post LinkedIn dédié "Pourquoi les 100 premiers ont droit à -50 % à vie" — explication du choix, crée de la confiance
+
+**Quand l'offre se ferme :** Faire un post de clôture ("Les 100 places EARLY100 sont parties") pour créer du FOMO et montrer la traction.
+
+---
+
+## 7. Assets de contenu à produire
+
+### Must-have (immédiat)
+
+| Asset | Description | Priorité |
+|-------|-------------|----------|
+| Screenshots dashboard | 5–8 captures haute qualité — tableau de bord, graphiques, module dividendes | Critique |
+| Vidéos POV stock (x3) | dashboard, dividendes, avant/après Excel — à avoir en réserve | Critique |
+| Post Reddit de lancement | Texte honnête, histoire personnelle, screenshots — garder en brouillon 2–3 jours avant de poster | Critique |
+| Infographie enveloppes fiscales | PEA vs CTO vs AV vs Livret A — tableau comparatif visuel | Haute |
+
+### Nice-to-have (mois 2)
+
+| Asset | Description |
+|-------|-------------|
+| Articles SEO #1 à #4 | Voir calendrier |
+| GIF / vidéo démo 30s | Parcours inscription → dashboard |
+| Email outreach template | Personnalisable pour les blogueurs |
+| Dossier Product Hunt | Tagline, images, first comment |
+
+---
+
+## 8. KPIs
+
+### KPI primaire
+
+**Inscriptions (plan Free) : objectif 200 en 3 mois**
+
+### KPIs secondaires
+
+| Métrique | Objectif à 3 mois | Comment mesurer |
+|----------|-----------------|-----------------|
+| Places EARLY100 utilisées | 100 (objectif : épuisées avant fin juin) | Paddle dashboard |
+| Conversion Free → Pro | 5 % (10 utilisateurs Pro) | Paddle dashboard |
+| Trafic organique landing page | 500 visites/mois | Vercel Analytics |
+| Abonnés LinkedIn | 300 | LinkedIn Analytics |
+| Abonnés Instagram | 500 | Instagram Insights |
+| Abonnés TikTok | 500 | TikTok Analytics |
+| Vues vidéos cumulées (Instagram + TikTok) | 50 000 | Insights |
+| Portée post Reddit de lancement | 5 000+ vues | Reddit |
+| Backlinks obtenus | 3+ | Google Search Console |
+
+### Cadence de reporting
+
+- Hebdomadaire : LinkedIn (portée, abonnés), Instagram/TikTok (vues, clics bio), Reddit (upvotes, commentaires), trafic site
+- Mensuel : bilan complet KPIs, ajustement canaux
+
+---
+
+## 9. Risques et mitigation
+
+### Risque 1 — Rejet sur Reddit
+
+**Probabilité :** Moyenne. r/vosfinances est exigeant avec les auto-promotions.
+
+**Mitigation :** Avoir le compte depuis au moins quelques jours avec quelques commentaires. Poster avec une histoire personnelle et des screenshots réels. Lire les 20 derniers posts avant de rédiger pour s'adapter au ton exact de la communauté.
+
+### Risque 2 — Stagnation après le pic de lancement
+
+**Probabilité :** Élevée sans contenu SEO régulier.
+
+**Mitigation :** Le SEO est le seul canal qui génère du trafic sans effort répété. Prioriser les 4 articles comme socle durable, publier avec une vraie optimisation (balises title/meta, maillage interne).
+
+### Risque 3 — Manque de temps pour alimenter 4 canaux simultanément
+
+**Probabilité :** Très élevée pour un fondateur solo.
+
+**Mitigation :** Publier simultanément Instagram et TikTok (même vidéo) pour diviser l'effort par deux. Ordre de priorité : Reddit + LinkedIn (semaines 1–4) → Instagram/TikTok en régime de croisière → SEO en parallèle → Product Hunt en dernier. 2 canaux bien tenus valent mieux que 5 abandonnés.
+
+### Risque 4 — EARLY100 reste inutilisée
+
+**Probabilité :** Moyenne si l'offre n'est pas visible.
+
+**Mitigation :** Mettre le code en bio Instagram/TikTok, le mentionner explicitement dans les posts LinkedIn, créer un post dédié à l'explication de l'offre fondateurs.
+
+---
+
+## 10. Prochaines actions immédiates (semaine du 13 mai)
+
+1. **Vérifier la bio Instagram et TikTok** — lien fi-hub.subleet.com présent, code EARLY100 mentionné
+2. **Préparer le post Reddit** — rédiger, laisser reposer 2–3 jours, poster en semaine 2
+3. **Planifier les 3 prochains posts LinkedIn** — avec hashtags obligatoires dès maintenant
+4. **Produire 2–3 vidéos POV en stock** — pour ne pas être en rupture de contenu
+5. **Rédiger l'article SEO #1** — "Suivre son PEA sans Excel en 2026"
+
+---
+
+*Brief mis à jour le 13 mai 2026 — lancement actif sur LinkedIn, Instagram, TikTok. Reddit et SEO à activer en semaine 2.*

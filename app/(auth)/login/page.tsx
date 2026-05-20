@@ -6,6 +6,7 @@ export const metadata: Metadata = {
   title: 'Connexion',
   description: 'Connectez-vous à Fi-Hub pour accéder à votre tableau de bord de suivi de patrimoine.',
   alternates: { canonical: '/login' },
+  robots: { index: false, follow: false },
 };
 
 export default function LoginPage() {

@@ -7,22 +7,80 @@ export function Footer() {
         <div>
           <h4 className="font-semibold text-zinc-900 dark:text-zinc-100 mb-3">Produit</h4>
           <ul className="space-y-2 text-zinc-600 dark:text-zinc-400">
-            <li><Link href="/#pricing" className="hover:text-zinc-900">Tarifs</Link></li>
-            <li><Link href="/signup" className="hover:text-zinc-900">Créer un compte</Link></li>
-            <li><Link href="/login" className="hover:text-zinc-900">Se connecter</Link></li>
+            <li>
+              <Link href="/fonctionnalites" className="hover:text-zinc-900 dark:hover:text-zinc-100">
+                Fonctionnalités
+              </Link>
+            </li>
+            <li>
+              <Link href="/#pricing" className="hover:text-zinc-900 dark:hover:text-zinc-100">
+                Tarifs
+              </Link>
+            </li>
+            <li>
+              <Link href="/alternatives" className="hover:text-zinc-900 dark:hover:text-zinc-100">
+                Alternatives
+              </Link>
+            </li>
+            <li>
+              <Link href="/signup" className="hover:text-zinc-900 dark:hover:text-zinc-100">
+                Créer un compte
+              </Link>
+            </li>
+            <li>
+              <Link href="/login" className="hover:text-zinc-900 dark:hover:text-zinc-100">
+                Se connecter
+              </Link>
+            </li>
+          </ul>
+        </div>
+        <div>
+          <h4 className="font-semibold text-zinc-900 dark:text-zinc-100 mb-3">Guides</h4>
+          <ul className="space-y-2 text-zinc-600 dark:text-zinc-400">
+            <li>
+              <Link href="/guides" className="hover:text-zinc-900 dark:hover:text-zinc-100">
+                Tous les guides
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/guides/suivi-portefeuille-boursier"
+                className="hover:text-zinc-900 dark:hover:text-zinc-100"
+              >
+                Suivi portefeuille
+              </Link>
+            </li>
+            <li>
+              <Link href="/guides/suivi-pea" className="hover:text-zinc-900 dark:hover:text-zinc-100">
+                PEA et positions
+              </Link>
+            </li>
+            <li>
+              <Link href="/guides/calcul-pru" className="hover:text-zinc-900 dark:hover:text-zinc-100">
+                Calcul PRU
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/guides/suivi-dividendes"
+                className="hover:text-zinc-900 dark:hover:text-zinc-100"
+              >
+                Dividendes
+              </Link>
+            </li>
           </ul>
         </div>
         <div>
           <h4 className="font-semibold text-zinc-900 dark:text-zinc-100 mb-3">Légal</h4>
           <ul className="space-y-2 text-zinc-600 dark:text-zinc-400">
-            <li><Link href="/legal/cgu" className="hover:text-zinc-900">CGU</Link></li>
-            <li><Link href="/legal/confidentialite" className="hover:text-zinc-900">Confidentialité</Link></li>
-            <li><Link href="/legal/mentions-legales" className="hover:text-zinc-900">Mentions légales</Link></li>
-            <li><Link href="/legal/cookies" className="hover:text-zinc-900">Cookies</Link></li>
-            <li><Link href="https://fi-hub.subleet.com/legal/remboursement" className="hover:text-zinc-900">Remboursement</Link></li>
+            <li><Link href="/legal/cgu" className="hover:text-zinc-900 dark:hover:text-zinc-100">CGU</Link></li>
+            <li><Link href="/legal/confidentialite" className="hover:text-zinc-900 dark:hover:text-zinc-100">Confidentialité</Link></li>
+            <li><Link href="/legal/mentions-legales" className="hover:text-zinc-900 dark:hover:text-zinc-100">Mentions légales</Link></li>
+            <li><Link href="/legal/cookies" className="hover:text-zinc-900 dark:hover:text-zinc-100">Cookies</Link></li>
+            <li><Link href="/legal/remboursement" className="hover:text-zinc-900 dark:hover:text-zinc-100">Remboursement</Link></li>
           </ul>
         </div>
-        <div className="col-span-2">
+        <div>
           <h4 className="font-semibold text-zinc-900 dark:text-zinc-100 mb-3">Fi-Hub</h4>
           <p className="text-zinc-600 dark:text-zinc-400 max-w-xs">
             Suivi de patrimoine — PEA, CTO, livrets, assurances-vie. Un tableau de bord unique,
