@@ -6,7 +6,7 @@ import "./globals.css";
 import { AuthProvider } from "@/lib/auth";
 
 const SITE_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://fi-hub.subleet.com";
-const SEARCH_SITE_NAME = "fi-hub.subleet.com";
+const SEARCH_SITE_NAME = "Fi-Hub";
 
 const fraunces = Fraunces({
   subsets: ["latin"],

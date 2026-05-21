@@ -21,11 +21,11 @@ import { FAQ_ITEMS } from '@/components/marketing/faq-data';
 import { PLANS } from '@/lib/plans';
 
 const SITE_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://fi-hub.subleet.com';
-const SEARCH_SITE_NAME = 'fi-hub.subleet.com';
+const SEARCH_SITE_NAME = 'Fi-Hub';
 export const revalidate = 3600;
 
 export const metadata: Metadata = {
-  title: 'Suivi de patrimoine PEA, CTO, livrets, AV — sans Excel',
+  title: 'Fi-Hub — Suivi de patrimoine PEA, CTO, livrets et assurance-vie',
   description:
     "Fi-Hub regroupe vos comptes (PEA, CTO, livret A, LDDS, assurance-vie, PEL) en un tableau de bord unique. Valorisation temps réel, dividendes, import en un clic, comparaison vs CAC 40. Gratuit pour démarrer.",
   alternates: { canonical: '/' },
@@ -140,8 +140,8 @@ function buildJsonLd() {
   const website = {
     '@context': 'https://schema.org',
     '@type': 'WebSite',
-    name: SEARCH_SITE_NAME,
-    alternateName: 'Fi-Hub',
+    name: 'Fi-Hub',
+    alternateName: ['fi-hub', 'Fi Hub', 'fi-hub.subleet.com'],
     url: SITE_URL,
     inLanguage: 'fr-FR',
   };

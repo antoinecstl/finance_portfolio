@@ -1,13 +1,13 @@
 <claude-mem-context>
 # Memory Context
 
-# [finance_portfolio] recent context, 2026-05-20 3:14pm GMT+2
+# [finance_portfolio] recent context, 2026-05-21 10:15pm GMT+2
 
 Legend: 🎯session 🔴bugfix 🟣feature 🔄refactor ✅change 🔵discovery ⚖️decision 🚨security_alert 🔐security_note
 Format: ID TIME TYPE TITLE
 Fetch details: get_observations([IDs]) | Search: mem-search skill
 
-Stats: 50 obs (19 384t read) | 1 418 337t work | 99% savings
+Stats: 50 obs (20 245t read) | 1 418 558t work | 99% savings
 
 ### May 6, 2026
 S2 Fix progress bar alignment in portfolio mockup (May 6, 11:31 PM)
@@ -18,15 +18,8 @@ S8 Global codebase analysis and cleanup of finance_portfolio (Fi-Hub) Next.js ap
 S11 RGPD/GDPR compliance audit of Fi-Hub (finance_portfolio Next.js app) — full codebase review (May 12, 11:14 PM)
 ### May 13, 2026
 S12 Mise à jour de la stratégie de campagne de lancement Fi-Hub pour refléter les actions déjà réalisées le 13 mai 2026 (posts LinkedIn, Instagram, TikTok sur le compte Subleet) (May 13, 5:06 PM)
-189 7:07p 🔵 Contenu exact du post LinkedIn de lancement Fi-Hub (2026-05-13)
-190 7:09p ✅ Mise à jour majeure de campagne-lancement-fi-hub.md au jour J du lancement
 S13 Social media content strategy for Fi-Hub (fi-hub.subleet.com) — Reddit posts + TikTok/Instagram POV scripts to showcase investment performance and grow product awareness organically (May 13, 7:09 PM)
-191 7:49p 🟣 Social Media Content Strategy: Reddit/TikTok/Instagram Finance Posts
 S14 User asked Claude to log into fi-hub.subleet.com and explore stats — credentials were shared in plain text in the session (May 13, 7:51 PM)
-192 8:12p 🔐 Credentials Shared in Plain Text in Session
-193 8:13p 🔵 Playwright MCP Tools Loaded for fi-hub.subleet.com Automation
-194 8:14p 🔵 fi-hub.subleet.com Login Page Confirmed Accessible
-195 " 🔵 Successful Login to fi-hub.subleet.com — Dashboard Reached
 196 8:15p 🔵 Fi-Hub Dashboard Full Portfolio Snapshot — 154 462 € Total Patrimoine
 197 " 🔵 Fi-Hub 1-Year Portfolio Performance: +48 436 € (+46.1%)
 198 8:16p 🔵 Fi-Hub Dashboard Screenshot Captured and Dividendes Section Navigated
@@ -72,6 +65,14 @@ S15 Exploration complète du portfolio fi-hub.subleet.com (antoinecstl@gmail.com
 371 " ✅ Renamed "Suivi PEA" feature to "Positions et PRU" across codebase
 372 3:06p 🔵 SEO Architecture Audit Initiated on Next.js Marketing App
 373 3:13p 🔵 Next.js Build Fails Due to Remotion Config Included in TypeScript Compilation
+374 3:15p 🔴 Next.js Prod Build Failing Due to Remotion Project Tracked in Git
+375 " 🔵 marketing/fi-hub-videos Is a Separate Remotion Project Nested in the Next.js Repo
+376 3:16p 🔵 `.gitignore` Typo: `.marketing/*` Instead of `/marketing/`
+377 " 🔴 Fixed CI Build: Untracked `marketing/fi-hub-videos/` from Git and TypeScript
+378 " 🔵 Production Build Passes: 47 Routes, TypeScript Clean
+### May 21, 2026
+479 10:12p 🔵 Fi-Hub SEO Problem: Subdomain Not Ranking for Brand Queries
+481 10:13p 🔵 Fi-Hub SEO Architecture: lib/seo-pages.ts + indexableMarketingRoutes
 
-Access 1418k tokens of past work via get_observations([IDs]) or mem-search skill.
+Access 1419k tokens of past work via get_observations([IDs]) or mem-search skill.
 </claude-mem-context>
