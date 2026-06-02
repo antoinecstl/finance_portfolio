@@ -6,7 +6,7 @@ import { Account, StockPosition, Transaction } from '@/lib/types';
 import { useStockSearch } from '@/lib/hooks';
 import { useLimitReached } from './LimitReachedModal';
 import { POPULAR_FRENCH_STOCKS, POPULAR_CRYPTOS } from '@/lib/stock-api';
-import { calculatePositionsAtDate } from '@/lib/portfolio-calculator';
+import { calculatePositionsAtDate, findCalculatedPosition } from '@/lib/portfolio-calculator';
 import { getApiErrorMessage } from '@/lib/api-errors';
 import {
   accountSupportsPositions,
@@ -240,6 +240,7 @@ export function AddTransactionModal({
   const handleSelectExistingPosition = (position: StockPosition) => {
     setStockSymbol(position.symbol);
     setStockName(position.name);
+    setCurrency((position.currency ?? 'EUR').toUpperCase());
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -305,10 +306,14 @@ export function AddTransactionModal({
       // à la date choisie sur ce compte. Le serveur re-vérifie de toute façon.
       if (type === 'SELL') {
         const positionsAtDate = calculatePositionsAtDate(transactions, date, accountId);
-        const positionAtDate = positionsAtDate.get(stockSymbol.toUpperCase());
+        const positionAtDate = findCalculatedPosition(
+          positionsAtDate,
+          stockSymbol.toUpperCase(),
+          normalizedCurrency
+        );
         if (!positionAtDate || positionAtDate.quantity < qty) {
           throw new Error(
-            `Position insuffisante sur ce compte au ${date}. Vous aviez ${positionAtDate?.quantity || 0} titres.`
+            `Position ${normalizedCurrency} insuffisante sur ce compte au ${date}. Vous aviez ${positionAtDate?.quantity || 0} titres.`
           );
         }
       }
@@ -537,12 +542,14 @@ export function AddTransactionModal({
                     onClick={() => handleSelectExistingPosition(pos)}
                     className={`text-left p-2 rounded-lg border text-xs sm:text-sm transition-colors min-w-0 ${
                       stockSymbol.toUpperCase() === pos.symbol.toUpperCase()
+                        && currency.toUpperCase() === (pos.currency ?? 'EUR').toUpperCase()
                         ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/30'
                         : 'border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800'
                     }`}
                   >
                     <div className="font-medium text-zinc-900 dark:text-zinc-100 truncate">{pos.symbol}</div>
                     <div className="text-xs text-zinc-500 truncate">{pos.name}</div>
+                    <div className="text-[10px] text-zinc-500 dark:text-zinc-400">{(pos.currency ?? 'EUR').toUpperCase()}</div>
                   </button>
                 ))}
               </div>
@@ -581,12 +588,14 @@ export function AddTransactionModal({
                         onClick={() => handleSelectExistingPosition(pos)}
                         className={`text-left p-2 rounded-lg border text-xs sm:text-sm transition-colors min-w-0 ${
                           stockSymbol.toUpperCase() === pos.symbol.toUpperCase()
+                            && currency.toUpperCase() === (pos.currency ?? 'EUR').toUpperCase()
                             ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30'
                             : 'border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800'
                         }`}
                       >
                         <div className="font-medium text-zinc-900 dark:text-zinc-100 truncate">{pos.symbol}</div>
                         <div className="text-xs text-zinc-500 truncate">{pos.quantity} titres</div>
+                        <div className="text-[10px] text-zinc-500 dark:text-zinc-400">{(pos.currency ?? 'EUR').toUpperCase()}</div>
                       </button>
                     ))}
                   </div>

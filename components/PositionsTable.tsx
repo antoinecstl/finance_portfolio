@@ -115,7 +115,8 @@ export function PositionsTable({
     sortedTransactions.forEach(t => {
       const symbol = t.stock_symbol!.toUpperCase();
       const accountId = t.account_id;
-      const key = `${accountId}:${symbol}`;
+      const currency = (t.currency ?? 'EUR').toUpperCase();
+      const key = `${accountId}:${symbol}:${currency}`;
       const qty = t.quantity || 0;
       const amount = t.amount || 0;
 
@@ -140,7 +141,7 @@ export function PositionsTable({
             sellQty: sellQty,
             sellTotal: amount,
             sellDate: t.date,
-            currency: (t.currency ?? 'EUR').toUpperCase(),
+            currency,
           });
 
           running.qty -= sellQty;
@@ -236,9 +237,15 @@ export function PositionsTable({
         groupByAccount && cashAccounts.length > 1 ? (
           <div className="grid gap-2 sm:grid-cols-2">
             {cashAccounts.map((acc) => {
-              const accStocksValue = positions
+              const accStocksValueInBase = acc.calculatedStocksValueInBase ?? positions
                 .filter(p => p.account_id === acc.id)
-                .reduce((sum, p) => sum + p.quantity * (quotes[p.symbol]?.price ?? p.average_price), 0);
+                .reduce((sum, p) => {
+                  const quote = quotes[p.symbol];
+                  const quoteCurrency = (quote?.currency ?? p.currency ?? 'EUR').toUpperCase();
+                  return sum + convertToBase(p.quantity * (quote?.price ?? p.average_price), quoteCurrency, today, fxRates);
+                }, 0);
+              const accTotalInBase = acc.calculatedTotalValueInBase
+                ?? ((acc.calculatedCashInBase ?? acc.calculatedCash ?? 0) + accStocksValueInBase);
               return (
                 <div key={acc.id} className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-3 sm:p-4">
                   <p className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 uppercase tracking-wide mb-2">
@@ -259,9 +266,9 @@ export function PositionsTable({
                     <div className="text-left sm:text-right pl-8 sm:pl-0">
                       <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400">Total compte</p>
                       <p className="text-lg sm:text-xl font-bold text-zinc-900 dark:text-zinc-100">
-                        {accStocksValue === 0
+                        {accStocksValueInBase === 0
                           ? formatCurrencyBreakdown(acc.calculatedCashByCurrency, acc.currency)
-                          : formatCurrency((acc.calculatedCash ?? 0) + accStocksValue, acc.currency)}
+                          : formatCurrency(accTotalInBase)}
                       </p>
                     </div>
                   </div>

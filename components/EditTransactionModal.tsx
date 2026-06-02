@@ -5,7 +5,7 @@ import { X, Search } from 'lucide-react';
 import { Account, Transaction, TransactionType } from '@/lib/types';
 import { useStockSearch } from '@/lib/hooks';
 import { POPULAR_FRENCH_STOCKS, POPULAR_CRYPTOS } from '@/lib/stock-api';
-import { calculatePositionsAtDate } from '@/lib/portfolio-calculator';
+import { calculatePositionsAtDate, findCalculatedPosition } from '@/lib/portfolio-calculator';
 import { getApiErrorMessage } from '@/lib/api-errors';
 import {
   accountSupportsPositions,
@@ -236,10 +236,14 @@ export function EditTransactionModal({
           date,
           accountId
         );
-        const positionAtDate = positionsAtDate.get(stockSymbol.toUpperCase());
+        const positionAtDate = findCalculatedPosition(
+          positionsAtDate,
+          stockSymbol.toUpperCase(),
+          normalizedCurrency
+        );
         if (!positionAtDate || positionAtDate.quantity < qty) {
           throw new Error(
-            `Position insuffisante sur ce compte au ${date}. Vous aviez ${positionAtDate?.quantity ?? 0} titres avant cette transaction.`
+            `Position ${normalizedCurrency} insuffisante sur ce compte au ${date}. Vous aviez ${positionAtDate?.quantity ?? 0} titres avant cette transaction.`
           );
         }
       }

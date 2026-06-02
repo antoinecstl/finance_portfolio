@@ -1,13 +1,13 @@
 <claude-mem-context>
 # Memory Context
 
-# [finance_portfolio] recent context, 2026-05-21 10:15pm GMT+2
+# [finance_portfolio] recent context, 2026-06-02 9:40pm GMT+2
 
 Legend: 🎯session 🔴bugfix 🟣feature 🔄refactor ✅change 🔵discovery ⚖️decision 🚨security_alert 🔐security_note
 Format: ID TIME TYPE TITLE
 Fetch details: get_observations([IDs]) | Search: mem-search skill
 
-Stats: 50 obs (20 245t read) | 1 418 558t work | 99% savings
+Stats: 50 obs (23 308t read) | 590 785t work | 96% savings
 
 ### May 6, 2026
 S2 Fix progress bar alignment in portfolio mockup (May 6, 11:31 PM)
@@ -20,30 +20,12 @@ S11 RGPD/GDPR compliance audit of Fi-Hub (finance_portfolio Next.js app) — ful
 S12 Mise à jour de la stratégie de campagne de lancement Fi-Hub pour refléter les actions déjà réalisées le 13 mai 2026 (posts LinkedIn, Instagram, TikTok sur le compte Subleet) (May 13, 5:06 PM)
 S13 Social media content strategy for Fi-Hub (fi-hub.subleet.com) — Reddit posts + TikTok/Instagram POV scripts to showcase investment performance and grow product awareness organically (May 13, 7:09 PM)
 S14 User asked Claude to log into fi-hub.subleet.com and explore stats — credentials were shared in plain text in the session (May 13, 7:51 PM)
-196 8:15p 🔵 Fi-Hub Dashboard Full Portfolio Snapshot — 154 462 € Total Patrimoine
-197 " 🔵 Fi-Hub 1-Year Portfolio Performance: +48 436 € (+46.1%)
-198 8:16p 🔵 Fi-Hub Dashboard Screenshot Captured and Dividendes Section Navigated
-199 " 🔵 Dividendes Section Full-Page Screenshot Captured
-200 " 🔵 Fi-Hub Dividendes Section Full-Page Screenshot Analyzed
 S15 Exploration complète du portfolio fi-hub.subleet.com (antoinecstl@gmail.com) — login automatisé + extraction de toutes les stats financières + génération de contenu Reddit/TikTok/Instagram pour promouvoir fi-hub (May 13, 8:19 PM)
 ### May 20, 2026
-336 12:19p 🔵 Next.js App Router Project — Sprint Work Initiated
-337 12:20p 🔵 Fi-Hub Full Project Structure — Next.js SaaS with French Personal Finance Focus
-338 " 🔵 Fi-Hub SEO Technical Foundation — What Is Already In Place
-339 " 🔵 Fi-Hub SEO Gaps Identified Before Sprint Work Begins
-340 " 🔵 Fi-Hub Auth Flow and Security Headers Architecture
-341 12:32p 🔵 SEO Architecture Audit Initiated on Next.js Marketing App
-342 12:33p 🔵 Fi-Hub Marketing Site SEO Audit Findings
-343 " 🟣 SEO Content Architecture: lib/seo-pages.ts Data Registry
-344 " 🟣 SEO Component Library: JsonLd, Breadcrumbs, SeoArticlePage, SeoIndexPage
-345 " 🟣 New SEO Route Collections: /guides, /fonctionnalites, /alternatives
-346 " ✅ Navbar, Footer, Sitemap, Robots, Redirects and Noindex Overhaul
-347 " 🔄 Marketing Homepage Decoupled from Live Stock API
-348 " 🟣 SEO Architecture Sprint: New Semantic URL Routes, Components, and Sitemap
+348 12:33p 🟣 SEO Architecture Sprint: New Semantic URL Routes, Components, and Sitemap
 349 " 🔄 Marketing Landing Page Decoupled from Live Stock API
 350 " 🟣 Noindex Applied to All Private/Auth App Layouts
 351 " ✅ Legacy SEO URL Redirects and Internal Link Restructuring
-352 " 🔵 TypeScript Check Fails Due to Unrelated Remotion Subdirectory
 353 12:37p 🟣 Multi-Sprint SEO Infrastructure Implemented for Next.js Marketing Site
 354 " 🔵 Node.js EPERM on `lstat 'C:\Users\antoi'` Blocks Direct `npm run dev` in Sandbox
 355 12:38p 🔵 SEO Architecture Audit Initiated for Next.js Marketing App
@@ -73,6 +55,25 @@ S15 Exploration complète du portfolio fi-hub.subleet.com (antoinecstl@gmail.com
 ### May 21, 2026
 479 10:12p 🔵 Fi-Hub SEO Problem: Subdomain Not Ranking for Brand Queries
 481 10:13p 🔵 Fi-Hub SEO Architecture: lib/seo-pages.ts + indexableMarketingRoutes
+493 10:23p 🔵 Fi-Hub SEO Visibility Problem on Subdomain fi-hub.subleet.com
+494 " 🟣 Fi-Hub SEO Brand Name Fixes Applied to layout.tsx and marketing page
+500 10:40p 🟣 Codex Skill Installation: anthropics/claude-code frontend-design plugin
+501 10:41p 🔵 Codex Skill Installer System Located and Documented
+502 10:42p 🔴 frontend-design Skill Install Failed Twice Before Succeeding with Correct Path
+503 " 🟣 frontend-design Skill Installed in Codex from anthropics/claude-code
+### Jun 2, 2026
+642 7:19p 🔵 finance_portfolio Project Structure Identified
+644 " 🔵 Currency Handling Code Map: Key Patterns and Potential Bug Sources
+645 7:20p 🔵 Position Currency Source-of-Truth Bug: DB Stores EUR by Default Even for USD Assets
+646 7:21p 🔵 Root Cause Confirmed: Position Currency Bug in Portfolio Calculator and Missing Account Currency UI
+649 " 🔵 PRU Display Bug Root Cause: average_price in EUR Displayed Under quote.currency (USD)
+650 7:22p 🔵 Test Coverage Gap Confirmed: No Tests for EUR Position Displayed as USD Bug Scenario
+653 " 🔵 Historical EUR Backfill Confirmed: stock_positions Table Dropped, Migration Added currency DEFAULT 'EUR'
+655 " 🔵 Dashboard Data Flow Confirmed: Positions Derived From Transactions, FX Rates From Portfolio History
+656 7:23p 🔵 PositionsTable Closed Positions: Currency Label from Last SELL, Amounts from BUY — Same Cross-Currency Mismatch
+657 7:26p 🔵 Potential Currency Mismatch Bug in Transaction Forms
+658 9:03p ⚖️ Mixed-Currency Positions: "Separate Lines" Architecture Chosen
+659 " 🔵 Root Cause: Quote Currency Overrides Transaction Currency in Position Display
 
-Access 1419k tokens of past work via get_observations([IDs]) or mem-search skill.
+Access 591k tokens of past work via get_observations([IDs]) or mem-search skill.
 </claude-mem-context>

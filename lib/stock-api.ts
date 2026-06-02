@@ -221,6 +221,7 @@ export interface HistoricalQuote {
   close: number;
   volume: number;
   adjustedClose: number;
+  currency?: string;
 }
 
 export async function getHistoricalQuotes(
@@ -252,6 +253,7 @@ export async function getHistoricalQuotes(
       return [];
     }
 
+    const currency = result.meta?.currency || 'EUR';
     const timestamps = result.timestamp || [];
     const quotes = result.indicators?.quote?.[0] || {};
     const adjClose = result.indicators?.adjclose?.[0]?.adjclose || [];
@@ -269,6 +271,7 @@ export async function getHistoricalQuotes(
           close: quotes.close?.[i] || 0,
           volume: quotes.volume?.[i] || 0,
           adjustedClose: adjClose?.[i] || quotes.close?.[i] || 0,
+          currency,
         });
       }
     }

@@ -1,6 +1,8 @@
 import { supabase } from '@/lib/supabase';
 import type { PortfolioHistoryPoint } from '@/lib/portfolio-calculator';
 
+const SNAPSHOT_CALC_VERSION = 2;
+
 // Contrat du cache snapshots :
 //  - lecture = SELECT sur portfolio_snapshots (RLS scope par user).
 //  - écriture = upsert par jour. L'invalidation est gérée côté DB par le trigger
@@ -16,6 +18,16 @@ export type SnapshotRow = {
   savings_value: number;
   breakdown: unknown;
 };
+
+type SnapshotBreakdown = {
+  schemaVersion?: number;
+  positions?: unknown;
+};
+
+function isCurrentSnapshot(row: SnapshotRow): boolean {
+  const breakdown = row.breakdown as SnapshotBreakdown | null;
+  return breakdown?.schemaVersion === SNAPSHOT_CALC_VERSION;
+}
 
 export async function readSnapshots(
   userId: string,
@@ -35,7 +47,7 @@ export async function readSnapshots(
     console.warn('[snapshots] read failed, falling back to recompute', error.message);
     return [];
   }
-  return (data ?? []) as SnapshotRow[];
+  return ((data ?? []) as SnapshotRow[]).filter(isCurrentSnapshot);
 }
 
 export async function upsertSnapshots(
@@ -56,7 +68,7 @@ export async function upsertSnapshots(
     total_value: p.totalValue,
     stocks_value: p.stocksValue,
     savings_value: p.savingsValue,
-    breakdown: { positions: p.positions },
+    breakdown: { schemaVersion: SNAPSHOT_CALC_VERSION, positions: p.positions },
   }));
 
   const { error } = await supabase

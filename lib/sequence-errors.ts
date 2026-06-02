@@ -17,11 +17,14 @@ export function formatInvalidAccountSequenceMessage(message: string): string {
   }
 
   const shares = message.match(
-    /INVALID_ACCOUNT_SEQUENCE:\s*shares_negative\s+([A-Z0-9.\-]+)\s+at\s+(\d{4}-\d{2}-\d{2})/i
+    /INVALID_ACCOUNT_SEQUENCE:\s*shares_negative\s+([A-Z0-9.\-:]+)\s+at\s+(\d{4}-\d{2}-\d{2})/i
   );
   if (shares) {
-    const symbol = shares[1].toUpperCase();
+    const [symbol, currency] = shares[1].toUpperCase().split(':');
     const date = shares[2];
+    if (currency) {
+      return `Position ${symbol} (${currency}) insuffisante au ${date}. Ajoutez un achat anterieur ou corrigez la quantite vendue.`;
+    }
     return `Position ${symbol} insuffisante au ${date}. Ajoutez un achat anterieur ou corrigez la quantite vendue.`;
   }
 

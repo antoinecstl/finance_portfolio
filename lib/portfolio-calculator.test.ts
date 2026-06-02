@@ -14,6 +14,8 @@ import {
   calculatePortfolioPerformance,
   getFirstTransactionDate,
   getUniqueSymbolsFromTransactions,
+  positionAccountKey,
+  positionKey,
 } from './portfolio-calculator';
 
 // Helpers de fabrication — gardent les tests lisibles.
@@ -60,7 +62,7 @@ describe('calculatePositionsAtDate', () => {
       [tx({ type: 'BUY', stock_symbol: 'AAPL', quantity: 10, price_per_unit: 100, date: '2025-01-01' })],
       '2025-01-02'
     );
-    const aapl = positions.get('AAPL')!;
+    const aapl = positions.get(positionAccountKey('acc-1', 'AAPL', 'EUR'))!;
     expect(aapl.quantity).toBe(10);
     expect(aapl.averagePrice).toBe(100);
     expect(aapl.totalInvested).toBe(1000);
@@ -74,7 +76,7 @@ describe('calculatePositionsAtDate', () => {
       ],
       '2025-03-01'
     );
-    const aapl = positions.get('AAPL')!;
+    const aapl = positions.get(positionAccountKey('acc-1', 'AAPL', 'EUR'))!;
     expect(aapl.quantity).toBe(20);
     expect(aapl.averagePrice).toBe(125); // (1000 + 1500) / 20
     expect(aapl.totalInvested).toBe(2500);
@@ -108,7 +110,7 @@ describe('calculatePositionsAtDate', () => {
       '2025-02-01'
     );
 
-    const aapl = positions.get('AAPL')!;
+    const aapl = positions.get(positionAccountKey('acc-1', 'AAPL', 'EUR'))!;
     expect(aapl.quantity).toBe(15);
     expect(aapl.averagePrice).toBeCloseTo(2500 / 15);
     expect(aapl.totalInvested).toBeCloseTo(2500);
@@ -122,7 +124,7 @@ describe('calculatePositionsAtDate', () => {
       ],
       '2025-03-01'
     );
-    const aapl = positions.get('AAPL')!;
+    const aapl = positions.get(positionAccountKey('acc-1', 'AAPL', 'EUR'))!;
     expect(aapl.quantity).toBe(6);
     expect(aapl.averagePrice).toBe(100);
     expect(aapl.totalInvested).toBe(600);
@@ -136,7 +138,7 @@ describe('calculatePositionsAtDate', () => {
       ],
       '2025-03-01'
     );
-    expect(positions.has('AAPL')).toBe(false);
+    expect(positions.has(positionAccountKey('acc-1', 'AAPL', 'EUR'))).toBe(false);
   });
 
   it('ignores transactions after asOfDate', () => {
@@ -147,7 +149,7 @@ describe('calculatePositionsAtDate', () => {
       ],
       '2025-03-01'
     );
-    const aapl = positions.get('AAPL')!;
+    const aapl = positions.get(positionAccountKey('acc-1', 'AAPL', 'EUR'))!;
     expect(aapl.quantity).toBe(10); // SELL de juin ignoré
   });
 
@@ -160,7 +162,7 @@ describe('calculatePositionsAtDate', () => {
       '2025-03-01',
       'a1'
     );
-    expect(positions.get('AAPL')!.quantity).toBe(5);
+    expect(positions.get(positionKey('AAPL', 'EUR'))!.quantity).toBe(5);
   });
 
   it('uppercases symbols for uniform keying', () => {
@@ -168,11 +170,31 @@ describe('calculatePositionsAtDate', () => {
       [tx({ type: 'BUY', stock_symbol: 'aapl', quantity: 1, price_per_unit: 10, date: '2025-01-01' })],
       '2025-01-02'
     );
-    expect(positions.has('AAPL')).toBe(true);
+    expect(positions.has(positionAccountKey('acc-1', 'AAPL', 'EUR'))).toBe(true);
+  });
+
+  it('separates the same account and symbol by transaction currency', () => {
+    const positions = calculatePositionsAtDate(
+      [
+        tx({ type: 'BUY', currency: 'EUR', stock_symbol: 'AAPL', quantity: 10, price_per_unit: 100, amount: 1000, date: '2025-01-01' }),
+        tx({ type: 'BUY', currency: 'USD', stock_symbol: 'AAPL', quantity: 5, price_per_unit: 120, amount: 600, date: '2025-01-02' }),
+      ],
+      '2025-01-03'
+    );
+
+    const eur = positions.get(positionAccountKey('acc-1', 'AAPL', 'EUR'))!;
+    const usd = positions.get(positionAccountKey('acc-1', 'AAPL', 'USD'))!;
+    expect(positions.size).toBe(2);
+    expect(eur.quantity).toBe(10);
+    expect(eur.averagePrice).toBe(100);
+    expect(eur.currency).toBe('EUR');
+    expect(usd.quantity).toBe(5);
+    expect(usd.averagePrice).toBe(120);
+    expect(usd.currency).toBe('USD');
   });
 });
 
-describe('calculateAllPositionsAtDate (keyed by account:symbol)', () => {
+describe('calculateAllPositionsAtDate (keyed by account:symbol:currency)', () => {
   it('keeps positions on the same symbol separate per account', () => {
     const result = calculateAllPositionsAtDate(
       [
@@ -181,8 +203,8 @@ describe('calculateAllPositionsAtDate (keyed by account:symbol)', () => {
       ],
       '2025-06-01'
     );
-    expect(result.get('a1:AAPL')!.quantity).toBe(5);
-    expect(result.get('a2:AAPL')!.quantity).toBe(3);
+    expect(result.get(positionAccountKey('a1', 'AAPL', 'EUR'))!.quantity).toBe(5);
+    expect(result.get(positionAccountKey('a2', 'AAPL', 'EUR'))!.quantity).toBe(3);
   });
 });
 
@@ -196,7 +218,7 @@ describe('aggregatePositionsBySymbol', () => {
       '2025-06-01'
     );
     const agg = aggregatePositionsBySymbol(byAccount);
-    const aapl = agg.get('AAPL')!;
+    const aapl = agg.get(positionKey('AAPL', 'EUR'))!;
     expect(aapl.quantity).toBe(20);
     expect(aapl.averagePrice).toBe(150); // (1000 + 2000) / 20
     expect(aapl.totalInvested).toBe(3000);
@@ -315,6 +337,36 @@ describe('calculatePortfolioHistory', () => {
     // Jour 2 : stocks = 10 * 110 = 1100. Total = 10100
     expect(history[0].totalValue).toBe(10000);
     expect(history[1].totalValue).toBe(10100);
+  });
+
+  it('keeps PRU currency separate from historical quote currency', () => {
+    const txs = [
+      tx({ account_id: 'cto', type: 'DEPOSIT', amount: 1000, currency: 'EUR', date: '2025-01-01' }),
+      tx({
+        account_id: 'cto', type: 'BUY', amount: 1000, currency: 'EUR',
+        stock_symbol: 'AAPL', quantity: 10, price_per_unit: 100, date: '2025-01-01',
+      }),
+    ];
+    const accounts = [acc({ id: 'cto', type: 'CTO', currency: 'EUR' })];
+    const historical: Record<string, HistoricalQuote[]> = {
+      AAPL: [
+        { date: '2025-01-01', open: 132, high: 132, low: 132, close: 132, volume: 0, adjustedClose: 132, currency: 'USD' },
+      ],
+    };
+    const fxRates: Record<string, HistoricalQuote[]> = {
+      USD: [
+        { date: '2025-01-01', open: 1.2, high: 1.2, low: 1.2, close: 1.2, volume: 0, adjustedClose: 1.2 },
+      ],
+    };
+
+    const history = calculatePortfolioHistory(
+      txs, accounts, historical, '2025-01-01', '2025-01-01', 'daily', fxRates
+    );
+
+    expect(history[0].totalValue).toBeCloseTo(1100, 5);
+    expect(history[0].positions[0].currency).toBe('EUR');
+    expect(history[0].positions[0].quoteCurrency).toBe('USD');
+    expect(history[0].positions[0].value).toBeCloseTo(1100, 5);
   });
 
   it('converts non-EUR cash buckets and crypto positions to EUR via fxRates', () => {

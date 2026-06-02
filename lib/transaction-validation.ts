@@ -33,9 +33,9 @@ function formatCashFailure(tx: Transaction, currency: string): string {
   return `Solde ${currency} insuffisant au ${formatSequenceDate(tx.date)}. Cette opération (${label} de ${formatCurrency(amount, currency)}) dépasserait le solde disponible à cette date.`;
 }
 
-function formatShareFailure(tx: Transaction, symbol: string): string {
+function formatShareFailure(tx: Transaction, symbol: string, currency: string): string {
   const quantity = Math.abs(sharesDelta(tx));
-  return `Position ${symbol} insuffisante au ${formatSequenceDate(tx.date)}. Cette vente de ${formatNumber(quantity, 4)} titres dépasserait la quantité disponible à cette date.`;
+  return `Position ${symbol} (${currency}) insuffisante au ${formatSequenceDate(tx.date)}. Cette vente de ${formatNumber(quantity, 4)} titres dépasserait la quantité disponible à cette date.`;
 }
 
 // Cash impact of a transaction on its account, dans sa devise source.
@@ -62,7 +62,7 @@ export function cashDelta(tx: Transaction): number {
   }
 }
 
-// Share impact per (account_id, symbol).
+// Share impact per (account_id, symbol, currency).
 export function sharesDelta(tx: Transaction): number {
   if (!tx.stock_symbol) return 0;
   const qty = Number(tx.quantity) || 0;
@@ -73,7 +73,7 @@ export function sharesDelta(tx: Transaction): number {
 
 // Replays the transactions of a single account chronologically and ensures:
 //   - cash per (account, currency) never goes negative
-//   - shares (per symbol within the account) never go negative
+//   - shares (per symbol+currency within the account) never go negative
 // `epsilon` absorbs floating-point rounding from amount / fees computed client-side.
 export function simulateAccountSequence(
   txs: Transaction[],
@@ -84,24 +84,26 @@ export function simulateAccountSequence(
   const shares = new Map<string, number>();
 
   for (const tx of ordered) {
+    const currency = (tx.currency ?? 'EUR').toUpperCase();
+
     // Share update happens first so a SELL that depletes BUY on same date is OK.
     if (tx.stock_symbol) {
       const symbol = tx.stock_symbol.toUpperCase();
-      const current = shares.get(symbol) ?? 0;
+      const shareKey = `${symbol}:${currency}`;
+      const current = shares.get(shareKey) ?? 0;
       const next = current + sharesDelta(tx);
       if (next < -epsilon) {
         return {
           ok: false,
           code: tx.type === 'SELL' ? 'shares_negative' : 'orphan_sell',
-          reason: formatShareFailure(tx, symbol),
+          reason: formatShareFailure(tx, symbol, currency),
           offendingTxId: tx.id,
           offendingDate: tx.date,
         };
       }
-      shares.set(symbol, next);
+      shares.set(shareKey, next);
     }
 
-    const currency = (tx.currency ?? 'EUR').toUpperCase();
     const currentCash = cashByCurrency.get(currency) ?? 0;
     const nextCash = currentCash + cashDelta(tx);
     if (nextCash < -epsilon) {

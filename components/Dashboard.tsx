@@ -106,7 +106,7 @@ export function Dashboard() {
     transactions,
     accounts,
     historyPeriod,
-    { enabled: activeTab === 'dashboard' }
+    { enabled: activeTab === 'dashboard', quotes }
   );
 
   // Comptes et résumé calculés avec les mêmes taux FX que l'historique dashboard.
@@ -163,7 +163,7 @@ export function Dashboard() {
   } = useFullPortfolioHistory(
     positionsScoped.transactions,
     positionsScoped.accounts,
-    { enabled: activeTab === 'positions' }
+    { enabled: activeTab === 'positions', quotes }
   );
   const latestPositionsPoint = positionsFullPortfolioHistory.length > 0
     ? positionsFullPortfolioHistory[positionsFullPortfolioHistory.length - 1]

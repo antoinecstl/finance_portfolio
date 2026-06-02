@@ -87,8 +87,10 @@ export function AccountCard({
   // dans une autre devise que celle du compte → on affiche la valeur totale en
   // EUR (base) plutôt qu'une somme naïve qui mélange USDC et EUR à 1:1.
   const cashCurrencies = Object.keys(account.calculatedCashByCurrency ?? {});
+  const stockCurrencies = account.calculatedStockCurrencies ?? [];
   const isMultiCurrency = cashCurrencies.length > 1
-    || cashCurrencies.some(c => c.toUpperCase() !== (account.currency ?? 'EUR').toUpperCase());
+    || cashCurrencies.some(c => c.toUpperCase() !== (account.currency ?? 'EUR').toUpperCase())
+    || stockCurrencies.some(c => c.toUpperCase() !== (account.currency ?? 'EUR').toUpperCase());
   const totalInBase = account.calculatedTotalValueInBase ?? account.calculatedTotalValue;
   const stocksValueInBase = account.calculatedStocksValueInBase ?? account.calculatedStocksValue ?? 0;
   const headlineValue =

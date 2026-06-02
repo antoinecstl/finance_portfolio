@@ -25,4 +25,12 @@ describe('formatInvalidAccountSequenceMessage', () => {
       )
     ).toContain('Position BTC-USD insuffisante au 2026-02-01');
   });
+
+  it('formats currency-specific share sequence errors', () => {
+    expect(
+      formatInvalidAccountSequenceMessage(
+        'INVALID_ACCOUNT_SEQUENCE: shares_negative AAPL:USD at 2026-02-01'
+      )
+    ).toContain('Position AAPL (USD) insuffisante au 2026-02-01');
+  });
 });

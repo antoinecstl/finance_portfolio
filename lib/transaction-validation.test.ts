@@ -107,10 +107,71 @@ describe('simulateAccountSequence', () => {
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.reason).toContain('Position AAPL insuffisante');
+      expect(result.reason).toContain('Position AAPL (EUR) insuffisante');
       expect(result.reason).toContain('vente de 2,0000 titres');
       expect(result.reason).not.toContain('__pending');
       expect(result.reason).not.toContain('descendrait');
     }
+  });
+
+  it('rejects a sell in USD when only an EUR position exists for the same symbol', () => {
+    const result = simulateAccountSequence([
+      tx({ id: 'deposit-eur', type: 'DEPOSIT', amount: 1000, currency: 'EUR', date: '2026-01-01' }),
+      tx({
+        id: 'buy-eur',
+        type: 'BUY',
+        amount: 1000,
+        currency: 'EUR',
+        stock_symbol: 'AAPL',
+        quantity: 10,
+        price_per_unit: 100,
+        date: '2026-01-02',
+      }),
+      tx({ id: 'deposit-usd', type: 'DEPOSIT', amount: 600, currency: 'USD', date: '2026-01-03' }),
+      tx({
+        id: 'sell-usd',
+        type: 'SELL',
+        amount: 120,
+        currency: 'USD',
+        stock_symbol: 'AAPL',
+        quantity: 1,
+        price_per_unit: 120,
+        date: '2026-01-04',
+      }),
+    ]);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.code).toBe('shares_negative');
+      expect(result.reason).toContain('Position AAPL (USD) insuffisante');
+    }
+  });
+
+  it('accepts a sell in EUR when the EUR position exists for the same symbol', () => {
+    const result = simulateAccountSequence([
+      tx({ id: 'deposit-eur', type: 'DEPOSIT', amount: 1000, currency: 'EUR', date: '2026-01-01' }),
+      tx({
+        id: 'buy-eur',
+        type: 'BUY',
+        amount: 1000,
+        currency: 'EUR',
+        stock_symbol: 'AAPL',
+        quantity: 10,
+        price_per_unit: 100,
+        date: '2026-01-02',
+      }),
+      tx({
+        id: 'sell-eur',
+        type: 'SELL',
+        amount: 500,
+        currency: 'EUR',
+        stock_symbol: 'AAPL',
+        quantity: 5,
+        price_per_unit: 100,
+        date: '2026-01-03',
+      }),
+    ]);
+
+    expect(result).toEqual({ ok: true });
   });
 });

@@ -10,10 +10,40 @@ const MS_PER_DAY = 1000 * 60 * 60 * 24;
  * Représente une position calculée à partir des transactions
  */
 export interface CalculatedPosition {
+  accountId?: string;
   symbol: string;
+  currency: string;
   quantity: number;
   averagePrice: number;
   totalInvested: number;
+}
+
+function txCurrency(tx: Pick<Transaction, 'currency'>): string {
+  return (tx.currency ?? 'EUR').toUpperCase();
+}
+
+export function positionKey(symbol: string, currency: string): string {
+  return `${symbol.toUpperCase()}:${currency.toUpperCase()}`;
+}
+
+export function positionAccountKey(accountId: string, symbol: string, currency: string): string {
+  return `${accountId}:${positionKey(symbol, currency)}`;
+}
+
+export function findCalculatedPosition(
+  positions: Map<string, CalculatedPosition>,
+  symbol: string,
+  currency: string,
+  accountId?: string
+): CalculatedPosition | undefined {
+  const upperSymbol = symbol.toUpperCase();
+  const upperCurrency = currency.toUpperCase();
+  return Array.from(positions.values()).find(
+    (position) =>
+      position.symbol === upperSymbol
+      && position.currency === upperCurrency
+      && (!accountId || position.accountId === accountId)
+  );
 }
 
 /**
@@ -21,7 +51,7 @@ export interface CalculatedPosition {
  * @param transactions - Liste de toutes les transactions
  * @param asOfDate - Date à laquelle calculer les positions (format YYYY-MM-DD)
  * @param accountId - (Optionnel) ID du compte pour filtrer les positions
- * @returns Map des positions par symbole
+ * @returns Map des positions par symbole:devise (ou compte:symbole:devise sans filtre de compte)
  */
 export function calculatePositionsAtDate(
   transactions: Transaction[],
@@ -44,8 +74,12 @@ export function calculatePositionsAtDate(
     const symbol = tx.stock_symbol!.toUpperCase();
     const qty = tx.quantity || 0;
     const price = tx.price_per_unit || 0;
+    const currency = txCurrency(tx);
+    const key = accountId
+      ? positionKey(symbol, currency)
+      : positionAccountKey(tx.account_id, symbol, currency);
 
-    const existing = positions.get(symbol);
+    const existing = positions.get(key);
 
     if (tx.type === 'BUY') {
       if (existing) {
@@ -54,15 +88,19 @@ export function calculatePositionsAtDate(
         const newTotalInvested = existing.totalInvested + (qty * price);
         const newAveragePrice = newTotalInvested / newQuantity;
 
-        positions.set(symbol, {
+        positions.set(key, {
+          accountId: tx.account_id,
           symbol,
+          currency,
           quantity: newQuantity,
           averagePrice: newAveragePrice,
           totalInvested: newTotalInvested,
         });
       } else {
-        positions.set(symbol, {
+        positions.set(key, {
+          accountId: tx.account_id,
           symbol,
+          currency,
           quantity: qty,
           averagePrice: price,
           totalInvested: qty * price,
@@ -72,11 +110,13 @@ export function calculatePositionsAtDate(
       const newQuantity = existing.quantity - qty;
       
       if (newQuantity <= 0) {
-        positions.delete(symbol);
+        positions.delete(key);
       } else {
         // Le PRU reste inchangé lors d'une vente
-        positions.set(symbol, {
+        positions.set(key, {
+          accountId: existing.accountId,
           symbol,
+          currency: existing.currency,
           quantity: newQuantity,
           averagePrice: existing.averagePrice,
           totalInvested: newQuantity * existing.averagePrice,
@@ -118,7 +158,8 @@ export function calculateAllPositionsAtDate(
     const symbol = tx.stock_symbol!.toUpperCase();
     const qty = tx.quantity || 0;
     const price = tx.price_per_unit || 0;
-    const key = `${tx.account_id}:${symbol}`;
+    const currency = txCurrency(tx);
+    const key = positionAccountKey(tx.account_id, symbol, currency);
 
     const existing = positions.get(key);
 
@@ -143,7 +184,7 @@ export function calculateAllPositionsAtDate(
           quantity: qty,
           averagePrice: price,
           totalInvested: qty * price,
-          currency: (tx.currency ?? 'EUR').toUpperCase(),
+          currency,
         });
       }
     } else if (tx.type === 'SELL' && existing) {
@@ -168,9 +209,9 @@ export function calculateAllPositionsAtDate(
 }
 
 /**
- * Agrège les positions de tous les comptes par symbole (pour les totaux globaux)
+ * Agrège les positions de tous les comptes par symbole+devise (pour les totaux globaux)
  * @param positionsWithAccount - Map des positions par compte
- * @returns Map des positions agrégées par symbole
+ * @returns Map des positions agrégées par symbole:devise
  */
 export function aggregatePositionsBySymbol(
   positionsWithAccount: Map<string, CalculatedPositionWithAccount>
@@ -178,21 +219,24 @@ export function aggregatePositionsBySymbol(
   const aggregated = new Map<string, CalculatedPosition>();
 
   positionsWithAccount.forEach((pos) => {
-    const existing = aggregated.get(pos.symbol);
+    const key = positionKey(pos.symbol, pos.currency);
+    const existing = aggregated.get(key);
     if (existing) {
       const newQuantity = existing.quantity + pos.quantity;
       const newTotalInvested = existing.totalInvested + pos.totalInvested;
       const newAveragePrice = newQuantity > 0 ? newTotalInvested / newQuantity : 0;
 
-      aggregated.set(pos.symbol, {
+      aggregated.set(key, {
         symbol: pos.symbol,
+        currency: pos.currency,
         quantity: newQuantity,
         averagePrice: newAveragePrice,
         totalInvested: newTotalInvested,
       });
     } else {
-      aggregated.set(pos.symbol, {
+      aggregated.set(key, {
         symbol: pos.symbol,
+        currency: pos.currency,
         quantity: pos.quantity,
         averagePrice: pos.averagePrice,
         totalInvested: pos.totalInvested,
@@ -270,7 +314,10 @@ export interface PortfolioHistoryPoint {
   stocksValue: number;
   savingsValue: number;
   positions: Array<{
+    accountId?: string;
     symbol: string;
+    currency?: string;
+    quoteCurrency?: string;
     quantity: number;
     price: number;
     value: number;
@@ -301,7 +348,7 @@ function sumCurrencyBucketsInBase(
 
 /**
  * Devise effective de chaque position, dérivée des transactions BUY (la première
- * vue gagne — un même symbole ne devrait pas changer de devise dans la vraie vie).
+ * vue gagne — la devise de PRU reste portée par chaque position.
  * Sert à savoir dans quelle devise sont libellées les valeurs `quote.close *
  * quantity` que retourne l'API de marché, donc à les convertir en EUR proprement.
  */
@@ -366,12 +413,8 @@ export function calculatePortfolioHistory(
   const stockAccountIds = new Set(stockAccounts.map(a => a.id));
   const stockTransactions = transactions.filter(t => stockAccountIds.has(t.account_id));
 
-  // Devise de référence par symbole (USDC, USD, EUR…). Capturée une fois.
-  // L'API de marché renvoie `quote.close` dans la devise native du ticker (ex: USD pour
-  // BTC-USD). On utilise la devise des transactions BUY pour aligner et
-  // convertir en EUR via le taux du jour.
-  const symbolCurrency = buildPositionCurrencyMap(stockTransactions);
-
+  // Les positions conservent leur devise de PRU. La valorisation historique
+  // utilise la devise de cotation portée par le point de marché quand elle existe.
   const hasFxRates = Object.keys(fxRates).length > 0;
 
   for (const date of dates) {
@@ -388,12 +431,15 @@ export function calculatePortfolioHistory(
       const quote = quotes ? findClosestQuote(quotes, date) : null;
       const price = quote?.close || pos.averagePrice; // Fallback au PRU si pas de cours
       const valueNative = pos.quantity * price;
-      const positionCcy = symbolCurrency.get(pos.symbol) ?? 'EUR';
-      const valueEur = convertToBase(valueNative, positionCcy, date, fxRates);
+      const quoteCurrency = (quote?.currency ?? pos.currency).toUpperCase();
+      const valueEur = convertToBase(valueNative, quoteCurrency, date, fxRates);
 
       stocksValue += valueEur;
       positionDetails.push({
+        accountId: pos.accountId,
         symbol: pos.symbol,
+        currency: pos.currency,
+        quoteCurrency,
         quantity: pos.quantity,
         price,
         value: valueEur,

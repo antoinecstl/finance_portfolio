@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import { Transaction, StockPosition, StockQuote } from '@/lib/types';
 import { formatCurrency, formatDate } from '@/lib/utils';
-import { calculatePositionsAtDate } from '@/lib/portfolio-calculator';
+import { calculatePositionsAtDate, findCalculatedPosition } from '@/lib/portfolio-calculator';
 import { Coins, ChevronDown, ChevronUp, Lock } from 'lucide-react';
 import { useSubscription } from '@/lib/subscription-client';
 import { ProBlur } from './ProBlur';
@@ -151,7 +151,11 @@ export function DividendsTable({ transactions, positions }: DividendsTableProps)
       symbolDividends.forEach(t => {
         if (t.stock_symbol) {
           const positionsAtDate = calculatePositionsAtDate(transactions, t.date);
-          const posAtDate = positionsAtDate.get(t.stock_symbol.toUpperCase());
+          const posAtDate = findCalculatedPosition(
+            positionsAtDate,
+            t.stock_symbol.toUpperCase(),
+            txCurrency(t)
+          );
           const quantityAtDate = posAtDate?.quantity || 0;
           const averagePrice = posAtDate?.averagePrice || 0;
           
@@ -439,7 +443,7 @@ export function DividendsTable({ transactions, positions }: DividendsTableProps)
                     
                     if (symbol) {
                       const positionsAtDate = calculatePositionsAtDate(transactions, t.date);
-                      const position = positionsAtDate.get(symbol);
+                      const position = findCalculatedPosition(positionsAtDate, symbol, txCurrency(t));
                       quantityAtDate = position?.quantity || 0;
                       const averagePrice = position?.averagePrice || 0;
                       
@@ -490,7 +494,7 @@ export function DividendsTable({ transactions, positions }: DividendsTableProps)
 
                   if (symbol) {
                     const positionsAtDate = calculatePositionsAtDate(transactions, t.date);
-                    const position = positionsAtDate.get(symbol);
+                    const position = findCalculatedPosition(positionsAtDate, symbol, txCurrency(t));
                     quantityAtDate = position?.quantity || 0;
                     const averagePrice = position?.averagePrice || 0;
 

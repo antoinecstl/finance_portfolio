@@ -40,6 +40,29 @@ async function fetchFxRates(
   }
 }
 
+function mergeFiats(...groups: string[][]): string[] {
+  return Array.from(new Set(groups.flat().map((currency) => currency.toUpperCase()))).sort();
+}
+
+function foreignFiatsFromQuotes(quotes: Record<string, Pick<StockQuote, 'currency'>> = {}): string[] {
+  return uniqueForeignFiats(
+    Object.values(quotes)
+      .filter((quote) => Boolean(quote.currency))
+      .map((quote) => ({ currency: quote.currency }))
+  );
+}
+
+function foreignFiatsFromHistoricalQuotes(historicalQuotes: Record<string, HistoricalQuote[]>): string[] {
+  const rows: Array<{ currency: string }> = [];
+  Object.values(historicalQuotes).forEach((series) => {
+    const quoteWithCurrency = series.find((quote) => Boolean(quote.currency));
+    if (quoteWithCurrency?.currency) {
+      rows.push({ currency: quoteWithCurrency.currency });
+    }
+  });
+  return uniqueForeignFiats(rows);
+}
+
 function formatLocalDate(date: Date): string {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -246,14 +269,13 @@ export function usePortfolioSummary(
       const quote = quotes[position.symbol];
       const currentPrice = quote?.price ?? position.average_price;
       const previousClose = quote?.previousClose || currentPrice;
-      // `position.currency` est `'EUR'` par défaut en base même pour BTC-USD ou
-      // SOL-USD, donc la devise de cotation (`quote.currency`) est plus fiable.
-      // Sans ça, un PRU stocké en USD est traité comme EUR et gonfle la +/- value.
-      const tradeCurrency = (quote?.currency ?? position.currency ?? 'EUR').toUpperCase();
+      // Le PRU garde la devise de transaction; le cours courant garde sa devise de cotation.
+      const quoteCurrency = (quote?.currency ?? position.currency ?? 'EUR').toUpperCase();
+      const costCurrency = (position.currency ?? 'EUR').toUpperCase();
 
-      const positionValue = convertToBase(position.quantity * currentPrice, tradeCurrency, today, fxRates);
-      const positionInvested = convertToBase(position.quantity * position.average_price, tradeCurrency, today, fxRates);
-      const positionDayChange = convertToBase(position.quantity * (currentPrice - previousClose), tradeCurrency, today, fxRates);
+      const positionValue = convertToBase(position.quantity * currentPrice, quoteCurrency, today, fxRates);
+      const positionInvested = convertToBase(position.quantity * position.average_price, costCurrency, today, fxRates);
+      const positionDayChange = convertToBase(position.quantity * (currentPrice - previousClose), quoteCurrency, today, fxRates);
 
       totalValue += positionValue;
       totalInvested += positionInvested;
@@ -314,7 +336,7 @@ export function usePortfolioHistory(
   transactions: Transaction[],
   accounts: Account[],
   periodDays: number = 30,
-  options: { enabled?: boolean } = {}
+  options: { enabled?: boolean; quotes?: Record<string, StockQuote> } = {}
 ) {
   const { enabled = true } = options;
   const [history, setHistory] = useState<PortfolioHistoryPoint[]>([]);
@@ -344,10 +366,10 @@ export function usePortfolioHistory(
     }
 
     const syms = getUniqueSymbolsFromTransactions(transactions);
-    const fiats = uniqueForeignFiats(transactions);
+    const fiats = mergeFiats(uniqueForeignFiats(transactions), foreignFiatsFromQuotes(options.quotes));
 
     return { startDate: start, endDate: end, symbols: syms, foreignFiats: fiats };
-  }, [transactions, periodDays]);
+  }, [transactions, periodDays, options.quotes]);
 
   const foreignFiatsKey = useMemo(() => [...foreignFiats].sort().join(','), [foreignFiats]);
 
@@ -386,8 +408,6 @@ export function usePortfolioHistory(
       let historicalQuotes: Record<string, HistoricalQuote[]> = {};
 
       // Cours actions + taux FX en parallèle (deux requêtes de marché distinctes).
-      const fxPromise = fetchFxRates(foreignFiats, startDate, endDate);
-
       if (symbols.length > 0) {
         const response = await fetch(
           `/api/stocks/history?symbols=${symbols.join(',')}&startDate=${startDate}&endDate=${endDate}&interval=1d`
@@ -400,7 +420,11 @@ export function usePortfolioHistory(
         historicalQuotes = await response.json();
       }
 
-      const fetchedFxRates = await fxPromise;
+      const fetchedFxRates = await fetchFxRates(
+        mergeFiats(foreignFiats, foreignFiatsFromHistoricalQuotes(historicalQuotes)),
+        startDate,
+        endDate
+      );
 
       // Calculer l'historique avec l'intervalle approprié
       const interval = periodDays > 90 ? 'weekly' : 'daily';
@@ -447,7 +471,7 @@ export function usePortfolioHistory(
 export function useFullPortfolioHistory(
   transactions: Transaction[],
   accounts: Account[],
-  options: { enabled?: boolean } = {}
+  options: { enabled?: boolean; quotes?: Record<string, StockQuote> } = {}
 ) {
   const { enabled = true } = options;
   const [history, setHistory] = useState<PortfolioHistoryPoint[]>([]);
@@ -474,10 +498,10 @@ export function useFullPortfolioHistory(
     }
 
     const syms = getUniqueSymbolsFromTransactions(transactions);
-    const fiats = uniqueForeignFiats(transactions);
+    const fiats = mergeFiats(uniqueForeignFiats(transactions), foreignFiatsFromQuotes(options.quotes));
 
     return { startDate: start, endDate: end, symbols: syms, foreignFiats: fiats };
-  }, [transactions]);
+  }, [transactions, options.quotes]);
 
   const foreignFiatsKey = useMemo(() => [...foreignFiats].sort().join(','), [foreignFiats]);
 
@@ -496,8 +520,6 @@ export function useFullPortfolioHistory(
     try {
       let historicalQuotes: Record<string, HistoricalQuote[]> = {};
 
-      const fxPromise = fetchFxRates(foreignFiats, startDate, endDate);
-
       if (symbols.length > 0) {
         const response = await fetch(
           `/api/stocks/history?symbols=${symbols.join(',')}&startDate=${startDate}&endDate=${endDate}&interval=1d`
@@ -510,7 +532,11 @@ export function useFullPortfolioHistory(
         historicalQuotes = await response.json();
       }
 
-      const fetchedFxRates = await fxPromise;
+      const fetchedFxRates = await fetchFxRates(
+        mergeFiats(foreignFiats, foreignFiatsFromHistoricalQuotes(historicalQuotes)),
+        startDate,
+        endDate
+      );
 
       // Calculer l'historique avec intervalle quotidien pour plus de précision sur les graphiques
       const calculatedHistory = calculatePortfolioHistory(
@@ -550,6 +576,7 @@ export interface EnrichedAccount extends Account {
   calculatedCashByCurrency?: Record<string, number>;
   calculatedStocksValue?: number;
   calculatedStocksValueInBase?: number;
+  calculatedStockCurrencies?: string[];
   calculatedTotalValue: number;
   calculatedTotalValueInBase?: number;
 }
@@ -604,6 +631,7 @@ export function useAccountsWithCalculatedValues(
         const accountPositions = positions.filter(p => p.account_id === account.id);
         let calculatedStocksValue = 0;
         let calculatedStocksValueInBase = 0;
+        const calculatedStockCurrencies = new Set<string>();
 
         for (const position of accountPositions) {
           const quote = quotes[position.symbol];
@@ -611,6 +639,7 @@ export function useAccountsWithCalculatedValues(
           const positionValue = position.quantity * currentPrice;
           const valueCurrency = (quote?.currency ?? position.currency ?? account.currency ?? 'EUR').toUpperCase();
 
+          calculatedStockCurrencies.add(valueCurrency);
           calculatedStocksValue += positionValue;
           calculatedStocksValueInBase += convertToBase(positionValue, valueCurrency, today, fxRates);
         }
@@ -622,6 +651,7 @@ export function useAccountsWithCalculatedValues(
           calculatedCashByCurrency,
           calculatedStocksValue,
           calculatedStocksValueInBase,
+          calculatedStockCurrencies: Array.from(calculatedStockCurrencies).sort(),
           calculatedTotalValue: calculatedCash + calculatedStocksValue,
           calculatedTotalValueInBase: calculatedCashInBase + calculatedStocksValueInBase,
         };
@@ -669,7 +699,7 @@ export function usePositionsWithCalculatedValues(
       }
 
       derivedFromTransactions.push({
-        id: `derived-${calculated.accountId}-${calculated.symbol}`,
+        id: `derived-${calculated.accountId}-${calculated.symbol}-${calculated.currency}`,
         account_id: calculated.accountId,
         symbol: calculated.symbol,
         name: calculated.symbol,

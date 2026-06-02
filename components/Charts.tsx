@@ -525,14 +525,15 @@ interface PositionMetrics {
   dayChangePercent: number;
   nativeCurrentValue: number;
   nativeInvestedValue: number;
-  nativeGainValue: number;
-  nativeGainPercent: number;
   nativeDayChange: number;
+  totalReturnValue: number;
+  totalReturnPercent: number;
   weight: number;
   quantity: number;
   avgPrice: number;
   currentPrice: number;
-  currency: string;
+  costCurrency: string;
+  quoteCurrency: string;
   color: string;
 }
 
@@ -560,16 +561,20 @@ export function PositionPerformanceChart({
     return map;
   }, [accounts]);
 
-  // Filtrer les transactions pour un symbole+compte
-  const getTransactionsForPosition = (symbol: string, accountId: string) => {
+  // Filtrer les transactions pour un symbole+compte+devise
+  const getTransactionsForPosition = (symbol: string, accountId: string, currency: string) => {
     return transactions
-      .filter(t => t.stock_symbol === symbol && t.account_id === accountId)
+      .filter(t =>
+        t.stock_symbol === symbol
+        && t.account_id === accountId
+        && txCurrency(t) === currency
+      )
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   };
 
-  // Calculer les statistiques de transactions pour un symbole+compte
-  const getTransactionStats = (symbol: string, accountId: string) => {
-    const symbolTransactions = getTransactionsForPosition(symbol, accountId);
+  // Calculer les statistiques de transactions pour un symbole+compte+devise
+  const getTransactionStats = (symbol: string, accountId: string, currency: string) => {
+    const symbolTransactions = getTransactionsForPosition(symbol, accountId, currency);
     
     const buys = symbolTransactions.filter(t => t.type === 'BUY');
     const sells = symbolTransactions.filter(t => t.type === 'SELL');
@@ -580,6 +585,10 @@ export function PositionPerformanceChart({
     const totalBuyAmount = buys.reduce((sum, t) => sum + t.amount, 0);
     const totalSellAmount = sells.reduce((sum, t) => sum + t.amount, 0);
     const totalDividends = dividends.reduce((sum, t) => sum + t.amount, 0);
+    const totalDividendsInBase = dividends.reduce(
+      (sum, t) => sum + convertToBase(t.amount, txCurrency(t), t.date, fxRates),
+      0
+    );
     
     return {
       buys,
@@ -590,6 +599,7 @@ export function PositionPerformanceChart({
       totalBuyAmount,
       totalSellAmount,
       totalDividends,
+      totalDividendsInBase,
       allTransactions: symbolTransactions
     };
   };
@@ -612,30 +622,27 @@ export function PositionPerformanceChart({
 
   const today = formatLocalDate(new Date());
 
-  // Calculer les métriques pour chaque position (clé composite accountId:symbol)
+  // Calculer les métriques pour chaque position (clé composite accountId:symbol:currency)
   const metrics: PositionMetrics[] = positions.map((position, index) => {
     const quote = quotes[position.symbol];
     const currentPrice = quote?.price ?? position.average_price;
     const dayChange = quote?.change || 0;
     const dayChangePercent = quote?.changePercent || 0;
-    const currency = (quote?.currency ?? position.currency ?? 'EUR').toUpperCase();
+    const costCurrency = (position.currency ?? 'EUR').toUpperCase();
+    const quoteCurrency = (quote?.currency ?? costCurrency).toUpperCase();
 
     const nativeCurrentValue = position.quantity * currentPrice;
     const nativeInvestedValue = position.quantity * position.average_price;
-    const nativeGainValue = nativeCurrentValue - nativeInvestedValue;
-    const nativeGainPercent = nativeInvestedValue > 0 ? (nativeGainValue / nativeInvestedValue) * 100 : 0;
     const nativeDayChange = position.quantity * dayChange;
 
-    // On convertit `currentValue` ET `investedValue` au taux du jour pour que la
-    // +/- value affichée reflète le mouvement de prix natif (pas un faux gain
-    // FX dû à la divergence entre taux d'achat et taux du jour).
-    // `position.currency` est `'EUR'` par défaut en base même pour BTC-USD —
-    // on privilégie `currency` (issu de `quote.currency`) qui est fiable.
-    const currentValue = convertToBase(nativeCurrentValue, currency, today, fxRates);
-    const investedValue = convertToBase(nativeInvestedValue, currency, today, fxRates);
+    const currentValue = convertToBase(nativeCurrentValue, quoteCurrency, today, fxRates);
+    const investedValue = convertToBase(nativeInvestedValue, costCurrency, today, fxRates);
     const gainValue = currentValue - investedValue;
     const gainPercent = investedValue > 0 ? (gainValue / investedValue) * 100 : 0;
-    const convertedDayChange = convertToBase(nativeDayChange, currency, today, fxRates);
+    const convertedDayChange = convertToBase(nativeDayChange, quoteCurrency, today, fxRates);
+    const stats = getTransactionStats(position.symbol, position.account_id, costCurrency);
+    const totalReturnValue = gainValue + stats.totalDividendsInBase;
+    const totalReturnPercent = investedValue > 0 ? (totalReturnValue / investedValue) * 100 : 0;
 
     const account = accountById.get(position.account_id);
     const accountName = account?.name ?? '—';
@@ -646,7 +653,7 @@ export function PositionPerformanceChart({
       : position.symbol;
 
     return {
-      key: `${position.account_id}:${position.symbol}`,
+      key: `${position.account_id}:${position.symbol}:${costCurrency}`,
       symbol: position.symbol,
       displayLabel,
       name: position.name,
@@ -661,14 +668,15 @@ export function PositionPerformanceChart({
       dayChangePercent,
       nativeCurrentValue,
       nativeInvestedValue,
-      nativeGainValue,
-      nativeGainPercent,
       nativeDayChange,
+      totalReturnValue,
+      totalReturnPercent,
       weight: 0, // Calculé après
       quantity: position.quantity,
       avgPrice: position.average_price,
       currentPrice,
-      currency,
+      costCurrency,
+      quoteCurrency,
       color: getSectorColor(index),
     };
   });
@@ -934,7 +942,7 @@ export function PositionPerformanceChart({
                 )}
                 {group.items.map((m) => {
                   const isExpanded = expandedKey === m.key;
-                  const stats = getTransactionStats(m.symbol, m.accountId);
+                  const stats = getTransactionStats(m.symbol, m.accountId, m.costCurrency);
                   return (
                     <div key={m.key} className="p-3 space-y-2">
                       <div
@@ -958,7 +966,7 @@ export function PositionPerformanceChart({
                           </div>
                         </div>
                         <div className="text-right">
-                          <p className="font-bold text-zinc-900 dark:text-zinc-100">{formatCurrency(m.nativeCurrentValue, m.currency)}</p>
+                          <p className="font-bold text-zinc-900 dark:text-zinc-100">{formatCurrency(m.nativeCurrentValue, m.quoteCurrency)}</p>
                           <p className={`text-xs text-zinc-500 ${isProUser ? '' : 'blur-sm select-none'}`}>{m.weight.toFixed(1)}% du portefeuille</p>
                         </div>
                       </div>
@@ -966,12 +974,12 @@ export function PositionPerformanceChart({
                         <div>
                           <p className="text-zinc-500">Qté × PRU</p>
                           <p className="font-medium text-zinc-900 dark:text-zinc-100">
-                            {m.quantity.toFixed(m.quantity % 1 === 0 ? 0 : 2)} × {formatCurrency(m.avgPrice, m.currency)}
+                            {m.quantity.toFixed(m.quantity % 1 === 0 ? 0 : 2)} × {formatCurrency(m.avgPrice, m.costCurrency)}
                           </p>
                         </div>
                         <div>
                           <p className="text-zinc-500">Cours actuel</p>
-                          <p className="font-medium text-zinc-900 dark:text-zinc-100">{formatCurrency(m.currentPrice, m.currency)}</p>
+                          <p className="font-medium text-zinc-900 dark:text-zinc-100">{formatCurrency(m.currentPrice, m.quoteCurrency)}</p>
                         </div>
                         <div>
                           <p className="text-zinc-500">Var. jour</p>
@@ -979,14 +987,14 @@ export function PositionPerformanceChart({
                             {formatPercent(m.dayChangePercent)}
                           </p>
                           <p className={`text-[10px] ${m.dayChangePercent >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                            {m.nativeDayChange >= 0 ? '+' : ''}{formatCurrency(m.nativeDayChange, m.currency)}
+                            {m.nativeDayChange >= 0 ? '+' : ''}{formatCurrency(m.nativeDayChange, m.quoteCurrency)}
                           </p>
                         </div>
                       </div>
                       <div className="flex justify-between items-center pt-1 border-t border-zinc-100 dark:border-zinc-800">
                         <span className="text-xs text-zinc-500">+/- Value</span>
-                        <span className={`font-semibold ${m.nativeGainPercent >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                          {m.nativeGainValue >= 0 ? '+' : ''}{formatCurrency(m.nativeGainValue, m.currency)} ({formatPercent(m.nativeGainPercent)})
+                        <span className={`font-semibold ${m.gainPercent >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                          {m.gainValue >= 0 ? '+' : ''}{formatCurrency(m.gainValue)} ({formatPercent(m.gainPercent)})
                         </span>
                       </div>
 
@@ -1106,7 +1114,7 @@ export function PositionPerformanceChart({
                     )}
                     {group.items.map((m) => {
                       const isExpanded = expandedKey === m.key;
-                      const stats = getTransactionStats(m.symbol, m.accountId);
+                      const stats = getTransactionStats(m.symbol, m.accountId, m.costCurrency);
                       return (
                         <React.Fragment key={m.key}>
                           <tr
@@ -1138,10 +1146,10 @@ export function PositionPerformanceChart({
                         {m.quantity.toFixed(m.quantity % 1 === 0 ? 0 : 2)}
                       </td>
                       <td className="py-2 px-3 text-right text-zinc-900 dark:text-zinc-100">
-                        {formatCurrency(m.avgPrice, m.currency)}
+                        {formatCurrency(m.avgPrice, m.costCurrency)}
                       </td>
                       <td className="py-2 px-3 text-right text-zinc-900 dark:text-zinc-100">
-                        {formatCurrency(m.currentPrice, m.currency)}
+                        {formatCurrency(m.currentPrice, m.quoteCurrency)}
                       </td>
                       <td className={`py-2 px-3 text-right font-medium ${m.dayChangePercent >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                         <span className="flex items-center justify-end gap-1">
@@ -1149,11 +1157,11 @@ export function PositionPerformanceChart({
                           {formatPercent(m.dayChangePercent)}
                         </span>
                         <p className="text-xs font-normal">
-                          {m.nativeDayChange >= 0 ? '+' : ''}{formatCurrency(m.nativeDayChange, m.currency)}
+                          {m.nativeDayChange >= 0 ? '+' : ''}{formatCurrency(m.nativeDayChange, m.quoteCurrency)}
                         </p>
                       </td>
                       <td className="py-2 px-3 text-right font-bold text-zinc-900 dark:text-zinc-100">
-                        {formatCurrency(m.nativeCurrentValue, m.currency)}
+                        {formatCurrency(m.nativeCurrentValue, m.quoteCurrency)}
                       </td>
                       <td className="py-2 px-3 text-right">
                         <div className={`flex items-center justify-end gap-2 ${isProUser ? '' : 'blur-sm select-none pointer-events-none'}`} aria-hidden={!isProUser}>
@@ -1168,9 +1176,9 @@ export function PositionPerformanceChart({
                           </span>
                         </div>
                       </td>
-                      <td className={`py-2 px-3 text-right font-semibold ${m.nativeGainPercent >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                        <p>{m.nativeGainValue >= 0 ? '+' : ''}{formatCurrency(m.nativeGainValue, m.currency)}</p>
-                        <p className="text-xs font-normal">{formatPercent(m.nativeGainPercent)}</p>
+                      <td className={`py-2 px-3 text-right font-semibold ${m.gainPercent >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                        <p>{m.gainValue >= 0 ? '+' : ''}{formatCurrency(m.gainValue)}</p>
+                        <p className="text-xs font-normal">{formatPercent(m.gainPercent)}</p>
                       </td>
                     </tr>
                     
@@ -1216,12 +1224,12 @@ export function PositionPerformanceChart({
                                   <Percent className="h-4 w-4 text-purple-600" />
                                   <span className="font-semibold text-sm text-zinc-900 dark:text-zinc-100">Rendement Total</span>
                                 </div>
-                                <p className={`text-lg font-bold ${(m.nativeGainValue + stats.totalDividends) >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                                  {(m.nativeGainValue + stats.totalDividends) >= 0 ? '+' : ''}{formatCurrency(m.nativeGainValue + stats.totalDividends, m.currency)}
+                                <p className={`text-lg font-bold ${m.totalReturnValue >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                                  {m.totalReturnValue >= 0 ? '+' : ''}{formatCurrency(m.totalReturnValue)}
                                 </p>
                                 <p className="text-sm text-zinc-500">+/- value + dividendes</p>
                                 <p className="text-sm font-medium text-purple-600">
-                                  {m.nativeInvestedValue > 0 ? formatPercent(((m.nativeGainValue + stats.totalDividends) / m.nativeInvestedValue) * 100) : '0%'}
+                                  {formatPercent(m.totalReturnPercent)}
                                 </p>
                               </div>
                             </div>
