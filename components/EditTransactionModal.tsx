@@ -385,8 +385,8 @@ export function EditTransactionModal({
               )}
           </div>
 
-          <div className="grid grid-cols-3 gap-2 sm:gap-3">
-            <div className="col-span-2">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
+            <div className="sm:col-span-2">
               <label className="block text-xs sm:text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
                 Date
               </label>
@@ -395,7 +395,7 @@ export function EditTransactionModal({
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
                 required
-                className="w-full px-3 py-2 text-sm sm:text-base border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full min-w-0 px-3 py-2 text-sm sm:text-base border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
             <div>
@@ -406,7 +406,7 @@ export function EditTransactionModal({
                 type="time"
                 value={time}
                 onChange={(e) => setTime(e.target.value)}
-                className="w-full px-2 py-2 text-sm sm:text-base border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full min-w-0 px-2 py-2 text-sm sm:text-base border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
           </div>
@@ -512,8 +512,8 @@ export function EditTransactionModal({
             </div>
           )}
 
-          <div className="grid grid-cols-3 gap-2 sm:gap-3">
-            <div className="col-span-2">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
+            <div className="sm:col-span-2">
               <label className="block text-xs sm:text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
                 {isConversion ? `Montant débité (${currency})` : `Montant (${currency})`}{' '}
                 {isStockTransaction && <span className="text-zinc-400 text-xs">(auto)</span>}
@@ -526,7 +526,7 @@ export function EditTransactionModal({
                 placeholder="0.00"
                 required
                 readOnly={isStockTransaction}
-                className={`w-full px-3 py-2 text-sm sm:text-base border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent ${isStockTransaction ? 'bg-zinc-50 dark:bg-zinc-900' : ''}`}
+                className={`w-full min-w-0 px-3 py-2 text-sm sm:text-base border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent ${isStockTransaction ? 'bg-zinc-50 dark:bg-zinc-900' : ''}`}
               />
             </div>
             <div>
@@ -539,7 +539,7 @@ export function EditTransactionModal({
                 value={currency}
                 onChange={(e) => setCurrency(e.target.value.toUpperCase())}
                 maxLength={10}
-                className="w-full px-2 py-2 text-sm sm:text-base border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent uppercase"
+                className="w-full min-w-0 px-2 py-2 text-sm sm:text-base border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent uppercase"
               />
               <datalist id="common-currencies-edit-source">
                 {COMMON_CURRENCIES.map((c) => <option key={c} value={c} />)}
@@ -548,8 +548,8 @@ export function EditTransactionModal({
           </div>
 
           {isConversion && (
-            <div className="grid grid-cols-3 gap-2 sm:gap-3 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
-              <div className="col-span-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+              <div className="sm:col-span-2">
                 <label className="block text-xs sm:text-sm font-medium text-amber-800 dark:text-amber-200 mb-1">
                   Montant crédité ({targetCurrency})
                 </label>
@@ -560,7 +560,7 @@ export function EditTransactionModal({
                   onChange={(e) => setTargetAmount(e.target.value)}
                   placeholder="0.00"
                   required
-                  className="w-full px-3 py-2 text-sm sm:text-base border border-amber-300 dark:border-amber-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-amber-500"
+                  className="w-full min-w-0 px-3 py-2 text-sm sm:text-base border border-amber-300 dark:border-amber-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-amber-500"
                 />
               </div>
               <div>
@@ -573,14 +573,14 @@ export function EditTransactionModal({
                   value={targetCurrency}
                   onChange={(e) => setTargetCurrency(e.target.value.toUpperCase())}
                   maxLength={10}
-                  className="w-full px-2 py-2 text-sm sm:text-base border border-amber-300 dark:border-amber-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-amber-500 uppercase"
+                  className="w-full min-w-0 px-2 py-2 text-sm sm:text-base border border-amber-300 dark:border-amber-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-amber-500 uppercase"
                 />
                 <datalist id="common-currencies-edit-target">
                   {COMMON_CURRENCIES.map((c) => <option key={c} value={c} />)}
                 </datalist>
               </div>
               {parseFloat(amount) > 0 && parseFloat(targetAmount) > 0 && (
-                <div className="col-span-3 text-xs text-amber-700 dark:text-amber-300">
+                <div className="sm:col-span-3 text-xs text-amber-700 dark:text-amber-300">
                   Taux implicite : 1 {currency} = {(parseFloat(targetAmount) / parseFloat(amount)).toFixed(4)} {targetCurrency}
                 </div>
               )}

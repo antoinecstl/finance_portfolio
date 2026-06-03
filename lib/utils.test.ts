@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {
   isCryptoSymbol,
+  getCryptoBaseSymbol,
+  getCryptoQuoteCurrency,
   accountTypeAllowsAsset,
   canChangeAccountType,
   defaultSupportsPositions,
@@ -9,7 +11,7 @@ import {
 } from './utils';
 
 describe('isCryptoSymbol', () => {
-  it.each(['BTC-USD', 'eth-usd', 'SOL-USDT', 'XRP-EUR', 'ADA-GBP', 'ETH-BTC'])(
+  it.each(['BTC-USD', 'eth-usd', 'SOL-USDT', 'SOL-USDC', 'XRP-EUR', 'ADA-GBP', 'ETH-BTC'])(
     'detects crypto pair %s',
     (sym) => expect(isCryptoSymbol(sym)).toBe(true)
   );
@@ -18,6 +20,26 @@ describe('isCryptoSymbol', () => {
     'rejects non-crypto %s',
     (sym) => expect(isCryptoSymbol(sym)).toBe(false)
   );
+});
+
+describe('crypto pair helpers', () => {
+  it('extracts the base symbol from supported crypto pairs', () => {
+    expect(getCryptoBaseSymbol('BTC-USD')).toBe('BTC');
+    expect(getCryptoBaseSymbol('eth-eur')).toBe('ETH');
+    expect(getCryptoBaseSymbol('SOL-USDC')).toBe('SOL');
+  });
+
+  it('extracts the quote currency from supported crypto pairs', () => {
+    expect(getCryptoQuoteCurrency('BTC-USD')).toBe('USD');
+    expect(getCryptoQuoteCurrency('ETH-EUR')).toBe('EUR');
+    expect(getCryptoQuoteCurrency('SOL-USDC')).toBe('USDC');
+    expect(getCryptoQuoteCurrency('AAPL')).toBeNull();
+  });
+
+  it('leaves non-crypto symbols untouched when extracting the base', () => {
+    expect(getCryptoBaseSymbol('BRK-B')).toBe('BRK-B');
+    expect(getCryptoBaseSymbol('MC.PA')).toBe('MC.PA');
+  });
 });
 
 describe('accountTypeAllowsAsset', () => {

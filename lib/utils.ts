@@ -156,11 +156,24 @@ export function accountSupportsPositions(account: Pick<Account, 'type' | 'suppor
 // Détection : un symbole est crypto si son suffixe -USD/-USDT/-EUR/-GBP/-BTC/-ETH
 // correspond à une paire de cotation (ex: BTC-USD, ETH-USDT). Les actions
 // utilisent des suffixes de bourse (.PA, .L, .DE, ...) qui ne matchent pas.
-const CRYPTO_QUOTE_SUFFIXES = /-(USD|USDT|EUR|GBP|BTC|ETH)$/i;
+const CRYPTO_QUOTE_SUFFIXES = /-(USD|USDT|USDC|EUR|GBP|CHF|BTC|ETH)$/i;
 
 export function isCryptoSymbol(symbol: string | null | undefined): boolean {
   if (!symbol) return false;
   return CRYPTO_QUOTE_SUFFIXES.test(symbol.trim());
+}
+
+export function getCryptoBaseSymbol(symbol: string | null | undefined): string {
+  const clean = (symbol ?? '').trim().toUpperCase();
+  const match = clean.match(CRYPTO_QUOTE_SUFFIXES);
+  if (!match) return clean;
+  return clean.slice(0, clean.length - match[0].length);
+}
+
+export function getCryptoQuoteCurrency(symbol: string | null | undefined): string | null {
+  const clean = (symbol ?? '').trim().toUpperCase();
+  const match = clean.match(CRYPTO_QUOTE_SUFFIXES);
+  return match?.[1]?.toUpperCase() ?? null;
 }
 
 // Compatibilité actif ↔ type de compte.

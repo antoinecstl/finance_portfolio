@@ -23,6 +23,11 @@ import { PortfolioHistoryPoint, calculatePortfolioPerformance } from '@/lib/port
 import { convertToBase, type FxRateMap } from '@/lib/fx';
 import { formatCurrency, formatPercent, getSectorColor } from '@/lib/utils';
 import { compareTransactionSequence } from '@/lib/transaction-ordering';
+import {
+  buildPositionDisplayGroups,
+  positionDisplaySymbol,
+  transactionMatchesPositionDisplayGroup,
+} from '@/lib/position-display';
 import { PieChart as PieChartIcon, TrendingUp, TrendingDown, Loader2, BarChart2, Target, Scale, Activity, ChevronDown, ChevronRight, ShoppingCart, DollarSign, Banknote, Percent, Wallet, LineChart as LineChartIcon, Lock } from 'lucide-react';
 import { useSubscription } from '@/lib/subscription-client';
 import { ProBlur } from './ProBlur';
@@ -83,13 +88,14 @@ export function AllocationChart({ positions, quotes, fxRates = {} }: AllocationC
     const currentPrice = quote?.price ?? position.average_price;
     const valueCurrency = (quote?.currency ?? position.currency ?? 'EUR').toUpperCase();
     const value = convertToBase(position.quantity * currentPrice, valueCurrency, today, fxRates);
-    const existing = aggregated.get(position.symbol);
+    const displaySymbol = positionDisplaySymbol(position.symbol);
+    const existing = aggregated.get(displaySymbol);
     if (existing) {
       existing.value += value;
     } else {
-      aggregated.set(position.symbol, {
-        name: position.symbol,
-        fullName: position.name,
+      aggregated.set(displaySymbol, {
+        name: displaySymbol,
+        fullName: position.name || displaySymbol,
         value,
       });
     }
@@ -535,6 +541,7 @@ interface PositionMetrics {
   costCurrency: string;
   quoteCurrency: string;
   color: string;
+  isCrypto: boolean;
 }
 
 export function PositionPerformanceChart({
@@ -561,20 +568,23 @@ export function PositionPerformanceChart({
     return map;
   }, [accounts]);
 
-  // Filtrer les transactions pour un symbole+compte+devise
-  const getTransactionsForPosition = (symbol: string, accountId: string, currency: string) => {
+  // Filtrer les transactions pour une ligne d'affichage.
+  // Crypto: toutes les paires d'une meme base (BTC-EUR/BTC-USD) sont incluses.
+  const getTransactionsForPosition = (
+    metric: Pick<PositionMetrics, 'symbol' | 'accountId' | 'costCurrency' | 'isCrypto'>
+  ) => {
     return transactions
       .filter(t =>
-        t.stock_symbol === symbol
-        && t.account_id === accountId
-        && txCurrency(t) === currency
+        transactionMatchesPositionDisplayGroup(t, metric)
       )
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   };
 
-  // Calculer les statistiques de transactions pour un symbole+compte+devise
-  const getTransactionStats = (symbol: string, accountId: string, currency: string) => {
-    const symbolTransactions = getTransactionsForPosition(symbol, accountId, currency);
+  // Calculer les statistiques de transactions pour une ligne d'affichage.
+  const getTransactionStats = (
+    metric: Pick<PositionMetrics, 'symbol' | 'accountId' | 'costCurrency' | 'isCrypto'>
+  ) => {
+    const symbolTransactions = getTransactionsForPosition(metric);
     
     const buys = symbolTransactions.filter(t => t.type === 'BUY');
     const sells = symbolTransactions.filter(t => t.type === 'SELL');
@@ -608,9 +618,10 @@ export function PositionPerformanceChart({
   const symbolAccountCounts = useMemo(() => {
     const counts = new Map<string, Set<string>>();
     positions.forEach(p => {
-      const set = counts.get(p.symbol) ?? new Set<string>();
+      const symbol = positionDisplaySymbol(p.symbol);
+      const set = counts.get(symbol) ?? new Set<string>();
       set.add(p.account_id);
-      counts.set(p.symbol, set);
+      counts.set(symbol, set);
     });
     return counts;
   }, [positions]);
@@ -622,62 +633,48 @@ export function PositionPerformanceChart({
 
   const today = formatLocalDate(new Date());
 
-  // Calculer les métriques pour chaque position (clé composite accountId:symbol:currency)
-  const metrics: PositionMetrics[] = positions.map((position, index) => {
-    const quote = quotes[position.symbol];
-    const currentPrice = quote?.price ?? position.average_price;
-    const dayChange = quote?.change || 0;
-    const dayChangePercent = quote?.changePercent || 0;
-    const costCurrency = (position.currency ?? 'EUR').toUpperCase();
-    const quoteCurrency = (quote?.currency ?? costCurrency).toUpperCase();
+  // Calculer les metriques pour chaque ligne d'affichage.
+  // Les cryptos sont consolidees par compte + base de paire.
+  const metrics: PositionMetrics[] = buildPositionDisplayGroups(positions, quotes, fxRates, today).map((group, index) => {
+    const stats = getTransactionStats(group);
+    const totalReturnValue = group.gainValue + stats.totalDividendsInBase;
+    const totalReturnPercent = group.investedValue > 0 ? (totalReturnValue / group.investedValue) * 100 : 0;
 
-    const nativeCurrentValue = position.quantity * currentPrice;
-    const nativeInvestedValue = position.quantity * position.average_price;
-    const nativeDayChange = position.quantity * dayChange;
-
-    const currentValue = convertToBase(nativeCurrentValue, quoteCurrency, today, fxRates);
-    const investedValue = convertToBase(nativeInvestedValue, costCurrency, today, fxRates);
-    const gainValue = currentValue - investedValue;
-    const gainPercent = investedValue > 0 ? (gainValue / investedValue) * 100 : 0;
-    const convertedDayChange = convertToBase(nativeDayChange, quoteCurrency, today, fxRates);
-    const stats = getTransactionStats(position.symbol, position.account_id, costCurrency);
-    const totalReturnValue = gainValue + stats.totalDividendsInBase;
-    const totalReturnPercent = investedValue > 0 ? (totalReturnValue / investedValue) * 100 : 0;
-
-    const account = accountById.get(position.account_id);
+    const account = accountById.get(group.accountId);
     const accountName = account?.name ?? '—';
     const accountType = account?.type ?? '';
-    const isShared = (symbolAccountCounts.get(position.symbol)?.size ?? 0) > 1;
+    const isShared = (symbolAccountCounts.get(group.symbol)?.size ?? 0) > 1;
     const displayLabel = isShared && accountType
-      ? `${position.symbol} (${accountType})`
-      : position.symbol;
+      ? `${group.symbol} (${accountType})`
+      : group.symbol;
 
     return {
-      key: `${position.account_id}:${position.symbol}:${costCurrency}`,
-      symbol: position.symbol,
+      key: group.key,
+      symbol: group.symbol,
       displayLabel,
-      name: position.name,
-      accountId: position.account_id,
+      name: group.name,
+      accountId: group.accountId,
       accountName,
       accountType,
-      currentValue,
-      investedValue,
-      gainValue,
-      gainPercent,
-      dayChange: convertedDayChange,
-      dayChangePercent,
-      nativeCurrentValue,
-      nativeInvestedValue,
-      nativeDayChange,
+      currentValue: group.currentValue,
+      investedValue: group.investedValue,
+      gainValue: group.gainValue,
+      gainPercent: group.gainPercent,
+      dayChange: group.dayChange,
+      dayChangePercent: group.dayChangePercent,
+      nativeCurrentValue: group.nativeCurrentValue,
+      nativeInvestedValue: group.nativeInvestedValue,
+      nativeDayChange: group.nativeDayChange,
       totalReturnValue,
       totalReturnPercent,
       weight: 0, // Calculé après
-      quantity: position.quantity,
-      avgPrice: position.average_price,
-      currentPrice,
-      costCurrency,
-      quoteCurrency,
+      quantity: group.quantity,
+      avgPrice: group.avgPrice,
+      currentPrice: group.currentPrice,
+      costCurrency: group.costCurrency,
+      quoteCurrency: group.quoteCurrency,
       color: getSectorColor(index),
+      isCrypto: group.isCrypto,
     };
   });
 
@@ -942,7 +939,7 @@ export function PositionPerformanceChart({
                 )}
                 {group.items.map((m) => {
                   const isExpanded = expandedKey === m.key;
-                  const stats = getTransactionStats(m.symbol, m.accountId, m.costCurrency);
+                  const stats = getTransactionStats(m);
                   return (
                     <div key={m.key} className="p-3 space-y-2">
                       <div
@@ -1114,7 +1111,7 @@ export function PositionPerformanceChart({
                     )}
                     {group.items.map((m) => {
                       const isExpanded = expandedKey === m.key;
-                      const stats = getTransactionStats(m.symbol, m.accountId, m.costCurrency);
+                      const stats = getTransactionStats(m);
                       return (
                         <React.Fragment key={m.key}>
                           <tr

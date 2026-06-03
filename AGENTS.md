@@ -1,13 +1,13 @@
 <claude-mem-context>
 # Memory Context
 
-# [finance_portfolio] recent context, 2026-06-02 9:40pm GMT+2
+# [finance_portfolio] recent context, 2026-06-03 2:06am GMT+2
 
 Legend: 🎯session 🔴bugfix 🟣feature 🔄refactor ✅change 🔵discovery ⚖️decision 🚨security_alert 🔐security_note
 Format: ID TIME TYPE TITLE
 Fetch details: get_observations([IDs]) | Search: mem-search skill
 
-Stats: 50 obs (23 308t read) | 590 785t work | 96% savings
+Stats: 50 obs (23 552t read) | 842 149t work | 97% savings
 
 ### May 6, 2026
 S2 Fix progress bar alignment in portfolio mockup (May 6, 11:31 PM)
@@ -22,27 +22,6 @@ S13 Social media content strategy for Fi-Hub (fi-hub.subleet.com) — Reddit pos
 S14 User asked Claude to log into fi-hub.subleet.com and explore stats — credentials were shared in plain text in the session (May 13, 7:51 PM)
 S15 Exploration complète du portfolio fi-hub.subleet.com (antoinecstl@gmail.com) — login automatisé + extraction de toutes les stats financières + génération de contenu Reddit/TikTok/Instagram pour promouvoir fi-hub (May 13, 8:19 PM)
 ### May 20, 2026
-348 12:33p 🟣 SEO Architecture Sprint: New Semantic URL Routes, Components, and Sitemap
-349 " 🔄 Marketing Landing Page Decoupled from Live Stock API
-350 " 🟣 Noindex Applied to All Private/Auth App Layouts
-351 " ✅ Legacy SEO URL Redirects and Internal Link Restructuring
-353 12:37p 🟣 Multi-Sprint SEO Infrastructure Implemented for Next.js Marketing Site
-354 " 🔵 Node.js EPERM on `lstat 'C:\Users\antoi'` Blocks Direct `npm run dev` in Sandbox
-355 12:38p 🔵 SEO Architecture Audit Initiated for Next.js Marketing App
-356 12:39p 🟣 Full SEO Architecture Implementation Across 4 Sprints
-357 " 🔵 Build Blocked by Unrelated Remotion Subproject Missing Dependencies
-358 " 🔵 Node.js EPERM lstat Error Blocks Sandboxed npm Commands on Windows
-359 2:27p 🟣 Marketing Feature Pages: Platform Mock-ups with Fake Data Requested
-360 2:28p ⚖️ Marketing Mock-up Implementation Plan Defined (4 Steps)
-361 " 🔵 Platform Component Audit for Marketing Mock-ups: 6 Key Views Identified
-362 2:30p 🟣 Marketing Feature Mockups with Fake Data Added to /fonctionnalites Pages
-363 " 🔵 Sandbox EPERM Blocks npm/Node Commands in finance_portfolio Worktree
-364 2:31p 🟣 Created components/marketing/FeatureMockups.tsx with 4 Fake-Data Platform Mock-ups
-365 " 🟣 SeoArticlePage.tsx Wired to Render Feature Mock-ups on Fonctionnalités Pages
-366 " 🔵 Windows EPERM lstat Error Blocks npm Scripts Without Escalated Sandbox Permissions
-367 " ✅ SEO Copy for import-transactions Feature Page Updated to Highlight AI
-368 2:32p ✅ Homepage Import Section Copy Updated to Surface AI, ImportMockup Enhanced with AI Badges
-369 2:43p ✅ Marketing Landing Page UI Feedback & Screenshot Migration Plan
 370 2:47p 🟣 Replaced coded mockups with real product screenshots
 371 " ✅ Renamed "Suivi PEA" feature to "Positions et PRU" across codebase
 372 3:06p 🔵 SEO Architecture Audit Initiated on Next.js Marketing App
@@ -74,6 +53,28 @@ S15 Exploration complète du portfolio fi-hub.subleet.com (antoinecstl@gmail.com
 657 7:26p 🔵 Potential Currency Mismatch Bug in Transaction Forms
 658 9:03p ⚖️ Mixed-Currency Positions: "Separate Lines" Architecture Chosen
 659 " 🔵 Root Cause: Quote Currency Overrides Transaction Currency in Position Display
+### Jun 3, 2026
+673 1:40a 🔵 Windows Sandbox Spawn Failure Blocking All Shell Commands
+674 " 🔵 Crypto Positions Tracked Per (Symbol, Currency) Pair — Consolidation Needed
+675 " 🔵 Transaction Time Field Architecture for Same-Day Ordering
+676 1:41a 🔵 Key Files Identified for Both Fix Tasks
+677 " 🔵 Time Picker Uses Native HTML Input Type="time" — Identified as Mobile Bug Source
+692 1:48a 🔵 finance_portfolio: Positions Derived Entirely from Transactions (No DB Positions Table)
+693 " 🔵 finance_portfolio: Multi-Currency Position Tracking Architecture
+694 " 🔵 finance_portfolio: Transaction Modals Implement Client-Side Sell Validation Against Calculated Positions
+695 " 🔵 finance_portfolio: Stock Quote API Uses Yahoo Finance Chart Endpoint with 5s Timeout
+691 " 🔵 Finance Portfolio App: Position & Quote Architecture Mapped
+696 1:49a ⚖️ Planned: Crypto Position Consolidation and Responsive Modal Grid Fixes
+697 1:50a 🔵 finance_portfolio: FX Conversion Uses EURUSD=X Convention with Stablecoin Peg Table
+698 1:51a 🔵 finance_portfolio: Existing Test Coverage for Crypto/Account Type Utilities in lib/utils.test.ts
+699 1:52a 🔵 Portfolio Analysis Component — Multi-Currency & Pro Feature Architecture
+700 1:53a 🟣 Added lib/position-display.ts: Crypto-Aware Position Display Grouping
+701 1:54a 🔄 Charts.tsx PositionPerformanceChart Now Uses buildPositionDisplayGroups for Crypto Consolidation
+702 " 🔴 Charts.tsx patch conflict: apply_patch failed on metrics refactor, import-only patch applied successfully
+704 1:55a 🔵 Charts.tsx metrics block was still using old positions.map() after partial patches
+705 1:58a 🔄 Charts.tsx Metrics Refactored to Use buildPositionDisplayGroups Output
+706 2:04a 🔴 Responsive Grid Layout Fixed in EditTransactionModal
+707 " 🟣 Unit Tests Added for Crypto Pair Helpers and Position Display Grouping
 
-Access 591k tokens of past work via get_observations([IDs]) or mem-search skill.
+Access 842k tokens of past work via get_observations([IDs]) or mem-search skill.
 </claude-mem-context>
