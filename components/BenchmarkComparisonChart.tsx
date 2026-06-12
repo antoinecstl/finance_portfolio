@@ -24,9 +24,9 @@ const BENCHMARKS = {
 
 type BenchmarkKey = keyof typeof BENCHMARKS;
 
-type PeriodOption = '1M' | '3M' | '6M' | '1A' | 'YTD' | 'Max';
+type PeriodOption = '1S' | '1M' | '3M' | '6M' | '1A' | 'YTD' | 'Max';
 
-const PERIODS: PeriodOption[] = ['1M', '3M', '6M', 'YTD', '1A', 'Max'];
+const PERIODS: PeriodOption[] = ['1S', '1M', '3M', '6M', 'YTD', '1A', 'Max'];
 
 function formatLocalDate(date: Date): string {
   const year = date.getFullYear();
@@ -42,6 +42,11 @@ function periodCutoff(period: PeriodOption): string | null {
     return formatLocalDate(new Date(now.getFullYear(), 0, 1));
   }
   const d = new Date(now);
+  if (period === '1S') {
+    d.setDate(d.getDate() - 7);
+    return formatLocalDate(d);
+  }
+
   const months = ({ '1M': 1, '3M': 3, '6M': 6, '1A': 12 } as Record<string, number>)[period];
   d.setMonth(d.getMonth() - months);
   return formatLocalDate(d);

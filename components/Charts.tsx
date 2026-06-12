@@ -299,6 +299,7 @@ export function PortfolioHistoryChart({
   selectedPeriod = 30
 }: PortfolioHistoryChartProps) {
   const periods = [
+    { label: '1S', days: 7 },
     { label: '1M', days: 30 },
     { label: '3M', days: 90 },
     { label: '6M', days: 180 },
@@ -1317,7 +1318,7 @@ export function PositionPerformanceChart({
 // ===== PORTFOLIO VALUE VS INVESTED CHART =====
 // Graphique comparant la valeur actuelle et la valeur investie dans le temps
 
-type PeriodOption = '1M' | '3M' | '6M' | 'YTD' | '1Y' | 'MAX';
+type PeriodOption = '1W' | '1M' | '3M' | '6M' | 'YTD' | '1Y' | 'MAX';
 
 interface PortfolioValueChartProps {
   history: PortfolioHistoryPoint[];
@@ -1351,20 +1352,28 @@ export function PortfolioValueChart({
     let startDate: Date;
     
     switch (selectedPeriod) {
+      case '1W':
+        startDate = new Date(now);
+        startDate.setDate(startDate.getDate() - 7);
+        break;
       case '1M':
-        startDate = new Date(now.setMonth(now.getMonth() - 1));
+        startDate = new Date(now);
+        startDate.setMonth(startDate.getMonth() - 1);
         break;
       case '3M':
-        startDate = new Date(now.setMonth(now.getMonth() - 3));
+        startDate = new Date(now);
+        startDate.setMonth(startDate.getMonth() - 3);
         break;
       case '6M':
-        startDate = new Date(now.setMonth(now.getMonth() - 6));
+        startDate = new Date(now);
+        startDate.setMonth(startDate.getMonth() - 6);
         break;
       case 'YTD':
         startDate = new Date(now.getFullYear(), 0, 1);
         break;
       case '1Y':
-        startDate = new Date(now.setFullYear(now.getFullYear() - 1));
+        startDate = new Date(now);
+        startDate.setFullYear(startDate.getFullYear() - 1);
         break;
       default:
         return history;
@@ -1548,7 +1557,7 @@ export function PortfolioValueChart({
         </div>
         {/* Sélecteur de période */}
         <div className="flex w-full flex-wrap gap-1 sm:w-auto sm:flex-nowrap">
-          {(['1M', '3M', '6M', 'YTD', '1Y', 'MAX'] as PeriodOption[]).map((period) => (
+          {(['1W', '1M', '3M', '6M', 'YTD', '1Y', 'MAX'] as PeriodOption[]).map((period) => (
             <button
               key={period}
               onClick={() => setSelectedPeriod(period)}
@@ -1558,7 +1567,7 @@ export function PortfolioValueChart({
                   : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'
               }`}
             >
-              {period === '1Y' ? '1A' : period === 'MAX' ? 'Max' : period}
+              {period === '1W' ? '1S' : period === '1Y' ? '1A' : period === 'MAX' ? 'Max' : period}
             </button>
           ))}
         </div>
@@ -1704,6 +1713,7 @@ export function StockHistoryChart({
   selectedPeriod = 30
 }: StockHistoryChartProps) {
   const periods = [
+    { label: '1S', days: 7 },
     { label: '1M', days: 30 },
     { label: '3M', days: 90 },
     { label: '6M', days: 180 },
