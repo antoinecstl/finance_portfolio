@@ -690,6 +690,42 @@ button:focus-visible {
 .recharts-legend-item-text {
   color: var(--chart-axis) !important;
 }
+.recharts-tooltip-wrapper {
+  pointer-events: none !important;
+  max-width: min(320px, calc(100vw - 32px)) !important;
+  z-index: 20 !important;
+}
+
+.recharts-default-tooltip {
+  max-width: min(320px, calc(100vw - 32px)) !important;
+  overflow-wrap: anywhere !important;
+}
+
+@media (max-width: 640px) {
+  .recharts-tooltip-wrapper {
+    max-width: min(240px, 72vw) !important;
+  }
+
+  .recharts-default-tooltip {
+    max-width: min(240px, 72vw) !important;
+    max-height: 32dvh !important;
+    overflow-y: auto !important;
+    padding: 6px 8px !important;
+    border-radius: 7px !important;
+    font-size: 10.5px !important;
+    line-height: 1.25 !important;
+    opacity: 0.94 !important;
+    box-shadow: 0 8px 24px rgb(0 0 0 / 18%) !important;
+  }
+
+  .recharts-tooltip-label {
+    margin-bottom: 2px !important;
+  }
+
+  .recharts-tooltip-item {
+    white-space: normal !important;
+  }
+}
 
 /* ────────────────────────────────────────────────────────────
    Marketing-only decorations (scoped to .marketing-shell)
