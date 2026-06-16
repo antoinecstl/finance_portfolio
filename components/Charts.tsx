@@ -2328,27 +2328,27 @@ export function PortfolioPerformanceChart({
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
               <p className="text-zinc-500 dark:text-zinc-400 text-sm font-medium mb-1">Année {currentYear} (en cours)</p>
-              <div className="flex items-baseline gap-3">
-                <p className="text-3xl sm:text-4xl font-bold" style={{ color: currentYearTone }}>
+              <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                <p className="text-3xl sm:text-4xl font-bold break-words" style={{ color: currentYearTone }}>
                   {currentYearPerformance.gainLossPercent >= 0 ? '+' : ''}{currentYearPerformance.gainLossPercent.toFixed(2)}%
                 </p>
-                <p className="text-zinc-500 dark:text-zinc-400 text-sm">
+                <p className="text-zinc-500 dark:text-zinc-400 text-sm break-words">
                   ({currentYearPerformance.gainLoss >= 0 ? '+' : ''}{formatCurrency(currentYearPerformance.gainLoss)})
                 </p>
               </div>
             </div>
-            <div className="grid grid-cols-3 gap-4 text-center">
-              <div>
+            <div className="grid grid-cols-1 min-[420px]:grid-cols-3 gap-3 sm:gap-4 text-left min-[420px]:text-center">
+              <div className="min-w-0">
                 <p className="text-zinc-500 dark:text-zinc-400 text-xs">Début année</p>
-                <p className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">{formatCurrency(currentYearPerformance.startValue)}</p>
+                <p className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 break-words tabular-nums">{formatCurrency(currentYearPerformance.startValue)}</p>
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="text-zinc-500 dark:text-zinc-400 text-xs">Valeur actuelle</p>
-                <p className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">{formatCurrency(currentYearPerformance.endValue)}</p>
+                <p className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 break-words tabular-nums">{formatCurrency(currentYearPerformance.endValue)}</p>
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="text-zinc-500 dark:text-zinc-400 text-xs">Dividendes</p>
-                <p className="text-lg font-semibold text-emerald-600 dark:text-emerald-400">+{formatCurrency(currentYearPerformance.dividends)}</p>
+                <p className="text-lg font-semibold text-emerald-600 dark:text-emerald-400 break-words tabular-nums">+{formatCurrency(currentYearPerformance.dividends)}</p>
               </div>
             </div>
           </div>
@@ -2415,7 +2415,89 @@ export function PortfolioPerformanceChart({
       )}
 
       {/* Tableau détaillé par année */}
-      <div className="overflow-x-auto">
+      <div className="space-y-3 sm:hidden">
+        {displayedYears.map((year) => (
+          <div
+            key={`mobile-${year.year}`}
+            className={`rounded-lg border border-zinc-200 dark:border-zinc-800 p-3 ${
+              year.year === currentYear ? 'bg-indigo-50/50 dark:bg-indigo-900/10' : 'bg-white dark:bg-zinc-900'
+            }`}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="font-semibold text-zinc-900 dark:text-zinc-100">
+                {year.year}
+                {year.year === currentYear && (
+                  <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400">
+                    En cours
+                  </span>
+                )}
+              </div>
+              <div className={`text-right font-bold tabular-nums ${year.gainLossPercent >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                {year.gainLossPercent >= 0 ? '+' : ''}{year.gainLossPercent.toFixed(2)}%
+              </div>
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+              <div className="min-w-0">
+                <p className="text-zinc-500 dark:text-zinc-400">Début</p>
+                <p className="font-medium text-zinc-900 dark:text-zinc-100 break-words tabular-nums">{formatCurrency(year.startValue)}</p>
+              </div>
+              <div className="min-w-0 text-right">
+                <p className="text-zinc-500 dark:text-zinc-400">Fin</p>
+                <p className="font-medium text-zinc-900 dark:text-zinc-100 break-words tabular-nums">{formatCurrency(year.endValue)}</p>
+              </div>
+              <div className="min-w-0">
+                <p className="text-zinc-500 dark:text-zinc-400">Apports</p>
+                <p className="text-zinc-600 dark:text-zinc-400 break-words tabular-nums">{year.netFlows >= 0 ? '+' : ''}{formatCurrency(year.netFlows)}</p>
+              </div>
+              <div className="min-w-0 text-right">
+                <p className="text-zinc-500 dark:text-zinc-400">Gain/Perte</p>
+                <p className={`font-medium break-words tabular-nums ${year.gainLoss >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                  {year.gainLoss >= 0 ? '+' : ''}{formatCurrency(year.gainLoss)}
+                </p>
+              </div>
+            </div>
+          </div>
+        ))}
+        <div className="rounded-lg bg-zinc-100 dark:bg-zinc-800 p-3 font-semibold">
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-zinc-900 dark:text-zinc-100">Total</span>
+            <span className={`text-right tabular-nums ${performance.absoluteGainPercent >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+              {performance.absoluteGainPercent >= 0 ? '+' : ''}{performance.absoluteGainPercent.toFixed(2)}%
+            </span>
+          </div>
+          <div className="mt-2 grid grid-cols-2 gap-4 text-xs">
+            <div className="min-w-0">
+              <p className="text-zinc-500 dark:text-zinc-400">Valeur actuelle</p>
+              <p className="text-zinc-900 dark:text-zinc-100 break-words tabular-nums">{formatCurrency(performance.currentValue)}</p>
+            </div>
+            <div className="min-w-0 text-right">
+              <p className="text-zinc-500 dark:text-zinc-400">Gain/Perte</p>
+              <p className={`break-words tabular-nums ${performance.absoluteGain >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                {performance.absoluteGain >= 0 ? '+' : ''}{formatCurrency(performance.absoluteGain)}
+              </p>
+            </div>
+          </div>
+        </div>
+        {sortedYears.length > 2 && (
+          <button
+            onClick={() => setShowAllYears(!showAllYears)}
+            className="w-full text-center text-sm text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 font-medium py-1"
+          >
+            {showAllYears ? (
+              <span className="flex items-center justify-center gap-1">
+                <ChevronDown className="h-4 w-4 rotate-180" />
+                Masquer les années précédentes
+              </span>
+            ) : (
+              <span className="flex items-center justify-center gap-1">
+                <ChevronDown className="h-4 w-4" />
+                Voir les {sortedYears.length - 2} années précédentes
+              </span>
+            )}
+          </button>
+        )}
+      </div>
+      <div className="hidden overflow-x-auto sm:block">
         <table className="w-full text-sm">
           <thead className="bg-zinc-50 dark:bg-zinc-800/50">
             <tr>
