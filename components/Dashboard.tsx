@@ -21,7 +21,7 @@ import { PositionsTable } from './PositionsTable';
 import { TransactionsList } from './TransactionsList';
 import { PaginatedTransactionsList } from './PaginatedTransactionsList';
 import { DividendsTable } from './DividendsTable';
-import { AllocationChart, AccountAllocationChart, PortfolioHistoryChart, PositionPerformanceChart, PortfolioPerformanceChart, PortfolioValueChart } from './Charts';
+import { AllocationChart, AccountAllocationChart, AssetClassAllocationChart, PortfolioHistoryChart, PositionPerformanceChart, PortfolioPerformanceChart, PortfolioValueChart } from './Charts';
 import { ProBlur } from './ProBlur';
 import { UsageMeter } from './UsageMeter';
 import { ErrorBoundary } from './ErrorBoundary';
@@ -348,6 +348,9 @@ export function Dashboard() {
               </ErrorBoundary>
               <ErrorBoundary label="Allocation par compte">
                 <AccountAllocationChart accounts={enrichedAccounts} />
+              </ErrorBoundary>
+              <ErrorBoundary label="Répartition par type d’actif">
+                <AssetClassAllocationChart accounts={enrichedAccounts} />
               </ErrorBoundary>
             </div>
 

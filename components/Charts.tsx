@@ -3,6 +3,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { 
   Cell, 
+  PieChart,
+  Pie,
   ResponsiveContainer, 
   Tooltip, 
   LineChart,
@@ -21,7 +23,7 @@ import {
 import { StockPosition, StockQuote, Transaction, Account } from '@/lib/types';
 import { PortfolioHistoryPoint, calculatePortfolioPerformance } from '@/lib/portfolio-calculator';
 import { convertToBase, type FxRateMap } from '@/lib/fx';
-import { formatCurrency, formatPercent, getSectorColor } from '@/lib/utils';
+import { formatCurrency, formatPercent, getAccountTypeLabel, getSectorColor } from '@/lib/utils';
 import { compareTransactionSequence } from '@/lib/transaction-ordering';
 import {
   buildPositionDisplayGroups,
@@ -176,6 +178,132 @@ export function AllocationChart({ positions, quotes, fxRates = {} }: AllocationC
 export function SectorAllocationChart() {
   // Gardé pour compatibilité mais non utilisé
   return null;
+}
+
+
+interface AssetClassAllocationChartProps {
+  accounts: Array<Account & { calculatedTotalValue: number; calculatedTotalValueInBase?: number }>;
+}
+
+const ASSET_CLASS_LABELS: Record<string, string> = {
+  PEA: 'PEA',
+  CTO: 'Compte-titres',
+  LIVRET_A: 'Livrets',
+  LDDS: 'Livrets',
+  PEL: 'Livrets',
+  ASSURANCE_VIE: 'Assurance vie',
+  CRYPTO: 'Crypto',
+  AUTRE: 'Autres',
+};
+
+function assetClassLabel(type: string): string {
+  return ASSET_CLASS_LABELS[type] ?? getAccountTypeLabel(type);
+}
+
+export function AssetClassAllocationChart({ accounts }: AssetClassAllocationChartProps) {
+  const aggregated = new Map<string, number>();
+
+  accounts.forEach((account) => {
+    const value = account.calculatedTotalValueInBase ?? account.calculatedTotalValue;
+    if (value <= 0) return;
+
+    const label = assetClassLabel(account.type);
+    aggregated.set(label, (aggregated.get(label) ?? 0) + value);
+  });
+
+  const data = Array.from(aggregated.entries())
+    .map(([name, value], index) => ({
+      name,
+      value,
+      color: getSectorColor(index),
+    }))
+    .sort((a, b) => b.value - a.value);
+
+  const totalValue = data.reduce((sum, item) => sum + item.value, 0);
+  const legendData = data.map((item) => ({
+    ...item,
+    percentage: totalValue > 0 ? (item.value / totalValue) * 100 : 0,
+  }));
+
+  if (data.length === 0) {
+    return (
+      <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-4 sm:p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <PieChartIcon className="h-4 w-4 sm:h-5 sm:w-5 text-zinc-400" />
+          <h3 className="font-semibold text-sm sm:text-base text-zinc-900 dark:text-zinc-100">
+            Répartition par type d’actif
+          </h3>
+        </div>
+        <div className="text-center py-8 sm:py-12">
+          <PieChartIcon className="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-zinc-400" />
+          <p className="mt-3 sm:mt-4 text-sm text-zinc-500 dark:text-zinc-400">
+            Ajoutez des comptes pour voir vos classes d’actifs
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-4 sm:p-6">
+      <div className="flex items-center gap-2 mb-3 sm:mb-4">
+        <PieChartIcon className="h-4 w-4 sm:h-5 sm:w-5 text-purple-600" />
+        <h3 className="font-semibold text-sm sm:text-base text-zinc-900 dark:text-zinc-100">
+          Répartition par type d’actif
+        </h3>
+      </div>
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,220px)_1fr] lg:items-center">
+        <div className="h-56 sm:h-64">
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={legendData}
+                dataKey="value"
+                nameKey="name"
+                innerRadius="48%"
+                outerRadius="78%"
+                paddingAngle={2}
+                stroke="var(--color-background, #ffffff)"
+                strokeWidth={2}
+              >
+                {legendData.map((entry) => (
+                  <Cell key={entry.name} fill={entry.color} />
+                ))}
+              </Pie>
+              <Tooltip
+                formatter={(value: number, name: string) => [formatCurrency(value), name]}
+                contentStyle={{
+                  backgroundColor: 'var(--card-bg, white)',
+                  border: '1px solid var(--border)',
+                  borderRadius: '8px',
+                  color: 'var(--ink)',
+                }}
+              />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+        <div className="space-y-2">
+          {legendData.map((item) => (
+            <div key={item.name} className="flex items-center justify-between gap-3 text-xs sm:text-sm">
+              <div className="flex min-w-0 items-center gap-2">
+                <span className="h-2.5 w-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: item.color }} />
+                <span className="font-medium text-zinc-900 dark:text-zinc-100 truncate">{item.name}</span>
+              </div>
+              <span className="text-zinc-600 dark:text-zinc-400 flex-shrink-0">
+                {formatCurrency(item.value)} ({item.percentage.toFixed(1)}%)
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="mt-4 pt-3 border-t border-zinc-200 dark:border-zinc-700">
+        <div className="flex justify-between text-sm font-medium">
+          <span className="text-zinc-900 dark:text-zinc-100">Total</span>
+          <span className="text-zinc-900 dark:text-zinc-100">{formatCurrency(totalValue)}</span>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // Nouveau composant pour la répartition par compte
