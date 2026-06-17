@@ -183,12 +183,12 @@ interface SectorAllocationChartProps {
   fxRates?: FxRateMap;
 }
 
-function normalizeSectorLabel(sector: string | null | undefined, symbol: string): string {
+function normalizeSectorLabel(sector: string | null | undefined, symbol: string, quoteType?: string): string {
   const cleanSector = sector?.trim();
   if (cleanSector) return cleanSector;
 
   const cleanSymbol = symbol.trim().toUpperCase();
-  if (cleanSymbol.includes('ETF') || /(^|[.-])(CW8|WPEA|EWLD|SPY|VOO|QQQ|VTI|VEA|VWO|VT)([.-]|$)/i.test(cleanSymbol)) {
+  if (quoteType === 'ETF' || cleanSymbol.includes('ETF') || /(^|[.-])(CW8|WPEA|EWLD|SPY|VOO|QQQ|VTI|VEA|VWO|VT)([.-]|$)/i.test(cleanSymbol)) {
     return 'ETF / Fonds';
   }
 
@@ -215,7 +215,7 @@ export function SectorAllocationChart({ positions, quotes, accounts, fxRates = {
 
     if (value <= 0) return items;
 
-    const sector = normalizeSectorLabel(position.sector, position.symbol);
+    const sector = normalizeSectorLabel(quote?.sector ?? position.sector, position.symbol, quote?.quoteType);
     const existing = items.find((item) => item.name === sector);
     if (existing) {
       existing.value += value;
@@ -295,7 +295,7 @@ export function SectorAllocationChart({ positions, quotes, accounts, fxRates = {
                 </div>
               ))}
               <p className="pt-2 text-[11px] leading-4 text-zinc-500 dark:text-zinc-400">
-                Les positions sans secteur renseigné sont regroupées dans « Non classé ».
+                Secteurs alimentés par Yahoo Finance quand disponible. Les positions sans secteur sont regroupées dans « Non classé ».
               </p>
             </div>
           </div>

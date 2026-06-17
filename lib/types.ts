@@ -70,6 +70,9 @@ export interface StockQuote {
   volume: number;
   marketCap?: number;
   currency: string;
+  sector?: string;
+  industry?: string;
+  quoteType?: string;
 }
 
 export interface PortfolioSummary {
@@ -112,6 +115,9 @@ export interface QuoteApiResponse {
       regularMarketVolume: number;
       marketCap?: number;
       currency: string;
+      sector?: string;
+      industry?: string;
+      quoteType?: string;
     }>;
     error: null | { code: string; description: string };
   };

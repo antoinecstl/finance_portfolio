@@ -9,6 +9,7 @@ const MARKET_DATA_HEADERS = {
 const MARKET_DATA_PROVIDER = 'ya' + 'hoo';
 const MARKET_DATA_DOMAIN = `finance.${MARKET_DATA_PROVIDER}.com`;
 const MARKET_DATA_CHART_URL = `https://query1.${MARKET_DATA_DOMAIN}/v8/finance/chart`;
+const MARKET_DATA_QUOTE_SUMMARY_URL = `https://query2.${MARKET_DATA_DOMAIN}/v10/finance/quoteSummary`;
 const MARKET_DATA_SEARCH_URL = `https://query2.${MARKET_DATA_DOMAIN}/v1/finance/search`;
 
 async function fetchWithTimeout(url: string, ms = MARKET_DATA_TIMEOUT_MS): Promise<Response> {
@@ -82,6 +83,8 @@ async function getStockQuoteFromChart(symbol: string): Promise<StockQuote | null
     const change = currentPrice - previousClose;
     const changePercent = previousClose > 0 ? (change / previousClose) * 100 : 0;
 
+    const profile = await getStockProfile(symbol);
+
     return {
       symbol: meta.symbol || symbol,
       name: meta.shortName || meta.longName || symbol,
@@ -95,9 +98,50 @@ async function getStockQuoteFromChart(symbol: string): Promise<StockQuote | null
       volume: meta.regularMarketVolume || quote?.volume?.[lastIndex] || 0,
       marketCap: undefined,
       currency: meta.currency || 'EUR',
+      sector: profile?.sector,
+      industry: profile?.industry,
+      quoteType: profile?.quoteType,
     };
   } catch (error) {
     console.error(`Error fetching chart for ${symbol}:`, error);
+    return null;
+  }
+}
+
+
+interface StockProfile {
+  sector?: string;
+  industry?: string;
+  quoteType?: string;
+}
+
+function cleanProfileValue(value: unknown): string | undefined {
+  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
+}
+
+async function getStockProfile(symbol: string): Promise<StockProfile | null> {
+  try {
+    const encodedSymbol = encodeURIComponent(symbol);
+    const response = await fetchWithTimeout(
+      `${MARKET_DATA_QUOTE_SUMMARY_URL}/${encodedSymbol}?modules=assetProfile,quoteType`
+    );
+
+    if (!response.ok) {
+      console.warn(`Quote summary API error for ${symbol}: ${response.status}`);
+      return null;
+    }
+
+    const data = await response.json();
+    const result = data.quoteSummary?.result?.[0];
+    if (!result) return null;
+
+    return {
+      sector: cleanProfileValue(result.assetProfile?.sector),
+      industry: cleanProfileValue(result.assetProfile?.industry),
+      quoteType: cleanProfileValue(result.quoteType?.quoteType),
+    };
+  } catch (error) {
+    console.warn(`Error fetching profile for ${symbol}:`, error);
     return null;
   }
 }
