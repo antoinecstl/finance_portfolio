@@ -3,6 +3,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { 
   Cell, 
+  Pie,
+  PieChart,
   ResponsiveContainer, 
   Tooltip, 
   LineChart,
@@ -21,7 +23,7 @@ import {
 import { StockPosition, StockQuote, Transaction, Account } from '@/lib/types';
 import { PortfolioHistoryPoint, calculatePortfolioPerformance } from '@/lib/portfolio-calculator';
 import { convertToBase, type FxRateMap } from '@/lib/fx';
-import { formatCurrency, formatPercent, getSectorColor } from '@/lib/utils';
+import { accountTypeAllowsAsset, formatCurrency, formatPercent, getSectorColor } from '@/lib/utils';
 import { compareTransactionSequence } from '@/lib/transaction-ordering';
 import {
   buildPositionDisplayGroups,
@@ -173,9 +175,134 @@ export function AllocationChart({ positions, quotes, fxRates = {} }: AllocationC
   );
 }
 
-export function SectorAllocationChart() {
-  // Gardé pour compatibilité mais non utilisé
-  return null;
+
+interface SectorAllocationChartProps {
+  positions: StockPosition[];
+  quotes: Record<string, StockQuote>;
+  accounts: Account[];
+  fxRates?: FxRateMap;
+}
+
+function normalizeSectorLabel(sector: string | null | undefined, symbol: string): string {
+  const cleanSector = sector?.trim();
+  if (cleanSector) return cleanSector;
+
+  const cleanSymbol = symbol.trim().toUpperCase();
+  if (cleanSymbol.includes('ETF') || /(^|[.-])(CW8|WPEA|EWLD|SPY|VOO|QQQ|VTI|VEA|VWO|VT)([.-]|$)/i.test(cleanSymbol)) {
+    return 'ETF / Fonds';
+  }
+
+  return 'Non classé';
+}
+
+export function SectorAllocationChart({ positions, quotes, accounts, fxRates = {} }: SectorAllocationChartProps) {
+  const today = formatLocalDate(new Date());
+  const accountById = new Map(accounts.map((account) => [account.id, account]));
+
+  const data = positions.reduce<Array<{ name: string; value: number; color: string }>>((items, position) => {
+    const account = accountById.get(position.account_id);
+
+    // Le graphique sectoriel est volontairement limité aux comptes hors crypto.
+    // Cela évite de mélanger des actifs numériques avec des secteurs d'actions/ETF.
+    if (account?.type === 'CRYPTO' || !accountTypeAllowsAsset(account?.type ?? 'AUTRE', position.symbol)) {
+      return items;
+    }
+
+    const quote = quotes[position.symbol];
+    const currentPrice = quote?.price ?? position.average_price;
+    const valueCurrency = (quote?.currency ?? position.currency ?? 'EUR').toUpperCase();
+    const value = convertToBase(position.quantity * currentPrice, valueCurrency, today, fxRates);
+
+    if (value <= 0) return items;
+
+    const sector = normalizeSectorLabel(position.sector, position.symbol);
+    const existing = items.find((item) => item.name === sector);
+    if (existing) {
+      existing.value += value;
+    } else {
+      items.push({ name: sector, value, color: getSectorColor(items.length) });
+    }
+
+    return items;
+  }, []).sort((a, b) => b.value - a.value);
+
+  const totalValue = data.reduce((sum, item) => sum + item.value, 0);
+  const chartData = data.map((item) => ({
+    ...item,
+    percentage: totalValue > 0 ? (item.value / totalValue) * 100 : 0,
+  }));
+
+  return (
+    <ProBlur feature="advanced_analytics" label="Répartition sectorielle — Pro">
+      <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-4 sm:p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <PieChartIcon className="h-4 w-4 sm:h-5 sm:w-5 text-violet-600" />
+          <h3 className="font-semibold text-sm sm:text-base text-zinc-900 dark:text-zinc-100">
+            Répartition sectorielle
+          </h3>
+        </div>
+
+        {chartData.length === 0 ? (
+          <div className="text-center py-8 sm:py-12">
+            <PieChartIcon className="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-zinc-400" />
+            <p className="mt-3 sm:mt-4 text-sm text-zinc-500 dark:text-zinc-400">
+              Ajoutez des positions hors crypto pour voir la répartition sectorielle
+            </p>
+          </div>
+        ) : (
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(180px,240px)] lg:items-center">
+            <div className="h-[260px] sm:h-[300px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={chartData}
+                    dataKey="value"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    innerRadius="52%"
+                    outerRadius="82%"
+                    paddingAngle={2}
+                  >
+                    {chartData.map((entry, index) => (
+                      <Cell key={`sector-cell-${entry.name}-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    formatter={(value, _name, props) => {
+                      const payload = props.payload as { percentage?: number } | undefined;
+                      return [`${formatCurrency(Number(value))} (${(payload?.percentage ?? 0).toFixed(1)}%)`, 'Valeur'];
+                    }}
+                    contentStyle={{
+                      backgroundColor: 'var(--paper-2)',
+                      border: '1px solid var(--rule)',
+                      borderRadius: '8px',
+                      color: 'var(--ink)',
+                    }}
+                    labelStyle={{ color: 'var(--ink)', fontWeight: 600 }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="space-y-2">
+              {chartData.map((item) => (
+                <div key={item.name} className="flex items-center justify-between gap-3 text-xs sm:text-sm">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+                    <span className="font-medium text-zinc-900 dark:text-zinc-100 truncate">{item.name}</span>
+                  </div>
+                  <span className="text-zinc-600 dark:text-zinc-400 whitespace-nowrap">{item.percentage.toFixed(1)}%</span>
+                </div>
+              ))}
+              <p className="pt-2 text-[11px] leading-4 text-zinc-500 dark:text-zinc-400">
+                Les positions sans secteur renseigné sont regroupées dans « Non classé ».
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+    </ProBlur>
+  );
 }
 
 // Nouveau composant pour la répartition par compte
@@ -901,6 +1028,8 @@ export function PositionPerformanceChart({
         </div>
         </ProBlur>
       </div>
+
+      <SectorAllocationChart positions={positions} quotes={quotes} accounts={accounts} fxRates={fxRates} />
 
       {/* Tableau détaillé */}
       <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden">
