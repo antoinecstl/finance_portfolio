@@ -498,8 +498,8 @@ export function AddTransactionModal({
             </select>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
-            <div className="sm:col-span-2">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 min-w-0">
+            <div className="sm:col-span-2 min-w-0">
               <label className="block text-xs sm:text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
                 Date
               </label>
@@ -508,10 +508,10 @@ export function AddTransactionModal({
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
                 required
-                className="w-full min-w-0 px-3 py-2 text-sm sm:text-base border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="block w-full min-w-0 max-w-full appearance-none px-3 py-2 text-sm sm:text-base border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
-            <div>
+            <div className="min-w-0">
               <label className="block text-xs sm:text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
                 Heure <span className="text-zinc-400 text-xs">(optionnel)</span>
               </label>
@@ -519,7 +519,7 @@ export function AddTransactionModal({
                 type="time"
                 value={time}
                 onChange={(e) => setTime(e.target.value)}
-                className="w-full min-w-0 px-2 py-2 text-sm sm:text-base border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="block w-full min-w-0 max-w-full appearance-none px-3 py-2 text-sm sm:text-base border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
             {time && (
@@ -709,8 +709,8 @@ export function AddTransactionModal({
             </>
           )}
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
-            <div className="sm:col-span-2">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 min-w-0">
+            <div className="sm:col-span-2 min-w-0">
               <label className="block text-xs sm:text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
                 {isConversion ? `Montant débité (${currency})` : `Montant (${currency})`}{' '}
                 {isStockTransaction && <span className="text-zinc-400 text-xs">(auto)</span>}
@@ -746,7 +746,7 @@ export function AddTransactionModal({
 
           {isConversion && (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
-              <div className="sm:col-span-2">
+              <div className="sm:col-span-2 min-w-0">
                 <label className="block text-xs sm:text-sm font-medium text-amber-800 dark:text-amber-200 mb-1">
                   Montant crédité ({targetCurrency})
                 </label>
