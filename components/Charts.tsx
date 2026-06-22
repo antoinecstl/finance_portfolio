@@ -513,6 +513,7 @@ interface PositionPerformanceChartProps {
   portfolioTotalGain?: number;
   portfolioTotalGainPercent?: number;
   portfolioDayChange?: number;
+  portfolioDayChangePercent?: number;
   fxRates?: FxRateMap;
 }
 
@@ -556,6 +557,7 @@ export function PositionPerformanceChart({
   portfolioTotalGain,
   portfolioTotalGainPercent,
   portfolioDayChange,
+  portfolioDayChangePercent,
   fxRates = {}
 }: PositionPerformanceChartProps) {
   // État pour les lignes étendues (clé composite accountId:symbol)
@@ -699,6 +701,10 @@ export function PositionPerformanceChart({
   const totalGain = portfolioTotalGain ?? calculatedGain;
   const totalGainPercent = portfolioTotalGainPercent ?? (totalInvested > 0 ? (totalGain / totalInvested) * 100 : 0);
   const totalDayChange = portfolioDayChange ?? calculatedDayChange;
+  const calculatedDayChangePreviousValue = totalValue - totalDayChange;
+  const totalDayChangePercent = portfolioDayChangePercent ?? (calculatedDayChangePreviousValue > 0
+    ? (totalDayChange / calculatedDayChangePreviousValue) * 100
+    : 0);
   const totalDayChangeTone = totalDayChange >= 0 ? 'var(--gain)' : 'var(--loss)';
   const totalDayChangeSoftTone = totalDayChange >= 0 ? 'var(--gain-soft)' : 'var(--loss-soft)';
 
@@ -775,6 +781,9 @@ export function PositionPerformanceChart({
             <p className="text-xs text-zinc-500 dark:text-zinc-400">Variation du jour</p>
             <p className="text-lg sm:text-xl font-bold" style={{ color: totalDayChangeTone }}>
               {totalDayChange >= 0 ? '+' : ''}{formatCurrency(totalDayChange)}
+            </p>
+            <p className="text-xs" style={{ color: totalDayChangeTone }}>
+              {formatPercent(totalDayChangePercent)}
             </p>
           </div>
         </div>

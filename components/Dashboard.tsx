@@ -511,6 +511,7 @@ export function Dashboard() {
                 portfolioTotalGain={scopedPortfolioSummary.totalGain}
                 portfolioTotalGainPercent={scopedPortfolioSummary.totalGainPercent}
                 portfolioDayChange={scopedPortfolioSummary.dayChange}
+                portfolioDayChangePercent={scopedPortfolioSummary.dayChangePercent}
                 fxRates={positionsFxRates}
               />
             </ErrorBoundary>
