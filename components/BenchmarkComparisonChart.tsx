@@ -8,6 +8,7 @@ import type { HistoricalQuote } from '@/lib/stock-api';
 import type { Transaction } from '@/lib/types';
 import type { FxRateMap } from '@/lib/fx';
 import { findClosestQuote } from '@/lib/stock-api';
+import { buildNiceYAxisScale } from '@/lib/chart-axis';
 
 const BENCHMARKS = {
   '^FCHI': { label: 'CAC 40', color: 'var(--chart-1)' },
@@ -234,6 +235,9 @@ export function BenchmarkComparisonChart({
   }, [chartData]);
 
   const isLoading = loading || benchmarkLoading;
+  const yAxisScale = useMemo(() => buildNiceYAxisScale(
+    chartData.flatMap((point) => [point.portfolio, point.benchmark]),
+  ), [chartData]);
 
   return (
     <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-4 sm:p-6">
@@ -338,7 +342,11 @@ export function BenchmarkComparisonChart({
                 tickFormatter={(d) => d.slice(5)}
                 interval="preserveStartEnd"
               />
-              <YAxis tick={{ fontSize: 11 }} domain={['auto', 'auto']} />
+              <YAxis
+                tick={{ fontSize: 11 }}
+                domain={yAxisScale.domain}
+                ticks={yAxisScale.ticks}
+              />
               <Tooltip
                 formatter={(v, name) => [
                   `${typeof v === 'number' ? v.toFixed(2) : v} (base 100)`,

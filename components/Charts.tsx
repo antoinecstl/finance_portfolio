@@ -31,6 +31,7 @@ import {
 import { PieChart as PieChartIcon, TrendingUp, TrendingDown, Loader2, BarChart2, Target, Scale, Activity, ChevronDown, ChevronRight, ShoppingCart, DollarSign, Banknote, Percent, Wallet, LineChart as LineChartIcon, Lock } from 'lucide-react';
 import { useSubscription } from '@/lib/subscription-client';
 import { ProBlur } from './ProBlur';
+import { buildNiceYAxisScale } from '@/lib/chart-axis';
 
 const MS_PER_DAY = 86_400_000;
 const CHART_LEGEND_WRAPPER_STYLE = { fontSize: 12 };
@@ -366,8 +367,7 @@ export function PortfolioHistoryChart({
     );
   }
 
-  const minValue = Math.min(...data.map(d => d.totalValue)) * 0.95;
-  const maxValue = Math.max(...data.map(d => d.totalValue)) * 1.05;
+  const portfolioYAxis = buildNiceYAxisScale(data.map(d => d.totalValue));
 
   return (
     <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-4 sm:p-6">
@@ -443,8 +443,9 @@ export function PortfolioHistoryChart({
               interval="preserveStartEnd"
             />
             <YAxis 
-              domain={[minValue, maxValue]}
-              tickFormatter={(value) => value >= 1000 ? `${(value / 1000).toFixed(0)}k€` : `${value.toFixed(0)}€`}
+              domain={portfolioYAxis.domain}
+              ticks={portfolioYAxis.ticks}
+              tickFormatter={(value) => value >= 1000 ? `${(value / 1000).toFixed(value % 1000 === 0 ? 0 : 1)}k€` : `${value.toFixed(0)}€`}
               tick={{ fontSize: 10 }}
               stroke="var(--ink-soft)"
               width={45}
@@ -1540,12 +1541,9 @@ export function PortfolioValueChart({
     );
   }
 
-  const minValue = Math.min(
-    ...chartData.map(d => Math.min(d.valeurActuelle, d.investissement))
-  ) * 0.95;
-  const maxValue = Math.max(
-    ...chartData.map(d => Math.max(d.valeurActuelle, d.investissement))
-  ) * 1.05;
+  const positionYAxis = buildNiceYAxisScale(
+    chartData.flatMap(d => [d.valeurActuelle, d.investissement])
+  );
 
   return (
     <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-4 sm:p-6">
@@ -1638,7 +1636,8 @@ export function PortfolioValueChart({
               tick={{ fontSize: 10 }}
               stroke="var(--ink-soft)"
               width={60}
-              domain={[minValue, maxValue]}
+              domain={positionYAxis.domain}
+              ticks={positionYAxis.ticks}
             />
             <Tooltip 
               formatter={(value, name) => {
@@ -1928,8 +1927,27 @@ export function StockHistoryChart({
       });
     });
     
-    const padding = Math.max(Math.abs(max - min) * 0.1, 5);
-    return [Math.floor(min - padding), Math.ceil(max + padding)];
+    return buildNiceYAxisScale([min, max], { includeZero: true }).domain;
+  }, [chartData, symbols, selectedSymbols]);
+
+  const performanceYTicks = useMemo(() => {
+    let min = 0;
+    let max = 0;
+    const allKeys = ['__TOTAL__', ...symbols];
+
+    chartData.forEach(point => {
+      allKeys.forEach(key => {
+        if (selectedSymbols.has(key)) {
+          const value = point[key] as number;
+          if (typeof value === 'number') {
+            min = Math.min(min, value);
+            max = Math.max(max, value);
+          }
+        }
+      });
+    });
+
+    return buildNiceYAxisScale([min, max], { includeZero: true }).ticks;
   }, [chartData, symbols, selectedSymbols]);
 
   if (loading) {
@@ -2078,7 +2096,8 @@ export function StockHistoryChart({
             />
             <YAxis 
               domain={yDomain}
-              tickFormatter={(value) => `${value > 0 ? '+' : ''}${value.toFixed(0)}%`}
+              ticks={performanceYTicks}
+              tickFormatter={(value) => `${value > 0 ? '+' : ''}${value.toFixed(value % 1 === 0 ? 0 : 1)}%`}
               tick={{ fontSize: 10 }}
               stroke="var(--ink-soft)"
               width={50}
