@@ -367,7 +367,9 @@ export function PortfolioHistoryChart({
     );
   }
 
-  const portfolioYAxis = buildNiceYAxisScale(data.map(d => d.totalValue));
+  const portfolioYAxis = buildNiceYAxisScale(
+    data.flatMap(d => [d.totalValue, d.stocksValue])
+  );
 
   return (
     <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-4 sm:p-6">
