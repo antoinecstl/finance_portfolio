@@ -862,17 +862,18 @@ export function PositionPerformanceChart({
               Répartition du portefeuille
             </h3>
           </div>
-          <div className="h-[250px] sm:h-[300px]">
+          <div className="h-[250px] sm:h-[300px] -mx-1 sm:mx-0">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart 
                 data={weightChartData} 
                 layout="vertical"
-                margin={{ top: 5, right: 30, left: 60, bottom: 5 }}
+                margin={{ top: 5, right: 8, left: 0, bottom: 5 }}
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--rule)" horizontal={true} vertical={false} />
                 <XAxis 
                   type="number" 
-                  domain={[0, 'dataMax + 5']}
+                  domain={[0, 100]}
+                  ticks={[0, 25, 50, 75, 100]}
                   tickFormatter={(value) => `${value.toFixed(0)}%`}
                   tick={{ fontSize: 10 }}
                   stroke="var(--ink-soft)"
@@ -882,7 +883,7 @@ export function PositionPerformanceChart({
                   dataKey="symbol" 
                   tick={{ fontSize: 11, fontWeight: 500 }}
                   stroke="var(--ink-soft)"
-                  width={50}
+                  width={64}
                 />
                 <Tooltip 
                   formatter={(value, name, props) => {
