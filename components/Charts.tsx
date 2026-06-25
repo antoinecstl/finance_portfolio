@@ -16,7 +16,8 @@ import {
   Bar,
   ReferenceLine,
   ComposedChart,
-  Legend
+  Legend,
+  Scatter
 } from 'recharts';
 import { StockPosition, StockQuote, Transaction, Account } from '@/lib/types';
 import { PortfolioHistoryPoint, calculatePortfolioPerformance } from '@/lib/portfolio-calculator';
@@ -549,6 +550,222 @@ interface PositionMetrics {
   isCrypto: boolean;
 }
 
+
+interface PositionHistoryQuotePoint {
+  date: string;
+  close: number;
+  currency?: string;
+}
+
+interface PositionHistoryChartPoint {
+  date: string;
+  label: string;
+  price: number;
+  currency: string;
+  markerPrice?: number;
+  markerType?: Transaction['type'];
+  markerLabel?: string;
+}
+
+const POSITION_DETAIL_PERIODS = [
+  { label: '1M', days: 30, interval: '1d' },
+  { label: '3M', days: 90, interval: '1d' },
+  { label: '6M', days: 180, interval: '1d' },
+  { label: '1A', days: 365, interval: '1d' },
+  { label: '5A', days: 365 * 5, interval: '1wk' },
+] as const;
+
+type PositionDetailPeriod = (typeof POSITION_DETAIL_PERIODS)[number];
+
+function transactionMarkerGlyph(type?: Transaction['type']) {
+  if (type === 'BUY') return '▲';
+  if (type === 'SELL') return '▼';
+  if (type === 'DIVIDEND') return '◆';
+  return '●';
+}
+
+function transactionMarkerColor(type?: Transaction['type']) {
+  if (type === 'BUY') return 'var(--gain)';
+  if (type === 'SELL') return 'var(--loss)';
+  if (type === 'DIVIDEND') return 'var(--chart-3)';
+  return 'var(--chart-primary)';
+}
+
+function transactionMarkerLabel(type?: Transaction['type']) {
+  if (type === 'BUY') return 'Achat';
+  if (type === 'SELL') return 'Vente';
+  if (type === 'DIVIDEND') return 'Dividende';
+  return 'Transaction';
+}
+
+function PositionDetailPriceChart({
+  metric,
+  transactions,
+}: {
+  metric: PositionMetrics;
+  transactions: Transaction[];
+}) {
+  const [period, setPeriod] = useState<PositionDetailPeriod>(POSITION_DETAIL_PERIODS[3]);
+  const [history, setHistory] = useState<PositionHistoryQuotePoint[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const historicalSymbol = useMemo(() => {
+    return transactions.find(t => t.stock_symbol)?.stock_symbol?.toUpperCase() ?? metric.symbol;
+  }, [metric.symbol, transactions]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function loadHistory() {
+      setLoading(true);
+      setError(null);
+
+      const end = new Date();
+      const start = new Date(end);
+      start.setDate(start.getDate() - period.days);
+
+      const params = new URLSearchParams({
+        symbols: historicalSymbol,
+        startDate: formatLocalDate(start),
+        endDate: formatLocalDate(end),
+        interval: period.interval,
+      });
+
+      try {
+        const response = await fetch(`/api/stocks/history?${params.toString()}`, { signal: controller.signal });
+        if (!response.ok) throw new Error('history_fetch_failed');
+        const payload = await response.json() as Record<string, PositionHistoryQuotePoint[]>;
+        setHistory(payload[historicalSymbol] ?? []);
+      } catch (err) {
+        if ((err as Error).name !== 'AbortError') {
+          setHistory([]);
+          setError('Cours historique indisponible pour cette position.');
+        }
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
+    }
+
+    loadHistory();
+    return () => controller.abort();
+  }, [historicalSymbol, period]);
+
+  const chartData = useMemo<PositionHistoryChartPoint[]>(() => {
+    const transactionsByQuoteDate = new Map<string, Transaction[]>();
+
+    for (const transaction of transactions) {
+      if (!['BUY', 'SELL', 'DIVIDEND'].includes(transaction.type)) continue;
+      const quotePoint = history.find(point => point.date >= transaction.date) ?? history[history.length - 1];
+      if (!quotePoint) continue;
+      const bucket = transactionsByQuoteDate.get(quotePoint.date) ?? [];
+      bucket.push(transaction);
+      transactionsByQuoteDate.set(quotePoint.date, bucket);
+    }
+
+    return history.map(point => {
+      const markerTransactions = transactionsByQuoteDate.get(point.date) ?? [];
+      const firstMarker = markerTransactions[0];
+      const suffix = markerTransactions.length > 1 ? ` +${markerTransactions.length - 1}` : '';
+
+      return {
+        date: point.date,
+        label: new Date(point.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }),
+        price: point.close,
+        currency: point.currency ?? metric.quoteCurrency,
+        markerPrice: firstMarker ? point.close : undefined,
+        markerType: firstMarker?.type,
+        markerLabel: firstMarker ? `${transactionMarkerLabel(firstMarker.type)}${suffix}` : undefined,
+      };
+    });
+  }, [history, metric.quoteCurrency, transactions]);
+
+  const markerData = chartData.filter(point => point.markerPrice != null);
+
+  return (
+    <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-3">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
+        <div>
+          <h4 className="font-semibold text-sm text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+            <LineChartIcon className="h-4 w-4 text-blue-600" /> Cours et opérations
+          </h4>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">
+            Les marqueurs sont alignés sur le point de cotation disponible le plus proche.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-1">
+          {POSITION_DETAIL_PERIODS.map(option => (
+            <button
+              key={option.label}
+              type="button"
+              onClick={() => setPeriod(option)}
+              className={`px-2 py-1 text-xs rounded transition-colors ${period.label === option.label ? 'bg-blue-600 text-white' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700'}`}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="h-56 flex items-center justify-center text-sm text-zinc-500">
+          <Loader2 className="h-5 w-5 animate-spin mr-2" /> Chargement du cours...
+        </div>
+      ) : error ? (
+        <div className="h-36 flex items-center justify-center text-sm text-red-600">{error}</div>
+      ) : chartData.length === 0 ? (
+        <div className="h-36 flex items-center justify-center text-sm text-zinc-500">Aucun historique disponible.</div>
+      ) : (
+        <div className="h-56 sm:h-64">
+          <ResponsiveContainer width="100%" height="100%">
+            <ComposedChart data={chartData} margin={{ top: 5, right: 8, left: 0, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--rule)" />
+              <XAxis dataKey="label" tick={{ fontSize: 10 }} stroke="var(--ink-soft)" interval="preserveStartEnd" />
+              <YAxis domain={["auto", "auto"]} tick={{ fontSize: 10 }} stroke="var(--ink-soft)" width={48} />
+              <Tooltip
+                formatter={(value, name, props) => {
+                  const point = props.payload as PositionHistoryChartPoint;
+                  if (name === 'markerPrice') return [point.markerLabel, 'Opération'];
+                  return [formatCurrency(Number(value), point.currency), 'Cours'];
+                }}
+                labelFormatter={(_, payload) => payload?.[0]?.payload?.date ? new Date(payload[0].payload.date).toLocaleDateString('fr-FR') : ''}
+                contentStyle={{
+                  backgroundColor: 'var(--paper-2)',
+                  border: '1px solid var(--rule)',
+                  borderRadius: '8px',
+                  color: 'var(--ink)',
+                }}
+                labelStyle={{ color: 'var(--ink)', fontWeight: 600 }}
+              />
+              <Line type="monotone" dataKey="price" stroke="var(--chart-primary)" strokeWidth={2} dot={false} name="Cours" />
+              <Scatter
+                data={markerData}
+                dataKey="markerPrice"
+                name="Opérations"
+                shape={(props: unknown) => {
+                  const { cx, cy, payload } = props as { cx?: number; cy?: number; payload?: PositionHistoryChartPoint };
+                  if (cx == null || cy == null) return <g />;
+                  return (
+                    <text x={cx} y={cy} dy={4} textAnchor="middle" fontSize={15} fill={transactionMarkerColor(payload?.markerType)}>
+                      {transactionMarkerGlyph(payload?.markerType)}
+                    </text>
+                  );
+                }}
+              />
+            </ComposedChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+
+      <div className="mt-2 flex flex-wrap gap-3 text-[11px] text-zinc-500 dark:text-zinc-400">
+        <span><span style={{ color: 'var(--gain)' }}>▲</span> Achat</span>
+        <span><span style={{ color: 'var(--loss)' }}>▼</span> Vente</span>
+        <span><span style={{ color: 'var(--chart-3)' }}>◆</span> Dividende</span>
+      </div>
+    </div>
+  );
+}
+
 export function PositionPerformanceChart({
   positions,
   quotes,
@@ -1032,6 +1249,7 @@ export function PositionPerformanceChart({
                               </div>
                             )}
                           </div>
+                          <PositionDetailPriceChart metric={m} transactions={stats.allTransactions} />
                           <div className="space-y-1 max-h-48 overflow-y-auto">
                             <p className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">Historique</p>
                             {stats.allTransactions.slice(0, 10).map((t) => (
@@ -1244,6 +1462,8 @@ export function PositionPerformanceChart({
                                 </p>
                               </div>
                             </div>
+
+                            <PositionDetailPriceChart metric={m} transactions={stats.allTransactions} />
                             
                             {/* Tableau des transactions */}
                             <div className="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 overflow-hidden">
