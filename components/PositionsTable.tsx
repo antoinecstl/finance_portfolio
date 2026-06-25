@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { StockPosition, StockQuote, Transaction } from '@/lib/types';
 import { EnrichedAccount } from '@/lib/hooks';
 import { accountSupportsPositions, formatCurrency, formatCurrencyBreakdown, formatNumber, formatPercent } from '@/lib/utils';
 import { convertToBase, type FxRateMap } from '@/lib/fx';
 import { compareTransactionSequence } from '@/lib/transaction-ordering';
-import { Wallet, History, ChevronDown, ChevronUp, BarChart2 } from 'lucide-react';
+import { ResponsiveContainer, ComposedChart, Line, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, Brush } from 'recharts';
+import { Wallet, History, ChevronDown, ChevronUp, BarChart2, Loader2, TrendingUp } from 'lucide-react';
 
 // Type pour les positions clôturées (vendues)
 interface ClosedPosition {
@@ -25,6 +26,204 @@ interface ClosedPosition {
   realizedGainInBase: number;
   realizedGainPercent: number;
   lastSellDate: string;
+}
+
+
+interface HistoricalQuotePoint {
+  date: string;
+  close: number;
+  currency?: string;
+}
+
+interface PositionChartPoint {
+  date: string;
+  label: string;
+  price: number;
+  currency: string;
+  markerPrice?: number;
+  markerType?: Transaction['type'];
+  markerLabel?: string;
+}
+
+const DETAIL_PERIODS = [
+  { label: '1M', days: 30, interval: '1d' },
+  { label: '3M', days: 90, interval: '1d' },
+  { label: '6M', days: 180, interval: '1d' },
+  { label: '1A', days: 365, interval: '1d' },
+  { label: '5A', days: 365 * 5, interval: '1wk' },
+  { label: 'Max', days: 365 * 10, interval: '1mo' },
+] as const;
+
+function markerGlyph(type?: Transaction['type']) {
+  if (type === 'BUY') return '▲';
+  if (type === 'SELL') return '▼';
+  if (type === 'DIVIDEND') return '◆';
+  return '●';
+}
+
+function markerColor(type?: Transaction['type']) {
+  if (type === 'BUY') return 'var(--gain)';
+  if (type === 'SELL') return 'var(--loss)';
+  if (type === 'DIVIDEND') return 'var(--chart-3)';
+  return 'var(--chart-primary)';
+}
+
+function txLabel(type?: Transaction['type']) {
+  if (type === 'BUY') return 'Achat';
+  if (type === 'SELL') return 'Vente';
+  if (type === 'DIVIDEND') return 'Dividende';
+  return 'Transaction';
+}
+
+function PositionDetailChart({ position, transactions }: { position: StockPosition; transactions: Transaction[] }) {
+  const [period, setPeriod] = useState<(typeof DETAIL_PERIODS)[number]>(DETAIL_PERIODS[3]);
+  const [history, setHistory] = useState<HistoricalQuotePoint[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const positionTransactions = useMemo(() => {
+    return transactions
+      .filter(t => t.account_id === position.account_id && t.stock_symbol?.toUpperCase() === position.symbol.toUpperCase())
+      .filter(t => ['BUY', 'SELL', 'DIVIDEND'].includes(t.type))
+      .sort(compareTransactionSequence);
+  }, [position.account_id, position.symbol, transactions]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    async function loadHistory() {
+      setLoading(true);
+      setError(null);
+      const end = new Date();
+      const start = new Date(end);
+      start.setDate(start.getDate() - period.days);
+      const startDate = start.toISOString().slice(0, 10);
+      const endDate = end.toISOString().slice(0, 10);
+
+      try {
+        const params = new URLSearchParams({
+          symbols: position.symbol,
+          startDate,
+          endDate,
+          interval: period.interval,
+        });
+        const response = await fetch(`/api/stocks/history?${params.toString()}`, { signal: controller.signal });
+        if (!response.ok) throw new Error('history_fetch_failed');
+        const payload = await response.json() as Record<string, HistoricalQuotePoint[]>;
+        setHistory(payload[position.symbol] ?? []);
+      } catch (err) {
+        if ((err as Error).name !== 'AbortError') {
+          setError('Impossible de charger le cours historique pour cette position.');
+          setHistory([]);
+        }
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
+    }
+
+    loadHistory();
+    return () => controller.abort();
+  }, [period, position.symbol]);
+
+  const chartData = useMemo<PositionChartPoint[]>(() => {
+    const txByQuoteDate = new Map<string, Transaction[]>();
+    for (const tx of positionTransactions) {
+      const quotePoint = history.find(point => point.date >= tx.date) ?? history[history.length - 1];
+      if (!quotePoint) continue;
+      const list = txByQuoteDate.get(quotePoint.date) ?? [];
+      list.push(tx);
+      txByQuoteDate.set(quotePoint.date, list);
+    }
+
+    return history.map(point => {
+      const txs = txByQuoteDate.get(point.date) ?? [];
+      const firstTx = txs[0];
+      const suffix = txs.length > 1 ? ` +${txs.length - 1}` : '';
+      return {
+        date: point.date,
+        label: new Date(point.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: '2-digit' }),
+        price: point.close,
+        currency: point.currency ?? position.currency,
+        markerPrice: firstTx ? point.close : undefined,
+        markerType: firstTx?.type,
+        markerLabel: firstTx ? `${txLabel(firstTx.type)}${suffix}` : undefined,
+      };
+    });
+  }, [history, position.currency, positionTransactions]);
+
+  const markerPoints = chartData.filter(point => point.markerPrice != null);
+
+  return (
+    <div className="border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-950/40 p-3 sm:p-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-3">
+        <div>
+          <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+            <TrendingUp className="h-4 w-4 text-blue-600" /> Détail du cours et transactions
+          </p>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">
+            Déplacez la barre sous le graphique pour zoomer horizontalement. Les marqueurs indiquent achats, ventes et dividendes.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-1">
+          {DETAIL_PERIODS.map(option => (
+            <button
+              key={option.label}
+              type="button"
+              onClick={() => setPeriod(option)}
+              className={`px-2 py-1 text-xs rounded transition-colors ${period.label === option.label ? 'bg-blue-600 text-white' : 'bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="h-64 flex items-center justify-center text-sm text-zinc-500">
+          <Loader2 className="h-5 w-5 animate-spin mr-2" /> Chargement du cours...
+        </div>
+      ) : error ? (
+        <div className="h-40 flex items-center justify-center text-sm text-red-600">{error}</div>
+      ) : chartData.length === 0 ? (
+        <div className="h-40 flex items-center justify-center text-sm text-zinc-500">Aucun historique disponible pour cette période.</div>
+      ) : (
+        <div className="h-72 sm:h-80">
+          <ResponsiveContainer width="100%" height="100%">
+            <ComposedChart data={chartData} margin={{ top: 10, right: 8, left: 0, bottom: 8 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--rule)" />
+              <XAxis dataKey="label" tick={{ fontSize: 10 }} stroke="var(--ink-soft)" interval="preserveStartEnd" />
+              <YAxis domain={["auto", "auto"]} tick={{ fontSize: 10 }} stroke="var(--ink-soft)" width={48} />
+              <Tooltip
+                formatter={(value, name, props) => {
+                  const point = props.payload as PositionChartPoint;
+                  if (name === 'markerPrice') return [point.markerLabel, 'Transaction'];
+                  return [formatCurrency(Number(value), point.currency), 'Cours'];
+                }}
+                labelFormatter={(_, payload) => payload?.[0]?.payload?.date ? new Date(payload[0].payload.date).toLocaleDateString('fr-FR') : ''}
+                contentStyle={{ backgroundColor: 'var(--paper-2)', border: '1px solid var(--rule)', borderRadius: 8, color: 'var(--ink)' }}
+              />
+              <Line type="monotone" dataKey="price" stroke="var(--chart-primary)" strokeWidth={2} dot={false} name="Cours" />
+              <Scatter
+                data={markerPoints}
+                dataKey="markerPrice"
+                name="Transactions"
+                shape={(props: unknown) => {
+                  const { cx, cy, payload } = props as { cx?: number; cy?: number; payload?: PositionChartPoint };
+                  if (cx == null || cy == null) return <g />;
+                  return <text x={cx} y={cy} dy={4} textAnchor="middle" fontSize={16} fill={markerColor(payload?.markerType)}>{markerGlyph(payload?.markerType)}</text>;
+                }}
+              />
+              <Brush dataKey="label" height={22} stroke="var(--chart-primary)" travellerWidth={8} />
+            </ComposedChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      <div className="mt-2 flex flex-wrap gap-3 text-[11px] text-zinc-500 dark:text-zinc-400">
+        <span><span style={{ color: 'var(--gain)' }}>▲</span> Achat</span>
+        <span><span style={{ color: 'var(--loss)' }}>▼</span> Vente</span>
+        <span><span style={{ color: 'var(--chart-3)' }}>◆</span> Dividende</span>
+      </div>
+    </div>
+  );
 }
 
 interface PositionsTableProps {
@@ -49,6 +248,7 @@ export function PositionsTable({
   fxRates = {},
 }: PositionsTableProps) {
   const [showClosedPositions, setShowClosedPositions] = useState(false);
+  const [expandedPositionKey, setExpandedPositionKey] = useState<string | null>(null);
 
   // Comptes du scope pouvant détenir des positions.
   const stockAccounts = useMemo(() => {
@@ -299,6 +499,78 @@ export function PositionsTable({
             </div>
           </div>
         )
+      )}
+
+
+      {/* Positions ouvertes */}
+      {positions.length > 0 && (
+        <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden">
+          <div className="px-3 sm:px-4 py-2 sm:py-3 bg-zinc-50 dark:bg-zinc-800/50 border-b border-zinc-200 dark:border-zinc-700 flex items-center justify-between">
+            <h3 className="font-semibold text-sm sm:text-base text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+              <BarChart2 className="h-4 w-4" /> Positions ouvertes <span className="text-xs sm:text-sm">({positions.length})</span>
+            </h3>
+            <span className="text-xs sm:text-sm font-semibold text-zinc-700 dark:text-zinc-300">{formatCurrency(totalValue)}</span>
+          </div>
+          <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
+            {positions.map(position => {
+              const quote = quotes[position.symbol];
+              const currentPrice = quote?.price ?? position.average_price;
+              const valueCurrency = (quote?.currency ?? position.currency ?? 'EUR').toUpperCase();
+              const value = position.quantity * currentPrice;
+              const invested = position.quantity * position.average_price;
+              const gain = value - invested;
+              const gainPercent = invested > 0 ? (gain / invested) * 100 : 0;
+              const account = accountById.get(position.account_id);
+              const key = `${position.account_id}:${position.symbol}:${position.currency}`;
+              const isExpanded = expandedPositionKey === key;
+
+              return (
+                <div key={key}>
+                  <button
+                    type="button"
+                    onClick={() => setExpandedPositionKey(isExpanded ? null : key)}
+                    className="w-full p-3 sm:p-4 text-left hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors"
+                    aria-expanded={isExpanded}
+                  >
+                    <div className="grid gap-3 sm:grid-cols-[minmax(0,1.4fr)_repeat(4,minmax(0,1fr))_auto] sm:items-center">
+                      <div className="min-w-0">
+                        <p className="font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+                          {position.symbol}
+                          <span className="text-[10px] rounded-full bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 text-zinc-500">{valueCurrency}</span>
+                        </p>
+                        <p className="text-xs text-zinc-500 truncate">{position.name || position.symbol}{account ? ` • ${account.name}` : ''}</p>
+                      </div>
+                      <div>
+                        <p className="text-[11px] uppercase tracking-wide text-zinc-400">Quantité</p>
+                        <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">{formatNumber(position.quantity, 4)}</p>
+                      </div>
+                      <div>
+                        <p className="text-[11px] uppercase tracking-wide text-zinc-400">PRU</p>
+                        <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">{formatCurrency(position.average_price, position.currency)}</p>
+                      </div>
+                      <div>
+                        <p className="text-[11px] uppercase tracking-wide text-zinc-400">Cours</p>
+                        <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">{formatCurrency(currentPrice, valueCurrency)}</p>
+                      </div>
+                      <div>
+                        <p className="text-[11px] uppercase tracking-wide text-zinc-400">Valeur</p>
+                        <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{formatCurrency(value, valueCurrency)}</p>
+                      </div>
+                      <div className="flex items-center justify-between sm:justify-end gap-3">
+                        <div className="text-left sm:text-right">
+                          <p className={`text-sm font-semibold ${gain >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>{formatCurrency(gain, valueCurrency)}</p>
+                          <p className={`text-xs ${gain >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>{formatPercent(gainPercent)}</p>
+                        </div>
+                        {isExpanded ? <ChevronUp className="h-4 w-4 text-zinc-400" /> : <ChevronDown className="h-4 w-4 text-zinc-400" />}
+                      </div>
+                    </div>
+                  </button>
+                  {isExpanded && <PositionDetailChart position={position} transactions={transactions} />}
+                </div>
+              );
+            })}
+          </div>
+        </div>
       )}
 
       {/* Positions clôturées (historique) */}
