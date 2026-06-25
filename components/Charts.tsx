@@ -568,6 +568,7 @@ interface PositionDetailChartPoint {
 }
 
 const POSITION_DETAIL_PERIODS = [
+  { label: '1S', days: 7, interval: '1d' },
   { label: '1M', days: 30, interval: '1d' },
   { label: '3M', days: 90, interval: '1d' },
   { label: '6M', days: 180, interval: '1d' },
@@ -607,7 +608,7 @@ function PositionInlineHistoryChart({
   transactions: Transaction[];
   fallbackCurrency: string;
 }) {
-  const [period, setPeriod] = useState<(typeof POSITION_DETAIL_PERIODS)[number]>(POSITION_DETAIL_PERIODS[2]);
+  const [period, setPeriod] = useState<(typeof POSITION_DETAIL_PERIODS)[number]>(POSITION_DETAIL_PERIODS[3]);
   const [history, setHistory] = useState<PositionHistoryQuotePoint[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -649,9 +650,12 @@ function PositionInlineHistoryChart({
 
   const chartData = useMemo<PositionDetailChartPoint[]>(() => {
     const sortedHistory = [...history].sort((a, b) => a.date.localeCompare(b.date));
+    const firstQuoteDate = sortedHistory[0]?.date;
+    const lastQuoteDate = sortedHistory[sortedHistory.length - 1]?.date;
     const txByQuoteDate = new Map<string, Transaction[]>();
     const sortedTransactions = [...transactions]
       .filter(t => ['BUY', 'SELL', 'DIVIDEND'].includes(t.type))
+      .filter(t => (!firstQuoteDate || t.date >= firstQuoteDate) && (!lastQuoteDate || t.date <= lastQuoteDate))
       .sort(compareTransactionSequence);
 
     for (const tx of sortedTransactions) {
@@ -680,12 +684,21 @@ function PositionInlineHistoryChart({
 
   const yScale = useMemo(() => {
     const values = chartData.map(point => point.price).filter(Number.isFinite);
-    if (values.length === 0) return { domain: ['auto', 'auto'] as [string, string], ticks: undefined as number[] | undefined };
+    if (values.length === 0) {
+      return {
+        domain: ['auto', 'auto'] as [string, string],
+        ticks: undefined as number[] | undefined,
+        decimals: 0,
+      };
+    }
     const min = Math.min(...values);
     const max = Math.max(...values);
-    const padding = Math.max((max - min) * 0.08, Math.abs(max || min || 1) * 0.01);
+    const range = Math.max(max - min, Math.abs(max || min || 1) * 0.01);
+    const padding = Math.max(range * 0.08, Math.abs(max || min || 1) * 0.01);
     const scale = buildNiceYAxisScale([min - padding, max + padding], { includeZero: false });
-    return { domain: scale.domain, ticks: scale.ticks };
+    const tickStep = scale.ticks.length > 1 ? Math.abs(scale.ticks[1] - scale.ticks[0]) : range;
+    const decimals = tickStep >= 10 ? 0 : tickStep >= 1 ? 1 : tickStep >= 0.1 ? 2 : 3;
+    return { domain: scale.domain, ticks: scale.ticks, decimals };
   }, [chartData]);
 
   return (
@@ -732,13 +745,16 @@ function PositionInlineHistoryChart({
                 tick={{ fontSize: 10 }}
                 stroke="var(--ink-soft)"
                 width={48}
-                tickFormatter={(value) => Number(value).toFixed(0)}
+                tickFormatter={(value) => Number(value).toFixed(yScale.decimals)}
               />
               <Tooltip
+                filterNull
                 formatter={(value, name, props) => {
+                  if (name !== 'Cours') return null;
+                  const numericValue = Number(value);
+                  if (!Number.isFinite(numericValue)) return null;
                   const point = props.payload as PositionDetailChartPoint;
-                  if (name === 'markerPrice') return [point.markerLabel, 'Transaction'];
-                  return [formatCurrency(Number(value), point.currency), 'Cours'];
+                  return [formatCurrency(numericValue, point.currency), 'Cours'];
                 }}
                 labelFormatter={(_, payload) => payload?.[0]?.payload?.date ? new Date(`${payload[0].payload.date}T00:00:00Z`).toLocaleDateString('fr-FR') : ''}
                 contentStyle={{ backgroundColor: 'var(--paper-2)', border: '1px solid var(--rule)', borderRadius: '8px', color: 'var(--ink)' }}
@@ -747,7 +763,7 @@ function PositionInlineHistoryChart({
               <Line type="monotone" dataKey="price" stroke="var(--chart-primary)" strokeWidth={2} dot={false} name="Cours" />
               <Scatter
                 dataKey="markerPrice"
-                name="Transactions"
+                name="Opération"
                 shape={(props: unknown) => {
                   const { cx, cy, payload } = props as { cx?: number; cy?: number; payload?: PositionDetailChartPoint };
                   if (cx == null || cy == null) return <g />;
