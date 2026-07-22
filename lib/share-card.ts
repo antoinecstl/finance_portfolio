@@ -8,7 +8,7 @@ export interface ShareCardSettings {
   showTotalValue: boolean; showInvestedAmount: boolean; showGainAmount: boolean;
   showGainPercent: boolean; showQuantity: boolean; showAveragePrice: boolean;
   showCurrentPrice: boolean; showWeight: boolean; showAccountName: boolean;
-  showDividends: boolean; title?: string;
+  showDividends: boolean;
 }
 
 export interface PositionShareData {

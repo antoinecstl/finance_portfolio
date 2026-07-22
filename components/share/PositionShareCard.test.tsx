@@ -23,4 +23,23 @@ describe('PositionShareCard', () => {
     const markup = renderToStaticMarkup(<PositionShareCard data={createPositionShareData(metrics[0], settings, '2026-07-22')} settings={settings} />);
     expect(markup).toContain('Wallet principal'); expect(markup).toContain('height:1920px'); expect(markup).toContain('#0c0b0a');
   });
+
+  it('n’ajoute qu’un seul signe aux performances positives', () => {
+    const [metric] = buildPositionMetrics({ positions: [position('AIR.PA', 'EUR', 2, 100)], quotes: { 'AIR.PA': quote('AIR.PA', 'EUR', 120) }, date: '2026-07-22' });
+    const markup = renderToStaticMarkup(<PositionShareCard data={createPositionShareData(metric, DEFAULT_SHARE_CARD_SETTINGS, '2026-07-22')} settings={DEFAULT_SHARE_CARD_SETTINGS} />);
+    expect(markup).toContain('+20,00%');
+    expect(markup).not.toContain('++20,00%');
+  });
+
+  it.each([
+    ['square', 'height:1080px'],
+    ['portrait', 'height:1350px'],
+    ['story', 'height:1920px'],
+  ] as const)('conserve toutes les informations activées au format %s', (format, expectedHeight) => {
+    const [metric] = buildPositionMetrics({ positions: [position('AIR.PA', 'EUR', 2, 100)], quotes: { 'AIR.PA': quote('AIR.PA', 'EUR', 120) }, accounts: [{ id: 'crypto', name: 'Mon PEA', type: 'PEA', currency: 'EUR', created_at: '', updated_at: '' }], date: '2026-07-22' });
+    const settings = { ...DEFAULT_SHARE_CARD_SETTINGS, format, showTotalValue: true, showInvestedAmount: true, showGainAmount: true, showQuantity: true, showAveragePrice: true, showCurrentPrice: true, showWeight: true, showAccountName: true, showDividends: true };
+    const markup = renderToStaticMarkup(<PositionShareCard data={createPositionShareData(metric, settings, '2026-07-22')} settings={settings} />);
+    expect(markup).toContain(expectedHeight);
+    for (const label of ['Valorisation', 'Montant investi', 'Gain latent', 'Quantité', 'PRU', 'Cours', 'Poids', 'Dividendes', 'Compte']) expect(markup).toContain(label);
+  });
 });

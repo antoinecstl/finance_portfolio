@@ -22,20 +22,29 @@ export const PositionShareCard = forwardRef<HTMLDivElement, { data: PositionShar
     data.dividends !== undefined && ['Dividendes', formatCurrency(data.dividends, 'EUR')],
     data.accountName !== undefined && ['Compte', data.accountName],
   ].filter(Boolean) as string[][];
+  // A square card has substantially less vertical room than a story. Keep the
+  // same information available, but compact its rhythm as the fact grid grows.
+  const isSquare = settings.format === 'square';
+  const isStory = settings.format === 'story';
+  const isDense = isSquare || facts.length > 6;
+  const padding = isSquare ? 58 : isStory ? 104 : 80;
+  const symbolSize = isDense ? 88 : isStory ? 136 : 112;
+  const performanceSize = isDense ? 104 : isStory ? 154 : 132;
+  const factPadding = isDense ? 24 : 38;
+  const factGap = isDense ? '20px 38px' : '34px 48px';
 
-  return <div ref={ref} data-testid="position-share-card" style={{ width: size.width, height: size.height, background: theme.paper, color: theme.ink, padding: settings.format === 'story' ? 104 : 80, boxSizing: 'border-box', display: 'flex', flexDirection: 'column', fontFamily: 'Arial, sans-serif', overflow: 'hidden', ['--paper' as string]: theme.paper, ['--paper-2' as string]: theme.paper2, ['--ink' as string]: theme.ink, ['--ink-soft' as string]: theme.soft, ['--rule' as string]: theme.rule, ['--gain' as string]: theme.gain, ['--loss' as string]: theme.loss }}>
-    <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: `2px solid ${theme.rule}`, paddingBottom: 30 }}>
-      <strong style={{ fontFamily: 'Georgia, serif', fontSize: 42, letterSpacing: -1 }}>Fi-Hub</strong>
-      <span style={{ color: theme.soft, fontSize: 25 }}>Valorisé le {new Date(`${data.valuationDate}T12:00:00`).toLocaleDateString('fr-FR')}</span>
+  return <div ref={ref} data-testid="position-share-card" style={{ width: size.width, height: size.height, background: theme.paper, color: theme.ink, padding, boxSizing: 'border-box', display: 'flex', flexDirection: 'column', fontFamily: 'Arial, sans-serif', overflow: 'hidden', ['--paper' as string]: theme.paper, ['--paper-2' as string]: theme.paper2, ['--ink' as string]: theme.ink, ['--ink-soft' as string]: theme.soft, ['--rule' as string]: theme.rule, ['--gain' as string]: theme.gain, ['--loss' as string]: theme.loss }}>
+    <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: `2px solid ${theme.rule}`, paddingBottom: isDense ? 20 : 30 }}>
+      <strong style={{ fontFamily: 'Georgia, serif', fontSize: isDense ? 36 : 42, letterSpacing: -1 }}>Fi-Hub</strong>
+      <span style={{ color: theme.soft, fontSize: isDense ? 21 : 25 }}>Valorisé le {new Date(`${data.valuationDate}T12:00:00`).toLocaleDateString('fr-FR')}</span>
     </header>
     <main style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-      {settings.title && <p style={{ color: theme.soft, fontSize: 30, margin: '0 0 42px', maxWidth: 800 }}>{settings.title}</p>}
-      <p style={{ color: theme.soft, fontSize: 30, margin: 0, textTransform: 'uppercase', letterSpacing: 5 }}>Ma position</p>
-      <h1 style={{ fontFamily: 'Georgia, serif', fontSize: settings.format === 'story' ? 136 : 112, lineHeight: 1, margin: '20px 0 8px', letterSpacing: -5 }}>{data.symbol}</h1>
-      <p style={{ color: theme.soft, fontSize: 34, margin: '0 0 60px' }}>{data.name}</p>
-      {data.gainPercent !== undefined && <div style={{ color: performance >= 0 ? theme.gain : theme.loss, fontFamily: 'Georgia, serif', fontSize: settings.format === 'story' ? 154 : 132, fontWeight: 700 }}>{performance >= 0 ? '+' : ''}{formatPercent(performance)}</div>}
-      {facts.length > 0 && <div style={{ marginTop: 66, padding: 38, background: theme.paper2, border: `2px solid ${theme.rule}`, display: 'grid', gridTemplateColumns: facts.length > 1 ? '1fr 1fr' : '1fr', gap: '34px 48px' }}>{facts.map(([label, value]) => <div key={label}><div style={{ color: theme.soft, fontSize: 22, textTransform: 'uppercase', letterSpacing: 2 }}>{label}</div><div style={{ fontSize: 34, fontWeight: 700, marginTop: 8 }}>{value}</div></div>)}</div>}
+      <p style={{ color: theme.soft, fontSize: isDense ? 24 : 30, margin: 0, textTransform: 'uppercase', letterSpacing: 5 }}>Ma position</p>
+      <h1 style={{ fontFamily: 'Georgia, serif', fontSize: symbolSize, lineHeight: 1, margin: isDense ? '12px 0 4px' : '20px 0 8px', letterSpacing: -5 }}>{data.symbol}</h1>
+      <p style={{ color: theme.soft, fontSize: isDense ? 28 : 34, margin: `0 0 ${isDense ? 28 : 60}px` }}>{data.name}</p>
+      {data.gainPercent !== undefined && <div style={{ color: performance >= 0 ? theme.gain : theme.loss, fontFamily: 'Georgia, serif', fontSize: performanceSize, lineHeight: 1, fontWeight: 700 }}>{formatPercent(performance)}</div>}
+      {facts.length > 0 && <div style={{ marginTop: isDense ? 30 : 66, padding: factPadding, background: theme.paper2, border: `2px solid ${theme.rule}`, display: 'grid', gridTemplateColumns: facts.length > 1 ? '1fr 1fr' : '1fr', gap: factGap }}>{facts.map(([label, value]) => <div key={label}><div style={{ color: theme.soft, fontSize: isDense ? 18 : 22, textTransform: 'uppercase', letterSpacing: 2 }}>{label}</div><div style={{ fontSize: isDense ? 27 : 34, lineHeight: 1.1, fontWeight: 700, marginTop: isDense ? 5 : 8 }}>{value}</div></div>)}</div>}
     </main>
-    <footer style={{ color: theme.soft, fontSize: 23, borderTop: `2px solid ${theme.rule}`, paddingTop: 28, display: 'flex', justifyContent: 'space-between' }}><span>Suivez vos investissements avec clarté.</span><span>fi-hub.subleet.com</span></footer>
+    <footer style={{ color: theme.soft, fontSize: isDense ? 19 : 23, borderTop: `2px solid ${theme.rule}`, paddingTop: isDense ? 18 : 28, display: 'flex', justifyContent: 'space-between' }}><span>Suivez vos investissements avec clarté.</span><span>fi-hub.subleet.com</span></footer>
   </div>;
 });
