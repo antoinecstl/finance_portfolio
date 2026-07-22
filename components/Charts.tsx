@@ -24,12 +24,10 @@ import { PortfolioHistoryPoint, calculatePortfolioPerformance } from '@/lib/port
 import { convertToBase, type FxRateMap } from '@/lib/fx';
 import { formatCurrency, formatPercent, getSectorColor } from '@/lib/utils';
 import { compareTransactionSequence } from '@/lib/transaction-ordering';
-import {
-  buildPositionDisplayGroups,
-  positionDisplaySymbol,
-  transactionMatchesPositionDisplayGroup,
-} from '@/lib/position-display';
-import { PieChart as PieChartIcon, TrendingUp, TrendingDown, Loader2, BarChart2, Target, Scale, Activity, ChevronDown, ChevronRight, ShoppingCart, DollarSign, Banknote, Percent, Wallet, LineChart as LineChartIcon, Lock } from 'lucide-react';
+import { positionDisplaySymbol } from '@/lib/position-display';
+import { buildPositionMetrics, type PositionMetrics } from '@/lib/position-metrics';
+import { PositionShareModal } from './share/PositionShareModal';
+import { PieChart as PieChartIcon, TrendingUp, TrendingDown, Loader2, BarChart2, Target, Scale, Activity, ChevronDown, ChevronRight, ShoppingCart, DollarSign, Banknote, Percent, Wallet, LineChart as LineChartIcon, Lock, Share2 } from 'lucide-react';
 import { useSubscription } from '@/lib/subscription-client';
 import { ProBlur } from './ProBlur';
 import { buildNiceYAxisScale } from '@/lib/chart-axis';
@@ -521,35 +519,6 @@ interface PositionPerformanceChartProps {
   fxRates?: FxRateMap;
 }
 
-interface PositionMetrics {
-  key: string;
-  symbol: string;
-  displayLabel: string;
-  name: string;
-  accountId: string;
-  accountName: string;
-  accountType: string;
-  currentValue: number;
-  investedValue: number;
-  gainValue: number;
-  gainPercent: number;
-  dayChange: number;
-  dayChangePercent: number;
-  nativeCurrentValue: number;
-  nativeInvestedValue: number;
-  nativeDayChange: number;
-  totalReturnValue: number;
-  totalReturnPercent: number;
-  weight: number;
-  quantity: number;
-  avgPrice: number;
-  currentPrice: number;
-  costCurrency: string;
-  quoteCurrency: string;
-  color: string;
-  isCrypto: boolean;
-}
-
 
 interface PositionHistoryQuotePoint {
   date: string;
@@ -799,72 +768,9 @@ export function PositionPerformanceChart({
 }: PositionPerformanceChartProps) {
   // État pour les lignes étendues (clé composite accountId:symbol)
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
+  const [sharedMetric, setSharedMetric] = useState<PositionMetrics | null>(null);
   const { hasFeature } = useSubscription();
   const isProUser = hasFeature('advanced_analytics');
-
-  const accountById = useMemo(() => {
-    const map = new Map<string, Account>();
-    accounts.forEach(a => map.set(a.id, a));
-    return map;
-  }, [accounts]);
-
-  // Filtrer les transactions pour une ligne d'affichage.
-  // Crypto: toutes les paires d'une meme base (BTC-EUR/BTC-USD) sont incluses.
-  const getTransactionsForPosition = (
-    metric: Pick<PositionMetrics, 'symbol' | 'accountId' | 'costCurrency' | 'isCrypto'>
-  ) => {
-    return transactions
-      .filter(t =>
-        transactionMatchesPositionDisplayGroup(t, metric)
-      )
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  };
-
-  // Calculer les statistiques de transactions pour une ligne d'affichage.
-  const getTransactionStats = (
-    metric: Pick<PositionMetrics, 'symbol' | 'accountId' | 'costCurrency' | 'isCrypto'>
-  ) => {
-    const symbolTransactions = getTransactionsForPosition(metric);
-    
-    const buys = symbolTransactions.filter(t => t.type === 'BUY');
-    const sells = symbolTransactions.filter(t => t.type === 'SELL');
-    const dividends = symbolTransactions.filter(t => t.type === 'DIVIDEND');
-    
-    const totalBought = buys.reduce((sum, t) => sum + (t.quantity || 0), 0);
-    const totalSold = sells.reduce((sum, t) => sum + (t.quantity || 0), 0);
-    const totalBuyAmount = buys.reduce((sum, t) => sum + t.amount, 0);
-    const totalSellAmount = sells.reduce((sum, t) => sum + t.amount, 0);
-    const totalDividends = dividends.reduce((sum, t) => sum + t.amount, 0);
-    const totalDividendsInBase = dividends.reduce(
-      (sum, t) => sum + convertToBase(t.amount, txCurrency(t), t.date, fxRates),
-      0
-    );
-    
-    return {
-      buys,
-      sells,
-      dividends,
-      totalBought,
-      totalSold,
-      totalBuyAmount,
-      totalSellAmount,
-      totalDividends,
-      totalDividendsInBase,
-      allTransactions: symbolTransactions
-    };
-  };
-
-  // Détecter les symboles présents sur plusieurs comptes pour disambiguer le label
-  const symbolAccountCounts = useMemo(() => {
-    const counts = new Map<string, Set<string>>();
-    positions.forEach(p => {
-      const symbol = positionDisplaySymbol(p.symbol);
-      const set = counts.get(symbol) ?? new Set<string>();
-      set.add(p.account_id);
-      counts.set(symbol, set);
-    });
-    return counts;
-  }, [positions]);
 
   // Comptes distincts présents dans le scope actuel
   const uniqueAccountIdsInPositions = useMemo(() => {
@@ -873,57 +779,9 @@ export function PositionPerformanceChart({
 
   const today = formatLocalDate(new Date());
 
-  // Calculer les metriques pour chaque ligne d'affichage.
-  // Les cryptos sont consolidees par compte + base de paire.
-  const metrics: PositionMetrics[] = buildPositionDisplayGroups(positions, quotes, fxRates, today).map((group, index) => {
-    const stats = getTransactionStats(group);
-    const totalReturnValue = group.gainValue + stats.totalDividendsInBase;
-    const totalReturnPercent = group.investedValue > 0 ? (totalReturnValue / group.investedValue) * 100 : 0;
-
-    const account = accountById.get(group.accountId);
-    const accountName = account?.name ?? '—';
-    const accountType = account?.type ?? '';
-    const isShared = (symbolAccountCounts.get(group.symbol)?.size ?? 0) > 1;
-    const displayLabel = isShared && accountType
-      ? `${group.symbol} (${accountType})`
-      : group.symbol;
-
-    return {
-      key: group.key,
-      symbol: group.symbol,
-      displayLabel,
-      name: group.name,
-      accountId: group.accountId,
-      accountName,
-      accountType,
-      currentValue: group.currentValue,
-      investedValue: group.investedValue,
-      gainValue: group.gainValue,
-      gainPercent: group.gainPercent,
-      dayChange: group.dayChange,
-      dayChangePercent: group.dayChangePercent,
-      nativeCurrentValue: group.nativeCurrentValue,
-      nativeInvestedValue: group.nativeInvestedValue,
-      nativeDayChange: group.nativeDayChange,
-      totalReturnValue,
-      totalReturnPercent,
-      weight: 0, // Calculé après
-      quantity: group.quantity,
-      avgPrice: group.avgPrice,
-      currentPrice: group.currentPrice,
-      costCurrency: group.costCurrency,
-      quoteCurrency: group.quoteCurrency,
-      color: getSectorColor(index),
-      isCrypto: group.isCrypto,
-    };
-  });
-
-  // Calculer le poids de chaque position (utiliser props si fournis pour cohérence)
-  const calculatedTotalValue = metrics.reduce((sum, m) => sum + m.currentValue, 0);
-  const totalValue = portfolioTotalValue ?? calculatedTotalValue;
-  metrics.forEach(m => {
-    m.weight = totalValue > 0 ? (m.currentValue / totalValue) * 100 : 0;
-  });
+  // Source unique pour le tableau et la carte partageable.
+  const metrics = buildPositionMetrics({ positions, quotes, transactions, accounts, fxRates, date: today, portfolioTotalValue });
+  const totalValue = portfolioTotalValue ?? metrics.reduce((sum, metric) => sum + metric.currentValue, 0);
 
   // Trier par valeur décroissante
   const sortedByValue = [...metrics].sort((a, b) => b.currentValue - a.currentValue);
@@ -1187,7 +1045,7 @@ export function PositionPerformanceChart({
                 )}
                 {group.items.map((m) => {
                   const isExpanded = expandedKey === m.key;
-                  const stats = getTransactionStats(m);
+                  const stats = m.transactionStats;
                   return (
                     <div key={m.key} className="p-3 space-y-2">
                       <div
@@ -1210,9 +1068,12 @@ export function PositionPerformanceChart({
                             )}
                           </div>
                         </div>
-                        <div className="text-right">
+                        <div className="flex items-start gap-2">
+                          <button type="button" aria-label={`Partager la position ${m.symbol}`} onClick={(event) => { event.stopPropagation(); setSharedMetric(m); }} className="rounded p-1 text-zinc-500 hover:text-red-700"><Share2 className="h-4 w-4" /></button>
+                          <div className="text-right">
                           <p className="font-bold text-zinc-900 dark:text-zinc-100">{formatCurrency(m.nativeCurrentValue, m.quoteCurrency)}</p>
                           <p className={`text-xs text-zinc-500 ${isProUser ? '' : 'blur-sm select-none'}`}>{m.weight.toFixed(1)}% du portefeuille</p>
+                          </div>
                         </div>
                       </div>
                       <div className="grid grid-cols-3 gap-2 text-xs">
@@ -1365,7 +1226,7 @@ export function PositionPerformanceChart({
                     )}
                     {group.items.map((m) => {
                       const isExpanded = expandedKey === m.key;
-                      const stats = getTransactionStats(m);
+                      const stats = m.transactionStats;
                       return (
                         <React.Fragment key={m.key}>
                           <tr
@@ -1380,7 +1241,7 @@ export function PositionPerformanceChart({
                                   <ChevronRight className="h-4 w-4 text-zinc-400 flex-shrink-0" />
                                 )}
                                 <div>
-                                  <p className="font-semibold text-zinc-900 dark:text-zinc-100">{m.symbol}</p>
+                                  <div className="flex items-center gap-2"><p className="font-semibold text-zinc-900 dark:text-zinc-100">{m.symbol}</p><button type="button" aria-label={`Partager la position ${m.symbol}`} onClick={(event) => { event.stopPropagation(); setSharedMetric(m); }} className="rounded p-1 text-zinc-400 hover:text-red-700"><Share2 className="h-4 w-4" /></button></div>
                                   <p className="text-xs text-zinc-500 truncate max-w-[120px]">{m.name}</p>
                                 </div>
                               </div>
@@ -1571,6 +1432,7 @@ export function PositionPerformanceChart({
           </table>
         </div>
       </div>
+      {sharedMetric && <PositionShareModal metric={sharedMetric} valuationDate={today} onClose={() => setSharedMetric(null)} />}
     </div>
   );
 }
