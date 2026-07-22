@@ -68,6 +68,12 @@ export default function PrivacyPage() {
         Mots de passe stockés chiffrés, transport HTTPS, Row Level Security activée sur toutes les
         tables, isolation stricte par utilisateur.
       </p>
+
+      <h2 className="text-xl font-semibold mt-8">9. Images de partage</h2>
+      <p>
+        Les images de positions sont générées localement dans votre navigateur. Elles ne sont
+        partagées que lorsque vous effectuez explicitement une action de partage ou de téléchargement.
+      </p>
     </div>
   );
 }
