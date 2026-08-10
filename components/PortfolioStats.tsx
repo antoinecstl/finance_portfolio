@@ -1,5 +1,7 @@
 'use client';
 
+import { useEffect, useMemo, useState } from 'react';
+
 import { 
   Wallet, 
   TrendingUp, 
@@ -9,6 +11,8 @@ import {
   ArrowDownRight
 } from 'lucide-react';
 import { formatCurrency, formatPercent } from '@/lib/utils';
+import { getPortfolioMarketStatus } from '@/lib/market-status';
+import type { Account, StockPosition, StockQuote } from '@/lib/types';
 
 interface StatCardProps {
   title: string;
@@ -87,6 +91,9 @@ interface PortfolioStatsProps {
   dayChange: number;
   dayChangePercent: number;
   savingsTotal: number;
+  positions: StockPosition[];
+  accounts: Account[];
+  quotes: Record<string, StockQuote>;
 }
 
 export function PortfolioStats({
@@ -97,7 +104,20 @@ export function PortfolioStats({
   dayChange,
   dayChangePercent,
   savingsTotal,
+  positions,
+  accounts,
+  quotes,
 }: PortfolioStatsProps) {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(new Date()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
+  const marketStatus = useMemo(
+    () => getPortfolioMarketStatus(positions, accounts, quotes, now),
+    [positions, accounts, quotes, now],
+  );
+
   return (
     <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
       <StatCard
@@ -114,10 +134,10 @@ export function PortfolioStats({
         variant={totalGain >= 0 ? 'success' : 'danger'}
       />
       <StatCard
-        title="Variation Jour"
+        title={marketStatus.title}
         value={formatCurrency(dayChange)}
         change={dayChangePercent}
-        changeLabel="vs clôture veille"
+        changeLabel={marketStatus.detail}
         icon="trending"
         variant={dayChange >= 0 ? 'success' : 'danger'}
       />
