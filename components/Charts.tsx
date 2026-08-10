@@ -31,6 +31,7 @@ import { PieChart as PieChartIcon, TrendingUp, TrendingDown, Loader2, BarChart2,
 import { useSubscription } from '@/lib/subscription-client';
 import { ProBlur } from './ProBlur';
 import { buildNiceYAxisScale } from '@/lib/chart-axis';
+import { getPortfolioMarketStatus } from '@/lib/market-status';
 
 const MS_PER_DAY = 86_400_000;
 const CHART_LEGEND_WRAPPER_STYLE = { fontSize: 12 };
@@ -769,8 +770,21 @@ export function PositionPerformanceChart({
   // État pour les lignes étendues (clé composite accountId:symbol)
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
   const [sharedMetric, setSharedMetric] = useState<PositionMetrics | null>(null);
+  const [marketStatusNow, setMarketStatusNow] = useState(() => new Date());
   const { hasFeature } = useSubscription();
   const isProUser = hasFeature('advanced_analytics');
+
+  // Le scope reçu correspond au filtre de compte actif dans la page Positions.
+  // L'état affiché est donc celui de ce compte (crypto 24/7 comprise), et non
+  // celui du portefeuille global du dashboard.
+  useEffect(() => {
+    const timer = window.setInterval(() => setMarketStatusNow(new Date()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
+  const marketStatus = useMemo(
+    () => getPortfolioMarketStatus(positions, accounts, quotes, marketStatusNow),
+    [positions, accounts, quotes, marketStatusNow],
+  );
 
   // Comptes distincts présents dans le scope actuel
   const uniqueAccountIdsInPositions = useMemo(() => {
@@ -873,12 +887,15 @@ export function PositionPerformanceChart({
             </p>
           </div>
           <div className="rounded-lg p-3" style={{ backgroundColor: totalDayChangeSoftTone }}>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400">Variation du jour</p>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">{marketStatus.title}</p>
             <p className="text-lg sm:text-xl font-bold" style={{ color: totalDayChangeTone }}>
               {totalDayChange >= 0 ? '+' : ''}{formatCurrency(totalDayChange)}
             </p>
             <p className="text-xs" style={{ color: totalDayChangeTone }}>
               {formatPercent(totalDayChangePercent)}
+            </p>
+            <p className="mt-0.5 text-[10px] text-zinc-500 dark:text-zinc-400">
+              {marketStatus.detail}
             </p>
           </div>
         </div>
@@ -2739,4 +2756,3 @@ export function PortfolioPerformanceChart({
     </div>
   );
 }
-
