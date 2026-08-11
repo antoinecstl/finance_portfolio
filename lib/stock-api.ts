@@ -81,6 +81,7 @@ async function getStockQuoteFromChart(symbol: string): Promise<StockQuote | null
     const previousClose = meta.previousClose || meta.chartPreviousClose || quote?.close?.[prevIndex] || currentPrice;
     const change = currentPrice - previousClose;
     const changePercent = previousClose > 0 ? (change / previousClose) * 100 : 0;
+    const regularPeriod = meta.currentTradingPeriod?.regular;
 
     return {
       symbol: meta.symbol || symbol,
@@ -95,6 +96,8 @@ async function getStockQuoteFromChart(symbol: string): Promise<StockQuote | null
       volume: meta.regularMarketVolume || quote?.volume?.[lastIndex] || 0,
       marketCap: undefined,
       currency: meta.currency || 'EUR',
+      regularMarketStart: regularPeriod?.start,
+      regularMarketEnd: regularPeriod?.end,
     };
   } catch (error) {
     console.error(`Error fetching chart for ${symbol}:`, error);
