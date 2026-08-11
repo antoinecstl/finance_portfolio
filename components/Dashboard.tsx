@@ -336,6 +336,9 @@ export function Dashboard() {
                 dayChange={portfolioSummary.dayChange}
                 dayChangePercent={portfolioSummary.dayChangePercent}
                 savingsTotal={savingsTotal}
+                positions={enrichedPositions}
+                accounts={accounts}
+                quotes={quotes}
               />
             </ErrorBoundary>
 

@@ -1,5 +1,7 @@
 'use client';
 
+import { useEffect, useMemo, useState } from 'react';
+
 import { 
   Wallet, 
   TrendingUp, 
@@ -9,6 +11,8 @@ import {
   ArrowDownRight
 } from 'lucide-react';
 import { formatCurrency, formatPercent } from '@/lib/utils';
+import { getPortfolioMarketStatus } from '@/lib/market-status';
+import type { Account, StockPosition, StockQuote } from '@/lib/types';
 
 interface StatCardProps {
   title: string;
@@ -17,6 +21,10 @@ interface StatCardProps {
   changeLabel?: string;
   icon: 'wallet' | 'trending' | 'piggy' | 'chart';
   variant?: 'default' | 'success' | 'danger';
+  status?: {
+    label: string;
+    tone: 'open' | 'partial' | 'closed';
+  };
 }
 
 const icons = {
@@ -32,7 +40,8 @@ export function StatCard({
   change, 
   changeLabel,
   icon,
-  variant = 'default' 
+  variant = 'default',
+  status,
 }: StatCardProps) {
   const Icon = icons[icon];
   const isPositive = change !== undefined && change >= 0;
@@ -47,6 +56,12 @@ export function StatCard({
     default: 'text-blue-600 bg-blue-100 dark:bg-blue-900/30',
     success: 'text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30',
     danger: 'text-red-600 bg-red-100 dark:bg-red-900/30',
+  };
+
+  const statusDotColors = {
+    open: 'bg-emerald-500',
+    partial: 'bg-amber-500',
+    closed: 'bg-zinc-400 dark:bg-zinc-500',
   };
 
   return (
@@ -71,7 +86,15 @@ export function StatCard({
       <div className="mt-2 sm:mt-3 lg:mt-4">
         <p className="text-xs sm:text-sm font-medium text-zinc-500 dark:text-zinc-400">{title}</p>
         <p className="mt-0.5 sm:mt-1 text-lg sm:text-xl lg:text-2xl font-bold text-zinc-900 dark:text-zinc-100">{value}</p>
-        {changeLabel && (
+        {status ? (
+          <p className="mt-1 flex items-center gap-1.5 text-[10px] sm:text-xs text-zinc-500 dark:text-zinc-400">
+            <span
+              className={`h-1.5 w-1.5 shrink-0 rounded-full ${statusDotColors[status.tone]}`}
+              aria-hidden="true"
+            />
+            {status.label}
+          </p>
+        ) : changeLabel && (
           <p className="mt-0.5 sm:mt-1 text-[10px] sm:text-xs lg:text-sm text-zinc-500 dark:text-zinc-400">{changeLabel}</p>
         )}
       </div>
@@ -87,6 +110,9 @@ interface PortfolioStatsProps {
   dayChange: number;
   dayChangePercent: number;
   savingsTotal: number;
+  positions: StockPosition[];
+  accounts: Account[];
+  quotes: Record<string, StockQuote>;
 }
 
 export function PortfolioStats({
@@ -97,7 +123,20 @@ export function PortfolioStats({
   dayChange,
   dayChangePercent,
   savingsTotal,
+  positions,
+  accounts,
+  quotes,
 }: PortfolioStatsProps) {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(new Date()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
+  const marketStatus = useMemo(
+    () => getPortfolioMarketStatus(positions, accounts, quotes, now),
+    [positions, accounts, quotes, now],
+  );
+
   return (
     <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
       <StatCard
@@ -114,10 +153,13 @@ export function PortfolioStats({
         variant={totalGain >= 0 ? 'success' : 'danger'}
       />
       <StatCard
-        title="Variation Jour"
+        title="Variation"
         value={formatCurrency(dayChange)}
         change={dayChangePercent}
-        changeLabel="vs clôture veille"
+        status={{
+          label: marketStatus.label,
+          tone: marketStatus.state === 'empty' ? 'closed' : marketStatus.state,
+        }}
         icon="trending"
         variant={dayChange >= 0 ? 'success' : 'danger'}
       />
