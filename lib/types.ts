@@ -70,6 +70,11 @@ export interface StockQuote {
   volume: number;
   marketCap?: number;
   currency: string;
+  // Fenêtre de cotation régulière fournie par la place de marché (timestamps Unix).
+  // Elle permet à l'interface de distinguer une variation en cours de séance de
+  // celle de la dernière séance, notamment avant l'ouverture et le week-end.
+  regularMarketStart?: number;
+  regularMarketEnd?: number;
 }
 
 export interface PortfolioSummary {
