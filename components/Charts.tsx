@@ -31,6 +31,7 @@ import { PieChart as PieChartIcon, TrendingUp, TrendingDown, Loader2, BarChart2,
 import { useSubscription } from '@/lib/subscription-client';
 import { ProBlur } from './ProBlur';
 import { buildNiceYAxisScale } from '@/lib/chart-axis';
+import { getPortfolioMarketStatus } from '@/lib/market-status';
 
 const MS_PER_DAY = 86_400_000;
 const CHART_LEGEND_WRAPPER_STYLE = { fontSize: 12 };
@@ -771,6 +772,23 @@ export function PositionPerformanceChart({
   const [sharedMetric, setSharedMetric] = useState<PositionMetrics | null>(null);
   const { hasFeature } = useSubscription();
   const isProUser = hasFeature('advanced_analytics');
+  const [marketStatusNow, setMarketStatusNow] = useState(() => new Date());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setMarketStatusNow(new Date()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const marketStatus = useMemo(
+    () => getPortfolioMarketStatus(positions, accounts, quotes, marketStatusNow),
+    [positions, accounts, quotes, marketStatusNow],
+  );
+  const marketStatusDotColors = {
+    open: 'bg-emerald-500',
+    partial: 'bg-amber-500',
+    closed: 'bg-zinc-400 dark:bg-zinc-500',
+    empty: 'bg-zinc-400 dark:bg-zinc-500',
+  };
 
   // Comptes distincts présents dans le scope actuel
   const uniqueAccountIdsInPositions = useMemo(() => {
@@ -879,6 +897,13 @@ export function PositionPerformanceChart({
             </p>
             <p className="text-xs" style={{ color: totalDayChangeTone }}>
               {formatPercent(totalDayChangePercent)}
+            </p>
+            <p className="mt-1 flex items-center gap-1.5 text-[10px] sm:text-xs text-zinc-500 dark:text-zinc-400">
+              <span
+                className={`h-1.5 w-1.5 shrink-0 rounded-full ${marketStatusDotColors[marketStatus.state]}`}
+                aria-hidden="true"
+              />
+              {marketStatus.label}
             </p>
           </div>
         </div>
@@ -2739,4 +2764,3 @@ export function PortfolioPerformanceChart({
     </div>
   );
 }
-
