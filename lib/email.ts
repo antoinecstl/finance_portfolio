@@ -1,4 +1,5 @@
 import 'server-only';
+import { PLANS } from '@/lib/plans';
 
 const RESEND_API = 'https://api.resend.com/emails';
 
@@ -74,7 +75,7 @@ export async function sendWelcome(to: string): Promise<void> {
     <p style="margin:24px 0">
       <a href="${appUrl()}/dashboard" style="display:inline-block;padding:10px 20px;background:#0e0c0a;color:#f7f2e8;text-decoration:none;border-radius:8px;font-weight:500">Accéder au dashboard</a>
     </p>
-    <p style="color:#5b524a;font-size:13px">Le plan Free inclut 1 compte, 50 transactions et 5 positions. Passez Pro à tout moment pour lever les limites.</p>`
+    <p style="color:#5b524a;font-size:13px">Le plan Free inclut ${PLANS.free.maxAccounts} comptes, ${PLANS.free.maxTransactions} transactions et ${PLANS.free.maxPositions} positions. Passez Pro à tout moment pour lever les limites.</p>`
   );
   await sendEmail({ to, subject: 'Bienvenue sur Fi-Hub', html });
 }

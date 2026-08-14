@@ -63,7 +63,7 @@ export function DividendsTable({ transactions, positions }: DividendsTableProps)
   const [showDetails, setShowDetails] = useState(false);
   const [selectedYear, setSelectedYear] = useState<number | 'all'>('all');
   const { hasFeature } = useSubscription();
-  const isProUser = hasFeature('advanced_analytics');
+  const isProUser = hasFeature('dividends_module');
 
   // Calculer les années disponibles et totaux par année
   const { dividendsByYear, years } = useMemo(() => {
@@ -269,7 +269,7 @@ export function DividendsTable({ transactions, positions }: DividendsTableProps)
 
       {/* Dividendes par année */}
       {years.length > 1 && selectedYear === 'all' && (
-        <ProBlur feature="advanced_analytics" label="Évolution par année — Pro">
+        <ProBlur feature="dividends_module" label="Évolution par année — Pro">
         <div className="mb-4 sm:mb-6">
           <h4 className="text-xs sm:text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
             Évolution par année

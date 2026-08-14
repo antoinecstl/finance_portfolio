@@ -142,7 +142,7 @@ export default async function BillingPage() {
                 Aujourd&apos;hui
               </p>
               <p className="mt-2 text-sm text-[color:var(--ink)]">
-                Free : 1 compte, 50 transactions et 5 positions.
+                Free : 3 comptes, 100 transactions et 10 positions.
               </p>
             </div>
             <div className="bg-[color:var(--paper)] p-5">

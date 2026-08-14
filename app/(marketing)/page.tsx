@@ -230,7 +230,7 @@ export default function LandingPage() {
             </div>
 
             <p className="mt-5 mono text-[11px] tracking-[0.14em] uppercase text-[color:var(--ink-soft)]">
-              Sans carte bancaire · 1 compte &amp; 50 transactions offerts
+              Sans carte bancaire · 3 comptes &amp; 100 transactions offerts
             </p>
 
             {/* Hero stats — editorial KPI strip */}
