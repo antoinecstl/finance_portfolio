@@ -181,79 +181,117 @@ export default function LandingPage() {
 
       {/* ───────── HERO ───────── */}
       <section
-        className="relative max-w-6xl mx-auto px-5 pt-14 pb-20 sm:pt-20 sm:pb-28"
+        className="relative max-w-6xl mx-auto px-5 pt-12 pb-16 sm:pt-16 sm:pb-20"
         aria-labelledby="hero-title"
       >
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-center">
           {/* Editorial column */}
           <div className="lg:col-span-7 pop-in">
-            <div className="flex items-center gap-3 mb-7">
+            <div className="inline-flex items-center gap-2.5 mono text-[10px] sm:text-[11px] tracking-[0.16em] uppercase text-[color:var(--ink-soft)] mb-6 pb-3 rule-bottom">
+              <span
+                className="inline-block w-1.5 h-1.5 rounded-full"
+                style={{ background: 'var(--gain)' }}
+                aria-hidden="true"
+              />
+              Suivi de patrimoine · PEA · CTO · Assurance-vie · Livrets
             </div>
 
             <h1
               id="hero-title"
-              className="display text-[44px] sm:text-[64px] lg:text-[78px] leading-[0.95] text-[color:var(--ink)]"
+              className="display text-[42px] sm:text-[60px] lg:text-[72px] leading-[0.95] text-[color:var(--ink)]"
             >
-              Votre patrimoine
+              Suivez tout votre
               <br />
-              <span className="display-italic">mérite mieux</span>
-              <br />
-              qu&apos;un{' '}
-              <span className="ink-mark text-[color:var(--paper)]">tableur.</span>
+              patrimoine,{' '}
+              <span className="display-italic">sans</span>{' '}
+              <span className="ink-mark text-[color:var(--paper)]">Excel.</span>
             </h1>
 
-            <p className="mt-8 max-w-xl text-[17px] leading-relaxed text-[color:var(--ink-2)]">
-              Fi-Hub tient le journal de tout ce que vous possédez. PEA, CTO,
-              livrets, assurance-vie, dividendes&nbsp;— réunis en un outil,
-              valorisés en direct, toujours face au marché.
+            <p className="mt-7 max-w-xl text-[17px] leading-relaxed text-[color:var(--ink-2)]">
+              PEA, CTO, livrets, assurance-vie et dividendes réunis dans un
+              tableau de bord unique&nbsp;— valorisé en temps réel et toujours
+              comparé au marché.
             </p>
 
-            <div className="mt-6 max-w-2xl text-sm leading-relaxed text-[color:var(--ink-soft)]">
-              Outil de suivi de portefeuille boursier pour investisseurs particuliers : PEA, CTO,
-              assurance-vie et dividendes, sans maintenance de fichier Excel.
-            </div>
-
-            <div className="mt-9 flex flex-wrap items-center gap-3">
+            <div className="mt-8 flex flex-wrap items-center gap-3">
               <Link
                 href="/signup"
                 className="btn-ink inline-flex items-center gap-2 px-6 py-3.5 rounded-full text-[15px] font-medium"
               >
-                Ouvrir mon journal — c&apos;est gratuit
+                Créer mon compte gratuit
                 <ArrowRight className="w-4 h-4" aria-hidden="true" />
               </Link>
               <Link
                 href="#features"
                 className="btn-outline inline-flex items-center gap-2 px-6 py-3.5 rounded-full text-[15px] font-medium"
               >
-                Voir ce qu&apos;il y a dedans
+                Voir ce que ça donne
               </Link>
             </div>
 
-            <p className="mt-5 mono text-[11px] tracking-[0.14em] uppercase text-[color:var(--ink-soft)]">
-              Sans carte bancaire · 3 comptes &amp; 100 transactions offerts
+            <p className="mt-4 text-[13px] leading-relaxed text-[color:var(--ink-soft)]">
+              Gratuit, sans carte bancaire · 3 comptes &amp; 100 transactions offerts ·
+              Vos données exportables à tout moment
             </p>
 
-            {/* Hero stats — editorial KPI strip */}
-            <dl className="mt-12 grid grid-cols-3 gap-6 sm:gap-10 max-w-lg pt-6 rule-top">
-              <div>
-                <dt className="eyebrow">Cours</dt>
-                <dd className="display text-2xl mt-1">Temps réel</dd>
+            {/* Broker import strip — abaisse le coût de bascule, factuel (feature import) */}
+            <div className="mt-9 pt-6 rule-top">
+              <div className="eyebrow mb-3">Importez vos relevés en un clic</div>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mono text-[12px] text-[color:var(--ink-2)]">
+                {['Bourse Direct', 'Boursorama', 'Trade Republic', 'Degiro', 'CSV · PDF'].map(
+                  (b, i) => (
+                    <span key={b} className="inline-flex items-center gap-4">
+                      {i > 0 && (
+                        <span className="text-[color:var(--rule-strong)]" aria-hidden="true">
+                          ·
+                        </span>
+                      )}
+                      {b}
+                    </span>
+                  )
+                )}
               </div>
-              <div>
-                <dt className="eyebrow">Enveloppes</dt>
-                <dd className="display text-2xl mt-1">8+ supports</dd>
-              </div>
-              <div>
-                <dt className="eyebrow">Export & Import</dt>
-                <dd className="display text-2xl mt-1">PDF · CSV · JSON...</dd>
-              </div>
-            </dl>
+            </div>
           </div>
 
           {/* Mockup column */}
           <div className="lg:col-span-5 lg:pl-2">
             <PortfolioMockup />
           </div>
+        </div>
+      </section>
+
+      {/* ───────── REASSURANCE BAR (faits vérifiables uniquement) ───────── */}
+      <section aria-label="Pourquoi Fi-Hub" className="max-w-6xl mx-auto px-5">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-px bg-[color:var(--rule)] border border-[color:var(--rule)] rounded-2xl overflow-hidden">
+          {[
+            {
+              icon: Sparkles,
+              t: 'Import en un clic',
+              d: 'Vos relevés broker lus et mappés pour vous.',
+            },
+            {
+              icon: LineChart,
+              t: 'Temps réel & benchmark',
+              d: 'Valorisation en direct, face au CAC 40 et au S&P 500.',
+            },
+            {
+              icon: Coins,
+              t: 'Sans carte bancaire',
+              d: 'Gratuit pour démarrer, aucun engagement.',
+            },
+            {
+              icon: FileText,
+              t: 'Vos données, à vous',
+              d: 'Export CSV / PDF / JSON et suppression en un clic (RGPD).',
+            },
+          ].map(({ icon: Icon, t, d }) => (
+            <div key={t} className="bg-[color:var(--paper)] p-5 sm:p-6">
+              <Icon className="w-4 h-4 text-[color:var(--accent)] mb-3" aria-hidden="true" />
+              <div className="display text-lg leading-snug text-[color:var(--ink)]">{t}</div>
+              <p className="mt-1 text-[13px] leading-relaxed text-[color:var(--ink-soft)]">{d}</p>
+            </div>
+          ))}
         </div>
       </section>
 
@@ -316,6 +354,19 @@ export default function LandingPage() {
             <ImportMockup />
           </div>
         </article>
+
+        <div className="mt-6 flex flex-wrap items-center gap-x-4 gap-y-2">
+          <Link
+            href="/signup"
+            className="btn-ink inline-flex items-center gap-2 px-5 py-3 rounded-full text-sm font-medium"
+          >
+            Importer mon premier relevé
+            <ArrowRight className="w-4 h-4" aria-hidden="true" />
+          </Link>
+          <span className="text-[13px] text-[color:var(--ink-soft)]">
+            Gratuit · aucune carte bancaire · vos données restent exportables
+          </span>
+        </div>
       </section>
 
       {/* ───────── KILLER FEATURE: BENCHMARK ───────── */}
@@ -466,6 +517,28 @@ export default function LandingPage() {
         </ol>
       </section>
 
+      {/* ───────── MID-PAGE CTA ───────── */}
+      <section className="max-w-6xl mx-auto px-5 py-8">
+        <div className="ink-card pop-shadow rounded-2xl p-8 sm:p-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
+          <div>
+            <h3 className="display text-2xl sm:text-3xl leading-tight text-[color:var(--ink)]">
+              Prêt à ranger le tableur&nbsp;?
+            </h3>
+            <p className="mt-2 text-[15px] text-[color:var(--ink-2)] max-w-md">
+              Créez votre compte en 30 secondes, importez votre premier relevé juste après.
+              Sans carte bancaire.
+            </p>
+          </div>
+          <Link
+            href="/signup"
+            className="btn-ink inline-flex items-center gap-2 px-6 py-3.5 rounded-full text-[15px] font-medium shrink-0"
+          >
+            Créer mon compte gratuit
+            <ArrowRight className="w-4 h-4" aria-hidden="true" />
+          </Link>
+        </div>
+      </section>
+
       {/* ───────── PRICING ───────── */}
       <section className="max-w-6xl mx-auto px-5 pb-14">
         <div className="ink-card rounded-2xl p-6 sm:p-8">
@@ -511,7 +584,7 @@ export default function LandingPage() {
             href="/signup"
             className="btn-ink inline-flex items-center gap-2 px-7 py-4 rounded-full text-base font-medium"
           >
-            Créer mon journal
+            Créer mon compte gratuit
             <ArrowRight className="w-4 h-4" aria-hidden="true" />
           </Link>
           <Link

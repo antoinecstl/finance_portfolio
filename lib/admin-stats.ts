@@ -1,6 +1,7 @@
 import 'server-only';
 import { createAdminClient } from '@/lib/supabase/server';
 import { PLANS } from '@/lib/plans';
+import type { AdminUserRow } from '@/lib/admin-types';
 
 export type AdminStats = {
   generatedAt: string;
@@ -25,14 +26,7 @@ export type AdminStats = {
     accountsByType: { type: string; count: number }[];
   };
   signupsByDay: { date: string; count: number }[];
-  recentUsers: {
-    id: string;
-    email: string | null;
-    createdAt: string;
-    lastSignInAt: string | null;
-    plan: string;
-    status: string | null;
-  }[];
+  rows: AdminUserRow[];
 };
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -69,13 +63,12 @@ export async function getAdminStats(): Promise<AdminStats> {
     if (data.users.length < perPage) break;
   }
 
-  // --- Abonnements & fondateurs & contenu (en parallèle) ---
-  const [subsRes, foundersRes, accountsCountRes, txCountRes, accountTypesRes] = await Promise.all([
+  // --- Abonnements, fondateurs, contenu (en parallèle) ---
+  const [subsRes, foundersRes, accountsRes, txRes] = await Promise.all([
     admin.from('subscriptions').select('user_id, plan_id, status'),
     admin.from('profiles').select('id').eq('is_founder', true),
-    admin.from('accounts').select('id', { count: 'exact', head: true }),
-    admin.from('transactions').select('id', { count: 'exact', head: true }),
-    admin.from('accounts').select('type'),
+    admin.from('accounts').select('user_id, type'),
+    admin.from('transactions').select('user_id'),
   ]);
 
   const subByUser = new Map<string, { plan_id: string; status: string }>();
@@ -85,13 +78,22 @@ export async function getAdminStats(): Promise<AdminStats> {
 
   const founderIds = new Set<string>((foundersRes.data ?? []).map((r) => r.id));
 
+  // Comptes : total, répartition par type, et compte par utilisateur.
   const accountsByTypeMap = new Map<string, number>();
-  for (const a of accountTypesRes.data ?? []) {
+  const accountsByUser = new Map<string, number>();
+  for (const a of accountsRes.data ?? []) {
     const t: string = a.type ?? 'AUTRE';
     accountsByTypeMap.set(t, (accountsByTypeMap.get(t) ?? 0) + 1);
+    accountsByUser.set(a.user_id, (accountsByUser.get(a.user_id) ?? 0) + 1);
   }
 
-  // --- Calcul des agrégats ---
+  // Transactions : total et compte par utilisateur.
+  const txByUser = new Map<string, number>();
+  for (const t of txRes.data ?? []) {
+    txByUser.set(t.user_id, (txByUser.get(t.user_id) ?? 0) + 1);
+  }
+
+  // --- Agrégats & lignes par utilisateur ---
   const now = Date.now();
   const startOfToday = new Date();
   startOfToday.setHours(0, 0, 0, 0);
@@ -106,11 +108,12 @@ export async function getAdminStats(): Promise<AdminStats> {
   let proActive = 0;
   const proByStatus: Record<string, number> = {};
 
-  // Inscriptions par jour sur les 30 derniers jours (bornées à 0 par défaut).
   const dayCounts = new Map<string, number>();
   for (let i = 29; i >= 0; i--) {
     dayCounts.set(new Date(todayMs - i * DAY).toISOString().slice(0, 10), 0);
   }
+
+  const rows: AdminUserRow[] = [];
 
   for (const u of authUsers) {
     const created = new Date(u.created_at).getTime();
@@ -129,31 +132,32 @@ export async function getAdminStats(): Promise<AdminStats> {
 
     const sub = subByUser.get(u.id);
     const isFounder = founderIds.has(u.id);
-    const effectivePro = isFounder || (sub?.plan_id === 'pro' && ACTIVE_PRO_STATUSES.has(sub.status));
+    const proSub = sub?.plan_id === 'pro' && ACTIVE_PRO_STATUSES.has(sub.status);
+    const effectivePro = isFounder || proSub;
     if (effectivePro) {
       proActive++;
-      const st = isFounder && sub?.plan_id !== 'pro' ? 'founder' : sub?.status ?? 'active';
+      const st = isFounder && !proSub ? 'founder' : sub?.status ?? 'active';
       proByStatus[st] = (proByStatus[st] ?? 0) + 1;
     } else {
       free++;
     }
+
+    rows.push({
+      id: u.id,
+      email: u.email,
+      createdAt: u.created_at,
+      lastSignInAt: u.last_sign_in_at,
+      // Plan de base (abonnement), indépendant du statut fondateur : l'UI
+      // affiche « founder » quand isFounder, sinon ce plan.
+      plan: proSub ? 'pro' : 'free',
+      status: sub?.status ?? null,
+      isFounder,
+      accounts: accountsByUser.get(u.id) ?? 0,
+      transactions: txByUser.get(u.id) ?? 0,
+    });
   }
 
-  const recentUsers = [...authUsers]
-    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-    .slice(0, 15)
-    .map((u) => {
-      const sub = subByUser.get(u.id);
-      const isFounder = founderIds.has(u.id);
-      return {
-        id: u.id,
-        email: u.email,
-        createdAt: u.created_at,
-        lastSignInAt: u.last_sign_in_at,
-        plan: isFounder ? 'founder' : sub?.plan_id ?? 'free',
-        status: sub?.status ?? null,
-      };
-    });
+  rows.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   return {
     generatedAt: new Date().toISOString(),
@@ -170,18 +174,18 @@ export async function getAdminStats(): Promise<AdminStats> {
       proActive,
       founders: founderIds.size,
       proByStatus,
-      // Estimation simple : abonnés Pro actifs × prix mensuel (les fondateurs et
-      // l'annuel ne sont pas déduits — MRR indicatif).
+      // Estimation : abonnés Pro actifs × prix mensuel (fondateurs et annuel non
+      // déduits — MRR indicatif).
       mrrCents: proActive * PLANS.pro.priceCents,
     },
     content: {
-      accounts: accountsCountRes.count ?? 0,
-      transactions: txCountRes.count ?? 0,
+      accounts: accountsRes.data?.length ?? 0,
+      transactions: txRes.data?.length ?? 0,
       accountsByType: Array.from(accountsByTypeMap.entries())
         .map(([type, count]) => ({ type, count }))
         .sort((a, b) => b.count - a.count),
     },
     signupsByDay: Array.from(dayCounts.entries()).map(([date, count]) => ({ date, count })),
-    recentUsers,
+    rows,
   };
 }

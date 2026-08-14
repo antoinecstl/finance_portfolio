@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { ArrowLeft, Users, UserPlus, Activity, Crown, Wallet, Receipt, Euro } from 'lucide-react';
 import { getAdminUser } from '@/lib/admin';
 import { getAdminStats, type AdminStats } from '@/lib/admin-stats';
+import { AdminUsersTable } from '@/components/admin/AdminUsersTable';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,12 +32,6 @@ const ACCOUNT_TYPE_LABELS: Record<string, string> = {
   ASSURANCE_VIE: 'Assurance-vie',
   PEL: 'PEL',
   AUTRE: 'Autre',
-};
-
-const PLAN_BADGE: Record<string, string> = {
-  founder: 'bg-[color:var(--ink)] text-[color:var(--paper)]',
-  pro: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300',
-  free: 'bg-[color:var(--paper-2)] text-[color:var(--ink-soft)]',
 };
 
 function StatCard({
@@ -205,50 +200,9 @@ export default async function AdminPage() {
           <SignupsChart data={stats.signupsByDay} />
         </div>
 
-        {/* Derniers inscrits */}
-        <div className="ink-card rounded-2xl p-5 mt-4">
-          <h3 className="text-sm font-semibold text-[color:var(--ink)] mb-4">Derniers inscrits</h3>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-xs uppercase tracking-wide text-[color:var(--ink-soft)] border-b border-[color:var(--rule)]">
-                  <th className="py-2 pr-4 font-medium">Email</th>
-                  <th className="py-2 pr-4 font-medium">Plan</th>
-                  <th className="py-2 pr-4 font-medium">Inscrit le</th>
-                  <th className="py-2 font-medium">Dernière connexion</th>
-                </tr>
-              </thead>
-              <tbody>
-                {stats.recentUsers.map((u) => (
-                  <tr key={u.id} className="border-b border-[color:var(--rule)] last:border-0">
-                    <td className="py-2.5 pr-4 text-[color:var(--ink)]">{u.email ?? '—'}</td>
-                    <td className="py-2.5 pr-4">
-                      <span
-                        className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
-                          PLAN_BADGE[u.plan] ?? PLAN_BADGE.free
-                        }`}
-                      >
-                        {u.plan}
-                      </span>
-                    </td>
-                    <td className="py-2.5 pr-4 text-[color:var(--ink-soft)] whitespace-nowrap">
-                      {dtf.format(new Date(u.createdAt))}
-                    </td>
-                    <td className="py-2.5 text-[color:var(--ink-soft)] whitespace-nowrap">
-                      {u.lastSignInAt ? dtf.format(new Date(u.lastSignInAt)) : '—'}
-                    </td>
-                  </tr>
-                ))}
-                {stats.recentUsers.length === 0 && (
-                  <tr>
-                    <td colSpan={4} className="py-6 text-center text-[color:var(--ink-soft)]">
-                      Aucun utilisateur.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+        {/* Utilisateurs — recherche, tri, filtre, drill-down & actions */}
+        <div className="mt-4">
+          <AdminUsersTable users={stats.rows} />
         </div>
       </div>
     </div>
