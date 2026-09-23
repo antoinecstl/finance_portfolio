@@ -44,7 +44,33 @@ describe('buildPerformanceProjection', () => {
     );
 
     expect(result?.points.filter(item => item.actual !== null)).toHaveLength(2);
-    expect(result?.points[1]).toEqual({ date: '2026-01-01', actual: 120, projected: 120 });
+    expect(result?.points[1]).toMatchObject({ date: '2026-01-01', actual: 120, projected: 120, pessimistic: 120, optimistic: 120 });
     expect(result?.points).toHaveLength(38);
+  });
+
+  it('builds an ordered range of pessimistic, average and optimistic scenarios', () => {
+    const result = buildPerformanceProjection(
+      [point('2024-01-01', 100), point('2024-07-01', 130), point('2025-01-01', 110)],
+      [],
+      10
+    );
+
+    expect(result?.pessimisticAnnualRate).toBeLessThan(result?.annualRate ?? 0);
+    expect(result?.optimisticAnnualRate).toBeGreaterThan(result?.annualRate ?? 0);
+    expect(result?.pessimisticValue).toBeLessThan(result?.projectedValue ?? 0);
+    expect(result?.optimisticValue).toBeGreaterThan(result?.projectedValue ?? 0);
+  });
+
+  it('limits the displayed and analyzed history to the selected lookback', () => {
+    const result = buildPerformanceProjection(
+      [point('2020-01-01', 50), point('2024-01-01', 100), point('2025-01-01', 120), point('2026-01-01', 150)],
+      [],
+      3,
+      {},
+      1
+    );
+
+    expect(result?.points[0].date).toBe('2025-01-01');
+    expect(result?.observedDays).toBe(365);
   });
 });

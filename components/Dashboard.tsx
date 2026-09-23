@@ -531,15 +531,6 @@ export function Dashboard() {
               />
             </ErrorBoundary>
 
-            <ErrorBoundary label="Projection du patrimoine">
-              <PerformanceProjectionChart
-                history={positionsFullPortfolioHistory}
-                transactions={positionsScoped.transactions}
-                loading={loadingPositionsFullHistory}
-                fxRates={positionsFxRates}
-              />
-            </ErrorBoundary>
-
             <ErrorBoundary label="Performance annuelle">
               <ProBlur feature="advanced_analytics" partial label="Performance annuelle — Pro">
                 <PortfolioPerformanceChart
@@ -563,6 +554,15 @@ export function Dashboard() {
                   fxRates={positionsFxRates}
                 />
               </ProBlur>
+            </ErrorBoundary>
+
+            <ErrorBoundary label="Projection du patrimoine">
+              <PerformanceProjectionChart
+                history={positionsFullPortfolioHistory}
+                transactions={positionsScoped.transactions}
+                loading={loadingPositionsFullHistory}
+                fxRates={positionsFxRates}
+              />
             </ErrorBoundary>
 
             <ErrorBoundary label="Tableau des positions">
