@@ -26,6 +26,25 @@ export interface PerformanceProjection {
   isAnnualized: boolean;
 }
 
+/** Keeps enough historical context without letting it visually crush the forecast.
+ * Recharts uses a categorical X axis here, so limiting the past to at most the
+ * number of future points guarantees that the projection occupies half the plot.
+ */
+export function balanceProjectionTimeline(
+  points: PerformanceProjectionPoint[]
+): PerformanceProjectionPoint[] {
+  const historical = points.filter(point => point.actual !== null);
+  const future = points.filter(point => point.actual === null);
+  if (future.length === 0 || historical.length <= future.length) return points;
+
+  const targetCount = Math.max(2, future.length);
+  const sampled = Array.from({ length: targetCount }, (_, index) => {
+    const sourceIndex = Math.round(index * (historical.length - 1) / (targetCount - 1));
+    return historical[sourceIndex];
+  });
+  return [...sampled, ...future];
+}
+
 function addMonths(date: Date, months: number): Date {
   const result = new Date(date);
   const targetDay = result.getUTCDate();

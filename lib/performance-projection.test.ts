@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { PortfolioHistoryPoint } from './portfolio-calculator';
 import type { Transaction } from './types';
-import { buildPerformanceProjection } from './performance-projection';
+import { balanceProjectionTimeline, buildPerformanceProjection } from './performance-projection';
 
 const point = (date: string, value: number): PortfolioHistoryPoint => ({
   date, totalValue: value, stocksValue: value, savingsValue: 0, positions: [],
@@ -72,5 +72,30 @@ describe('buildPerformanceProjection', () => {
 
     expect(result?.points[0].date).toBe('2025-01-01');
     expect(result?.observedDays).toBe(365);
+  });
+
+  it('reserves at least half of the chart timeline for the projection', () => {
+    const historical = Array.from({ length: 100 }, (_, index) => ({
+      date: `2025-01-${String((index % 28) + 1).padStart(2, '0')}`,
+      actual: 100 + index,
+      projected: null,
+      pessimistic: null,
+      optimistic: null,
+      range: null,
+    }));
+    const future = Array.from({ length: 12 }, (_, index) => ({
+      date: `2026-${String(index + 1).padStart(2, '0')}-01`,
+      actual: null,
+      projected: 200 + index,
+      pessimistic: 190 + index,
+      optimistic: 210 + index,
+      range: [190 + index, 210 + index] as [number, number],
+    }));
+
+    const balanced = balanceProjectionTimeline([...historical, ...future]);
+    expect(balanced.filter(item => item.actual !== null)).toHaveLength(12);
+    expect(balanced.filter(item => item.actual === null)).toHaveLength(12);
+    expect(balanced[0]).toBe(historical[0]);
+    expect(balanced[11]).toBe(historical[99]);
   });
 });

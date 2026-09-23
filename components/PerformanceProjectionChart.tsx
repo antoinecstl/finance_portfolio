@@ -6,7 +6,7 @@ import { Loader2, Sparkles, TrendingUp } from 'lucide-react';
 import type { PortfolioHistoryPoint } from '@/lib/portfolio-calculator';
 import type { Transaction } from '@/lib/types';
 import type { FxRateMap } from '@/lib/fx';
-import { buildPerformanceProjection } from '@/lib/performance-projection';
+import { balanceProjectionTimeline, buildPerformanceProjection } from '@/lib/performance-projection';
 import { buildNiceYAxisScale } from '@/lib/chart-axis';
 import { formatCurrency, formatPercent } from '@/lib/utils';
 
@@ -18,7 +18,7 @@ interface PerformanceProjectionChartProps {
 }
 
 const HORIZONS = [1, 3, 5, 10, 20] as const;
-const LOOKBACKS = [1, 3, 5, 'MAX'] as const;
+const LOOKBACKS = [1, 3, 5, 10, 'MAX'] as const;
 
 export function PerformanceProjectionChart({
   history,
@@ -27,16 +27,28 @@ export function PerformanceProjectionChart({
   fxRates = {},
 }: PerformanceProjectionChartProps) {
   const [horizon, setHorizon] = useState<(typeof HORIZONS)[number]>(3);
-  const [lookback, setLookback] = useState<(typeof LOOKBACKS)[number]>(3);
-  const projection = useMemo(
-    () => buildPerformanceProjection(history, transactions, horizon, fxRates, lookback === 'MAX' ? undefined : lookback),
-    [history, transactions, horizon, fxRates, lookback]
+  const [lookback, setLookback] = useState<(typeof LOOKBACKS)[number]>('MAX');
+  const historyDurationYears = useMemo(() => {
+    const datedPoints = history.filter(point => point.stocksValue > 0).sort((a, b) => a.date.localeCompare(b.date));
+    if (datedPoints.length < 2) return 0;
+    const first = new Date(`${datedPoints[0].date}T00:00:00Z`).getTime();
+    const last = new Date(`${datedPoints[datedPoints.length - 1].date}T00:00:00Z`).getTime();
+    return (last - first) / (365.25 * 86_400_000);
+  }, [history]);
+  const availableLookbacks = useMemo(
+    () => LOOKBACKS.filter(option => option === 'MAX' || historyDurationYears >= option),
+    [historyDurationYears]
   );
-  const chartData = useMemo(() => projection?.points.map(point => ({
+  const effectiveLookback = availableLookbacks.includes(lookback) ? lookback : 'MAX';
+  const projection = useMemo(
+    () => buildPerformanceProjection(history, transactions, horizon, fxRates, effectiveLookback === 'MAX' ? undefined : effectiveLookback),
+    [history, transactions, horizon, fxRates, effectiveLookback]
+  );
+  const chartData = useMemo(() => projection ? balanceProjectionTimeline(projection.points).map(point => ({
     ...point,
     label: new Date(`${point.date}T00:00:00Z`).toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' }),
     fullDate: new Date(`${point.date}T00:00:00Z`).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }),
-  })) ?? [], [projection]);
+  })) : [], [projection]);
   const yAxis = useMemo(
     () => buildNiceYAxisScale(chartData.flatMap(point => [point.actual, point.pessimistic, point.optimistic]).filter((value): value is number => value !== null)),
     [chartData]
@@ -61,7 +73,7 @@ export function PerformanceProjectionChart({
           <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Estimation fondée sur la performance historique du compte, hors futurs apports.</p>
         </div>
         <div className="space-y-2">
-          <Selector label="Historique analysé" value={lookback} options={LOOKBACKS} onChange={setLookback} format={value => value === 'MAX' ? 'Max' : `${value}A`} />
+          <Selector label="Historique analysé" value={effectiveLookback} options={availableLookbacks} onChange={setLookback} format={value => value === 'MAX' ? 'Max' : `${value}A`} />
           <Selector label="Projection" value={horizon} options={HORIZONS} onChange={setHorizon} format={value => `${value}A`} />
         </div>
       </div>
