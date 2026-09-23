@@ -26,6 +26,7 @@ import { ProBlur } from './ProBlur';
 import { UsageMeter } from './UsageMeter';
 import { ErrorBoundary } from './ErrorBoundary';
 import { BenchmarkComparisonChart } from './BenchmarkComparisonChart';
+import { PerformanceProjectionChart } from './PerformanceProjectionChart';
 import { useSubscription } from '@/lib/subscription-client';
 import { AddAccountModal } from './AddAccountModal';
 import { AddTransactionModal } from './AddTransactionModal';
@@ -526,6 +527,15 @@ export function Dashboard() {
                 loading={loadingPositionsFullHistory}
                 currentTotalValue={scopedPortfolioSummary.totalValue}
                 currentTotalInvested={scopedPortfolioSummary.totalInvested}
+                fxRates={positionsFxRates}
+              />
+            </ErrorBoundary>
+
+            <ErrorBoundary label="Projection du patrimoine">
+              <PerformanceProjectionChart
+                history={positionsFullPortfolioHistory}
+                transactions={positionsScoped.transactions}
+                loading={loadingPositionsFullHistory}
                 fxRates={positionsFxRates}
               />
             </ErrorBoundary>
