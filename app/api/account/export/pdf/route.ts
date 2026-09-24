@@ -428,6 +428,8 @@ export async function GET(request: NextRequest) {
       'Content-Type': 'application/pdf',
       'Content-Disposition': `attachment; filename="${filename}"`,
       'Content-Length': String(pdfBuffer.length),
+      'Cache-Control': 'private, no-store, max-age=0',
+      'X-Content-Type-Options': 'nosniff',
     },
   });
 }

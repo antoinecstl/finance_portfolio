@@ -146,11 +146,7 @@ export async function POST(request: NextRequest) {
     });
   } catch (err) {
     console.error('[api/import/parse] pipeline failed', err);
-    const message = err instanceof Error ? err.message : 'pipeline_failed';
-    return NextResponse.json(
-      { error: 'extraction_failed', message },
-      { status: 502 }
-    );
+    return NextResponse.json({ error: 'extraction_failed' }, { status: 502 });
   }
 
   const jobPayload = {

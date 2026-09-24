@@ -18,7 +18,7 @@ export async function POST(request: Request) {
 
   if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
     return NextResponse.json(
-      { error: 'SUPABASE_SERVICE_ROLE_KEY manquant côté serveur' },
+      { error: 'service_unavailable' },
       { status: 500 }
     );
   }

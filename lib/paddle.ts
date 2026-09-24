@@ -36,8 +36,11 @@ export function verifyPaddleSignature(rawBody: string, signatureHeader: string |
   if (!ts || !h1) return false;
 
   // Anti-replay : +/- 5 minutes
+  if (!/^\d{10}$/.test(ts) || !/^[a-fA-F0-9]{64}$/.test(h1)) return false;
+  const timestamp = Number(ts);
+  if (!Number.isSafeInteger(timestamp)) return false;
   const now = Math.floor(Date.now() / 1000);
-  if (Math.abs(now - Number(ts)) > 300) return false;
+  if (Math.abs(now - timestamp) > 300) return false;
 
   const expected = createHmac('sha256', secret).update(`${ts}:${rawBody}`).digest('hex');
   const a = Buffer.from(h1, 'hex');

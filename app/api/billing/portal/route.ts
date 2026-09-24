@@ -35,10 +35,8 @@ export async function POST(request: Request) {
     const url = session.urls?.general?.overview;
     if (!url) return NextResponse.json({ error: 'no_portal_url' }, { status: 500 });
     return NextResponse.json({ url });
-  } catch (e) {
-    return NextResponse.json(
-      { error: e instanceof Error ? e.message : 'portal_error' },
-      { status: 500 }
-    );
+  } catch (error) {
+    console.error('[api/billing/portal] Paddle portal creation failed', error);
+    return NextResponse.json({ error: 'portal_error' }, { status: 502 });
   }
 }
