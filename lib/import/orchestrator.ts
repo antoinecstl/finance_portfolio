@@ -8,6 +8,7 @@ import { parseCSV, parseXLSX, parsePlainText, buildExcerpt } from './parsers';
 import { tryDeclarativeParsers } from './declarative';
 import { getLLMProvider } from './llm';
 import { getOCRProvider } from './ocr';
+import { resolveImageMimeType } from './file-types';
 import type { ParseResult, ImportSourceType, ProposedTransaction, ImportNote } from './types';
 
 export interface OrchestratorInput {
@@ -112,17 +113,50 @@ function normalizeExtractedTransactions(
   return { transactions: nextTransactions, notes: nextNotes };
 }
 
+// OCR d'abord ; si le provider OCR est indisponible (429 persistant, quota,
+// clé absente, erreur 5xx…), on retombe sur le LLM vision pour ne pas bloquer
+// l'import. Si le fallback échoue aussi, on remonte l'erreur OCR d'origine.
+async function extractVisualDocument(
+  input: OrchestratorInput,
+  sourceType: 'pdf' | 'image',
+  buffer: Buffer
+): Promise<ParseResult> {
+  try {
+    return await getOCRProvider().extractDocument(buffer, {
+      sourceType,
+      filename: input.filename,
+      contentType: input.contentType,
+    });
+  } catch (ocrError) {
+    console.error('[import/orchestrator] OCR failed, falling back to vision LLM', ocrError);
+    try {
+      const llmResult = await getLLMProvider().extractTransactions({
+        kind: 'document',
+        document: {
+          buffer,
+          mimeType: sourceType === 'pdf'
+            ? 'application/pdf'
+            : resolveImageMimeType(input.filename ?? 'upload.jpg', input.contentType),
+          filename: input.filename ?? (sourceType === 'pdf' ? 'document.pdf' : 'upload.jpg'),
+        },
+        hint: input.filename,
+        accountCurrency: input.accountCurrency,
+      });
+      return { ...llmResult, rawExcerpt: '' };
+    } catch (llmError) {
+      console.error('[import/orchestrator] vision LLM fallback failed', llmError);
+      throw ocrError;
+    }
+  }
+}
+
 export async function runImportPipeline(input: OrchestratorInput): Promise<ParseResult> {
   // PDF et images → OCR. Mistral OCR gère nativement les documents visuels et renvoie
   // directement les transactions structurées via document_annotation_format,
   // donc on court-circuite le pipeline parsing → LLM.
   if (input.sourceType === 'pdf' || input.sourceType === 'image') {
     if (!input.buffer) throw new Error(`${input.sourceType}_buffer_missing`);
-    const ocrResult = await getOCRProvider().extractDocument(input.buffer, {
-      sourceType: input.sourceType,
-      filename: input.filename,
-      contentType: input.contentType,
-    });
+    const ocrResult = await extractVisualDocument(input, input.sourceType, input.buffer);
     const normalized = normalizeExtractedTransactions(ocrResult.transactions, ocrResult.notes);
     return { ...ocrResult, ...normalized };
   }

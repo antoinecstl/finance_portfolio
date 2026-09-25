@@ -5,6 +5,7 @@
 // Sélection : env LLM_PROVIDER (défaut "openai"). LLM_MODEL surcharge le modèle par défaut.
 
 import OpenAI from 'openai';
+import type { ChatCompletionContentPart } from 'openai/resources/chat/completions';
 import type { LLMExtractionInput, ProposedTransaction, ImportNote } from './types';
 
 export interface LLMExtractionResult {
@@ -83,7 +84,7 @@ const EXTRACTION_JSON_SCHEMA = {
   },
 } as const;
 
-const SYSTEM_PROMPT = `Tu es un assistant qui extrait des transactions financières structurées depuis des exports CSV/Excel ou du texte collé. (Les PDF sont traités séparément par un OCR document-aware en amont — tu ne les vois jamais ici.)
+const SYSTEM_PROMPT = `Tu es un assistant qui extrait des transactions financières structurées depuis des exports CSV/Excel, du texte collé, ou (en secours de l'OCR) un relevé PDF / une capture d'écran de relevé.
 
 Règles d'extraction :
 - type : DEPOSIT (versement cash entrant), WITHDRAWAL (retrait/virement sortant), BUY (achat titre/crypto), SELL (vente titre/crypto), DIVIDEND, INTEREST, FEE, CONVERSION (échange de devises explicite, ex: EUR→USDC, USD→EUR).
@@ -115,6 +116,19 @@ Notes : remonte les lignes ignorées, les données non représentables (ex: frai
 
 Sois exhaustif : extrais TOUTES les lignes d'opération du tableau, pas seulement les premières. Ne renvoie un tableau vide que si le document ne contient réellement aucune transaction (ex: page de garde, conditions générales). N'invente jamais de transaction.`;
 
+function buildUserContent(input: LLMExtractionInput): string | ChatCompletionContentPart[] {
+  const prompt = buildUserPrompt(input);
+  if (input.kind !== 'document') return prompt;
+  if (!input.document) throw new Error('llm_document_missing');
+
+  const { buffer, mimeType, filename } = input.document;
+  const dataUrl = `data:${mimeType};base64,${buffer.toString('base64')}`;
+  const attachment: ChatCompletionContentPart = mimeType === 'application/pdf'
+    ? { type: 'file', file: { filename, file_data: dataUrl } }
+    : { type: 'image_url', image_url: { url: dataUrl, detail: 'high' } };
+  return [{ type: 'text', text: prompt }, attachment];
+}
+
 function buildUserPrompt(input: LLMExtractionInput): string {
   const hint = input.hint ? `\n\nIndice contextuel : ${input.hint}` : '';
   const currencyHint = input.accountCurrency
@@ -131,6 +145,11 @@ Lignes (${rows.length} au total) :
 ${sample}${truncated}${hint}${currencyHint}
 
 Extrais toutes les transactions visibles.`;
+  }
+  if (input.kind === 'document') {
+    return `Format : document visuel (relevé PDF, photo ou capture d'écran), joint ci-dessous.${hint}${currencyHint}
+
+Lis le tableau d'opérations et extrais toutes les transactions visibles.`;
   }
   const text = input.text ?? '';
   const MAX = 80_000;
@@ -161,7 +180,7 @@ class OpenAIProvider implements LLMProvider {
       temperature: 0,
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user', content: buildUserPrompt(input) },
+        { role: 'user', content: buildUserContent(input) },
       ],
       response_format: {
         type: 'json_schema',

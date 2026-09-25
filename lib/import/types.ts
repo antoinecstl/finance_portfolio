@@ -47,10 +47,13 @@ export interface ParseResult {
 // - tabular : headers + lignes (chaque ligne = objet { header: value })
 // - text    : raw text tronqué (texte collé). Les PDF et images passent par OCRProvider, pas par ici.
 export interface LLMExtractionInput {
-  kind: 'tabular' | 'text';
+  kind: 'tabular' | 'text' | 'document';
   headers?: string[];
   rows?: Array<Record<string, string>>;
   text?: string;
+  // kind='document' : PDF ou image envoyé tel quel à un modèle vision
+  // (fallback quand l'OCR est indisponible).
+  document?: { buffer: Buffer; mimeType: string; filename: string };
   hint?: string;                // ex: nom du fichier, indice broker
   // Devise par défaut du compte cible. Le LLM y retombe si la devise n'est
   // pas explicite dans le document. Sinon il préserve la devise native.
