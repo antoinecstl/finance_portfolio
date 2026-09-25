@@ -46,7 +46,7 @@ le pipeline le plus adapté :
 
 | Source       | Pipeline                                          | Coût    |
 | ------------ | ------------------------------------------------- | ------- |
-| **PDF/images** | Mistral OCR (extraction structurée en 1 appel)  | $$      |
+| **PDF/images** | Mistral OCR (extraction structurée en 1 appel) → fallback LLM vision si l'OCR échoue | $$      |
 | **CSV/XLSX** | Parseurs déclaratifs → fallback LLM si non reconnu | 0 ou $  |
 | **Texte**    | LLM directement                                   | $       |
 

@@ -157,12 +157,25 @@ const MAX_RETRY_DELAY_MS = 10_000;
 
 export class OCRRateLimitError extends Error {
   readonly retryAfterMs: number;
+  // Corps de la réponse 429 du provider (ex: "Service tier capacity exceeded",
+  // quota mensuel dépassé…) : indispensable pour distinguer une vraie limite
+  // de débit d'un problème de compte. Uniquement loggué côté serveur.
+  readonly providerDetail: string;
 
-  constructor(retryAfterMs: number) {
-    super('ocr_rate_limited');
+  constructor(retryAfterMs: number, providerDetail = '') {
+    super(providerDetail ? `ocr_rate_limited: ${providerDetail}` : 'ocr_rate_limited');
     this.name = 'OCRRateLimitError';
     this.retryAfterMs = retryAfterMs;
+    this.providerDetail = providerDetail;
   }
+}
+
+function describeRateLimitResponse(response: Response, body: string): string {
+  const rateLimitHeaders = [...response.headers.entries()]
+    .filter(([name]) => name.startsWith('x-ratelimit') || name === 'retry-after')
+    .map(([name, value]) => `${name}=${value}`)
+    .join(' ');
+  return [body.trim().slice(0, 500), rateLimitHeaders].filter(Boolean).join(' | ');
 }
 
 function retryDelayMs(response: Response, retryIndex: number): number {
@@ -226,6 +239,7 @@ export class MistralOCRProvider implements OCRProvider {
 
     let res: Response | undefined;
     let lastRetryDelay = DEFAULT_RETRY_DELAY_MS;
+    let lastRateLimitDetail = '';
     for (let attempt = 0; attempt <= MAX_RATE_LIMIT_RETRIES; attempt += 1) {
       res = await fetch(this.endpoint, {
         method: 'POST',
@@ -237,12 +251,14 @@ export class MistralOCRProvider implements OCRProvider {
       });
       if (res.status !== 429) break;
       lastRetryDelay = retryDelayMs(res, attempt);
+      lastRateLimitDetail = describeRateLimitResponse(res, await res.text().catch(() => ''));
+      console.warn(`[ocr/mistral] 429 (tentative ${attempt + 1}/${MAX_RATE_LIMIT_RETRIES + 1}) ${lastRateLimitDetail}`);
       if (attempt < MAX_RATE_LIMIT_RETRIES) await wait(lastRetryDelay);
     }
 
     if (!res) throw new Error('mistral_ocr_no_response');
     if (res.status === 429) {
-      throw new OCRRateLimitError(lastRetryDelay);
+      throw new OCRRateLimitError(lastRetryDelay, lastRateLimitDetail);
     }
 
     if (!res.ok) {
