@@ -50,6 +50,8 @@ export async function GET() {
     headers: {
       'Content-Type': 'application/json',
       'Content-Disposition': `attachment; filename="fi-hub-export-${user.id}.json"`,
+      'Cache-Control': 'private, no-store, max-age=0',
+      'X-Content-Type-Options': 'nosniff',
     },
   });
 }

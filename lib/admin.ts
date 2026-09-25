@@ -2,10 +2,10 @@ import 'server-only';
 import type { User } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/server';
 
-// Emails autorisés à accéder au dashboard admin.
-// Configurable via ADMIN_EMAILS (liste séparée par des virgules) ; défaut = fondateur.
+// Emails autorisés à accéder au dashboard admin. Fail closed: an omitted
+// environment variable must never silently grant service-role access.
 const ADMIN_EMAILS = new Set(
-  (process.env.ADMIN_EMAILS ?? 'antoinecstl@gmail.com')
+  (process.env.ADMIN_EMAILS ?? '')
     .split(',')
     .map((e) => e.trim().toLowerCase())
     .filter(Boolean)

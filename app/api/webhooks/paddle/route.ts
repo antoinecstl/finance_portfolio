@@ -2,38 +2,53 @@ import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { verifyPaddleSignature } from '@/lib/paddle';
 import { sendSubscriptionReceipt, sendPaymentFailed } from '@/lib/email';
+import { z } from 'zod';
 
 export const runtime = 'nodejs';
 
-type PaddleWebhookEvent = {
-  event_id: string;
-  event_type: string;
-  data: {
-    id?: string;
-    customer_id?: string;
-    status?: string;
-    scheduled_change?: { action?: string; effective_at?: string } | null;
-    current_billing_period?: { ends_at?: string } | null;
-    canceled_at?: string | null;
-    custom_data?: { user_id?: string } | null;
-    items?: Array<{ price?: { id?: string; product_id?: string } }>;
-  };
-};
+const MAX_WEBHOOK_BYTES = 256 * 1024;
+
+const paddleWebhookSchema = z.object({
+  event_id: z.string().min(1).max(128),
+  event_type: z.string().min(1).max(100),
+  data: z.object({
+    id: z.string().max(128).optional(),
+    customer_id: z.string().max(128).optional(),
+    status: z.string().max(50).optional(),
+    scheduled_change: z.object({ action: z.string().max(50).optional() }).nullable().optional(),
+    current_billing_period: z.object({ ends_at: z.string().datetime().optional() }).nullable().optional(),
+    custom_data: z.object({ user_id: z.string().uuid().optional() }).nullable().optional(),
+    items: z.array(z.object({ price: z.object({ id: z.string().max(128).optional() }).optional() })).max(20).optional(),
+  }),
+});
 
 export async function POST(request: Request) {
+  const declaredLength = Number(request.headers.get('content-length') ?? 0);
+  if (!Number.isFinite(declaredLength) || declaredLength > MAX_WEBHOOK_BYTES) {
+    return NextResponse.json({ error: 'payload_too_large' }, { status: 413 });
+  }
+
   const raw = await request.text();
+  if (Buffer.byteLength(raw, 'utf8') > MAX_WEBHOOK_BYTES) {
+    return NextResponse.json({ error: 'payload_too_large' }, { status: 413 });
+  }
   const sig = request.headers.get('paddle-signature');
 
   if (!verifyPaddleSignature(raw, sig)) {
     return NextResponse.json({ error: 'invalid signature' }, { status: 401 });
   }
 
-  let event: PaddleWebhookEvent;
+  let json: unknown;
   try {
-    event = JSON.parse(raw);
+    json = JSON.parse(raw);
   } catch {
     return NextResponse.json({ error: 'invalid json' }, { status: 400 });
   }
+  const parsed = paddleWebhookSchema.safeParse(json);
+  if (!parsed.success) {
+    return NextResponse.json({ error: 'invalid payload' }, { status: 400 });
+  }
+  const event = parsed.data;
 
   const admin = await createAdminClient();
 
