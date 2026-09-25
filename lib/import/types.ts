@@ -5,7 +5,7 @@
 import { z } from 'zod';
 import { transactionTypeSchema } from '@/lib/schemas';
 
-export type ImportSourceType = 'csv' | 'xlsx' | 'pdf' | 'text';
+export type ImportSourceType = 'csv' | 'xlsx' | 'pdf' | 'image' | 'text';
 
 // Transaction normalisée proposée par un parseur (déclaratif ou LLM), avant validation Zod stricte.
 // Les champs sont volontairement permissifs : la conversion en CreateTransactionInput se fait
@@ -45,7 +45,7 @@ export interface ParseResult {
 
 // Payload envoyé au LLM pour l'extraction. On garde le contexte minimum :
 // - tabular : headers + lignes (chaque ligne = objet { header: value })
-// - text    : raw text tronqué (texte collé). Les PDF passent par OCRProvider, pas par ici.
+// - text    : raw text tronqué (texte collé). Les PDF et images passent par OCRProvider, pas par ici.
 export interface LLMExtractionInput {
   kind: 'tabular' | 'text';
   headers?: string[];

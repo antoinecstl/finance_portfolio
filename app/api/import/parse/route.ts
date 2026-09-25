@@ -1,4 +1,4 @@
-// POST /api/import/parse — analyse un upload (CSV/XLSX/PDF/texte) et renvoie
+// POST /api/import/parse — analyse un upload (CSV/XLSX/PDF/image/texte) et renvoie
 // une proposition de transactions normalisées + un import_job_id.
 // Aucune écriture dans la table transactions à ce stade : c'est un dry-run.
 //
@@ -12,6 +12,7 @@ import { createClient } from '@/lib/supabase/server';
 import { rateLimit, clientKey } from '@/lib/rate-limit';
 import { runImportPipeline, buildIdempotencyKey } from '@/lib/import/orchestrator';
 import type { ImportSourceType } from '@/lib/import/types';
+import { detectImportSourceType } from '@/lib/import/file-types';
 import { hasUserFeature } from '@/lib/subscription';
 import { enforceAuthenticatedMutation } from '@/lib/api-security';
 
@@ -19,14 +20,6 @@ export const runtime = 'nodejs';
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024;       // 10 MB hard cap
 const MAX_TEXT_CHARS = 200_000;
-
-function detectSourceType(filename: string, contentType: string | null): ImportSourceType | null {
-  const lower = filename.toLowerCase();
-  if (lower.endsWith('.csv') || contentType?.includes('csv')) return 'csv';
-  if (lower.endsWith('.xlsx') || lower.endsWith('.xls') || contentType?.includes('sheet')) return 'xlsx';
-  if (lower.endsWith('.pdf') || contentType?.includes('pdf')) return 'pdf';
-  return null;
-}
 
 export async function POST(request: NextRequest) {
   const securityError = enforceAuthenticatedMutation(request);
@@ -63,6 +56,7 @@ export async function POST(request: NextRequest) {
   let buffer: Buffer | undefined;
   let text: string | undefined;
   let filename: string | undefined;
+  let fileContentType: string | undefined;
 
   try {
     if (contentType.includes('multipart/form-data')) {
@@ -76,11 +70,12 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'file_too_large', maxBytes: MAX_FILE_BYTES }, { status: 413 });
       }
       filename = (file as File).name ?? 'upload';
-      const detected = detectSourceType(filename, file.type);
+      const detected = detectImportSourceType(filename, file.type);
       if (!detected) {
         return NextResponse.json({ error: 'unsupported_format', filename }, { status: 415 });
       }
       sourceType = detected;
+      fileContentType = file.type;
       buffer = Buffer.from(await file.arrayBuffer());
     } else {
       const body = await request.json().catch(() => null);
@@ -142,6 +137,7 @@ export async function POST(request: NextRequest) {
       buffer,
       text,
       filename,
+      contentType: fileContentType,
       accountCurrency: account.currency ?? 'EUR',
     });
   } catch (err) {
