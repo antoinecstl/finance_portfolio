@@ -1,5 +1,5 @@
 // Orchestrateur : route chaque source vers le pipeline adapté.
-// - PDF        : OCR document-aware (Mistral) avec extraction structurée en 1 appel.
+// - PDF/image  : OCR document-aware (Mistral) avec extraction structurée en 1 appel.
 // - CSV / XLSX : parsing local + parseur déclaratif si reconnu, sinon fallback LLM.
 // - Texte collé: LLM directement.
 // C'est le seul point d'entrée appelé par la route /api/import/parse.
@@ -12,9 +12,10 @@ import type { ParseResult, ImportSourceType, ProposedTransaction, ImportNote } f
 
 export interface OrchestratorInput {
   sourceType: ImportSourceType;
-  buffer?: Buffer;          // pour csv/xlsx/pdf
+  buffer?: Buffer;          // pour csv/xlsx/pdf/image
   text?: string;            // pour text
   filename?: string;        // hint pour le LLM ou l'OCR
+  contentType?: string;     // type MIME utile pour construire la data URL des images
   accountCurrency?: string; // devise du compte cible (défaut LLM si devise absente)
 }
 
@@ -112,14 +113,18 @@ function normalizeExtractedTransactions(
 }
 
 export async function runImportPipeline(input: OrchestratorInput): Promise<ParseResult> {
-  // PDF → OCR. Mistral OCR gère nativement les PDF-image / scans et renvoie
+  // PDF et images → OCR. Mistral OCR gère nativement les documents visuels et renvoie
   // directement les transactions structurées via document_annotation_format,
   // donc on court-circuite le pipeline parsing → LLM.
-  if (input.sourceType === 'pdf') {
-    if (!input.buffer) throw new Error('pdf_buffer_missing');
-    const pdfResult = await getOCRProvider().extractFromPDF(input.buffer, input.filename);
-    const normalized = normalizeExtractedTransactions(pdfResult.transactions, pdfResult.notes);
-    return { ...pdfResult, ...normalized };
+  if (input.sourceType === 'pdf' || input.sourceType === 'image') {
+    if (!input.buffer) throw new Error(`${input.sourceType}_buffer_missing`);
+    const ocrResult = await getOCRProvider().extractDocument(input.buffer, {
+      sourceType: input.sourceType,
+      filename: input.filename,
+      contentType: input.contentType,
+    });
+    const normalized = normalizeExtractedTransactions(ocrResult.transactions, ocrResult.notes);
+    return { ...ocrResult, ...normalized };
   }
 
   // Sources tabulaires / texte : parsing local d'abord.
@@ -135,8 +140,9 @@ export async function runImportPipeline(input: OrchestratorInput): Promise<Parse
         if (input.text === undefined) throw new Error('text_missing');
         return parsePlainText(input.text);
       case 'pdf':
-        // Géré au-dessus, ne devrait jamais atteindre cette branche.
-        throw new Error('unreachable_pdf_in_switch');
+      case 'image':
+        // Gérés au-dessus, ne devraient jamais atteindre cette branche.
+        throw new Error('unreachable_ocr_source_in_switch');
     }
   })();
 

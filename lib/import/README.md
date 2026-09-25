@@ -1,7 +1,7 @@
 # Import de transactions
 
 Module responsable de l'extraction de transactions financières depuis des
-fichiers utilisateur (CSV, XLSX, PDF) ou du texte collé, avec preview avant
+fichiers utilisateur (CSV, XLSX, PDF, JPG, PNG, WebP) ou du texte collé, avec preview avant
 écriture en base.
 
 ## Vue d'ensemble
@@ -46,13 +46,13 @@ le pipeline le plus adapté :
 
 | Source       | Pipeline                                          | Coût    |
 | ------------ | ------------------------------------------------- | ------- |
-| **PDF**      | Mistral OCR (extraction structurée en 1 appel)    | $$      |
+| **PDF/images** | Mistral OCR (extraction structurée en 1 appel)  | $$      |
 | **CSV/XLSX** | Parseurs déclaratifs → fallback LLM si non reconnu | 0 ou $  |
 | **Texte**    | LLM directement                                   | $       |
 
-### PDF → Mistral OCR
+### PDF et images → Mistral OCR
 
-Les PDF (souvent des scans de relevés bancaires) sont envoyés à
+Les PDF, photos et captures d’écran de relevés sont envoyés à
 [`/v1/ocr`](ocr.ts) avec un `document_annotation_format` qui combine OCR et
 extraction structurée en **un seul appel**. Pas de pipeline `pdfjs → LLM` :
 - Le schéma JSON strict ([ocr.ts:28](ocr.ts#L28)) impose la forme de sortie.
@@ -98,8 +98,9 @@ a un index unique `(user_id, idempotency_key)` :
 | Auth                    | `supabase.auth.getUser()` sur les deux routes        |
 | Pro requis              | `hasUserFeature('import_transactions')` → 402 sinon  |
 | Rate limit              | 10 imports/heure/user (déclenche un appel LLM payant) |
+| Saturation OCR          | 2 nouvelles tentatives avec backoff, puis erreur 429 explicite |
 | Taille fichier          | 10 MB max (multipart) / 200 000 chars max (texte)    |
-| Format autorisé         | Détection par extension + content-type → 415 sinon   |
+| Format autorisé         | CSV, XLSX, PDF, JPG, PNG, WebP → 415 sinon              |
 | Appartenance compte     | Vérif `account.user_id === user.id` avant LLM        |
 | Validation des lignes   | Zod strict côté `/commit` (`createTransactionSchema`) |
 | Quotas plan             | Pré-check côté API + re-vérif atomique côté RPC      |
