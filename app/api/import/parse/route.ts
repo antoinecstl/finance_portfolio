@@ -142,6 +142,24 @@ export async function POST(request: NextRequest) {
     });
   } catch (err) {
     console.error('[api/import/parse] pipeline failed', err);
+    if (
+      err instanceof Error
+      && err.name === 'OCRRateLimitError'
+      && 'retryAfterMs' in err
+      && typeof err.retryAfterMs === 'number'
+    ) {
+      return NextResponse.json(
+        {
+          error: 'ocr_rate_limited',
+          message: 'Le service d\'analyse de documents est momentanément saturé. Réessayez dans quelques instants.',
+          retryAfterMs: err.retryAfterMs,
+        },
+        {
+          status: 429,
+          headers: { 'Retry-After': String(Math.max(1, Math.ceil(err.retryAfterMs / 1_000))) },
+        }
+      );
+    }
     const message = err instanceof Error ? err.message : 'pipeline_failed';
     return NextResponse.json(
       { error: 'extraction_failed', message },

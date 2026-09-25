@@ -151,7 +151,40 @@ interface MistralOCRResponse {
   usage_info?: { pages_processed?: number; doc_size_bytes?: number };
 }
 
-class MistralOCRProvider implements OCRProvider {
+const MAX_RATE_LIMIT_RETRIES = 2;
+const DEFAULT_RETRY_DELAY_MS = 1_000;
+const MAX_RETRY_DELAY_MS = 10_000;
+
+export class OCRRateLimitError extends Error {
+  readonly retryAfterMs: number;
+
+  constructor(retryAfterMs: number) {
+    super('ocr_rate_limited');
+    this.name = 'OCRRateLimitError';
+    this.retryAfterMs = retryAfterMs;
+  }
+}
+
+function retryDelayMs(response: Response, retryIndex: number): number {
+  const retryAfter = response.headers.get('retry-after');
+  if (retryAfter) {
+    const seconds = Number(retryAfter);
+    if (Number.isFinite(seconds) && seconds >= 0) {
+      return Math.min(seconds * 1_000, MAX_RETRY_DELAY_MS);
+    }
+    const retryDate = Date.parse(retryAfter);
+    if (Number.isFinite(retryDate)) {
+      return Math.min(Math.max(0, retryDate - Date.now()), MAX_RETRY_DELAY_MS);
+    }
+  }
+  return Math.min(DEFAULT_RETRY_DELAY_MS * 2 ** retryIndex, MAX_RETRY_DELAY_MS);
+}
+
+function wait(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+export class MistralOCRProvider implements OCRProvider {
   readonly name = 'mistral';
   readonly model: string;
   private apiKey: string;
@@ -191,14 +224,26 @@ class MistralOCRProvider implements OCRProvider {
       include_image_base64: false,
     };
 
-    const res = await fetch(this.endpoint, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${this.apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(requestBody),
-    });
+    let res: Response | undefined;
+    let lastRetryDelay = DEFAULT_RETRY_DELAY_MS;
+    for (let attempt = 0; attempt <= MAX_RATE_LIMIT_RETRIES; attempt += 1) {
+      res = await fetch(this.endpoint, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${this.apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
+      });
+      if (res.status !== 429) break;
+      lastRetryDelay = retryDelayMs(res, attempt);
+      if (attempt < MAX_RATE_LIMIT_RETRIES) await wait(lastRetryDelay);
+    }
+
+    if (!res) throw new Error('mistral_ocr_no_response');
+    if (res.status === 429) {
+      throw new OCRRateLimitError(lastRetryDelay);
+    }
 
     if (!res.ok) {
       const errBody = await res.text().catch(() => '');

@@ -98,6 +98,7 @@ a un index unique `(user_id, idempotency_key)` :
 | Auth                    | `supabase.auth.getUser()` sur les deux routes        |
 | Pro requis              | `hasUserFeature('import_transactions')` → 402 sinon  |
 | Rate limit              | 10 imports/heure/user (déclenche un appel LLM payant) |
+| Saturation OCR          | 2 nouvelles tentatives avec backoff, puis erreur 429 explicite |
 | Taille fichier          | 10 MB max (multipart) / 200 000 chars max (texte)    |
 | Format autorisé         | CSV, XLSX, PDF, JPG, PNG, WebP → 415 sinon              |
 | Appartenance compte     | Vérif `account.user_id === user.id` avant LLM        |

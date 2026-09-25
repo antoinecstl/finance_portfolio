@@ -327,7 +327,12 @@ export function ImportWizard() {
         return;
       }
       if (res.status === 429) {
-        setError('Trop d\'imports récents. Réessayez dans une heure.');
+        const data = await res.json().catch(() => ({}));
+        setError(
+          data.error === 'ocr_rate_limited'
+            ? (data.message ?? 'Le service d\'analyse est momentanément saturé. Réessayez dans quelques instants.')
+            : 'Trop d\'imports récents. Réessayez dans une heure.'
+        );
         return;
       }
       if (res.status === 413) {
