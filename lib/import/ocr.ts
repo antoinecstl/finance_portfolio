@@ -1,4 +1,4 @@
-// Abstraction OCRProvider : extrait des transactions depuis un PDF en passant
+// Abstraction OCRProvider : extrait des transactions depuis un PDF ou une image en passant
 // par un OCR document-aware (ici Mistral OCR). Contrat : un seul appel renvoie
 // le ParseResult complet (transactions + notes + excerpt + format détecté).
 //
@@ -13,11 +13,18 @@
 import { z } from 'zod';
 import { proposedTransactionSchema, importNoteSchema } from './types';
 import type { ParseResult } from './types';
+import { resolveImageMimeType } from './file-types';
+
+export interface OCRDocumentOptions {
+  sourceType: 'pdf' | 'image';
+  filename?: string;
+  contentType?: string;
+}
 
 export interface OCRProvider {
   readonly name: string;
   readonly model: string;
-  extractFromPDF(buffer: Buffer, filename?: string): Promise<ParseResult>;
+  extractDocument(buffer: Buffer, options: OCRDocumentOptions): Promise<ParseResult>;
 }
 
 // Schéma JSON envoyé en document_annotation_format. Mistral OCR applique le
@@ -156,15 +163,23 @@ class MistralOCRProvider implements OCRProvider {
     this.endpoint = endpoint ?? 'https://api.mistral.ai/v1/ocr';
   }
 
-  async extractFromPDF(buffer: Buffer, filename?: string): Promise<ParseResult> {
-    const dataUrl = `data:application/pdf;base64,${buffer.toString('base64')}`;
+  async extractDocument(buffer: Buffer, options: OCRDocumentOptions): Promise<ParseResult> {
+    const mimeType = options.sourceType === 'pdf'
+      ? 'application/pdf'
+      : resolveImageMimeType(options.filename ?? 'upload.jpg', options.contentType);
+    const dataUrl = `data:${mimeType};base64,${buffer.toString('base64')}`;
     const requestBody = {
       model: this.model,
-      document: {
-        type: 'document_url',
-        document_url: dataUrl,
-        document_name: filename ?? 'document.pdf',
-      },
+      document: options.sourceType === 'pdf'
+        ? {
+            type: 'document_url',
+            document_url: dataUrl,
+            document_name: options.filename ?? 'document.pdf',
+          }
+        : {
+            type: 'image_url',
+            image_url: dataUrl,
+          },
       document_annotation_format: {
         type: 'json_schema',
         json_schema: {
@@ -246,7 +261,7 @@ export function getOCRProvider(): OCRProvider {
     const apiKey = process.env.MISTRAL_API_KEY;
     if (!apiKey) {
       throw new Error(
-        "MISTRAL_API_KEY manquant : configure-le dans .env.local pour activer l'extraction PDF par OCR."
+        "MISTRAL_API_KEY manquant : configure-le dans .env.local pour activer l'extraction PDF et image par OCR."
       );
     }
     const model = process.env.OCR_MODEL ?? 'mistral-ocr-latest';

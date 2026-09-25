@@ -335,7 +335,7 @@ export function ImportWizard() {
         return;
       }
       if (res.status === 415) {
-        setError('Format non supporté. Formats acceptés : CSV, XLSX, PDF, texte collé.');
+        setError('Format non supporté. Formats acceptés : CSV, XLSX, PDF, JPG, PNG, WebP ou texte collé.');
         return;
       }
       if (res.status === 409) {
@@ -516,7 +516,7 @@ export function ImportWizard() {
           Importer des transactions
         </h1>
         <p className="text-sm sm:text-base text-zinc-500 dark:text-zinc-400 mt-1.5 sm:mt-2 max-w-3xl">
-          CSV, Excel, PDF de relevé broker, ou texte collé. Une IA extrait les transactions ; vous validez avant import.
+          CSV, Excel, PDF, photo ou capture d’écran de relevé broker, ou texte collé. Une IA extrait les transactions ; vous validez avant import.
         </p>
 
         {step === 'upload' && (
@@ -586,10 +586,10 @@ export function ImportWizard() {
                   <span className="text-sm sm:text-base text-zinc-600 dark:text-zinc-400 text-center px-2">
                     {file ? file.name : 'Cliquez pour sélectionner un fichier'}
                   </span>
-                  <span className="text-xs sm:text-sm text-zinc-400">CSV, XLSX, PDF — max 10 MB</span>
+                  <span className="text-xs sm:text-sm text-zinc-400">CSV, XLSX, PDF, JPG, PNG, WebP — max 10 MB</span>
                   <input
                     type="file"
-                    accept=".csv,.xlsx,.xls,.pdf,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/pdf"
+                    accept=".csv,.xlsx,.xls,.pdf,.jpg,.jpeg,.png,.webp,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/pdf,image/jpeg,image/png,image/webp"
                     onChange={(e) => setFile(e.target.files?.[0] ?? null)}
                     className="hidden"
                   />
