@@ -13,7 +13,6 @@ import { rateLimit, clientKey } from '@/lib/rate-limit';
 import { runImportPipeline, buildIdempotencyKey } from '@/lib/import/orchestrator';
 import type { ImportSourceType } from '@/lib/import/types';
 import { detectImportSourceType } from '@/lib/import/file-types';
-import { OCRRateLimitError } from '@/lib/import/ocr';
 import { hasUserFeature } from '@/lib/subscription';
 import { enforceAuthenticatedMutation } from '@/lib/api-security';
 
@@ -143,7 +142,12 @@ export async function POST(request: NextRequest) {
     });
   } catch (err) {
     console.error('[api/import/parse] pipeline failed', err);
-    if (err instanceof OCRRateLimitError) {
+    if (
+      err instanceof Error
+      && err.name === 'OCRRateLimitError'
+      && 'retryAfterMs' in err
+      && typeof err.retryAfterMs === 'number'
+    ) {
       return NextResponse.json(
         {
           error: 'ocr_rate_limited',
