@@ -1,5 +1,22 @@
 @import "tailwindcss";
 
+@layer components {
+  .input {
+    width: 100%;
+    border-radius: 0.75rem;
+    border: 1px solid var(--rule);
+    background: var(--paper);
+    padding: 0.625rem 0.75rem;
+    color: var(--ink);
+    font-size: 0.875rem;
+    outline: none;
+  }
+
+  .input:focus {
+    border-color: var(--ink-soft);
+  }
+}
+
 /* ──────────────────────────────────────────────────────────
    Fi-Hub — Editorial Financial Theme (global)
    Cream/parchment paper · ink black · serif headlines

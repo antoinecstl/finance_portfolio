@@ -5,6 +5,8 @@ import { ArrowLeft, Users, UserPlus, Activity, Crown, Wallet, Receipt, Euro } fr
 import { getAdminUser } from '@/lib/admin';
 import { getAdminStats, type AdminStats } from '@/lib/admin-stats';
 import { AdminUsersTable } from '@/components/admin/AdminUsersTable';
+import { AdminTicketBoard } from '@/components/admin/AdminTicketBoard';
+import { getAdminTickets } from '@/lib/admin-tickets';
 
 export const dynamic = 'force-dynamic';
 
@@ -88,7 +90,7 @@ export default async function AdminPage() {
   const admin = await getAdminUser();
   if (!admin) notFound();
 
-  const stats = await getAdminStats();
+  const [stats, tickets] = await Promise.all([getAdminStats(), getAdminTickets()]);
 
   return (
     <div className="min-h-screen bg-[color:var(--paper)] text-[color:var(--ink)]">
@@ -204,6 +206,8 @@ export default async function AdminPage() {
         <div className="mt-4">
           <AdminUsersTable users={stats.rows} />
         </div>
+
+        <AdminTicketBoard initialTickets={tickets} />
       </div>
     </div>
   );
