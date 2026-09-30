@@ -22,7 +22,7 @@ import {
 import { StockPosition, StockQuote, Transaction, Account } from '@/lib/types';
 import { PortfolioHistoryPoint, calculatePortfolioPerformance } from '@/lib/portfolio-calculator';
 import { convertToBase, type FxRateMap } from '@/lib/fx';
-import { formatCurrency, formatNumber, formatPercent, getSectorColor } from '@/lib/utils';
+import { formatCurrency, formatNumber, formatPercent, getAccountColorMap, getSectorColor } from '@/lib/utils';
 import { compareTransactionSequence } from '@/lib/transaction-ordering';
 import { positionDisplaySymbol } from '@/lib/position-display';
 import { buildPositionMetrics, type PositionMetrics } from '@/lib/position-metrics';
@@ -186,15 +186,16 @@ interface AccountAllocationChartProps {
 }
 
 export function AccountAllocationChart({ accounts }: AccountAllocationChartProps) {
-  // Calculer la répartition par compte
+  // Mêmes couleurs par compte que l'évolution du patrimoine.
+  const accountColors = getAccountColorMap(accounts);
   const data = accounts
-    .map((account, index) => {
+    .map((account) => {
       const value = account.calculatedTotalValueInBase ?? account.calculatedTotalValue;
       return {
         name: account.name,
         type: account.type,
         value,
-        color: getSectorColor(index),
+        color: accountColors.get(account.id) ?? 'var(--ink-soft)',
       };
     })
     .filter(item => item.value > 0)
@@ -286,221 +287,6 @@ export function AccountAllocationChart({ accounts }: AccountAllocationChartProps
   );
 }
 
-interface PortfolioHistoryChartProps {
-  history: PortfolioHistoryPoint[];
-  loading?: boolean;
-  onPeriodChange?: (days: number) => void;
-  selectedPeriod?: number;
-}
-
-export function PortfolioHistoryChart({ 
-  history, 
-  loading = false,
-  onPeriodChange,
-  selectedPeriod = 30
-}: PortfolioHistoryChartProps) {
-  const periods = [
-    { label: '1S', days: 7 },
-    { label: '1M', days: 30 },
-    { label: '3M', days: 90 },
-    { label: '6M', days: 180 },
-    { label: 'YTD', days: DEFAULT_YTD_DAYS },
-    { label: '1A', days: 365 },
-    { label: 'Max', days: 3650 },
-  ];
-
-  const data = history.map((item) => ({
-    date: new Date(item.date).toLocaleDateString('fr-FR', { 
-      day: '2-digit', 
-      month: 'short',
-      year: '2-digit'
-    }),
-    fullDate: new Date(item.date).toLocaleDateString('fr-FR', {
-      day: '2-digit',
-      month: 'long',
-      year: 'numeric'
-    }),
-    totalValue: item.totalValue,
-    stocksValue: item.stocksValue,
-    savingsValue: item.savingsValue,
-  }));
-
-  // Calculer la performance sur la période
-  const firstValue = data.length > 0 ? data[0].totalValue : 0;
-  const lastValue = data.length > 0 ? data[data.length - 1].totalValue : 0;
-  const periodChange = lastValue - firstValue;
-  const periodChangePercent = firstValue > 0 ? (periodChange / firstValue) * 100 : 0;
-
-  if (loading) {
-    return (
-      <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-4 sm:p-6">
-        <div className="flex items-center gap-2 mb-3 sm:mb-4">
-          <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
-          <h3 className="font-semibold text-sm sm:text-base text-zinc-900 dark:text-zinc-100">
-            Évolution du portefeuille
-          </h3>
-        </div>
-        <div className="flex items-center justify-center py-8 sm:py-12">
-          <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600 animate-spin" />
-          <span className="ml-2 text-sm text-zinc-500">Chargement...</span>
-        </div>
-      </div>
-    );
-  }
-
-  if (data.length === 0) {
-    return (
-      <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-4 sm:p-6">
-        <div className="flex items-center gap-2 mb-3 sm:mb-4">
-          <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-zinc-400" />
-          <h3 className="font-semibold text-sm sm:text-base text-zinc-900 dark:text-zinc-100">
-            Évolution du portefeuille
-          </h3>
-        </div>
-        <div className="text-center py-8 sm:py-12">
-          <TrendingUp className="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-zinc-400" />
-          <p className="mt-3 sm:mt-4 text-sm text-zinc-500 dark:text-zinc-400">
-            Ajoutez des transactions pour voir l&apos;évolution
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  const portfolioYAxis = buildNiceYAxisScale(
-    data.flatMap(d => [d.totalValue, d.stocksValue])
-  );
-
-  return (
-    <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-4 sm:p-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-0 mb-3 sm:mb-4">
-        <div className="flex items-center gap-2">
-          <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
-          <h3 className="font-semibold text-sm sm:text-base text-zinc-900 dark:text-zinc-100">
-            Évolution du portefeuille
-          </h3>
-        </div>
-        
-        {/* Sélecteur de période */}
-        {onPeriodChange && (
-          <div className="flex gap-1">
-            {periods.map((period) => (
-              <button
-                key={period.days}
-                onClick={() => onPeriodChange(period.days)}
-                className={`px-2 py-1 text-[10px] sm:text-xs rounded transition-colors ${
-                  selectedPeriod === period.days
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'
-                }`}
-              >
-                {period.label}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Variation de valeur de la période (⚠️ inclut les apports/retraits) */}
-      <div className="flex flex-wrap gap-2 sm:gap-4 mb-3 sm:mb-4 text-xs sm:text-sm">
-        <div>
-          <span className="text-zinc-500 dark:text-zinc-400">Début : </span>
-          <span className="font-medium text-zinc-900 dark:text-zinc-100">
-            {formatCurrency(firstValue)}
-          </span>
-        </div>
-        <div>
-          <span className="text-zinc-500 dark:text-zinc-400">Fin : </span>
-          <span className="font-medium text-zinc-900 dark:text-zinc-100">
-            {formatCurrency(lastValue)}
-          </span>
-        </div>
-        <div>
-          <span className="text-zinc-500 dark:text-zinc-400 hidden sm:inline">Δ Valeur : </span>
-          <span className={`font-medium ${periodChange >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-            {periodChange >= 0 ? '+' : ''}{formatCurrency(periodChange)} ({formatPercent(periodChangePercent)})
-          </span>
-          <span className="text-zinc-400 text-[10px] ml-1" title="Cette variation inclut les apports et retraits, ce n'est pas un rendement">ⓘ</span>
-        </div>
-      </div>
-
-      <div className="h-[220px] sm:h-[300px]">
-        <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={data}>
-            <defs>
-              <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="var(--chart-primary)" stopOpacity={0.3}/>
-                <stop offset="95%" stopColor="var(--chart-primary)" stopOpacity={0}/>
-              </linearGradient>
-              <linearGradient id="colorStocks" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="var(--gain)" stopOpacity={0.3}/>
-                <stop offset="95%" stopColor="var(--gain)" stopOpacity={0}/>
-              </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--rule)" />
-            <XAxis 
-              dataKey="date" 
-              tick={{ fontSize: 10 }}
-              stroke="var(--ink-soft)"
-              interval="preserveStartEnd"
-            />
-            <YAxis 
-              domain={portfolioYAxis.domain}
-              ticks={portfolioYAxis.ticks}
-              tickFormatter={(value) => value >= 1000 ? `${formatNumber(value / 1000, value % 1000 === 0 ? 0 : 1)}k€` : `${value.toFixed(0)}€`}
-              tick={{ fontSize: 10 }}
-              stroke="var(--ink-soft)"
-              width={45}
-            />
-            <Tooltip 
-              formatter={(value, name) => {
-                const label = name === 'Total' ? 'Total' :
-                             name === 'Positions' ? 'Positions' : 'Épargne';
-                return [formatCurrency(Number(value) || 0), label];
-              }}
-              labelFormatter={(_, payload) => {
-                if (payload && payload.length > 0) {
-                  return payload[0].payload.fullDate;
-                }
-                return '';
-              }}
-              contentStyle={{
-                backgroundColor: 'var(--paper-2)',
-                border: '1px solid var(--rule)',
-                borderRadius: '8px',
-                color: 'var(--ink)',
-              }}
-              labelStyle={{
-                color: 'var(--ink)',
-                fontWeight: 600,
-                marginBottom: '4px',
-              }}
-            />
-            <Legend wrapperStyle={CHART_LEGEND_WRAPPER_STYLE} />
-            <Area 
-              type="monotone" 
-              dataKey="totalValue" 
-              stroke="var(--chart-primary)"
-              strokeWidth={2}
-              fill="url(#colorTotal)"
-              name="Total"
-              legendType="line"
-            />
-            <Area 
-              type="monotone" 
-              dataKey="stocksValue" 
-              stroke="var(--gain)"
-              strokeWidth={1}
-              fill="url(#colorStocks)"
-              name="Positions"
-              legendType="line"
-            />
-          </AreaChart>
-        </ResponsiveContainer>
-      </div>
-    </div>
-  );
-}
 // ===== POSITION PERFORMANCE CHART =====
 // Graphique complet avec infos détaillées sur chaque position
 

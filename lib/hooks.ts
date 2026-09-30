@@ -405,6 +405,7 @@ export function usePortfolioHistory(
             totalValue: Number(s.total_value),
             stocksValue: Number(s.stocks_value),
             savingsValue: Number(s.savings_value),
+            accountValues: (s.breakdown as { accountValues?: Record<string, number> } | null)?.accountValues,
             positions: (s.breakdown as { positions?: PortfolioHistoryPoint['positions'] } | null)?.positions ?? [],
           }));
           // On affiche tout de suite les points cachés pour que l'UI soit réactive.

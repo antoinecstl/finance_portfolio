@@ -8,6 +8,8 @@ import {
   defaultSupportsPositions,
   formatCurrency,
   formatCurrencyBreakdown,
+  getAccountColorMap,
+  OTHER_ACCOUNTS_COLOR,
 } from './utils';
 
 describe('isCryptoSymbol', () => {
@@ -106,5 +108,21 @@ describe('formatCurrency', () => {
 describe('formatCurrencyBreakdown', () => {
   it('keeps non-account currency cash buckets visible', () => {
     expect(formatCurrencyBreakdown({ EUR: 0, USDC: 4000 })).toContain('USDC');
+  });
+});
+
+describe('getAccountColorMap', () => {
+  it('assigns a fixed color per account in order', () => {
+    const colors = getAccountColorMap([{ id: 'a' }, { id: 'b' }]);
+    expect(colors.get('a')).toBe('var(--account-1)');
+    expect(colors.get('b')).toBe('var(--account-2)');
+  });
+
+  it('folds accounts beyond the palette into the neutral color', () => {
+    const accounts = Array.from({ length: 9 }, (_, i) => ({ id: `acc-${i}` }));
+    const colors = getAccountColorMap(accounts);
+    expect(colors.get('acc-6')).toBe('var(--account-7)');
+    expect(colors.get('acc-7')).toBe(OTHER_ACCOUNTS_COLOR);
+    expect(colors.get('acc-8')).toBe(OTHER_ACCOUNTS_COLOR);
   });
 });

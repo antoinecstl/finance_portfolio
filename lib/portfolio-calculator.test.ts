@@ -339,6 +339,25 @@ describe('calculatePortfolioHistory', () => {
     expect(history[1].totalValue).toBe(10100);
   });
 
+  it('breaks the total down per account', () => {
+    const txs = [
+      tx({ account_id: 'cto', type: 'DEPOSIT', amount: 2000, date: '2025-01-01' }),
+      tx({
+        account_id: 'cto', type: 'BUY', amount: 1000,
+        stock_symbol: 'AAPL', quantity: 10, price_per_unit: 100, date: '2025-01-01',
+      }),
+      tx({ account_id: 'livret', type: 'DEPOSIT', amount: 500, date: '2025-01-01' }),
+    ];
+    const accounts = [acc({ id: 'cto', type: 'CTO' }), acc({ id: 'livret', type: 'LIVRET_A' })];
+    const historical: Record<string, HistoricalQuote[]> = {
+      AAPL: [{ date: '2025-01-01', open: 120, high: 120, low: 120, close: 120, volume: 0, adjustedClose: 120 }],
+    };
+    const [point] = calculatePortfolioHistory(txs, accounts, historical, '2025-01-01', '2025-01-01', 'daily');
+    // CTO : 1000 de cash + 10 x 120 ; Livret : 500.
+    expect(point.accountValues).toEqual({ cto: 2200, livret: 500 });
+    expect(point.totalValue).toBe(2700);
+  });
+
   it('keeps PRU currency separate from historical quote currency', () => {
     const txs = [
       tx({ account_id: 'cto', type: 'DEPOSIT', amount: 1000, currency: 'EUR', date: '2025-01-01' }),
