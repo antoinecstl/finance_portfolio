@@ -80,11 +80,7 @@ export function calculateAccountValuesAtDate(
  */
 export function calculateAccountYearToDateStats({
   accountId,
-  transactions,
-  startValue,
-  currentValue,
-  today,
-  fxRates = {},
+  ...rest
 }: {
   accountId: string;
   transactions: Transaction[];
@@ -93,9 +89,33 @@ export function calculateAccountYearToDateStats({
   today: string;
   fxRates?: FxRateMap;
 }): AccountYearToDateStats {
+  return calculatePortfolioYearToDateStats({ accountIds: [accountId], ...rest });
+}
+
+/**
+ * Même calcul que `calculateAccountYearToDateStats`, sur un ensemble de
+ * comptes consolidés : `startValue` et `currentValue` sont les sommes des
+ * valeurs de ces comptes, et seules leurs transactions sont prises en compte.
+ */
+export function calculatePortfolioYearToDateStats({
+  accountIds,
+  transactions,
+  startValue,
+  currentValue,
+  today,
+  fxRates = {},
+}: {
+  accountIds: string[];
+  transactions: Transaction[];
+  startValue: number;
+  currentValue: number;
+  today: string;
+  fxRates?: FxRateMap;
+}): AccountYearToDateStats {
   const year = Number(today.slice(0, 4));
   const yearStart = `${year}-01-01`;
-  const accountTransactions = transactions.filter((t) => t.account_id === accountId);
+  const includedAccountIds = new Set(accountIds);
+  const accountTransactions = transactions.filter((t) => includedAccountIds.has(t.account_id));
 
   // Deux points suffisent au Modified Dietz : valeur au 31/12 et valeur du jour.
   const history: PortfolioHistoryPoint[] = [
