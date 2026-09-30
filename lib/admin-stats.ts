@@ -2,6 +2,7 @@ import 'server-only';
 import { createAdminClient } from '@/lib/supabase/server';
 import { PLANS } from '@/lib/plans';
 import type { AdminUserRow } from '@/lib/admin-types';
+import { estimateMonthlyRevenue } from '@/lib/admin-insights';
 
 export type AdminStats = {
   generatedAt: string;
@@ -16,6 +17,7 @@ export type AdminStats = {
   plans: {
     free: number;
     proActive: number;
+    paidPro: number;
     founders: number;
     proByStatus: Record<string, number>;
     mrrCents: number;
@@ -23,6 +25,8 @@ export type AdminStats = {
   content: {
     accounts: number;
     transactions: number;
+    usersWithAccounts: number;
+    usersWithTransactions: number;
     accountsByType: { type: string; count: number }[];
   };
   signupsByDay: { date: string; count: number }[];
@@ -106,6 +110,7 @@ export async function getAdminStats(): Promise<AdminStats> {
   let active30d = 0;
   let free = 0;
   let proActive = 0;
+  let paidPro = 0;
   const proByStatus: Record<string, number> = {};
 
   const dayCounts = new Map<string, number>();
@@ -133,6 +138,7 @@ export async function getAdminStats(): Promise<AdminStats> {
     const sub = subByUser.get(u.id);
     const isFounder = founderIds.has(u.id);
     const proSub = sub?.plan_id === 'pro' && ACTIVE_PRO_STATUSES.has(sub.status);
+    if (proSub) paidPro++;
     const effectivePro = isFounder || proSub;
     if (effectivePro) {
       proActive++;
@@ -172,15 +178,18 @@ export async function getAdminStats(): Promise<AdminStats> {
     plans: {
       free,
       proActive,
+      paidPro,
       founders: founderIds.size,
       proByStatus,
-      // Estimation : abonnés Pro actifs × prix mensuel (fondateurs et annuel non
-      // déduits — MRR indicatif).
-      mrrCents: proActive * PLANS.pro.priceCents,
+      // Estimation fondée uniquement sur les abonnements payants. Les accès Pro
+      // offerts aux fondateurs ne doivent pas gonfler le revenu affiché.
+      mrrCents: estimateMonthlyRevenue(paidPro, PLANS.pro.priceCents),
     },
     content: {
       accounts: accountsRes.data?.length ?? 0,
       transactions: txRes.data?.length ?? 0,
+      usersWithAccounts: accountsByUser.size,
+      usersWithTransactions: txByUser.size,
       accountsByType: Array.from(accountsByTypeMap.entries())
         .map(([type, count]) => ({ type, count }))
         .sort((a, b) => b.count - a.count),

@@ -112,23 +112,23 @@ export function AdminUsersTable({ users }: { users: AdminUserRow[] }) {
   }
 
   return (
-    <div className="ink-card rounded-2xl p-5">
+    <div className="rounded-xl border border-[color:var(--rule)] bg-[color:var(--paper)] p-4 sm:p-5">
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
         <h3 className="text-sm font-semibold text-[color:var(--ink)]">
-          Utilisateurs
+          Répertoire
           <span className="ml-2 text-[color:var(--ink-soft)] font-normal tabular-nums">
             {filtered.length}/{users.length}
           </span>
         </h3>
 
-        <div className="relative">
+        <div className="relative w-full sm:w-auto">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[color:var(--ink-soft)]" />
           <input
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Rechercher un email…"
-            className="w-56 max-w-full rounded-lg border border-[color:var(--rule)] bg-[color:var(--paper)] pl-8 pr-3 py-1.5 text-sm text-[color:var(--ink)] placeholder:text-[color:var(--ink-soft)]"
+            className="w-full rounded-lg border border-[color:var(--rule)] bg-[color:var(--paper)] pl-8 pr-3 py-2 text-sm text-[color:var(--ink)] placeholder:text-[color:var(--ink-soft)] sm:w-64"
           />
         </div>
       </div>
@@ -233,7 +233,7 @@ export function AdminUsersTable({ users }: { users: AdminUserRow[] }) {
                               ) : (
                                 <Check className="h-3.5 w-3.5" />
                               )}
-                              {founder ? 'Retirer fondateur' : 'Comper en Pro (fondateur)'}
+                              {founder ? 'Retirer fondateur' : 'Passer en Pro (fondateur)'}
                             </button>
                           </div>
                         </div>
