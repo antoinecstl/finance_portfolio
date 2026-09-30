@@ -38,6 +38,7 @@ import {
   usePortfolioHistory,
   useFullPortfolioHistory,
   useAccountsWithCalculatedValues,
+  useAccountsYearToDateStats,
   usePositionsWithCalculatedValues
 } from '@/lib/hooks';
 import { accountSupportsPositions, formatDateTime } from '@/lib/utils';
@@ -112,6 +113,11 @@ export function Dashboard() {
 
   // Comptes et résumé calculés avec les mêmes taux FX que l'historique dashboard.
   const enrichedAccounts = useAccountsWithCalculatedValues(accounts, transactions, enrichedPositions, quotes, dashboardFxRates);
+  const { stats: accountsYearToDateStats } = useAccountsYearToDateStats(
+    enrichedAccounts,
+    transactions,
+    { enabled: activeTab === 'dashboard' || activeTab === 'accounts' }
+  );
   const portfolioSummary = usePortfolioSummary(enrichedPositions, quotes, dashboardFxRates);
   // Calculer le total épargne (comptes non-actions)
   const savingsTotal = useMemo(() => {
@@ -387,6 +393,7 @@ export function Dashboard() {
                   <ErrorBoundary label="Comptes">
                     <AccountList
                       accounts={enrichedAccounts}
+                      yearToDateStats={accountsYearToDateStats}
                       positionActivityAccountIds={positionActivityAccountIds}
                       onChanged={handleMutationSuccess}
                     />
@@ -440,6 +447,7 @@ export function Dashboard() {
             </div>
             <AccountList
               accounts={enrichedAccounts}
+              yearToDateStats={accountsYearToDateStats}
               positionActivityAccountIds={positionActivityAccountIds}
               onChanged={handleMutationSuccess}
             />
