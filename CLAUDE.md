@@ -81,6 +81,15 @@ Never commit secrets. Important environment variables include:
 - The signup notification system is implemented as a Supabase Edge Function under `supabase/functions/new-signup-notification`.
 - Prefer selecting the Edge Function directly in the Supabase Dashboard Auth Hook UI when available.
 
+## Public API and AI Plugins
+
+- Read-only access for AI assistants and scripts, authenticated by personal tokens (`Authorization: Bearer fih_...`).
+- Users create and revoke tokens in `app/(app)/settings/api` (routes `app/api/api-tokens`). Only a SHA-256 hash is stored (`api_tokens` table, migration `20260930_api_tokens.sql`); the clear token is shown once.
+- REST: `app/api/v1/*` (`me`, `portfolio`, `accounts`, `positions`, `transactions`), OpenAPI 3.1 spec at `/api/v1/openapi.json` for ChatGPT GPT Actions.
+- MCP: stateless Streamable HTTP JSON-RPC server at `/api/mcp` (Claude Code, Claude Desktop via `mcp-remote`, Cursor…). OAuth (needed for claude.ai web connectors) is not implemented yet.
+- Logic lives in `lib/public-api`. Requests use the service-role client without a cookie session: every query MUST filter by the token owner's `userId`.
+- Rate limit: 60 requests/minute per token (in-memory, per instance).
+
 ## SEO and Analytics
 
 - Google Search site name is intended to be `fi-hub.subleet.com`.
