@@ -1,7 +1,7 @@
 import { ImportWizard } from '@/components/ImportWizard';
 import { createClient } from '@/lib/supabase/server';
 import { getUserSubscription } from '@/lib/subscription';
-import { ArrowLeft, Lock, Sparkles } from 'lucide-react';
+import { ArrowLeft, Lock } from 'lucide-react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
@@ -39,16 +39,15 @@ export default async function ImportPage() {
               <Lock className="h-6 w-6" />
             </div>
             <h1 className="display text-3xl sm:text-4xl leading-none text-[color:var(--ink)]">
-              Import reserve aux utilisateurs Pro
+              Import réservé à l’offre Pro
             </h1>
             <p className="mt-3 text-sm text-[color:var(--ink-soft)]">
-              Passez Pro pour importer des historiques CSV, Excel, PDF ou texte, puis valider les transactions avant insertion.
+              Passez Pro pour importer un relevé CSV, Excel, PDF, une capture d’écran ou du texte collé, puis vérifier chaque transaction avant l’enregistrement.
             </p>
             <Link
               href="/settings/billing"
               className="btn-ink mt-6 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm"
             >
-              <Sparkles className="h-4 w-4" />
               Passer Pro
             </Link>
           </div>

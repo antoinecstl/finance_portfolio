@@ -1,9 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { Sparkles, Lock } from 'lucide-react';
+import { Lock } from 'lucide-react';
 import { useSubscription } from '@/lib/subscription-client';
-import { type Feature } from '@/lib/plans';
+import { PLANS, formatPrice, type Feature } from '@/lib/plans';
 import { type ReactNode } from 'react';
 
 type ProBlurProps = {
@@ -14,6 +14,13 @@ type ProBlurProps = {
   className?: string;
   fallback?: ReactNode;
 };
+
+// What each locked feature unlocks, stated plainly (free features never reach here).
+const FEATURE_DESCRIPTIONS: Partial<Record<Feature, string>> = {
+  dividends_module: 'Module dividendes : rendement sur coût et historique par année.',
+  import_transactions: 'Import de relevés CSV, Excel, PDF ou captures.',
+};
+const DEFAULT_DESCRIPTION = 'Comptes illimités, module dividendes et import de relevés.';
 
 // Fake placeholder rendered in place of real content for Free users.
 // Real children are never sent to the client so DevTools can't bypass the blur.
@@ -69,19 +76,19 @@ export function ProBlur({
       <div className="absolute inset-0 flex items-center justify-center p-4">
         <div className="ink-card pop-shadow backdrop-blur rounded-xl p-4 sm:p-6 max-w-xs text-center">
           <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-[color:var(--accent-soft)] text-[color:var(--accent)] mb-2">
-            <Sparkles className="h-5 w-5" />
+            <Lock className="h-5 w-5" />
           </div>
           <p className="text-sm font-semibold text-[color:var(--ink)] mb-1">
             {label}
           </p>
           <p className="text-xs text-[color:var(--ink-soft)] mb-3">
-            Analyses avancées, historique complet, export CSV…
+            {FEATURE_DESCRIPTIONS[feature] ?? DEFAULT_DESCRIPTION}
           </p>
           <Link
             href="/settings/billing"
             className="btn-ink inline-flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg transition"
           >
-            Passer Pro — 4,99 € / mois
+            Passer Pro — {formatPrice(PLANS.pro)}
           </Link>
         </div>
       </div>

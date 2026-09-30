@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { Transaction, StockPosition, StockQuote } from '@/lib/types';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatCurrency, formatDate, formatNumber } from '@/lib/utils';
 import { calculatePositionsAtDate, findCalculatedPosition } from '@/lib/portfolio-calculator';
 import { Coins, ChevronDown, ChevronUp, Lock } from 'lucide-react';
 import { useSubscription } from '@/lib/subscription-client';
@@ -315,10 +315,10 @@ export function DividendsTable({ transactions, positions }: DividendsTableProps)
               <th className="text-right py-2 px-2 text-sm font-medium text-zinc-500 dark:text-zinc-400">Total reçu</th>
               <th className="text-right py-2 px-2 text-sm font-medium text-zinc-500 dark:text-zinc-400">Versements</th>
               <th className="text-right py-2 px-2 text-sm font-medium text-zinc-500 dark:text-zinc-400 hidden md:table-cell">
-                {isProUser ? 'Moy. /action' : <span className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400"><Lock className="h-3 w-3" />Moy. /action</span>}
+                {isProUser ? 'Moy. /action' : <span className="inline-flex items-center gap-1 text-zinc-700 dark:text-zinc-300"><Lock className="h-3 w-3" />Moy. /action</span>}
               </th>
               <th className="text-right py-2 px-2 text-sm font-medium text-zinc-500 dark:text-zinc-400 hidden lg:table-cell">
-                {isProUser ? 'Moy. Rdt/Coût' : <span className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400"><Lock className="h-3 w-3" />Moy. Rdt/Coût</span>}
+                {isProUser ? 'Moy. Rdt/Coût' : <span className="inline-flex items-center gap-1 text-zinc-700 dark:text-zinc-300"><Lock className="h-3 w-3" />Moy. Rdt/Coût</span>}
               </th>
               <th className="text-right py-2 px-2 text-sm font-medium text-zinc-500 dark:text-zinc-400 hidden xl:table-cell">Dernier</th>
             </tr>
@@ -353,8 +353,8 @@ export function DividendsTable({ transactions, positions }: DividendsTableProps)
                 </td>
                 <td className="py-3 px-2 text-right hidden lg:table-cell">
                   {dividend.avgYieldOnCost !== undefined ? (
-                    <span className={`text-sm font-medium text-blue-600 dark:text-blue-400 ${isProUser ? '' : 'blur-sm select-none'}`}>
-                      {dividend.avgYieldOnCost.toFixed(2)}%
+                    <span className={`text-sm font-medium text-zinc-900 dark:text-zinc-100 ${isProUser ? '' : 'blur-sm select-none'}`}>
+                      {formatNumber(dividend.avgYieldOnCost, 2)}%
                     </span>
                   ) : (
                     <span className="text-zinc-400">-</span>
@@ -392,15 +392,15 @@ export function DividendsTable({ transactions, positions }: DividendsTableProps)
             </div>
             <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
               <div>
-                <span className="text-zinc-500">Moy. /action: </span>
+                <span className="text-zinc-500">Moy. /action : </span>
                 <span className={`font-medium text-violet-600 dark:text-violet-400 ${isProUser ? '' : 'blur-sm select-none'}`}>
                   {dividend.avgDividendPerShare !== undefined ? formatCurrency(dividend.avgDividendPerShare, dividend.currency) : '-'}
                 </span>
               </div>
               <div>
-                <span className="text-zinc-500">Rdt/Coût: </span>
-                <span className={`font-medium text-blue-600 dark:text-blue-400 ${isProUser ? '' : 'blur-sm select-none'}`}>
-                  {dividend.avgYieldOnCost !== undefined ? `${dividend.avgYieldOnCost.toFixed(2)}%` : '-'}
+                <span className="text-zinc-500">Rdt/Coût : </span>
+                <span className={`font-medium text-zinc-900 dark:text-zinc-100 ${isProUser ? '' : 'blur-sm select-none'}`}>
+                  {dividend.avgYieldOnCost !== undefined ? `${formatNumber(dividend.avgYieldOnCost, 2)}%` : '-'}
                 </span>
               </div>
             </div>
@@ -474,8 +474,8 @@ export function DividendsTable({ transactions, positions }: DividendsTableProps)
                         <td className="py-2 px-2 text-right text-violet-600 dark:text-violet-400 font-medium">
                           {dividendPerShare > 0 ? formatCurrency(dividendPerShare, txCurrency(t)) : '-'}
                         </td>
-                        <td className="py-2 px-2 text-right text-blue-600 dark:text-blue-400 font-medium hidden md:table-cell">
-                          {yieldOnCost > 0 ? `${yieldOnCost.toFixed(2)}%` : '-'}
+                        <td className="py-2 px-2 text-right text-zinc-900 dark:text-zinc-100 font-medium hidden md:table-cell">
+                          {yieldOnCost > 0 ? `${formatNumber(yieldOnCost, 2)}%` : '-'}
                         </td>
                       </tr>
                     );
@@ -526,8 +526,8 @@ export function DividendsTable({ transactions, positions }: DividendsTableProps)
                           <span className="text-violet-600 dark:text-violet-400">{dividendPerShare > 0 ? formatCurrency(dividendPerShare, txCurrency(t)) : '-'}</span>
                         </div>
                         <div className="col-span-2">
-                          <span className="text-zinc-500">Rdt/Coût: </span>
-                          <span className="text-blue-600 dark:text-blue-400">{yieldOnCost > 0 ? `${yieldOnCost.toFixed(2)}%` : '-'}</span>
+                          <span className="text-zinc-500">Rdt/Coût : </span>
+                          <span className="text-zinc-900 dark:text-zinc-100">{yieldOnCost > 0 ? `${formatNumber(yieldOnCost, 2)}%` : '-'}</span>
                         </div>
                       </div>
                     </div>

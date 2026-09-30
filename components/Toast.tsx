@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
-import { X, Sparkles, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { X, Lock, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 type ToastKind = 'info' | 'success' | 'error' | 'upsell';
 
@@ -67,7 +67,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 function ToastCard({ toast, onClose }: { toast: ToastItem; onClose: () => void }) {
   const Icon =
     toast.kind === 'upsell'
-      ? Sparkles
+      ? Lock
       : toast.kind === 'success'
         ? CheckCircle2
         : toast.kind === 'error'
@@ -76,7 +76,7 @@ function ToastCard({ toast, onClose }: { toast: ToastItem; onClose: () => void }
 
   const tone =
     toast.kind === 'upsell'
-      ? 'border-blue-300 bg-blue-50 dark:border-blue-700 dark:bg-blue-900/30 text-blue-900 dark:text-blue-100'
+      ? 'border-zinc-300 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100'
       : toast.kind === 'success'
         ? 'border-emerald-300 bg-emerald-50 dark:border-emerald-700 dark:bg-emerald-900/30 text-emerald-900 dark:text-emerald-100'
         : toast.kind === 'error'

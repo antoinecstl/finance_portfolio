@@ -348,7 +348,7 @@ function EditAccountDialog({
             <button
               type="submit"
               disabled={!canSubmit}
-              className="flex-1 px-3 sm:px-4 py-2 text-sm sm:text-base bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+              className="flex-1 px-3 sm:px-4 py-2 text-sm sm:text-base btn-ink rounded-lg"
             >
               {busy ? 'Enregistrement...' : 'Enregistrer'}
             </button>

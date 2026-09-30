@@ -2,7 +2,7 @@
 
 import { useMemo, useState, type ReactNode } from 'react';
 import { Area, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { Loader2, Sparkles, TrendingUp } from 'lucide-react';
+import { Loader2, TrendingUp } from 'lucide-react';
 import type { PortfolioHistoryPoint } from '@/lib/portfolio-calculator';
 import type { Transaction } from '@/lib/types';
 import type { FxRateMap } from '@/lib/fx';
@@ -67,7 +67,7 @@ export function PerformanceProjectionChart({
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <div className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-violet-600" />
+            <TrendingUp className="h-5 w-5 text-violet-600" />
             <h3 className="font-semibold text-zinc-900 dark:text-zinc-100">Projection du patrimoine</h3>
           </div>
           <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Estimation fondée sur la performance historique du compte, hors futurs apports.</p>

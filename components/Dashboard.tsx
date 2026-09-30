@@ -251,7 +251,7 @@ export function Dashboard() {
                 className="hidden sm:block mono text-[10px] tracking-[0.12em] uppercase text-[color:var(--ink-soft)] truncate"
                 suppressHydrationWarning
               >
-                Mis à jour: {formatDateTime(lastUpdate)}
+                Mis à jour : {formatDateTime(lastUpdate)}
               </p>
             </div>
 
@@ -295,21 +295,21 @@ export function Dashboard() {
             </div>
           </div>
 
-          {/* Tabs - scrollable on mobile */}
-          <nav className="flex gap-1 -mb-px overflow-x-auto scrollbar-hide border-t border-[color:var(--rule)]/70">
+          {/* Tabs - five equal columns (icon above label) on mobile, inline row from sm */}
+          <nav className="-mx-5 grid grid-cols-5 -mb-px border-t border-[color:var(--rule)]/70 sm:mx-0 sm:flex sm:gap-1">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2.5 sm:py-3 mono text-[11px] tracking-[0.12em] uppercase border-b-2 transition-colors whitespace-nowrap ${
+                aria-current={activeTab === tab.id ? 'page' : undefined}
+                className={`flex min-h-[52px] min-w-0 flex-col items-center justify-center gap-1 px-0.5 py-2 text-[11px] font-medium leading-tight border-b-2 transition-colors whitespace-nowrap sm:min-h-0 sm:flex-row sm:gap-2 sm:px-4 sm:py-3 sm:font-mono sm:font-normal sm:tracking-[0.12em] sm:uppercase ${
                   activeTab === tab.id
                     ? 'border-[color:var(--accent)] text-[color:var(--ink)]'
                     : 'border-transparent text-[color:var(--ink-soft)] hover:text-[color:var(--ink)]'
                 }`}
               >
-                <tab.icon className="h-4 w-4" />
-                <span className="hidden sm:inline">{tab.label}</span>
-                <span className="sm:hidden">{tab.label.slice(0, 4)}</span>
+                <tab.icon className="h-5 w-5 sm:h-4 sm:w-4" aria-hidden="true" />
+                <span>{tab.label}</span>
               </button>
             ))}
           </nav>
@@ -372,11 +372,11 @@ export function Dashboard() {
               <div className="min-w-0 w-full max-w-full">
                 <div className="flex items-center justify-between gap-2 mb-3 sm:mb-4 min-w-0">
                   <h2 className="text-base sm:text-lg font-semibold text-zinc-900 dark:text-zinc-100 truncate">
-                    Mes Comptes
+                    Mes comptes
                   </h2>
                   <button
                     onClick={() => setShowAddAccount(true)}
-                    className="shrink-0 inline-flex items-center gap-1 text-xs sm:text-sm text-blue-600 hover:text-blue-700"
+                    className="shrink-0 inline-flex items-center gap-1 text-xs sm:text-sm text-[color:var(--ink)] hover:underline underline-offset-4"
                     title="Ajouter un compte"
                   >
                     <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
@@ -397,11 +397,11 @@ export function Dashboard() {
               <div className="min-w-0 w-full max-w-full">
                 <div className="flex items-center justify-between gap-2 mb-3 sm:mb-4 min-w-0">
                   <h2 className="text-base sm:text-lg font-semibold text-zinc-900 dark:text-zinc-100 truncate">
-                    Dernières Transactions
+                    Dernières transactions
                   </h2>
                   <button
                     onClick={() => openAddTransaction()}
-                    className="shrink-0 inline-flex items-center gap-1 text-xs sm:text-sm text-blue-600 hover:text-blue-700"
+                    className="shrink-0 inline-flex items-center gap-1 text-xs sm:text-sm text-[color:var(--ink)] hover:underline underline-offset-4"
                     title="Ajouter une transaction"
                   >
                     <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
@@ -428,11 +428,11 @@ export function Dashboard() {
           <div>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 sm:mb-6">
               <h2 className="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-zinc-100">
-                Mes Comptes
+                Mes comptes
               </h2>
               <button
                 onClick={() => setShowAddAccount(true)}
-                className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm sm:text-base"
+                className="flex items-center justify-center gap-2 px-4 py-2 btn-ink rounded-lg text-sm sm:text-base"
               >
                 <Plus className="h-4 w-4" />
                 <span>Ajouter un compte</span>
@@ -451,7 +451,7 @@ export function Dashboard() {
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
               <div>
                 <h2 className="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-zinc-100">
-                  Mes Positions
+                  Mes positions
                 </h2>
                 <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 mt-1">
                   Ajoutez une position via une transaction d&apos;achat
@@ -462,7 +462,7 @@ export function Dashboard() {
                   accountId: selectedPositionsAccountFilter ?? undefined,
                   type: 'BUY',
                 })}
-                className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm sm:text-base"
+                className="inline-flex items-center justify-center gap-2 px-4 py-2 btn-ink rounded-lg text-sm sm:text-base"
               >
                 <Plus className="h-4 w-4" />
                 <span>Ajouter une position</span>
@@ -479,7 +479,7 @@ export function Dashboard() {
                     onClick={() => setPositionsAccountFilter(null)}
                     className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium whitespace-nowrap transition-colors ${
                       selectedPositionsAccountFilter === null
-                        ? 'bg-blue-600 text-white'
+                        ? 'bg-[color:var(--ink)] text-[color:var(--paper)]'
                         : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700'
                     }`}
                   >
@@ -491,7 +491,7 @@ export function Dashboard() {
                       onClick={() => setPositionsAccountFilter(account.id)}
                       className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium whitespace-nowrap transition-colors ${
                         selectedPositionsAccountFilter === account.id
-                          ? 'bg-blue-600 text-white'
+                          ? 'bg-[color:var(--ink)] text-[color:var(--paper)]'
                           : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700'
                       }`}
                     >
@@ -520,7 +520,7 @@ export function Dashboard() {
               />
             </ErrorBoundary>
 
-            <ErrorBoundary label="Valeur vs Investissement">
+            <ErrorBoundary label="Valeur vs investissement">
               <PortfolioValueChart
                 history={positionsFullPortfolioHistory}
                 transactions={positionsScoped.transactions}
@@ -596,8 +596,8 @@ export function Dashboard() {
                 ) : (
                   <Link
                     href="/settings/billing"
-                    className="flex items-center justify-center gap-2 px-4 py-2 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors text-sm sm:text-base"
-                    title="Import reserve aux utilisateurs Pro"
+                    className="flex items-center justify-center gap-2 px-4 py-2 btn-outline rounded-lg text-sm sm:text-base"
+                    title="Import réservé à l’offre Pro"
                   >
                     <Lock className="h-4 w-4" />
                     <span>Importer vos données</span>
@@ -605,7 +605,7 @@ export function Dashboard() {
                 )}
                 <button
                   onClick={() => openAddTransaction()}
-                  className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm sm:text-base"
+                  className="flex items-center justify-center gap-2 px-4 py-2 btn-ink rounded-lg text-sm sm:text-base"
                 >
                   <Plus className="h-4 w-4" />
                   <span>Ajouter une transaction</span>
@@ -626,7 +626,7 @@ export function Dashboard() {
           <div>
             <div className="mb-4 sm:mb-6">
               <h2 className="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-zinc-100">
-                Mes Dividendes
+                Mes dividendes
               </h2>
               <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 mt-1">
                 Ajoutez vos dividendes via l&apos;onglet Transactions
