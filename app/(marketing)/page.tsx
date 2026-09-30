@@ -6,7 +6,7 @@ import { FAQ } from '@/components/marketing/FAQ';
 import { FAQ_ITEMS } from '@/components/marketing/faq-data';
 import { FIGURES, ProductFigure } from '@/components/marketing/ProductFigure';
 import { ImportSteps } from '@/components/marketing/ImportSteps';
-import { BENCHMARK_INDEX_COUNT, freePlanSummary } from '@/components/marketing/product-facts';
+import { BENCHMARK_REFERENCE_COUNT, freePlanSummary } from '@/components/marketing/product-facts';
 import { MONTHLY_TRIAL_LABEL, PLANS } from '@/lib/plans';
 
 const SITE_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://fi-hub.subleet.com';
@@ -187,7 +187,7 @@ export default function LandingPage() {
           title="Votre performance hors apports, face à un indice."
           body="Un versement fait monter la valeur d’un portefeuille sans rien dire de vos choix. Fi-Hub neutralise les apports et les retraits (méthode de Dietz modifiée), puis compare le résultat à l’indice de votre choix sur la même période."
           points={[
-            `${BENCHMARK_INDEX_COUNT} indices, dont le CAC 40, l’Euro Stoxx 50, le S&P 500 et le Nasdaq 100.`,
+            `${BENCHMARK_REFERENCE_COUNT} références, dont le S&P 500, le MSCI World, Bitcoin et Ethereum, ou tout actif recherché.`,
             'Périodes d’une semaine à un an, depuis le 1er janvier ou depuis le début.',
             'Quand le portefeuille fait moins bien que l’indice, l’écart l’indique, comme dans cet exemple.',
           ]}

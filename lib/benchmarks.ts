@@ -1,8 +1,11 @@
-// Indices offered by the benchmark comparison. Shared by the app chart and the
+// References offered by the benchmark comparison. Shared by the app chart and the
 // public pages so the marketing copy never drifts from what the product offers.
 export const BENCHMARKS = {
-  '^FCHI': { label: 'CAC 40', color: 'var(--chart-1)' },
   '^GSPC': { label: 'S&P 500', color: 'var(--chart-3)' },
+  'URTH': { label: 'MSCI World (ETF URTH)', color: 'var(--chart-4)' },
+  'BTC-USD': { label: 'Bitcoin', color: 'var(--chart-5)' },
+  'ETH-USD': { label: 'Ethereum', color: 'var(--chart-6)' },
+  '^FCHI': { label: 'CAC 40', color: 'var(--chart-1)' },
   '^NDX': { label: 'Nasdaq 100', color: 'var(--chart-6)' },
   '^IXIC': { label: 'Nasdaq Composite', color: 'var(--chart-2)' },
   '^DJI': { label: 'Dow Jones', color: 'var(--chart-5)' },
@@ -14,5 +17,11 @@ export const BENCHMARKS = {
 } as const;
 
 export type BenchmarkKey = keyof typeof BENCHMARKS;
+
+export const DEFAULT_BENCHMARK: BenchmarkKey = '^GSPC';
+
+export function isPresetBenchmark(symbol: string): symbol is BenchmarkKey {
+  return Object.prototype.hasOwnProperty.call(BENCHMARKS, symbol);
+}
 
 export const BENCHMARK_LABELS = Object.values(BENCHMARKS).map((b) => b.label);

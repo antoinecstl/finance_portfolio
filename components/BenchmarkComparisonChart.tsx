@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer, Legend } from 'recharts';
-import { TrendingUp } from 'lucide-react';
+import { Search, TrendingUp, X } from 'lucide-react';
 import { calculateModifiedDietzPerformance, type PortfolioHistoryPoint } from '@/lib/portfolio-calculator';
 import type { HistoricalQuote } from '@/lib/stock-api';
 import type { Transaction } from '@/lib/types';
@@ -10,7 +10,8 @@ import type { FxRateMap } from '@/lib/fx';
 import { findClosestQuote } from '@/lib/stock-api';
 import { buildNiceYAxisScale } from '@/lib/chart-axis';
 import { formatNumber } from '@/lib/utils';
-import { BENCHMARKS, type BenchmarkKey } from '@/lib/benchmarks';
+import { BENCHMARKS, DEFAULT_BENCHMARK, isPresetBenchmark, type BenchmarkKey } from '@/lib/benchmarks';
+import { useStockSearch } from '@/lib/hooks';
 
 type PeriodOption = '1S' | '1M' | '3M' | '6M' | '1A' | 'YTD' | 'Max';
 
@@ -99,7 +100,10 @@ export function BenchmarkComparisonChart({
   currentPortfolioValue?: number;
   fxRates?: FxRateMap;
 }) {
-  const [selectedBenchmark, setSelectedBenchmark] = useState<BenchmarkKey>('^FCHI');
+  const [selectedBenchmark, setSelectedBenchmark] = useState<string>(DEFAULT_BENCHMARK);
+  const [selectedBenchmarkLabel, setSelectedBenchmarkLabel] = useState<string>(BENCHMARKS[DEFAULT_BENCHMARK].label);
+  const [assetQuery, setAssetQuery] = useState('');
+  const { results: assetResults, loading: assetSearchLoading, search: searchAssets } = useStockSearch();
   const [selectedPeriod, setSelectedPeriod] = useState<PeriodOption>('YTD');
   const [benchmarkQuotes, setBenchmarkQuotes] = useState<Record<string, HistoricalQuote[]>>({});
   const [benchmarkLoading, setBenchmarkLoading] = useState(false);
@@ -112,6 +116,19 @@ export function BenchmarkComparisonChart({
   // que le DOM soit monté pour que ResponsiveContainer puisse mesurer.
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (assetQuery.trim().length >= 2) searchAssets(assetQuery.trim());
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [assetQuery, searchAssets]);
+
+  const selectBenchmark = (symbol: string, label: string) => {
+    setSelectedBenchmark(symbol);
+    setSelectedBenchmarkLabel(label);
+    setAssetQuery('');
+  };
 
   const performanceHistory = useMemo(() => {
     // Multi-devise : on garde le dernier point historique (déjà FX-converti)
@@ -262,23 +279,60 @@ export function BenchmarkComparisonChart({
         </div>
       </div>
 
-      {/* Sélecteur de benchmark */}
-      <div className="mb-4 flex items-center gap-2">
+      {/* Sélecteur de benchmark et recherche dans toute la source de cours. */}
+      <div className="mb-4 flex flex-col sm:flex-row sm:items-start gap-2">
         <label htmlFor="benchmark-select" className="text-xs text-zinc-500 dark:text-zinc-400">
-          Indice :
+          Référence :
         </label>
         <select
           id="benchmark-select"
           value={selectedBenchmark}
-          onChange={(e) => setSelectedBenchmark(e.target.value as BenchmarkKey)}
+          onChange={(e) => {
+            const symbol = e.target.value as BenchmarkKey;
+            selectBenchmark(symbol, BENCHMARKS[symbol].label);
+          }}
           className="px-2.5 py-1 text-xs rounded-md border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
+          {!isPresetBenchmark(selectedBenchmark) && (
+            <option value={selectedBenchmark}>{selectedBenchmarkLabel}</option>
+          )}
           {(Object.keys(BENCHMARKS) as BenchmarkKey[]).map((key) => (
             <option key={key} value={key}>
               {BENCHMARKS[key].label}
             </option>
           ))}
         </select>
+        <span className="hidden sm:inline text-xs text-zinc-400 pt-1">ou</span>
+        <div className="relative w-full sm:max-w-xs">
+          <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-zinc-400" />
+          <input
+            type="search"
+            value={assetQuery}
+            onChange={(event) => setAssetQuery(event.target.value)}
+            placeholder="Rechercher une action ou un actif…"
+            aria-label="Rechercher un actif de référence"
+            className="w-full rounded-md border border-zinc-200 bg-white py-1.5 pl-8 pr-8 text-xs text-zinc-900 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+          />
+          {assetQuery && (
+            <button type="button" onClick={() => setAssetQuery('')} aria-label="Effacer la recherche" className="absolute right-2 top-1.5 text-zinc-400 hover:text-zinc-700">
+              <X className="h-4 w-4" />
+            </button>
+          )}
+          {assetQuery.trim().length >= 2 && (
+            <div className="absolute z-20 mt-1 max-h-52 w-full overflow-y-auto rounded-md border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-800">
+              {assetSearchLoading ? (
+                <p className="px-3 py-2 text-xs text-zinc-500">Recherche…</p>
+              ) : assetResults.length > 0 ? assetResults.map((asset) => (
+                <button key={asset.symbol} type="button" onClick={() => selectBenchmark(asset.symbol, asset.name)} className="block w-full border-b border-zinc-100 px-3 py-2 text-left last:border-0 hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-700">
+                  <span className="block text-xs font-medium text-zinc-900 dark:text-zinc-100">{asset.symbol}</span>
+                  <span className="block truncate text-[11px] text-zinc-500">{asset.name}{asset.exchange ? ` · ${asset.exchange}` : ''}</span>
+                </button>
+              )) : (
+                <p className="px-3 py-2 text-xs text-zinc-500">Aucun actif trouvé.</p>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {benchmarkError && (
@@ -296,7 +350,7 @@ export function BenchmarkComparisonChart({
             </p>
           </div>
           <div>
-            <p className="text-[10px] sm:text-xs text-zinc-500 dark:text-zinc-400">{BENCHMARKS[selectedBenchmark].label}</p>
+            <p className="text-[10px] sm:text-xs text-zinc-500 dark:text-zinc-400">{selectedBenchmarkLabel}</p>
             <p className={`text-sm sm:text-base font-semibold ${finalPerf.benchmark >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
               {fmtPct(finalPerf.benchmark)}
             </p>
@@ -353,8 +407,8 @@ export function BenchmarkComparisonChart({
               <Line
                 type="monotone"
                 dataKey="benchmark"
-                name={BENCHMARKS[selectedBenchmark].label}
-                stroke={BENCHMARKS[selectedBenchmark].color}
+                name={selectedBenchmarkLabel}
+                stroke={isPresetBenchmark(selectedBenchmark) ? BENCHMARKS[selectedBenchmark].color : 'var(--chart-3)'}
                 strokeWidth={2}
                 strokeDasharray="5 5"
                 dot={false}

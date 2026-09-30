@@ -3,7 +3,7 @@
 import { BENCHMARK_LABELS } from '@/lib/benchmarks';
 import { PLANS } from '@/lib/plans';
 
-export const BENCHMARK_INDEX_COUNT = BENCHMARK_LABELS.length;
+export const BENCHMARK_REFERENCE_COUNT = BENCHMARK_LABELS.length;
 
 export function freePlanSummary(): string {
   const { maxAccounts, maxTransactions, maxPositions } = PLANS.free;
