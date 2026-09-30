@@ -13,6 +13,12 @@ import {
   calculateAllPositionsAtDate,
 } from '@/lib/portfolio-calculator';
 import { readSnapshots, upsertSnapshots } from '@/lib/portfolio-snapshots';
+import {
+  calculateAccountValuesAtDate,
+  calculateAccountYearToDateStats,
+  getYearStartReferenceDate,
+  type AccountYearToDateStats,
+} from '@/lib/account-stats';
 import { accountSupportsPositions } from '@/lib/utils';
 import { convertToBase, uniqueForeignFiats, type FxRateMap } from '@/lib/fx';
 
@@ -716,4 +722,100 @@ export function usePositionsWithCalculatedValues(
 
     return derivedFromTransactions;
   }, [transactions]);
+}
+
+/**
+ * Statistiques depuis le 1er janvier pour chaque compte (variation, apports,
+ * revenus, performance hors apports). La valeur de départ est reconstruite au
+ * 31/12 de l'année précédente avec les cours de clôture historiques ; la valeur
+ * actuelle vient des comptes enrichis (cours temps réel).
+ */
+export function useAccountsYearToDateStats(
+  accounts: EnrichedAccount[],
+  transactions: Transaction[],
+  options: { enabled?: boolean } = {}
+): { stats: Record<string, AccountYearToDateStats>; loading: boolean } {
+  const { enabled = true } = options;
+  const [startValues, setStartValues] = useState<Record<string, number> | null>(null);
+  const [fxRates, setFxRates] = useState<FxRateMap>({});
+  const [loading, setLoading] = useState(false);
+
+  const today = formatLocalDate(new Date());
+  const year = Number(today.slice(0, 4));
+  const referenceDate = getYearStartReferenceDate(year);
+  // Les valeurs actuelles des comptes changent à chaque rafraîchissement des
+  // cours : on ne recharge l'historique que si les comptes eux-mêmes changent.
+  const accountsKey = accounts.map((a) => `${a.id}:${a.type}:${a.supports_positions}`).join(',');
+
+  const fetchStartValues = useCallback(async () => {
+    if (!enabled) return;
+    if (transactions.length === 0 || accounts.length === 0) {
+      setStartValues({});
+      setFxRates({});
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Un mois de cotations avant le 31/12 couvre week-ends et jours fériés.
+      const quotesStartDate = `${year - 1}-12-01`;
+      const priorTransactions = transactions.filter((t) => t.date <= referenceDate);
+      const positionAccountIds = new Set(accounts.filter(accountSupportsPositions).map((a) => a.id));
+      const symbols = getUniqueSymbolsFromTransactions(
+        priorTransactions.filter((t) => positionAccountIds.has(t.account_id))
+      );
+
+      let historicalQuotes: Record<string, HistoricalQuote[]> = {};
+      if (symbols.length > 0) {
+        const response = await fetch(
+          `/api/stocks/history?symbols=${symbols.join(',')}&startDate=${quotesStartDate}&endDate=${referenceDate}&interval=1d`
+        );
+        if (!response.ok) {
+          throw new Error('Erreur lors de la récupération des cours historiques');
+        }
+        historicalQuotes = await response.json();
+      }
+
+      // Taux FX du 31/12 jusqu'à aujourd'hui : valorisation de départ et flux de l'année.
+      const fetchedFxRates = await fetchFxRates(
+        mergeFiats(uniqueForeignFiats(transactions), foreignFiatsFromHistoricalQuotes(historicalQuotes)),
+        quotesStartDate,
+        today
+      );
+
+      setStartValues(
+        calculateAccountValuesAtDate(transactions, accounts, historicalQuotes, referenceDate, fetchedFxRates)
+      );
+      setFxRates(fetchedFxRates);
+    } catch (err) {
+      console.error('Error calculating year-to-date account stats:', err);
+      setStartValues(null);
+    } finally {
+      setLoading(false);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enabled, transactions, accountsKey, referenceDate, today, year]);
+
+  useEffect(() => {
+    fetchStartValues();
+  }, [fetchStartValues]);
+
+  const stats = useMemo(() => {
+    const result: Record<string, AccountYearToDateStats> = {};
+    if (!startValues) return result;
+    for (const account of accounts) {
+      if (!(account.id in startValues)) continue;
+      result[account.id] = calculateAccountYearToDateStats({
+        accountId: account.id,
+        transactions,
+        startValue: startValues[account.id],
+        currentValue: account.calculatedTotalValueInBase ?? account.calculatedTotalValue,
+        today,
+        fxRates,
+      });
+    }
+    return result;
+  }, [accounts, transactions, startValues, fxRates, today]);
+
+  return { stats, loading };
 }

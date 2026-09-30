@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { EnrichedAccount } from '@/lib/hooks';
 import type { AccountType } from '@/lib/types';
+import type { AccountYearToDateStats } from '@/lib/account-stats';
 import { getApiErrorMessage } from '@/lib/api-errors';
 import {
   accountSupportsPositions,
@@ -11,6 +12,7 @@ import {
   formatCurrency,
   formatCurrencyBreakdown,
   formatDate,
+  formatPercent,
   getAccountTypeLabel,
 } from '@/lib/utils';
 import {
@@ -65,8 +67,92 @@ const accountColors: Record<string, string> = {
   AUTRE: 'bg-zinc-500',
 };
 
+function signedCurrency(amount: number): string {
+  const formatted = formatCurrency(amount, 'EUR');
+  return amount > 0 ? `+${formatted}` : formatted;
+}
+
+function trendClass(amount: number): string {
+  if (amount > 0.005) return 'text-emerald-600 dark:text-emerald-400';
+  if (amount < -0.005) return 'text-red-600 dark:text-red-400';
+  return 'text-zinc-500 dark:text-zinc-400';
+}
+
+function hasYearToDateActivity(stats: AccountYearToDateStats): boolean {
+  return Math.abs(stats.startValue) > 0.005
+    || Math.abs(stats.currentValue) > 0.005
+    || Math.abs(stats.netFlows) > 0.005;
+}
+
+function YearToDateStats({
+  stats,
+  accountCurrency,
+}: {
+  stats: AccountYearToDateStats;
+  accountCurrency: string;
+}) {
+  const items: Array<{ label: string; value: string; detail?: string; tone?: string }> = [
+    {
+      label: 'Variation',
+      value: signedCurrency(stats.change),
+      detail: stats.changePercent !== null ? formatPercent(stats.changePercent) : undefined,
+      tone: trendClass(stats.change),
+    },
+    {
+      label: 'Performance hors apports',
+      value: signedCurrency(stats.performance),
+      detail: formatPercent(stats.performancePercent),
+      tone: trendClass(stats.performance),
+    },
+    {
+      label: 'Apports nets',
+      value: signedCurrency(stats.netFlows),
+      detail: stats.withdrawals > 0
+        ? `${formatCurrency(stats.deposits, 'EUR')} versés · ${formatCurrency(stats.withdrawals, 'EUR')} retirés`
+        : undefined,
+    },
+    {
+      label: 'Dividendes et intérêts',
+      value: formatCurrency(stats.income, 'EUR'),
+    },
+  ];
+  if (stats.fees > 0) {
+    items.push({ label: 'Frais', value: formatCurrency(-stats.fees, 'EUR') });
+  }
+
+  return (
+    <section className="mt-4 pt-3 border-t border-zinc-100 dark:border-zinc-800">
+      <div className="flex items-baseline justify-between gap-2 mb-2">
+        <h4 className="text-xs sm:text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+          Depuis le 1er janvier {stats.year}
+        </h4>
+        <span className="text-[10px] sm:text-xs text-zinc-500 dark:text-zinc-400 text-right">
+          Au 31/12 : {formatCurrency(stats.startValue, 'EUR')}
+          {(accountCurrency ?? 'EUR').toUpperCase() !== 'EUR' && ' · montants en EUR'}
+        </span>
+      </div>
+      <dl className="grid grid-cols-2 gap-3 text-xs sm:text-sm">
+        {items.map((item) => (
+          <div key={item.label} className="min-w-0">
+            <dt className="text-zinc-500 dark:text-zinc-400 truncate">{item.label}</dt>
+            <dd className={`font-medium truncate ${item.tone ?? 'text-zinc-900 dark:text-zinc-100'}`}>
+              {item.value}
+              {item.detail && (
+                <span className="block text-[10px] sm:text-xs font-normal opacity-80 truncate">
+                  {item.detail}
+                </span>
+              )}
+            </dd>
+          </div>
+        ))}
+      </dl>
+    </section>
+  );
+}
+
 interface AccountCardProps {
   account: EnrichedAccount;
+  yearToDate?: AccountYearToDateStats;
   defaultExpanded?: boolean;
   onRequestEdit?: (account: EnrichedAccount) => void;
   onRequestDelete?: (account: EnrichedAccount) => void;
@@ -74,6 +160,7 @@ interface AccountCardProps {
 
 export function AccountCard({
   account,
+  yearToDate,
   defaultExpanded = false,
   onRequestEdit,
   onRequestDelete,
@@ -99,6 +186,7 @@ export function AccountCard({
       : isMultiCurrency
         ? formatCurrency(totalInBase, 'EUR')
         : formatCurrency(account.calculatedTotalValue, account.currency);
+  const showYearToDate = yearToDate !== undefined && hasYearToDateActivity(yearToDate);
 
   return (
     <div className="w-full max-w-full overflow-hidden bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm hover:shadow-md transition-all">
@@ -124,7 +212,15 @@ export function AccountCard({
             <p className="font-bold text-sm sm:text-base lg:text-lg text-zinc-900 dark:text-zinc-100 truncate">
               {headlineValue}
             </p>
-            {supportsPositions && (
+            {showYearToDate ? (
+              <p
+                className={`text-[10px] sm:text-xs truncate ${trendClass(yearToDate.change)}`}
+                title={`Variation depuis le 1er janvier ${yearToDate.year}`}
+              >
+                {signedCurrency(yearToDate.change)}
+                <span className="text-zinc-500 dark:text-zinc-400"> en {yearToDate.year}</span>
+              </p>
+            ) : supportsPositions && (
               <p className="text-[10px] sm:text-xs text-zinc-500 dark:text-zinc-400">
                 Valeur totale
               </p>
@@ -186,6 +282,10 @@ export function AccountCard({
               </div>
             </div>
           </dl>
+
+          {showYearToDate && (
+            <YearToDateStats stats={yearToDate} accountCurrency={account.currency} />
+          )}
 
           {(onRequestEdit || onRequestDelete) && (
             <div className="mt-4 pt-3 border-t border-zinc-100 dark:border-zinc-800 flex flex-wrap gap-3">
@@ -440,6 +540,7 @@ function DeleteAccountDialog({
 
 interface AccountListProps {
   accounts: EnrichedAccount[];
+  yearToDateStats?: Record<string, AccountYearToDateStats>;
   positionActivityAccountIds?: ReadonlySet<string>;
   onChanged?: () => void | Promise<void>;
   onDeleted?: () => void | Promise<void>;
@@ -447,6 +548,7 @@ interface AccountListProps {
 
 export function AccountList({
   accounts,
+  yearToDateStats,
   positionActivityAccountIds,
   onChanged,
   onDeleted,
@@ -589,6 +691,7 @@ export function AccountList({
         <AccountCard
           key={account.id}
           account={account}
+          yearToDate={yearToDateStats?.[account.id]}
           onRequestEdit={onMutated ? openEdit : undefined}
           onRequestDelete={onMutated ? openDelete : undefined}
         />
