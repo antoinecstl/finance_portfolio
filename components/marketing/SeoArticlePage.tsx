@@ -3,6 +3,8 @@ import { ArrowRight } from 'lucide-react';
 import { Breadcrumbs } from '@/components/marketing/Breadcrumbs';
 import { FeatureMockup } from '@/components/marketing/FeatureMockups';
 import { JsonLd, buildBreadcrumbJsonLd } from '@/components/marketing/JsonLd';
+import { PRO_FEATURE_SLUGS, freePlanSummary } from '@/components/marketing/product-facts';
+import { MONTHLY_TRIAL_LABEL } from '@/lib/plans';
 import {
   collectionHrefs,
   collectionLabels,
@@ -14,6 +16,30 @@ type SeoArticlePageProps = {
   relatedPages: SeoPage[];
   siteUrl: string;
 };
+
+function closingCopy(page: SeoPage, isPro: boolean) {
+  if (page.collection === 'fonctionnalites') {
+    return isPro
+      ? {
+          title: 'Une fonctionnalité de l’offre Pro',
+          body: `Créez d’abord votre compte gratuit, puis activez Pro depuis les paramètres : ${MONTHLY_TRIAL_LABEL.toLowerCase()} en mensuel.`,
+        }
+      : {
+          title: 'Essayer avec vos propres comptes',
+          body: 'Ajoutez un compte et quelques transactions : positions, PRU et performance se calculent aussitôt.',
+        };
+  }
+  if (page.collection === 'alternatives') {
+    return {
+      title: 'Comparer sur vos propres données',
+      body: 'Créez un compte gratuit et saisissez quelques transactions pour juger Fi-Hub sur votre portefeuille.',
+    };
+  }
+  return {
+    title: 'Appliquer cette méthode dans Fi-Hub',
+    body: 'Ajoutez vos comptes et vos transactions : Fi-Hub recalcule positions, PRU et performance hors apports.',
+  };
+}
 
 export function SeoArticlePage({ page, relatedPages, siteUrl }: SeoArticlePageProps) {
   const breadcrumbItems = [
@@ -37,30 +63,45 @@ export function SeoArticlePage({ page, relatedPages, siteUrl }: SeoArticlePagePr
     },
   };
 
+  const isFeature = page.collection === 'fonctionnalites';
+  const isPro = isFeature && PRO_FEATURE_SLUGS.has(page.slug);
+  const closing = closingCopy(page, isPro);
+  const label = isFeature ? `${page.eyebrow} · ${isPro ? 'Offre Pro' : 'Inclus dans l’offre Free'}` : page.eyebrow;
+
   return (
-    <main className="max-w-5xl mx-auto px-5 py-14 sm:py-20">
+    <main className="mx-auto max-w-6xl px-5 py-12 sm:py-16 lg:px-8">
       <JsonLd data={[buildBreadcrumbJsonLd(siteUrl, breadcrumbItems), articleJsonLd]} />
       <Breadcrumbs items={breadcrumbItems} />
 
-      <article className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_280px] gap-10 lg:gap-14">
-        <div>
-          <p className="eyebrow">{page.eyebrow}</p>
-          <h1 className="display text-4xl sm:text-6xl leading-tight mt-3 text-[color:var(--ink)]">
+      <article>
+        <header className="max-w-3xl">
+          <p className="text-[13px] font-medium text-[color:var(--text-muted)]">{label}</p>
+          <h1 className="mt-3 text-[40px] font-semibold leading-[1.05] tracking-[-0.025em] text-[color:var(--text)] lg:text-5xl">
             {page.h1}
           </h1>
-          <p className="mt-6 text-[18px] leading-relaxed text-[color:var(--ink-2)]">
+          <p className="mt-6 max-w-[62ch] text-lg leading-[1.55] text-[color:var(--text-2)] lg:text-[19px]">
             {page.intro}
           </p>
+        </header>
 
-          {page.collection === 'fonctionnalites' && <FeatureMockup slug={page.slug} />}
+        {isFeature && (
+          <div className="mt-12">
+            <FeatureMockup slug={page.slug} />
+          </div>
+        )}
 
-          <section className="mt-10 ink-card rounded-2xl p-6 sm:p-8">
-            <h2 className="text-2xl font-semibold text-[color:var(--ink)]">À retenir</h2>
-            <ul className="mt-5 space-y-3 text-[color:var(--ink-2)]">
+        <div className="mt-12 max-w-[68ch]">
+          <section aria-labelledby="en-bref">
+            <h2 id="en-bref" className="text-xl font-semibold leading-[1.3] text-[color:var(--text)]">
+              En bref
+            </h2>
+            <ul className="mt-4 border-t border-[color:var(--border)]">
               {page.takeaways.map((takeaway) => (
-                <li key={takeaway} className="flex gap-3">
-                  <span className="mt-2 h-1.5 w-1.5 rounded-full bg-[color:var(--accent)] shrink-0" />
-                  <span>{takeaway}</span>
+                <li
+                  key={takeaway}
+                  className="border-b border-[color:var(--border)] py-3 text-[17px] leading-snug text-[color:var(--text-2)]"
+                >
+                  {takeaway}
                 </li>
               ))}
             </ul>
@@ -69,23 +110,18 @@ export function SeoArticlePage({ page, relatedPages, siteUrl }: SeoArticlePagePr
           <div className="mt-12 space-y-12">
             {page.sections.map((section) => (
               <section key={section.heading}>
-                <h2 className="display text-3xl leading-tight text-[color:var(--ink)]">
+                <h2 className="text-[28px] font-semibold leading-[1.15] tracking-[-0.02em] text-[color:var(--text)] lg:text-[32px]">
                   {section.heading}
                 </h2>
-                <div className="mt-4 space-y-4 text-[color:var(--ink-2)] leading-relaxed">
+                <div className="mt-4 space-y-4 text-[17px] leading-[1.6] text-[color:var(--text-2)]">
                   {section.body.map((paragraph) => (
                     <p key={paragraph}>{paragraph}</p>
                   ))}
                 </div>
                 {section.bullets && (
-                  <ul className="mt-5 grid gap-3 sm:grid-cols-2">
+                  <ul className="mt-5 list-disc space-y-2 pl-5 text-[17px] leading-snug text-[color:var(--text-2)] marker:text-[color:var(--text-muted)]">
                     {section.bullets.map((bullet) => (
-                      <li
-                        key={bullet}
-                        className="rounded-xl border border-[color:var(--rule)] bg-[color:var(--paper)] p-4 text-sm text-[color:var(--ink-2)]"
-                      >
-                        {bullet}
-                      </li>
+                      <li key={bullet}>{bullet}</li>
                     ))}
                   </ul>
                 )}
@@ -93,45 +129,47 @@ export function SeoArticlePage({ page, relatedPages, siteUrl }: SeoArticlePagePr
             ))}
           </div>
 
-          <section className="mt-14 rounded-2xl bg-[color:var(--ink)] p-7 sm:p-9 text-[color:var(--paper)]">
-            <h2 className="display text-3xl leading-tight">Mettre le suivi en place</h2>
-            <p className="mt-3 max-w-2xl text-[color:var(--paper-2)]">
-              Créez un compte Fi-Hub, ajoutez vos comptes et commencez à suivre vos positions,
-              dividendes et performances sans maintenir un fichier fragile.
-            </p>
-            <Link
-              href="/signup"
-              className="mt-6 inline-flex items-center gap-2 rounded-full bg-[color:var(--paper)] px-5 py-3 text-sm font-medium text-[color:var(--ink)]"
-            >
-              {page.ctaLabel}
-              <ArrowRight className="h-4 w-4" aria-hidden="true" />
-            </Link>
-          </section>
-        </div>
-
-        <aside className="lg:pt-24">
-          <div className="sticky top-24 space-y-4">
-            <div className="ink-card rounded-2xl p-5">
-              <h2 className="font-semibold text-[color:var(--ink)]">Pages liées</h2>
-              <div className="mt-4 space-y-3">
-                {relatedPages.map((relatedPage) => (
-                  <Link
-                    key={relatedPage.href}
-                    href={relatedPage.href}
-                    className="block rounded-xl border border-[color:var(--rule)] p-4 hover:bg-[color:var(--paper-2)]"
-                  >
-                    <span className="text-sm font-medium text-[color:var(--ink)]">
-                      {relatedPage.title}
-                    </span>
-                    <span className="mt-1 block text-xs text-[color:var(--ink-soft)]">
-                      {collectionLabels[relatedPage.collection]}
-                    </span>
-                  </Link>
-                ))}
-              </div>
+          <section aria-labelledby="closing-title" className="mt-16 border-t border-[color:var(--text)] pt-8">
+            <h2 id="closing-title" className="text-2xl font-semibold leading-[1.2] text-[color:var(--text)]">
+              {closing.title}
+            </h2>
+            <p className="mt-3 text-[17px] leading-relaxed text-[color:var(--text-2)]">{closing.body}</p>
+            <div className="mt-6">
+              <Link href="/signup" className="btn-primary">
+                Créer un compte gratuit
+              </Link>
             </div>
-          </div>
-        </aside>
+            <p className="mt-3 text-sm text-[color:var(--text-muted)]">{freePlanSummary()}</p>
+          </section>
+
+          {relatedPages.length > 0 && (
+            <nav aria-labelledby="related-title" className="mt-16">
+              <h2 id="related-title" className="text-xl font-semibold text-[color:var(--text)]">
+                À lire aussi
+              </h2>
+              <ul className="mt-4 border-t border-[color:var(--border)]">
+                {relatedPages.map((relatedPage) => (
+                  <li key={relatedPage.href} className="border-b border-[color:var(--border)]">
+                    <Link
+                      href={relatedPage.href}
+                      className="group flex items-center justify-between gap-4 py-4"
+                    >
+                      <span>
+                        <span className="block text-base font-medium text-[color:var(--text)] underline-offset-4 group-hover:underline">
+                          {relatedPage.title}
+                        </span>
+                        <span className="mt-0.5 block text-[13px] text-[color:var(--text-muted)]">
+                          {collectionLabels[relatedPage.collection]}
+                        </span>
+                      </span>
+                      <ArrowRight className="h-4 w-4 shrink-0 text-[color:var(--text-muted)]" strokeWidth={1.75} aria-hidden="true" />
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+          )}
+        </div>
       </article>
     </main>
   );

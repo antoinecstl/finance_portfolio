@@ -22,7 +22,7 @@ import {
 import { StockPosition, StockQuote, Transaction, Account } from '@/lib/types';
 import { PortfolioHistoryPoint, calculatePortfolioPerformance } from '@/lib/portfolio-calculator';
 import { convertToBase, type FxRateMap } from '@/lib/fx';
-import { formatCurrency, formatPercent, getSectorColor } from '@/lib/utils';
+import { formatCurrency, formatNumber, formatPercent, getSectorColor } from '@/lib/utils';
 import { compareTransactionSequence } from '@/lib/transaction-ordering';
 import { positionDisplaySymbol } from '@/lib/position-display';
 import { buildPositionMetrics, type PositionMetrics } from '@/lib/position-metrics';
@@ -114,7 +114,7 @@ export function AllocationChart({ positions, quotes, fxRates = {} }: AllocationC
         <div className="flex items-center gap-2 mb-4">
           <PieChartIcon className="h-4 w-4 sm:h-5 sm:w-5 text-zinc-400" />
           <h3 className="font-semibold text-sm sm:text-base text-zinc-900 dark:text-zinc-100">
-            Répartition du Portefeuille
+            Répartition du portefeuille
           </h3>
         </div>
         <div className="text-center py-8 sm:py-12">
@@ -138,7 +138,7 @@ export function AllocationChart({ positions, quotes, fxRates = {} }: AllocationC
       <div className="flex items-center gap-2 mb-3 sm:mb-4">
         <PieChartIcon className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
         <h3 className="font-semibold text-sm sm:text-base text-zinc-900 dark:text-zinc-100">
-          Répartition du Portefeuille
+          Répartition du portefeuille
         </h3>
       </div>
       <div className="space-y-2">
@@ -149,7 +149,7 @@ export function AllocationChart({ positions, quotes, fxRates = {} }: AllocationC
                 {item.name}
               </span>
               <span className="text-zinc-600 dark:text-zinc-400">
-                {formatCurrency(item.value)} ({item.percentage.toFixed(1)}%)
+                {formatCurrency(item.value)} ({formatNumber(item.percentage, 1)}%)
               </span>
             </div>
             <div className="h-3 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
@@ -208,7 +208,7 @@ export function AccountAllocationChart({ accounts }: AccountAllocationChartProps
         <div className="flex items-center gap-2 mb-4">
           <Wallet className="h-4 w-4 sm:h-5 sm:w-5 text-zinc-400" />
           <h3 className="font-semibold text-sm sm:text-base text-zinc-900 dark:text-zinc-100">
-            Répartition par Compte
+            Répartition par compte
           </h3>
         </div>
         <div className="text-center py-8 sm:py-12">
@@ -245,7 +245,7 @@ export function AccountAllocationChart({ accounts }: AccountAllocationChartProps
       <div className="flex items-center gap-2 mb-3 sm:mb-4">
         <Wallet className="h-4 w-4 sm:h-5 sm:w-5 text-emerald-600" />
         <h3 className="font-semibold text-sm sm:text-base text-zinc-900 dark:text-zinc-100">
-          Répartition par Compte
+          Répartition par compte
         </h3>
       </div>
       <div className="space-y-2">
@@ -261,7 +261,7 @@ export function AccountAllocationChart({ accounts }: AccountAllocationChartProps
                 </span>
               </div>
               <span className="text-zinc-600 dark:text-zinc-400 flex-shrink-0 ml-2">
-                {formatCurrency(item.value)} ({item.percentage.toFixed(1)}%)
+                {formatCurrency(item.value)} ({formatNumber(item.percentage, 1)}%)
               </span>
             </div>
             <div className="h-3 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
@@ -337,7 +337,7 @@ export function PortfolioHistoryChart({
         <div className="flex items-center gap-2 mb-3 sm:mb-4">
           <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
           <h3 className="font-semibold text-sm sm:text-base text-zinc-900 dark:text-zinc-100">
-            Évolution du Portefeuille
+            Évolution du portefeuille
           </h3>
         </div>
         <div className="flex items-center justify-center py-8 sm:py-12">
@@ -354,7 +354,7 @@ export function PortfolioHistoryChart({
         <div className="flex items-center gap-2 mb-3 sm:mb-4">
           <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-zinc-400" />
           <h3 className="font-semibold text-sm sm:text-base text-zinc-900 dark:text-zinc-100">
-            Évolution du Portefeuille
+            Évolution du portefeuille
           </h3>
         </div>
         <div className="text-center py-8 sm:py-12">
@@ -377,7 +377,7 @@ export function PortfolioHistoryChart({
         <div className="flex items-center gap-2">
           <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
           <h3 className="font-semibold text-sm sm:text-base text-zinc-900 dark:text-zinc-100">
-            Évolution du Portefeuille
+            Évolution du portefeuille
           </h3>
         </div>
         
@@ -404,19 +404,19 @@ export function PortfolioHistoryChart({
       {/* Variation de valeur de la période (⚠️ inclut les apports/retraits) */}
       <div className="flex flex-wrap gap-2 sm:gap-4 mb-3 sm:mb-4 text-xs sm:text-sm">
         <div>
-          <span className="text-zinc-500 dark:text-zinc-400">Début: </span>
+          <span className="text-zinc-500 dark:text-zinc-400">Début : </span>
           <span className="font-medium text-zinc-900 dark:text-zinc-100">
             {formatCurrency(firstValue)}
           </span>
         </div>
         <div>
-          <span className="text-zinc-500 dark:text-zinc-400">Fin: </span>
+          <span className="text-zinc-500 dark:text-zinc-400">Fin : </span>
           <span className="font-medium text-zinc-900 dark:text-zinc-100">
             {formatCurrency(lastValue)}
           </span>
         </div>
         <div>
-          <span className="text-zinc-500 dark:text-zinc-400 hidden sm:inline">Δ Valeur: </span>
+          <span className="text-zinc-500 dark:text-zinc-400 hidden sm:inline">Δ Valeur : </span>
           <span className={`font-medium ${periodChange >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
             {periodChange >= 0 ? '+' : ''}{formatCurrency(periodChange)} ({formatPercent(periodChangePercent)})
           </span>
@@ -447,7 +447,7 @@ export function PortfolioHistoryChart({
             <YAxis 
               domain={portfolioYAxis.domain}
               ticks={portfolioYAxis.ticks}
-              tickFormatter={(value) => value >= 1000 ? `${(value / 1000).toFixed(value % 1000 === 0 ? 0 : 1)}k€` : `${value.toFixed(0)}€`}
+              tickFormatter={(value) => value >= 1000 ? `${formatNumber(value / 1000, value % 1000 === 0 ? 0 : 1)}k€` : `${value.toFixed(0)}€`}
               tick={{ fontSize: 10 }}
               stroke="var(--ink-soft)"
               width={45}
@@ -863,7 +863,7 @@ export function PositionPerformanceChart({
         <div className="flex items-center gap-2 mb-4">
           <Activity className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
           <h3 className="font-semibold text-sm sm:text-base text-zinc-900 dark:text-zinc-100">
-            Vue d&apos;ensemble des Performances
+            Vue d&apos;ensemble des performances
           </h3>
         </div>
         
@@ -916,7 +916,7 @@ export function PositionPerformanceChart({
           <div className="flex items-center gap-2 mb-4">
             <Target className="h-4 w-4 sm:h-5 sm:w-5 text-emerald-600" />
             <h3 className="font-semibold text-sm sm:text-base text-zinc-900 dark:text-zinc-100">
-              Performance par Position
+              Performance par position
             </h3>
           </div>
           <div className="h-[250px] sm:h-[300px]">
@@ -945,7 +945,7 @@ export function PositionPerformanceChart({
                 <Tooltip 
                   formatter={(value) => {
                     const numValue = Number(value) || 0;
-                    return [`${numValue >= 0 ? '+' : ''}${numValue.toFixed(2)}%`, 'Performance'];
+                    return [`${numValue >= 0 ? '+' : ''}${formatNumber(numValue, 2)}%`, 'Performance'];
                   }}
                   contentStyle={{
                     backgroundColor: 'var(--paper-2)',
@@ -1006,7 +1006,7 @@ export function PositionPerformanceChart({
                   formatter={(value, name, props) => {
                     const numValue = Number(value) || 0;
                     const data = props.payload;
-                    return [`${numValue.toFixed(1)}% (${formatCurrency(data.value, data.currency)})`, 'Poids'];
+                    return [`${formatNumber(numValue, 1)}% (${formatCurrency(data.value, data.currency)})`, 'Poids'];
                   }}
                   contentStyle={{
                     backgroundColor: 'var(--paper-2)',
@@ -1037,7 +1037,7 @@ export function PositionPerformanceChart({
         <div className="px-4 py-3 bg-zinc-50 dark:bg-zinc-800/50 border-b border-zinc-200 dark:border-zinc-700">
           <h3 className="font-semibold text-sm sm:text-base text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
             <BarChart2 className="h-4 w-4" />
-            Détail par Position
+            Détail par position
           </h3>
         </div>
 
@@ -1097,7 +1097,7 @@ export function PositionPerformanceChart({
                           <button type="button" aria-label={`Partager la position ${m.symbol}`} onClick={(event) => { event.stopPropagation(); setSharedMetric(m); }} className="rounded p-1 text-zinc-500 hover:text-red-700"><Share2 className="h-4 w-4" /></button>
                           <div className="text-right">
                           <p className="font-bold text-zinc-900 dark:text-zinc-100">{formatCurrency(m.nativeCurrentValue, m.quoteCurrency)}</p>
-                          <p className={`text-xs text-zinc-500 ${isProUser ? '' : 'blur-sm select-none'}`}>{m.weight.toFixed(1)}% du portefeuille</p>
+                          <p className={`text-xs text-zinc-500 ${isProUser ? '' : 'blur-sm select-none'}`}>{formatNumber(m.weight, 1)}% du portefeuille</p>
                           </div>
                         </div>
                       </div>
@@ -1105,7 +1105,7 @@ export function PositionPerformanceChart({
                         <div>
                           <p className="text-zinc-500">Qté × PRU</p>
                           <p className="font-medium text-zinc-900 dark:text-zinc-100">
-                            {m.quantity.toFixed(m.quantity % 1 === 0 ? 0 : 2)} × {formatCurrency(m.avgPrice, m.costCurrency)}
+                            {formatNumber(m.quantity, m.quantity % 1 === 0 ? 0 : 2)} × {formatCurrency(m.avgPrice, m.costCurrency)}
                           </p>
                         </div>
                         <div>
@@ -1134,13 +1134,13 @@ export function PositionPerformanceChart({
                           <div className="grid grid-cols-2 gap-2 text-xs">
                             <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded p-2">
                               <p className="text-emerald-600 dark:text-emerald-400 font-medium">Achats</p>
-                              <p className="text-zinc-900 dark:text-zinc-100">{stats.buys.length} ordres • {stats.totalBought.toFixed(2)} titres</p>
+                              <p className="text-zinc-900 dark:text-zinc-100">{stats.buys.length} ordres • {formatNumber(stats.totalBought, 2)} titres</p>
                               <p className="text-zinc-600 dark:text-zinc-400">{formatTransactionTotals(stats.buys)}</p>
                             </div>
                             {stats.sells.length > 0 && (
                               <div className="bg-red-50 dark:bg-red-900/20 rounded p-2">
                                 <p className="text-red-600 dark:text-red-400 font-medium">Ventes</p>
-                                <p className="text-zinc-900 dark:text-zinc-100">{stats.sells.length} ordres • {stats.totalSold.toFixed(2)} titres</p>
+                                <p className="text-zinc-900 dark:text-zinc-100">{stats.sells.length} ordres • {formatNumber(stats.totalSold, 2)} titres</p>
                                 <p className="text-zinc-600 dark:text-zinc-400">{formatTransactionTotals(stats.sells)}</p>
                               </div>
                             )}
@@ -1280,7 +1280,7 @@ export function PositionPerformanceChart({
                               </td>
                             )}
                       <td className="py-2 px-3 text-right text-zinc-900 dark:text-zinc-100">
-                        {m.quantity.toFixed(m.quantity % 1 === 0 ? 0 : 2)}
+                        {formatNumber(m.quantity, m.quantity % 1 === 0 ? 0 : 2)}
                       </td>
                       <td className="py-2 px-3 text-right text-zinc-900 dark:text-zinc-100">
                         {formatCurrency(m.avgPrice, m.costCurrency)}
@@ -1309,7 +1309,7 @@ export function PositionPerformanceChart({
                             />
                           </div>
                           <span className="text-zinc-600 dark:text-zinc-400 w-10 text-right">
-                            {m.weight.toFixed(1)}%
+                            {formatNumber(m.weight, 1)}%
                           </span>
                         </div>
                       </td>
@@ -1332,7 +1332,7 @@ export function PositionPerformanceChart({
                                   <span className="font-semibold text-sm text-zinc-900 dark:text-zinc-100">Achats</span>
                                 </div>
                                 <p className="text-lg font-bold text-zinc-900 dark:text-zinc-100">{stats.buys.length} ordres</p>
-                                <p className="text-sm text-zinc-500">{stats.totalBought.toFixed(2)} titres achetés</p>
+                                <p className="text-sm text-zinc-500">{formatNumber(stats.totalBought, 2)} titres achetés</p>
                                 <p className="text-sm font-medium text-emerald-600">{formatTransactionTotals(stats.buys)}</p>
                               </div>
                               
@@ -1342,7 +1342,7 @@ export function PositionPerformanceChart({
                                   <span className="font-semibold text-sm text-zinc-900 dark:text-zinc-100">Ventes</span>
                                 </div>
                                 <p className="text-lg font-bold text-zinc-900 dark:text-zinc-100">{stats.sells.length} ordres</p>
-                                <p className="text-sm text-zinc-500">{stats.totalSold.toFixed(2)} titres vendus</p>
+                                <p className="text-sm text-zinc-500">{formatNumber(stats.totalSold, 2)} titres vendus</p>
                                 <p className="text-sm font-medium text-red-600">{formatTransactionTotals(stats.sells)}</p>
                               </div>
                               
@@ -1417,7 +1417,7 @@ export function PositionPerformanceChart({
                                           </span>
                                         </td>
                                         <td className="py-2 px-3 text-right text-zinc-900 dark:text-zinc-100">
-                                          {t.quantity ? t.quantity.toFixed(t.quantity % 1 === 0 ? 0 : 4) : '-'}
+                                          {t.quantity ? formatNumber(t.quantity, t.quantity % 1 === 0 ? 0 : 4) : '-'}
                                         </td>
                                         <td className="py-2 px-3 text-right text-zinc-900 dark:text-zinc-100">
                                           {t.price_per_unit ? formatCurrency(t.price_per_unit, txCurrency(t)) : '-'}
@@ -1648,7 +1648,7 @@ export function PortfolioValueChart({
         <div className="flex items-center gap-2 mb-4">
           <LineChartIcon className="h-4 w-4 sm:h-5 sm:w-5 text-emerald-600" />
           <h3 className="font-semibold text-sm sm:text-base text-zinc-900 dark:text-zinc-100">
-            Évolution Valeur vs Investissement
+            Évolution valeur vs investissement
           </h3>
         </div>
         <div className="flex items-center justify-center py-8 sm:py-12">
@@ -1665,7 +1665,7 @@ export function PortfolioValueChart({
         <div className="flex items-center gap-2 mb-4">
           <LineChartIcon className="h-4 w-4 sm:h-5 sm:w-5 text-zinc-400" />
           <h3 className="font-semibold text-sm sm:text-base text-zinc-900 dark:text-zinc-100">
-            Évolution Valeur vs Investissement
+            Évolution valeur vs investissement
           </h3>
         </div>
         <div className="text-center py-8 sm:py-12">
@@ -1688,7 +1688,7 @@ export function PortfolioValueChart({
         <div className="flex items-center gap-2">
           <LineChartIcon className="h-4 w-4 sm:h-5 sm:w-5 text-emerald-600" />
           <h3 className="font-semibold text-sm sm:text-base text-zinc-900 dark:text-zinc-100">
-            Valeur du Portefeuille vs Investissement
+            Valeur du portefeuille vs investissement
           </h3>
           {isMultiCurrency && (
             <span
@@ -2181,7 +2181,7 @@ export function StockHistoryChart({
           {stockPerformance['__TOTAL__'] && (
             <span className={stockPerformance['__TOTAL__'].changePercent >= 0 ? 'text-emerald-300' : 'text-red-300'}>
               {stockPerformance['__TOTAL__'].changePercent >= 0 ? '+' : ''}
-              {stockPerformance['__TOTAL__'].changePercent.toFixed(1)}%
+              {formatNumber(stockPerformance['__TOTAL__'].changePercent, 1)}%
             </span>
           )}
         </button>
@@ -2212,7 +2212,7 @@ export function StockHistoryChart({
               <span className="font-medium">{symbol}</span>
               {perf && (
                 <span className={perf.changePercent >= 0 ? 'text-emerald-200' : 'text-red-200'}>
-                  {perf.changePercent >= 0 ? '+' : ''}{perf.changePercent.toFixed(1)}%
+                  {perf.changePercent >= 0 ? '+' : ''}{formatNumber(perf.changePercent, 1)}%
                 </span>
               )}
             </button>
@@ -2234,7 +2234,7 @@ export function StockHistoryChart({
             <YAxis 
               domain={yDomain}
               ticks={performanceYTicks}
-              tickFormatter={(value) => `${value > 0 ? '+' : ''}${value.toFixed(value % 1 === 0 ? 0 : 1)}%`}
+              tickFormatter={(value) => `${value > 0 ? '+' : ''}${formatNumber(value, value % 1 === 0 ? 0 : 1)}%`}
               tick={{ fontSize: 10 }}
               stroke="var(--ink-soft)"
               width={50}
@@ -2250,10 +2250,10 @@ export function StockHistoryChart({
                 const gainKey = name === '__TOTAL__' ? '__TOTAL___gain' : `${name}_gain`;
                 const gain = payload[gainKey] as number | undefined;
                 
-                let details = `${numValue >= 0 ? '+' : ''}${numValue.toFixed(2)}%`;
+                let details = `${numValue >= 0 ? '+' : ''}${formatNumber(numValue, 2)}%`;
                 
                 if (gain !== undefined) {
-                  details += ` (${gain >= 0 ? '+' : ''}${gain.toFixed(2)} €)`;
+                  details += ` (${gain >= 0 ? '+' : ''}${formatNumber(gain, 2)} €)`;
                 }
                 
                 // Ajouter les détails du prix pour les actions individuelles
@@ -2263,7 +2263,7 @@ export function StockHistoryChart({
                   const quantity = payload[`${name}_quantity`] as number | undefined;
                   
                   if (basePrice && currentPrice && quantity) {
-                    details += `\n${quantity} × ${currentPrice.toFixed(2)}€ (base: ${basePrice.toFixed(2)}€)`;
+                    details += `\n${quantity} × ${formatNumber(currentPrice, 2)}€ (base: ${formatNumber(basePrice, 2)}€)`;
                   }
                 } else {
                   // Détails pour le total
@@ -2271,7 +2271,7 @@ export function StockHistoryChart({
                   const currentValue = payload['__TOTAL___currentValue'] as number | undefined;
                   
                   if (baseValue && currentValue) {
-                    details += `\n${currentValue.toFixed(2)}€ (base: ${baseValue.toFixed(2)}€)`;
+                    details += `\n${formatNumber(currentValue, 2)}€ (base: ${formatNumber(baseValue, 2)}€)`;
                   }
                 }
                 
@@ -2429,7 +2429,7 @@ export function PortfolioPerformanceChart({
         <div className="flex items-center gap-2 mb-4">
           <LineChartIcon className="h-4 w-4 sm:h-5 sm:w-5 text-indigo-600" />
           <h3 className="font-semibold text-sm sm:text-base text-zinc-900 dark:text-zinc-100">
-            Performance Annuelle
+            Performance annuelle
           </h3>
         </div>
         <div className="flex items-center justify-center py-8 sm:py-12">
@@ -2446,7 +2446,7 @@ export function PortfolioPerformanceChart({
         <div className="flex items-center gap-2 mb-4">
           <LineChartIcon className="h-4 w-4 sm:h-5 sm:w-5 text-zinc-400" />
           <h3 className="font-semibold text-sm sm:text-base text-zinc-900 dark:text-zinc-100">
-            Performance Annuelle
+            Performance annuelle
           </h3>
         </div>
         <div className="text-center py-8 sm:py-12">
@@ -2470,7 +2470,7 @@ export function PortfolioPerformanceChart({
       <div className="flex flex-wrap items-center gap-2">
         <LineChartIcon className="h-4 w-4 sm:h-5 sm:w-5 text-indigo-600" />
         <h3 className="font-semibold text-sm sm:text-base text-zinc-900 dark:text-zinc-100">
-          Performance Annuelle (hors apports)
+          Performance annuelle (hors apports)
         </h3>
         {isMultiCurrency && (
           <span
@@ -2495,7 +2495,7 @@ export function PortfolioPerformanceChart({
               <p className="text-zinc-500 dark:text-zinc-400 text-sm font-medium mb-1">Année {currentYear} (en cours)</p>
               <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                 <p className="text-3xl sm:text-4xl font-bold break-words" style={{ color: currentYearTone }}>
-                  {currentYearPerformance.gainLossPercent >= 0 ? '+' : ''}{currentYearPerformance.gainLossPercent.toFixed(2)}%
+                  {currentYearPerformance.gainLossPercent >= 0 ? '+' : ''}{formatNumber(currentYearPerformance.gainLossPercent, 2)}%
                 </p>
                 <p className="text-zinc-500 dark:text-zinc-400 text-sm break-words">
                   ({currentYearPerformance.gainLoss >= 0 ? '+' : ''}{formatCurrency(currentYearPerformance.gainLoss)})
@@ -2548,10 +2548,10 @@ export function PortfolioPerformanceChart({
                 formatter={(value, name) => {
                   const numValue = Number(value);
                   if (name === 'performance') {
-                    return [`${numValue >= 0 ? '+' : ''}${numValue.toFixed(2)}%`, 'Performance'];
+                    return [`${numValue >= 0 ? '+' : ''}${formatNumber(numValue, 2)}%`, 'Performance'];
                   }
                   if (name === 'totalReturn') {
-                    return [`${numValue >= 0 ? '+' : ''}${numValue.toFixed(2)}%`, 'Avec dividendes'];
+                    return [`${numValue >= 0 ? '+' : ''}${formatNumber(numValue, 2)}%`, 'Avec dividendes'];
                   }
                   return [formatCurrency(numValue), name === 'gainLoss' ? 'Gain/Perte' : 'Dividendes'];
                 }}
@@ -2598,7 +2598,7 @@ export function PortfolioPerformanceChart({
                 )}
               </div>
               <div className={`text-right font-bold tabular-nums ${year.gainLossPercent >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                {year.gainLossPercent >= 0 ? '+' : ''}{year.gainLossPercent.toFixed(2)}%
+                {year.gainLossPercent >= 0 ? '+' : ''}{formatNumber(year.gainLossPercent, 2)}%
               </div>
             </div>
             <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
@@ -2627,7 +2627,7 @@ export function PortfolioPerformanceChart({
           <div className="flex items-center justify-between gap-3">
             <span className="text-zinc-900 dark:text-zinc-100">Total</span>
             <span className={`text-right tabular-nums ${performance.absoluteGainPercent >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-              {performance.absoluteGainPercent >= 0 ? '+' : ''}{performance.absoluteGainPercent.toFixed(2)}%
+              {performance.absoluteGainPercent >= 0 ? '+' : ''}{formatNumber(performance.absoluteGainPercent, 2)}%
             </span>
           </div>
           <div className="mt-2 grid grid-cols-2 gap-4 text-xs">
@@ -2651,12 +2651,12 @@ export function PortfolioPerformanceChart({
             {showAllYears ? (
               <span className="flex items-center justify-center gap-1">
                 <ChevronDown className="h-4 w-4 rotate-180" />
-                Masquer les années précédentes
+                {sortedYears.length - 2 > 1 ? 'Masquer les années précédentes' : 'Masquer l’année précédente'}
               </span>
             ) : (
               <span className="flex items-center justify-center gap-1">
                 <ChevronDown className="h-4 w-4" />
-                Voir les {sortedYears.length - 2} années précédentes
+                {sortedYears.length - 2 > 1 ? `Voir les ${sortedYears.length - 2} années précédentes` : 'Voir l’année précédente'}
               </span>
             )}
           </button>
@@ -2704,7 +2704,7 @@ export function PortfolioPerformanceChart({
                   {year.gainLoss >= 0 ? '+' : ''}{formatCurrency(year.gainLoss)}
                 </td>
                 <td className={`py-2 px-3 text-right font-bold ${year.gainLossPercent >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                  {year.gainLossPercent >= 0 ? '+' : ''}{year.gainLossPercent.toFixed(2)}%
+                  {year.gainLossPercent >= 0 ? '+' : ''}{formatNumber(year.gainLossPercent, 2)}%
                 </td>
                 <td className="py-2 px-3 text-right font-medium text-[color:var(--gain)]">
                   +{formatCurrency(year.dividends)}
@@ -2724,12 +2724,12 @@ export function PortfolioPerformanceChart({
                     {showAllYears ? (
                       <span className="flex items-center justify-center gap-1">
                         <ChevronDown className="h-4 w-4 rotate-180" />
-                        Masquer les années précédentes
+                        {sortedYears.length - 2 > 1 ? 'Masquer les années précédentes' : 'Masquer l’année précédente'}
                       </span>
                     ) : (
                       <span className="flex items-center justify-center gap-1">
                         <ChevronDown className="h-4 w-4" />
-                        Voir les {sortedYears.length - 2} années précédentes
+                        {sortedYears.length - 2 > 1 ? `Voir les ${sortedYears.length - 2} années précédentes` : 'Voir l’année précédente'}
                       </span>
                     )}
                   </button>
@@ -2752,7 +2752,7 @@ export function PortfolioPerformanceChart({
                 {performance.absoluteGain >= 0 ? '+' : ''}{formatCurrency(performance.absoluteGain)}
               </td>
               <td className={`py-2 px-3 text-right ${performance.absoluteGainPercent >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                {performance.absoluteGainPercent >= 0 ? '+' : ''}{performance.absoluteGainPercent.toFixed(2)}%
+                {performance.absoluteGainPercent >= 0 ? '+' : ''}{formatNumber(performance.absoluteGainPercent, 2)}%
               </td>
               <td className="py-2 px-3 text-right font-medium text-[color:var(--gain)]">
                 +{formatCurrency(performance.totalDividends)}

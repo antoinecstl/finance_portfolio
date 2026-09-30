@@ -9,21 +9,8 @@ import type { Transaction } from '@/lib/types';
 import type { FxRateMap } from '@/lib/fx';
 import { findClosestQuote } from '@/lib/stock-api';
 import { buildNiceYAxisScale } from '@/lib/chart-axis';
-
-const BENCHMARKS = {
-  '^FCHI': { label: 'CAC 40', color: 'var(--chart-1)' },
-  '^GSPC': { label: 'S&P 500', color: 'var(--chart-4)' },
-  '^NDX': { label: 'Nasdaq 100', color: 'var(--chart-6)' },
-  '^IXIC': { label: 'Nasdaq Composite', color: 'var(--chart-2)' },
-  '^DJI': { label: 'Dow Jones', color: 'var(--chart-5)' },
-  '^STOXX50E': { label: 'Euro Stoxx 50', color: 'var(--chart-secondary)' },
-  '^GDAXI': { label: 'DAX', color: 'var(--chart-3)' },
-  '^FTSE': { label: 'FTSE 100', color: 'var(--chart-7)' },
-  '^N225': { label: 'Nikkei 225', color: 'var(--chart-9)' },
-  '^RUT': { label: 'Russell 2000', color: 'var(--chart-8)' },
-} as const;
-
-type BenchmarkKey = keyof typeof BENCHMARKS;
+import { formatNumber } from '@/lib/utils';
+import { BENCHMARKS, type BenchmarkKey } from '@/lib/benchmarks';
 
 type PeriodOption = '1S' | '1M' | '3M' | '6M' | '1A' | 'YTD' | 'Max';
 
@@ -53,7 +40,7 @@ function periodCutoff(period: PeriodOption): string | null {
   return formatLocalDate(d);
 }
 
-const fmtPct = (n: number) => `${n >= 0 ? '+' : ''}${n.toFixed(2)}%`;
+const fmtPct = (n: number) => `${n >= 0 ? '+' : ''}${formatNumber(n, 2)}%`;
 
 // Multi-devise détecté → on ajoute un badge "valeurs en EUR" mais le graphe
 // reste affiché : la conversion FX est appliquée en amont par calculatePortfolioHistory.

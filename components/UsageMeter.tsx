@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import { Sparkles } from 'lucide-react';
 import { useSubscription } from '@/lib/subscription-client';
 
 type UsageMeterProps = {
@@ -41,7 +40,7 @@ export function UsageMeter({ label, current, max, className = '' }: UsageMeterPr
       <div className="h-1.5 bg-zinc-200 dark:bg-zinc-700 rounded-full overflow-hidden">
         <div
           className={`h-full rounded-full transition-all ${
-            full ? 'bg-red-500' : warn ? 'bg-amber-500' : 'bg-blue-500'
+            full ? 'bg-red-500' : warn ? 'bg-amber-500' : 'bg-[color:var(--ink)]'
           }`}
           style={{ width: `${pct}%` }}
         />
@@ -49,10 +48,9 @@ export function UsageMeter({ label, current, max, className = '' }: UsageMeterPr
       {warn && (
         <Link
           href="/settings/billing"
-          className="mt-2 inline-flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:underline"
+          className="mt-2 inline-flex items-center gap-1 font-medium text-[color:var(--ink)] underline underline-offset-4"
         >
-          <Sparkles className="h-3 w-3" />
-          Passer Pro pour des {label.toLowerCase()} illimité·e·s
+          Passer Pro : sans limite de {label.toLowerCase()}
         </Link>
       )}
     </div>

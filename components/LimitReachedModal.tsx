@@ -10,7 +10,7 @@ import {
   type ReactNode,
 } from 'react';
 import Link from 'next/link';
-import { X, Sparkles, Check, ArrowRight } from 'lucide-react';
+import { X, Lock, Check, ArrowRight } from 'lucide-react';
 import { PLANS, formatPriceFor, getYearlySavingsPercent, type BillingInterval } from '@/lib/plans';
 
 export type LimitScope = 'accounts' | 'transactions' | 'positions';
@@ -35,7 +35,7 @@ const SCOPE_COPY: Record<
   accounts: {
     title: 'Limite de comptes atteinte',
     body: (n) =>
-      `Le plan Free autorise ${n} compte. Passez Pro pour connecter tous vos PEA, CTO, livrets et assurances-vie.`,
+      `Le plan Free autorise ${n} ${n > 1 ? 'comptes' : 'compte'}. Passez Pro pour connecter tous vos PEA, CTO, livrets et assurances-vie.`,
     label: 'comptes',
   },
   transactions: {
@@ -126,7 +126,7 @@ function LimitReachedOverlay({
 
         <div className="p-6 pb-4 border-b border-zinc-200 dark:border-zinc-800">
           <div className="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 mb-3">
-            <Sparkles className="h-5 w-5" />
+            <Lock className="h-5 w-5" />
           </div>
           <h2 className="text-lg sm:text-xl font-bold text-zinc-900 dark:text-zinc-100">
             {copy.title}
@@ -175,7 +175,7 @@ function LimitReachedOverlay({
 
           <div className="flex justify-center mb-4">
             <div className="relative">
-              <span className="absolute -top-3 right-0 translate-x-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-blue-600 text-white shadow-sm whitespace-nowrap">
+              <span className="absolute -top-3 right-0 translate-x-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-[color:var(--ink)] text-[color:var(--paper)] shadow-sm whitespace-nowrap">
                 Recommandé
               </span>
               <div className="inline-flex items-center gap-1 p-1 rounded-full border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800">
@@ -225,7 +225,7 @@ function LimitReachedOverlay({
           <div className="flex flex-col sm:flex-row gap-2">
             <Link
               href={`/settings/billing?interval=${interval}`}
-              className="flex-1 inline-flex items-center justify-center gap-2 py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
+              className="flex-1 inline-flex items-center justify-center gap-2 py-2.5 px-4 btn-ink font-medium rounded-lg"
               onClick={onClose}
             >
               Passer Pro

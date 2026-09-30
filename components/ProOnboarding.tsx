@@ -3,15 +3,13 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  Sparkles,
   Upload,
-  BarChart2,
   Coins,
-  FileDown,
   Wallet,
   ArrowRight,
   Check,
 } from 'lucide-react';
+import { PLANS } from '@/lib/plans';
 
 type ProAction = {
   key: string;
@@ -26,7 +24,7 @@ const PRO_ACTIONS: ProAction[] = [
     key: 'import',
     icon: Upload,
     title: 'Importer mes transactions',
-    description: 'Reprenez votre historique depuis un fichier CSV de votre courtier.',
+    description: 'Reprenez votre historique depuis un relevé CSV, Excel, PDF ou une capture.',
     href: '/dashboard/import',
   },
   {
@@ -37,21 +35,15 @@ const PRO_ACTIONS: ProAction[] = [
     href: '/dashboard',
   },
   {
-    key: 'analytics',
-    icon: BarChart2,
-    title: 'Voir mes analyses avancées',
-    description: 'Performance annuelle, historique complet, comparaison benchmarks.',
+    key: 'dividends',
+    icon: Coins,
+    title: 'Suivre mes dividendes',
+    description: 'Rendement sur coût et historique par année, dans l’onglet Dividendes.',
     href: '/dashboard',
   },
 ];
 
-const PRO_FEATURES = [
-  { icon: Wallet, label: 'Comptes, transactions et positions illimités' },
-  { icon: BarChart2, label: 'Analyses avancées & performance annuelle' },
-  { icon: Coins, label: 'Module dividendes' },
-  { icon: Upload, label: 'Import CSV depuis votre courtier' },
-  { icon: FileDown, label: 'Export CSV de vos données' },
-];
+const PRO_FEATURES = PLANS.pro.highlights;
 
 export function ProOnboarding({ onClose }: { onClose: () => void }) {
   const router = useRouter();
@@ -85,30 +77,25 @@ export function ProOnboarding({ onClose }: { onClose: () => void }) {
         <div className="px-8 pb-8">
           {step === 0 && (
             <div>
-              <div className="flex items-center justify-center mb-4">
-                <span className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-[color:var(--accent-soft)] text-[color:var(--accent)]">
-                  <Sparkles className="w-7 h-7" />
-                </span>
-              </div>
               <h1
                 id="pro-onboarding-title"
                 className="display text-3xl leading-none text-[color:var(--ink)] text-center mb-2"
               >
-                Bienvenue dans Fi-Hub Pro 🎉
+                Bienvenue dans Fi-Hub Pro
               </h1>
               <p className="text-[color:var(--ink-soft)] text-center mb-6">
                 Votre abonnement est actif. Voici tout ce que vous venez de débloquer.
               </p>
               <ul className="space-y-2.5 mb-2">
-                {PRO_FEATURES.map((f) => (
+                {PRO_FEATURES.map((label) => (
                   <li
-                    key={f.label}
+                    key={label}
                     className="flex items-start gap-3 text-sm text-[color:var(--ink)]"
                   >
                     <span className="flex-shrink-0 w-7 h-7 rounded-lg bg-[color:var(--gain-soft)] text-[color:var(--gain)] flex items-center justify-center">
                       <Check className="w-4 h-4" />
                     </span>
-                    <span className="pt-1">{f.label}</span>
+                    <span className="pt-1">{label}</span>
                   </li>
                 ))}
               </ul>

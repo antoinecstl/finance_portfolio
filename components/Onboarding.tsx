@@ -12,6 +12,7 @@ import {
   Check,
 } from 'lucide-react';
 import { getApiErrorMessage } from '@/lib/api-errors';
+import { PLANS } from '@/lib/plans';
 
 export function Onboarding({ email }: { email: string }) {
   const [step, setStep] = useState(0);
@@ -68,7 +69,7 @@ export function Onboarding({ email }: { email: string }) {
           {step === 0 && (
             <div>
               <h1 className="display text-3xl leading-none text-[color:var(--ink)] mb-2">
-                Bienvenue sur Fi-Hub 👋
+                Bienvenue sur Fi-Hub
               </h1>
               <p className="text-[color:var(--ink-soft)] mb-6">
                 Votre compte <span className="font-medium">{email}</span> est prêt. Prenons 30
@@ -134,7 +135,7 @@ export function Onboarding({ email }: { email: string }) {
                       2. Saisissez vos positions et transactions
                     </p>
                     <p className="text-sm text-[color:var(--ink-soft)]">
-                      Vos titres sont valorisés en temps réel via des données de marché.
+                      Vos titres sont valorisés avec des cours de marché actualisés automatiquement.
                     </p>
                   </div>
                 </li>
@@ -165,26 +166,19 @@ export function Onboarding({ email }: { email: string }) {
               </p>
               <div className="rounded-lg border border-[color:var(--rule)] bg-[color:var(--paper-2)] p-4 mb-4">
                 <p className="font-medium text-[color:var(--ink)] mb-2 flex items-center gap-2">
-                  <BarChart2 className="w-4 h-4 text-[color:var(--accent)]" /> Plan Free
+                  <BarChart2 className="w-4 h-4 text-[color:var(--ink)]" /> Plan Free
                 </p>
                 <ul className="text-sm text-[color:var(--ink-soft)] space-y-1.5">
-                  <li className="flex items-center gap-2">
-                    <Check className="w-4 h-4 text-[color:var(--gain)]" /> 1 compte
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="w-4 h-4 text-[color:var(--gain)]" /> 50 transactions
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="w-4 h-4 text-[color:var(--gain)]" /> 5 positions
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="w-4 h-4 text-[color:var(--gain)]" /> Graphiques essentiels
-                  </li>
+                  {PLANS.free.highlights.map((highlight) => (
+                    <li key={highlight} className="flex items-center gap-2">
+                      <Check className="w-4 h-4 text-[color:var(--gain)]" /> {highlight}
+                    </li>
+                  ))}
                 </ul>
               </div>
               <p className="text-sm text-[color:var(--ink-soft)]">
-                Vous pourrez passer Pro à tout moment pour des suivis illimités et des analyses
-                avancées.
+                Vous pourrez passer Pro à tout moment : comptes et transactions illimités, module
+                dividendes et import de relevés.
               </p>
             </div>
           )}

@@ -23,18 +23,23 @@ export function CookieBanner() {
   if (!visible) return null;
 
   return (
-    <div className="ink-card pop-shadow fixed bottom-4 inset-x-4 sm:inset-x-auto sm:right-4 sm:max-w-md z-50 rounded-xl p-4 text-sm">
-      <p className="text-[color:var(--ink)] mb-3">
+    <div
+      role="region"
+      aria-label="Information sur les cookies"
+      className="fixed bottom-4 inset-x-4 sm:inset-x-auto sm:right-4 sm:max-w-sm z-50 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-2)] p-4 text-sm shadow-lg"
+    >
+      <p className="text-[color:var(--text-2)] mb-3 leading-relaxed">
         Fi-Hub n&apos;utilise que des cookies strictement nécessaires (authentification, session). Pas de
         tracking publicitaire.{' '}
-        <Link href="/legal/cookies" className="text-[color:var(--accent)] hover:underline">
+        <Link href="/legal/cookies" className="link">
           En savoir plus
         </Link>
         .
       </p>
       <button
+        type="button"
         onClick={dismiss}
-        className="btn-ink w-full py-2 rounded-lg"
+        className="btn-primary btn-sm w-full"
       >
         J&apos;ai compris
       </button>

@@ -4,9 +4,11 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Fraunces, Geist, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth";
+import { PLANS } from "@/lib/plans";
 
 const SITE_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://fi-hub.subleet.com";
 const SEARCH_SITE_NAME = "Fi-Hub";
+const FREE_ACCOUNTS = PLANS.free.maxAccounts;
 
 const fraunces = Fraunces({
   subsets: ["latin"],
@@ -34,7 +36,7 @@ export const metadata: Metadata = {
     template: "%s · Fi-Hub",
   },
   description:
-    "Fi-Hub regroupe vos PEA, CTO, livrets et assurances-vie en un tableau de bord unique. Valorisation en temps réel, dividendes, historique. Gratuit pour démarrer.",
+    `Fi-Hub suit vos PEA, CTO, livrets et assurances-vie au même endroit : positions et PRU recalculés depuis vos transactions, performance hors apports face au CAC 40, au S&P 500 ou à un autre indice. Gratuit jusqu'à ${FREE_ACCOUNTS} comptes.`,
   applicationName: "Fi-Hub",
   keywords: [
     "suivi patrimoine",
@@ -45,7 +47,7 @@ export const metadata: Metadata = {
     "tracker portefeuille bourse",
     "dividendes ETF",
     "agrégateur patrimoine français",
-    "valorisation portefeuille temps réel",
+    "performance hors apports",
     "assurance-vie suivi",
   ],
   authors: [{ name: "Fi-Hub" }],
@@ -57,23 +59,23 @@ export const metadata: Metadata = {
     locale: "fr_FR",
     url: SITE_URL,
     siteName: SEARCH_SITE_NAME,
-    title: "Fi-Hub — Suivez votre patrimoine sans Excel",
+    title: "Fi-Hub — Vos placements réunis. Votre performance en clair.",
     description:
-      "PEA, CTO, livrets, assurances-vie : un tableau de bord unique, valorisé en temps réel. Dividendes, historique complet, multi-comptes.",
+      `Positions et PRU recalculés depuis vos transactions, performance hors apports comparée à un indice, historique jour par jour. Gratuit jusqu'à ${FREE_ACCOUNTS} comptes, sans carte bancaire.`,
     images: [
       {
         url: "/opengraph-image",
         width: 1200,
         height: 630,
-        alt: "Fi-Hub — Suivi de patrimoine",
+        alt: "Fi-Hub — Vos placements réunis. Votre performance en clair.",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Fi-Hub — Suivez votre patrimoine sans Excel",
+    title: "Fi-Hub — Vos placements réunis. Votre performance en clair.",
     description:
-      "Regroupez PEA, CTO, livrets et assurances-vie. Valorisation temps réel, dividendes, historique.",
+      `Positions et PRU recalculés depuis vos transactions, performance hors apports comparée à un indice. Gratuit jusqu'à ${FREE_ACCOUNTS} comptes.`,
     images: ["/opengraph-image"],
   },
   robots: {
@@ -87,7 +89,13 @@ export const metadata: Metadata = {
       "max-video-preview": -1,
     },
   },
-  icons: { icon: "/icon.png", apple: "/icon.png" },
+  icons: {
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/icon.png", type: "image/png", sizes: "512x512" },
+    ],
+    apple: "/apple-icon.png",
+  },
   formatDetection: { telephone: false, email: false, address: false },
   verification: {
     google: "H4-TUj5dMXFozw0CkqiEt2cFSG41tGhFHaY1kkFqu9g",

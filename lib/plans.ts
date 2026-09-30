@@ -3,7 +3,6 @@ export type BillingInterval = 'month' | 'year';
 export type Feature =
   | 'basic_charts'
   | 'advanced_analytics'
-  | 'csv_export'
   | 'full_history'
   | 'dividends_module'
   | 'import_transactions';
@@ -46,7 +45,7 @@ export const PLANS: Record<PlanId, Plan> = {
       '10 positions boursières',
       'Analyses avancées & performance annuelle',
       'Historique complet du portefeuille',
-      'Cours en temps réel',
+      'Cours actualisés automatiquement',
     ],
   },
   pro: {
@@ -62,7 +61,6 @@ export const PLANS: Record<PlanId, Plan> = {
     features: [
       'basic_charts',
       'advanced_analytics',
-      'csv_export',
       'full_history',
       'dividends_module',
       'import_transactions',
@@ -72,8 +70,7 @@ export const PLANS: Record<PlanId, Plan> = {
       'Comptes illimités (PEA, CTO, livrets, AV)',
       'Transactions et positions illimitées',
       'Module dividendes',
-      'Import de transactions (CSV, PDF, relevés)',
-      'Export CSV',
+      'Import de relevés (CSV, Excel, PDF, captures)',
     ],
   },
 };

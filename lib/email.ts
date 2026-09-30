@@ -87,7 +87,7 @@ export async function sendSubscriptionReceipt(to: string, periodEnd: string | nu
   const html = layout(
     'Abonnement Pro activé',
     `<h1 style="margin:0 0 16px;font-size:22px">Merci pour votre abonnement 🎉</h1>
-    <p>Votre abonnement <strong>Fi-Hub Pro</strong> est actif. Toutes les fonctionnalités Pro sont débloquées : analyses avancées, historique complet, module dividendes, export CSV.</p>
+    <p>Votre abonnement <strong>Fi-Hub Pro</strong> est actif. Toutes les fonctionnalités Pro sont débloquées : comptes, transactions et positions illimités, module dividendes et import de relevés.</p>
     <p>Prochain renouvellement : <strong>${endStr}</strong>.</p>
     <p style="margin:24px 0">
       <a href="${appUrl()}/settings/billing" style="display:inline-block;padding:10px 20px;background:#0e0c0a;color:#f7f2e8;text-decoration:none;border-radius:8px;font-weight:500">Gérer l'abonnement</a>

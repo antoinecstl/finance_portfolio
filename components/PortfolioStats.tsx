@@ -140,12 +140,12 @@ export function PortfolioStats({
   return (
     <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
       <StatCard
-        title="Valeur Totale"
+        title="Valeur totale"
         value={formatCurrency(totalPortfolioValue)}
         icon="wallet"
       />
       <StatCard
-        title="Portefeuille Actions"
+        title="Portefeuille actions"
         value={formatCurrency(totalValue)}
         change={totalGainPercent}
         changeLabel={`${totalGain >= 0 ? '+' : ''}${formatCurrency(totalGain)} vs PRU`}

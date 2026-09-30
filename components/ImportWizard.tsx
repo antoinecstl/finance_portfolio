@@ -323,7 +323,7 @@ export function ImportWizard() {
 
       if (res.status === 402) {
         const data = await res.json().catch(() => ({}));
-        setError(data.message ?? 'L\'import de transactions est reserve aux utilisateurs Pro.');
+        setError(data.message ?? 'L\'import de transactions est réservé à l’offre Pro.');
         return;
       }
       if (res.status === 429) {
@@ -488,7 +488,7 @@ export function ImportWizard() {
       });
       if (res.status === 402) {
         const data = await res.json().catch(() => ({}));
-        setError(data.message ?? 'L\'import de transactions est reserve aux utilisateurs Pro.');
+        setError(data.message ?? 'L\'import de transactions est réservé à l’offre Pro.');
         return;
       }
       if (!res.ok) {
