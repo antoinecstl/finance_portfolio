@@ -1,12 +1,13 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Users, UserPlus, Activity, Crown, Wallet, Receipt, Euro } from 'lucide-react';
+import { ArrowLeft, Users, UserPlus, Activity, Crown, Wallet, Receipt, Euro, RefreshCw, Target, TrendingUp } from 'lucide-react';
 import { getAdminUser } from '@/lib/admin';
 import { getAdminStats, type AdminStats } from '@/lib/admin-stats';
 import { AdminUsersTable } from '@/components/admin/AdminUsersTable';
 import { AdminTicketBoard } from '@/components/admin/AdminTicketBoard';
 import { getAdminTickets } from '@/lib/admin-tickets';
+import { formatAdminRate } from '@/lib/admin-insights';
 
 export const dynamic = 'force-dynamic';
 
@@ -102,20 +103,29 @@ export default async function AdminPage() {
           <ArrowLeft className="h-4 w-4" /> Retour au dashboard
         </Link>
 
-        <div className="mb-8 flex flex-wrap items-end justify-between gap-3">
+        <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
           <div>
             <h1 className="display text-4xl leading-none text-[color:var(--ink)]">Admin</h1>
             <p className="text-sm text-[color:var(--ink-soft)] mt-2">
               Suivi de l&apos;activité de la plateforme · {admin.email}
             </p>
           </div>
-          <p className="text-xs text-[color:var(--ink-soft)]">
-            Généré le {dtf.format(new Date(stats.generatedAt))}
-          </p>
+          <div className="flex items-center gap-3 text-xs text-[color:var(--ink-soft)]">
+            <span>Actualisé le {dtf.format(new Date(stats.generatedAt))}</span>
+            <Link href="/admin" className="inline-flex items-center gap-1 rounded-lg border border-[color:var(--rule)] px-2.5 py-1.5 hover:bg-[color:var(--paper-2)] hover:text-[color:var(--ink)]">
+              <RefreshCw className="h-3.5 w-3.5" /> Actualiser
+            </Link>
+          </div>
         </div>
 
+        <nav aria-label="Sections du dashboard" className="mb-6 flex gap-1 overflow-x-auto rounded-xl bg-[color:var(--paper-2)] p-1 text-sm">
+          <a href="#overview" className="whitespace-nowrap rounded-lg bg-[color:var(--paper)] px-3 py-1.5 font-medium shadow-sm">Vue d’ensemble</a>
+          <a href="#users" className="whitespace-nowrap rounded-lg px-3 py-1.5 text-[color:var(--ink-soft)] hover:text-[color:var(--ink)]">Utilisateurs</a>
+          <a href="#backlog" className="whitespace-nowrap rounded-lg px-3 py-1.5 text-[color:var(--ink-soft)] hover:text-[color:var(--ink)]">Backlog produit</a>
+        </nav>
+
         {/* KPIs */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div id="overview" className="grid scroll-mt-4 grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <StatCard
             icon={Users}
             label="Utilisateurs"
@@ -138,8 +148,14 @@ export default async function AdminPage() {
             icon={Euro}
             label="MRR estimé"
             value={eur(stats.plans.mrrCents)}
-            hint={`${stats.plans.proActive} abonnés Pro`}
+            hint={`${stats.plans.paidPro} abonnement${stats.plans.paidPro !== 1 ? 's' : ''} payant${stats.plans.paidPro !== 1 ? 's' : ''}`}
           />
+        </div>
+
+        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <StatCard icon={TrendingUp} label="Conversion Pro" value={formatAdminRate(stats.plans.paidPro, stats.users.total)} hint="Abonnements payants / utilisateurs" />
+          <StatCard icon={Target} label="Activation" value={formatAdminRate(stats.content.usersWithTransactions, stats.users.total)} hint={`${nf.format(stats.content.usersWithTransactions)} utilisateurs avec transaction`} />
+          <StatCard icon={Wallet} label="Portefeuilles créés" value={formatAdminRate(stats.content.usersWithAccounts, stats.users.total)} hint={`${nf.format(stats.content.usersWithAccounts)} utilisateurs avec compte`} />
         </div>
 
         {/* Répartition plans + contenu */}
@@ -198,7 +214,7 @@ export default async function AdminPage() {
         </div>
 
         {/* Graphe inscriptions */}
-        <div className="mt-4">
+        <div id="users" className="mt-4 scroll-mt-4">
           <SignupsChart data={stats.signupsByDay} />
         </div>
 
@@ -207,7 +223,9 @@ export default async function AdminPage() {
           <AdminUsersTable users={stats.rows} />
         </div>
 
-        <AdminTicketBoard initialTickets={tickets} />
+        <div id="backlog" className="scroll-mt-4">
+          <AdminTicketBoard initialTickets={tickets} />
+        </div>
       </div>
     </div>
   );

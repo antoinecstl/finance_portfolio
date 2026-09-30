@@ -233,7 +233,7 @@ export function AdminUsersTable({ users }: { users: AdminUserRow[] }) {
                               ) : (
                                 <Check className="h-3.5 w-3.5" />
                               )}
-                              {founder ? 'Retirer fondateur' : 'Comper en Pro (fondateur)'}
+                              {founder ? 'Retirer fondateur' : 'Passer en Pro (fondateur)'}
                             </button>
                           </div>
                         </div>
