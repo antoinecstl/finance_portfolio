@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useAuth } from '@/lib/auth';
-import { Mail, Lock, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { safeInternalRedirect } from '@/lib/redirects';
@@ -39,76 +39,91 @@ export function LoginForm() {
 
   return (
     <>
-      <div className="text-center mb-8">
-        <h1 className="display text-4xl leading-none text-[color:var(--ink)]">Fi&#8209;Hub</h1>
-        <p className="mono text-[11px] tracking-[0.16em] uppercase text-[color:var(--ink-soft)] mt-3">Connexion</p>
-      </div>
+      <h1 className="text-[32px] font-semibold leading-[1.1] tracking-[-0.02em] text-[color:var(--text)]">
+        Se connecter
+      </h1>
+      <p className="mt-2 text-[15px] text-[color:var(--text-muted)]">Accédez à votre suivi Fi-Hub.</p>
 
-      <div className="ink-card rounded-2xl pop-shadow p-6">
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-[color:var(--ink)] mb-1">Email</label>
-            <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-[color:var(--ink-soft)]" />
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="vous@exemple.com"
-                required
-                className="w-full pl-10 pr-4 py-2.5 border border-[color:var(--rule)] rounded-lg bg-[color:var(--paper)] text-[color:var(--ink)] placeholder:text-[color:var(--ink-soft)]"
-              />
-            </div>
-          </div>
-
-          <div>
-            <div className="flex justify-between items-center mb-1">
-              <label className="block text-sm font-medium text-[color:var(--ink)]">Mot de passe</label>
-              <Link href="/forgot-password" className="text-xs text-[color:var(--accent)] hover:underline">
-                Oublié ?
-              </Link>
-            </div>
-            <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-[color:var(--ink-soft)]" />
-              <input
-                type={showPassword ? 'text' : 'password'}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                required
-                className="w-full pl-10 pr-12 py-2.5 border border-[color:var(--rule)] rounded-lg bg-[color:var(--paper)] text-[color:var(--ink)] placeholder:text-[color:var(--ink-soft)]"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-[color:var(--ink-soft)] hover:text-[color:var(--ink)]"
-              >
-                {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-              </button>
-            </div>
-          </div>
-
-          {error && (
-            <div className="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
-              <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-            </div>
-          )}
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="btn-ink w-full py-2.5 px-4 font-medium rounded-lg flex items-center justify-center gap-2"
-          >
-            {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Se connecter'}
-          </button>
-        </form>
-
-        <div className="mt-6 text-center">
-          <Link href="/signup" className="text-sm text-[color:var(--accent)] hover:underline font-medium">
-            Pas de compte ? S&apos;inscrire
-          </Link>
+      <form onSubmit={handleSubmit} className="mt-8 space-y-5">
+        <div>
+          <label htmlFor="login-email" className="mb-1.5 block text-sm font-medium text-[color:var(--text)]">
+            Email
+          </label>
+          <input
+            id="login-email"
+            type="email"
+            autoComplete="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="vous@exemple.com"
+            required
+            aria-invalid={error ? true : undefined}
+            aria-describedby={error ? 'login-error' : undefined}
+            className="field-input"
+          />
         </div>
-      </div>
+
+        <div>
+          <div className="mb-1.5 flex items-baseline justify-between gap-4">
+            <label htmlFor="login-password" className="block text-sm font-medium text-[color:var(--text)]">
+              Mot de passe
+            </label>
+            <Link href="/forgot-password" className="link text-sm">
+              Mot de passe oublié ?
+            </Link>
+          </div>
+          <div className="relative">
+            <input
+              id="login-password"
+              type={showPassword ? 'text' : 'password'}
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              aria-invalid={error ? true : undefined}
+              aria-describedby={error ? 'login-error' : undefined}
+              className="field-input pr-12"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+              aria-pressed={showPassword}
+              className="absolute right-1 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded text-[color:var(--text-muted)] hover:text-[color:var(--text)]"
+            >
+              {showPassword ? <EyeOff className="h-5 w-5" aria-hidden="true" /> : <Eye className="h-5 w-5" aria-hidden="true" />}
+            </button>
+          </div>
+        </div>
+
+        {error && (
+          <p
+            id="login-error"
+            role="alert"
+            className="rounded-md border border-[color:var(--danger)] bg-[color:var(--loss-soft)] p-3 text-sm text-[color:var(--danger)]"
+          >
+            {error}
+          </p>
+        )}
+
+        <button type="submit" disabled={loading} className="btn-primary w-full">
+          {loading ? (
+            <>
+              <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
+              <span className="sr-only">Connexion en cours</span>
+            </>
+          ) : (
+            'Se connecter'
+          )}
+        </button>
+      </form>
+
+      <p className="mt-8 border-t border-[color:var(--border)] pt-6 text-[15px] text-[color:var(--text-2)]">
+        Pas encore de compte ?{' '}
+        <Link href="/signup" className="link font-medium">
+          Créer un compte gratuit
+        </Link>
+      </p>
     </>
   );
 }

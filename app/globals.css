@@ -45,6 +45,22 @@
   --loss:        #b91c1c;
   --loss-soft:   #fde8e8;
 
+  /* Semantic aliases (see DESIGN.md §2). Public pages use these; the
+     connected app keeps its existing tokens and adopts them selectively. */
+  --surface:       var(--paper);
+  --surface-2:     var(--paper-2);
+  --text:          var(--ink);
+  --text-2:        var(--ink-2);
+  --text-muted:    var(--ink-soft);
+  --border:        var(--rule);
+  --border-strong: var(--rule-strong);
+  --border-input:  #8a7f6c;   /* ≥ 3:1 on paper, for field and control outlines */
+  --action:        var(--ink);
+  --action-hover:  var(--ink-2);
+  --action-fg:     var(--paper);
+  --focus:         var(--ink);
+  --danger:        var(--loss);
+
   /* Chart roles (auto-flip in dark) */
   --chart-grid:        #d8cdb6;
   --chart-axis:        #5b524a;
@@ -183,6 +199,8 @@
     --gain-soft:   rgba(52, 211, 153, 0.12);
     --loss:        #ef4444;
     --loss-soft:   rgba(239, 68, 68, 0.14);
+
+    --border-input: #6b6356;
 
     --chart-grid:        #2a2620;
     --chart-axis:        #9a907d;
@@ -591,20 +609,9 @@ body {
   font-variation-settings: 'SOFT' 50, 'WONK' 1, 'opsz' 144;
   letter-spacing: 0;
 }
-.display-italic {
-  font-style: italic;
-  font-variation-settings: 'SOFT' 100, 'WONK' 1, 'opsz' 144;
-}
 .mono {
   font-family: var(--font-jetbrains), ui-monospace, SFMono-Regular, Menlo, monospace;
   font-variant-numeric: tabular-nums;
-}
-.eyebrow {
-  font-family: var(--font-jetbrains), ui-monospace, monospace;
-  font-size: 11px;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--ink-soft);
 }
 .tabular {
   font-variant-numeric: tabular-nums;
@@ -620,30 +627,29 @@ output,
 
 /* Buttons ────────────────────────────────── */
 .btn-ink {
-  background: var(--ink);
-  color: var(--paper);
-  border: 1px solid var(--ink);
-  transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease;
+  background: var(--action);
+  color: var(--action-fg);
+  border: 1px solid var(--action);
+  transition: background-color 120ms ease-out, border-color 120ms ease-out;
 }
 .btn-ink:hover {
-  transform: translateY(-1px);
-  box-shadow: 4px 4px 0 0 var(--accent);
+  background: var(--action-hover);
+  border-color: var(--action-hover);
 }
 .btn-ink:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-  transform: none;
-  box-shadow: none;
+  background: var(--action);
+  border-color: var(--action);
 }
 .btn-outline {
   border: 1px solid var(--ink);
   color: var(--ink);
   background: transparent;
-  transition: transform 120ms ease, box-shadow 120ms ease;
+  transition: background-color 120ms ease-out;
 }
 .btn-outline:hover {
-  transform: translateY(-1px);
-  box-shadow: 4px 4px 0 0 var(--ink);
+  background: var(--paper-2);
 }
 
 /* Card — editorial paper card */
@@ -652,8 +658,6 @@ output,
   border: 1px solid var(--rule);
 }
 
-.rule-top    { border-top: 1px solid var(--rule); }
-.rule-bottom { border-bottom: 1px solid var(--rule); }
 
 /* Inputs — minimal editorial style */
 input[type="text"],
@@ -745,86 +749,125 @@ button:focus-visible {
 }
 
 /* ────────────────────────────────────────────────────────────
-   Marketing-only decorations (scoped to .marketing-shell)
+   Public pages (marketing + auth), scoped to .public-shell.
+   See DESIGN.md. The connected app never carries this class.
    ──────────────────────────────────────────────────────────── */
-.marketing-shell .ink-mark {
-  position: relative;
-  white-space: nowrap;
-  isolation: isolate;
+.public-shell {
+  background: var(--surface);
+  color: var(--text);
+  accent-color: var(--ink);
+}
+.public-shell :where(a, button, input, select, textarea, summary):focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.public-shell ::selection {
+  background: var(--ink);
   color: var(--paper);
 }
-.marketing-shell .ink-mark::after {
-  content: '';
-  position: absolute;
-  left: -0.08em;
-  right: -0.08em;
-  top: 0.04em;
-  bottom: 0.06em;
-  background: var(--accent);
-  z-index: -1;
-  transform: skew(-4deg) rotate(-0.6deg);
-  border-radius: 3px;
-  box-shadow: 2px 3px 0 rgba(14, 12, 10, 0.08);
+
+.btn-primary,
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  padding: 0 1.25rem;
+  border-radius: 6px;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.2;
+  text-align: center;
+  transition: background-color 120ms ease-out, border-color 120ms ease-out;
+}
+.btn-primary {
+  background: var(--action);
+  color: var(--action-fg);
+  border: 1px solid var(--action);
+}
+.btn-primary:hover {
+  background: var(--action-hover);
+  border-color: var(--action-hover);
+}
+.btn-secondary {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--text);
+}
+.btn-secondary:hover {
+  background: var(--surface-2);
+}
+.btn-primary:disabled,
+.btn-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.btn-sm {
+  min-height: 36px;
+  padding: 0 0.875rem;
+  font-size: 14px;
 }
 
-.marketing-shell .grain::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  opacity: 0.35;
-  mix-blend-mode: multiply;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.45 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+.link {
+  color: var(--text);
+  text-decoration-line: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  text-decoration-color: var(--border-input);
+  transition: text-decoration-color 120ms ease-out;
 }
-@media (prefers-color-scheme: dark) {
-  .marketing-shell .grain::before {
-    mix-blend-mode: screen;
-    opacity: 0.18;
+.link:hover {
+  text-decoration-color: var(--text);
+}
+
+/* Form fields on public pages (the app keeps .input). */
+.field-input {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  border-radius: 6px;
+  border: 1px solid var(--border-input);
+  background: var(--surface);
+  padding: 0.625rem 0.75rem;
+  color: var(--text);
+  font-size: 16px;
+  line-height: 1.4;
+}
+.field-input::placeholder {
+  color: var(--text-muted);
+}
+.field-input[aria-invalid="true"] {
+  border-color: var(--danger);
+}
+
+/* Product capture frame: a plain mat that separates app captures from the
+   page. Same treatment for every capture, light and dark. */
+.figure-frame {
+  padding: 8px;
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  background: var(--surface-2);
+}
+@media (min-width: 640px) {
+  .figure-frame {
+    padding: 12px;
   }
 }
 
-.marketing-shell .pop-shadow {
-  box-shadow:
-    0 1px 0 rgba(14, 12, 10, 0.04),
-    0 14px 24px -16px rgba(14, 12, 10, 0.18),
-    0 32px 60px -32px rgba(14, 12, 10, 0.22);
-}
-@media (prefers-color-scheme: dark) {
-  .marketing-shell .pop-shadow {
-    box-shadow:
-      0 1px 0 rgba(0, 0, 0, 0.4),
-      0 14px 24px -16px rgba(0, 0, 0, 0.6),
-      0 32px 60px -32px rgba(0, 0, 0, 0.8);
+@media (prefers-reduced-motion: no-preference) {
+  html:has(.public-shell) {
+    scroll-behavior: smooth;
   }
-}
-
-@keyframes marketing-ticker {
-  from { transform: translate3d(0, 0, 0); }
-  to   { transform: translate3d(-50%, 0, 0); }
-}
-.marketing-shell .ticker-track {
-  animation: marketing-ticker 64s linear infinite;
-  will-change: transform;
 }
 @media (prefers-reduced-motion: reduce) {
-  .marketing-shell .ticker-track { animation: none; }
-}
-
-@keyframes spark-draw {
-  to { stroke-dashoffset: 0; }
-}
-.marketing-shell .spark-path {
-  stroke-dasharray: 600;
-  stroke-dashoffset: 600;
-  animation: spark-draw 2.4s 0.4s ease-out forwards;
-}
-
-@keyframes pop-in {
-  0%   { opacity: 0; transform: translateY(8px) scale(0.98); }
-  100% { opacity: 1; transform: translateY(0) scale(1); }
-}
-.marketing-shell .pop-in {
-  animation: pop-in 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  .public-shell *,
+  .public-shell *::before,
+  .public-shell *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
 }
 
 /* ────────────────────────────────────────────────────────────

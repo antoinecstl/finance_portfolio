@@ -1,7 +1,14 @@
+import { Logo } from '@/components/marketing/Logo';
+
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-[color:var(--paper)] text-[color:var(--ink)] px-4 py-8 flex items-center justify-center">
-      <div className="w-full max-w-md">{children}</div>
+    <div className="public-shell flex min-h-screen flex-col items-center justify-center px-5 py-10">
+      <div className="w-full max-w-[400px]">
+        <div className="mb-10">
+          <Logo />
+        </div>
+        <main>{children}</main>
+      </div>
     </div>
   );
 }

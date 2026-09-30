@@ -41,41 +41,39 @@ export function SeoIndexPage({
   };
 
   return (
-    <main className="max-w-6xl mx-auto px-5 py-14 sm:py-20">
+    <main className="mx-auto max-w-6xl px-5 py-12 sm:py-16 lg:px-8">
       <JsonLd data={[buildBreadcrumbJsonLd(siteUrl, breadcrumbItems), collectionJsonLd]} />
       <Breadcrumbs items={breadcrumbItems} />
 
-      <section className="max-w-3xl">
-        <p className="eyebrow">{eyebrow}</p>
-        <h1 className="display text-4xl sm:text-6xl leading-tight mt-3 text-[color:var(--ink)]">
+      <header className="max-w-3xl">
+        <p className="text-[13px] font-medium text-[color:var(--text-muted)]">{eyebrow}</p>
+        <h1 className="mt-3 text-[40px] font-semibold leading-[1.05] tracking-[-0.025em] text-[color:var(--text)] lg:text-5xl">
           {title}
         </h1>
-        <p className="mt-6 text-[18px] leading-relaxed text-[color:var(--ink-2)]">
+        <p className="mt-6 max-w-[62ch] text-lg leading-[1.55] text-[color:var(--text-2)]">
           {description}
         </p>
-      </section>
+      </header>
 
-      <section className="mt-12 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+      <ul className="mt-12 max-w-4xl border-t border-[color:var(--text)]">
         {pages.map((page) => (
-          <Link
-            key={page.href}
-            href={page.href}
-            className="ink-card rounded-2xl p-6 hover:-translate-y-0.5 transition-transform"
-          >
-            <p className="eyebrow">{page.eyebrow}</p>
-            <h2 className="mt-3 text-2xl font-semibold leading-tight text-[color:var(--ink)]">
-              {page.title}
-            </h2>
-            <p className="mt-3 text-sm leading-relaxed text-[color:var(--ink-2)]">
-              {page.metaDescription}
-            </p>
-            <span className="mt-5 inline-flex items-center gap-2 text-sm font-medium text-[color:var(--accent)]">
-              Lire la page
-              <ArrowRight className="h-4 w-4" aria-hidden="true" />
-            </span>
-          </Link>
+          <li key={page.href} className="border-b border-[color:var(--border)]">
+            <Link href={page.href} className="group grid gap-1 py-6 sm:grid-cols-[1fr_auto] sm:gap-x-8">
+              <h2 className="text-xl font-semibold leading-[1.3] tracking-[-0.01em] text-[color:var(--text)] underline-offset-4 group-hover:underline">
+                {page.title}
+              </h2>
+              <ArrowRight
+                className="hidden h-5 w-5 text-[color:var(--text-muted)] sm:row-span-2 sm:block sm:self-center"
+                strokeWidth={1.75}
+                aria-hidden="true"
+              />
+              <p className="max-w-[62ch] text-[15px] leading-relaxed text-[color:var(--text-2)]">
+                {page.metaDescription}
+              </p>
+            </Link>
+          </li>
         ))}
-      </section>
+      </ul>
     </main>
   );
 }

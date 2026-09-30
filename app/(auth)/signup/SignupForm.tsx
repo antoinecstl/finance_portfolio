@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { useAuth } from '@/lib/auth';
-import { Mail, Lock, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Eye, EyeOff, Loader2 } from 'lucide-react';
+import { freePlanSummary } from '@/components/marketing/product-facts';
 import Link from 'next/link';
 
 export function SignupForm() {
@@ -44,100 +45,116 @@ export function SignupForm() {
 
   return (
     <>
-      <div className="text-center mb-8">
-        <Link href="/" className="inline-flex items-baseline gap-2 text-[color:var(--ink)] hover:opacity-80 transition-opacity">
-          <span className="display text-4xl leading-none">Fi&#8209;Hub</span>
-        </Link>
-        <p className="mono text-[11px] tracking-[0.16em] uppercase text-[color:var(--ink-soft)] mt-3">Créer un compte</p>
-      </div>
+      <h1 className="text-[32px] font-semibold leading-[1.1] tracking-[-0.02em] text-[color:var(--text)]">
+        Créer un compte
+      </h1>
+      <p className="mt-2 text-[15px] text-[color:var(--text-muted)]">{freePlanSummary()}</p>
 
-      <div className="ink-card rounded-2xl pop-shadow p-6">
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-[color:var(--ink)] mb-1">Email</label>
-            <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-[color:var(--ink-soft)]" />
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="vous@exemple.com"
-                required
-                className="w-full pl-10 pr-4 py-2.5 border border-[color:var(--rule)] rounded-lg bg-[color:var(--paper)] text-[color:var(--ink)] placeholder:text-[color:var(--ink-soft)]"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-[color:var(--ink)] mb-1">Mot de passe</label>
-            <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-[color:var(--ink-soft)]" />
-              <input
-                type={showPassword ? 'text' : 'password'}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="8 caractères minimum"
-                required
-                className="w-full pl-10 pr-12 py-2.5 border border-[color:var(--rule)] rounded-lg bg-[color:var(--paper)] text-[color:var(--ink)] placeholder:text-[color:var(--ink-soft)]"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-[color:var(--ink-soft)] hover:text-[color:var(--ink)]"
-              >
-                {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-              </button>
-            </div>
-          </div>
-
-          <label className="flex items-start gap-2 text-xs text-[color:var(--ink-soft)] cursor-pointer">
-            <input
-              type="checkbox"
-              checked={acceptTerms}
-              onChange={(e) => setAcceptTerms(e.target.checked)}
-              className="mt-0.5 rounded border-[color:var(--rule)]"
-              required
-            />
-            <span>
-              J&apos;accepte les{' '}
-              <Link href="/legal/cgu" className="text-[color:var(--accent)] hover:underline">
-                CGU
-              </Link>{' '}
-              et la{' '}
-              <Link href="/legal/confidentialite" className="text-[color:var(--accent)] hover:underline">
-                politique de confidentialité
-              </Link>
-              .
-            </span>
+      <form onSubmit={handleSubmit} className="mt-8 space-y-5">
+        <div>
+          <label htmlFor="signup-email" className="mb-1.5 block text-sm font-medium text-[color:var(--text)]">
+            Email
           </label>
-
-          {error && (
-            <div className="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
-              <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-            </div>
-          )}
-
-          {success && (
-            <div className="p-3 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800">
-              <p className="text-sm text-emerald-600 dark:text-emerald-400">{success}</p>
-            </div>
-          )}
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="btn-ink w-full py-2.5 px-4 font-medium rounded-lg flex items-center justify-center gap-2"
-          >
-            {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Créer mon compte'}
-          </button>
-        </form>
-
-        <div className="mt-6 text-center">
-          <Link href="/login" className="text-sm text-[color:var(--accent)] hover:underline font-medium">
-            Déjà un compte ? Se connecter
-          </Link>
+          <input
+            id="signup-email"
+            type="email"
+            autoComplete="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="vous@exemple.com"
+            required
+            className="field-input"
+          />
         </div>
-      </div>
+
+        <div>
+          <label htmlFor="signup-password" className="mb-1.5 block text-sm font-medium text-[color:var(--text)]">
+            Mot de passe
+          </label>
+          <div className="relative">
+            <input
+              id="signup-password"
+              type={showPassword ? 'text' : 'password'}
+              autoComplete="new-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              aria-describedby="signup-password-help"
+              className="field-input pr-12"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+              aria-pressed={showPassword}
+              className="absolute right-1 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded text-[color:var(--text-muted)] hover:text-[color:var(--text)]"
+            >
+              {showPassword ? <EyeOff className="h-5 w-5" aria-hidden="true" /> : <Eye className="h-5 w-5" aria-hidden="true" />}
+            </button>
+          </div>
+          <p id="signup-password-help" className="mt-1.5 text-[13px] text-[color:var(--text-muted)]">
+            8 caractères minimum.
+          </p>
+        </div>
+
+        <div className="flex items-start gap-3">
+          <input
+            id="signup-terms"
+            type="checkbox"
+            checked={acceptTerms}
+            onChange={(e) => setAcceptTerms(e.target.checked)}
+            className="mt-1 h-4 w-4 shrink-0"
+            required
+          />
+          <label htmlFor="signup-terms" className="text-sm leading-relaxed text-[color:var(--text-2)]">
+            J&apos;accepte les{' '}
+            <Link href="/legal/cgu" className="link">
+              CGU
+            </Link>{' '}
+            et la{' '}
+            <Link href="/legal/confidentialite" className="link">
+              politique de confidentialité
+            </Link>
+            .
+          </label>
+        </div>
+
+        {error && (
+          <p
+            role="alert"
+            className="rounded-md border border-[color:var(--danger)] bg-[color:var(--loss-soft)] p-3 text-sm text-[color:var(--danger)]"
+          >
+            {error}
+          </p>
+        )}
+
+        {success && (
+          <p
+            role="status"
+            className="rounded-md border border-[color:var(--gain)] bg-[color:var(--gain-soft)] p-3 text-sm text-[color:var(--gain)]"
+          >
+            {success}
+          </p>
+        )}
+
+        <button type="submit" disabled={loading} className="btn-primary w-full">
+          {loading ? (
+            <>
+              <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
+              <span className="sr-only">Création du compte en cours</span>
+            </>
+          ) : (
+            'Créer mon compte'
+          )}
+        </button>
+      </form>
+
+      <p className="mt-8 border-t border-[color:var(--border)] pt-6 text-[15px] text-[color:var(--text-2)]">
+        Déjà un compte ?{' '}
+        <Link href="/login" className="link font-medium">
+          Se connecter
+        </Link>
+      </p>
     </>
   );
 }

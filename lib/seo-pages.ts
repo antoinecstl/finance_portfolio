@@ -70,7 +70,7 @@ export const guidePages: SeoPage[] = [
         ],
         bullets: [
           'Valeur actuelle par compte et par position.',
-          'Prix de revient unitaire, frais inclus.',
+          'Prix de revient unitaire (PRU) et frais de courtage.',
           'Dividendes reçus et rendement sur coût.',
           'Performance comparée à un indice de référence.',
         ],
@@ -107,7 +107,7 @@ export const guidePages: SeoPage[] = [
       'Le PEA est souvent le cœur d’un patrimoine boursier français. Pour le suivre correctement, il faut distinguer la poche espèces, les positions, les frais, les dividendes et la performance réelle.',
     takeaways: [
       'Un PEA doit être suivi avec une poche cash séparée des titres.',
-      'Les frais modifient le PRU et donc la performance réelle.',
+      'Les frais pèsent sur la performance réelle : ils doivent être enregistrés avec chaque opération.',
       'Comparer le PEA à un indice évite de juger la performance hors contexte.',
     ],
     sections: [
@@ -128,7 +128,7 @@ export const guidePages: SeoPage[] = [
         heading: 'Performance du PEA vs performance globale',
         body: [
           'Un PEA peut progresser parce que vous avez ajouté du cash, pas parce que les titres ont monté. C’est pour cela qu’il faut séparer la variation brute du patrimoine de la performance hors apports.',
-          'Fi-Hub permet de garder cette distinction visible et de comparer le PEA à des références comme le CAC 40, le S&P 500 ou un ETF Monde.',
+          'Fi-Hub permet de garder cette distinction visible et de comparer le PEA à des références comme le CAC 40, le S&P 500 ou l’Euro Stoxx 50.',
         ],
       },
       {
@@ -171,6 +171,7 @@ export const guidePages: SeoPage[] = [
         body: [
           'Lors d’un renforcement, le nouveau PRU mélange l’ancien coût restant et le coût du nouvel achat. Lors d’une vente partielle, la quantité baisse, mais l’historique doit rester disponible pour comprendre la trajectoire de la position.',
           'Fi-Hub reconstruit les positions à partir des transactions, ce qui évite de modifier manuellement une cellule de PRU après chaque opération.',
+          'Dans Fi-Hub, le PRU affiché est calculé sur le prix d’achat. Les frais sont enregistrés à part, rattachés à l’achat, et débités des liquidités du compte.',
         ],
       },
       {
@@ -343,7 +344,7 @@ export const featurePages: SeoPage[] = [
     title: 'Benchmark portefeuille',
     metaTitle: 'Benchmark portefeuille : comparez vos performances au marché',
     metaDescription:
-      'Comparez votre portefeuille à des indices comme le CAC 40, le S&P 500 ou un ETF Monde pour lire votre performance.',
+      'Comparez votre portefeuille à des indices comme le CAC 40, le S&P 500 ou l’Euro Stoxx 50 pour lire votre performance.',
     eyebrow: 'Fonctionnalité',
     h1: 'Benchmark portefeuille : savoir si vous battez vraiment le marché',
     intro:

@@ -23,14 +23,14 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="ink-card rounded-2xl pop-shadow p-6">
+    <div>
       <Link
         href="/login"
         className="inline-flex items-center gap-1 text-sm text-[color:var(--ink-soft)] hover:text-[color:var(--ink)] mb-4"
       >
         <ArrowLeft className="h-4 w-4" /> Retour
       </Link>
-      <h1 className="display text-3xl leading-tight text-[color:var(--ink)] mb-2">Mot de passe oublié</h1>
+      <h1 className="mb-2 text-[32px] font-semibold leading-[1.1] tracking-[-0.02em] text-[color:var(--text)]">Mot de passe oublié</h1>
       <p className="text-sm text-[color:var(--ink-soft)] mb-4">
         Entrez votre email, nous vous enverrons un lien pour réinitialiser votre mot de passe.
       </p>
@@ -50,6 +50,8 @@ export default function ForgotPasswordPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="vous@exemple.com"
+              aria-label="Email"
+              autoComplete="email"
               required
               className="w-full pl-10 pr-4 py-2.5 border border-[color:var(--rule)] rounded-lg bg-[color:var(--paper)] text-[color:var(--ink)] placeholder:text-[color:var(--ink-soft)]"
             />

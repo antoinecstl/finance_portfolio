@@ -61,7 +61,7 @@ export default function ResetPasswordPage() {
 
   if (ready && !hasSession) {
     return (
-      <div className="ink-card rounded-2xl pop-shadow p-6">
+      <div>
         <div className="flex items-start gap-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 px-4 py-3 mb-4">
           <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
           <div>
@@ -84,8 +84,8 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <div className="ink-card rounded-2xl pop-shadow p-6">
-      <h1 className="display text-3xl leading-tight text-[color:var(--ink)] mb-2">Nouveau mot de passe</h1>
+    <div>
+      <h1 className="mb-2 text-[32px] font-semibold leading-[1.1] tracking-[-0.02em] text-[color:var(--text)]">Nouveau mot de passe</h1>
       <p className="text-sm text-[color:var(--ink-soft)] mb-4">
         Choisissez un nouveau mot de passe pour votre compte.
       </p>
@@ -97,6 +97,7 @@ export default function ResetPasswordPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="8 caractères minimum"
+            aria-label="Nouveau mot de passe"
             autoComplete="new-password"
             required
             className="w-full pl-10 pr-12 py-2.5 border border-[color:var(--rule)] rounded-lg bg-[color:var(--paper)] text-[color:var(--ink)] placeholder:text-[color:var(--ink-soft)]"
@@ -117,6 +118,7 @@ export default function ResetPasswordPage() {
             value={confirm}
             onChange={(e) => setConfirm(e.target.value)}
             placeholder="Confirmer le mot de passe"
+            aria-label="Confirmer le mot de passe"
             autoComplete="new-password"
             required
             className="w-full pl-10 pr-4 py-2.5 border border-[color:var(--rule)] rounded-lg bg-[color:var(--paper)] text-[color:var(--ink)] placeholder:text-[color:var(--ink-soft)]"

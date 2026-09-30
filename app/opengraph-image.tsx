@@ -1,18 +1,18 @@
 import { ImageResponse } from 'next/og';
+import { LOGO_MARK_PATHS } from '@/components/marketing/logo-paths';
+import { PLANS } from '@/lib/plans';
 
 export const runtime = 'edge';
 export const contentType = 'image/png';
 export const size = { width: 1200, height: 630 };
-export const alt = 'Fi-Hub — Suivi de patrimoine PEA, CTO, AV';
+export const alt = 'Fi-Hub — Vos placements réunis. Votre performance en clair.';
 
 const theme = {
   paper: '#f7f2e8',
-  paper2: '#efe7d4',
   ink: '#0e0c0a',
   ink2: '#2a2520',
   soft: '#5b524a',
   rule: '#d8cdb6',
-  accent: '#b91c1c',
 };
 
 export default function OpengraphImage() {
@@ -28,37 +28,27 @@ export default function OpengraphImage() {
           padding: '72px',
           background: theme.paper,
           color: theme.ink,
-          fontFamily: 'Georgia, Times New Roman, serif',
+          fontFamily: 'Helvetica, Arial, sans-serif',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <div
-            style={{
-              width: 56,
-              height: 56,
-              borderRadius: 8,
-              background: theme.accent,
-              color: theme.paper,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: 32,
-              fontWeight: 700,
-            }}
-          >
-            ↗
-          </div>
-          <div style={{ fontSize: 36, fontWeight: 700 }}>Fi-Hub</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
+          <svg width="64" height="57" viewBox="150 180 740 660" fill={theme.ink}>
+            <path d={LOGO_MARK_PATHS.ring} />
+            <circle {...LOGO_MARK_PATHS.dot} />
+            {LOGO_MARK_PATHS.bars.map((bar) => (
+              <rect key={bar.y} {...bar} />
+            ))}
+          </svg>
+          <div style={{ fontSize: 44, fontFamily: 'Georgia, Times New Roman, serif' }}>Fi-Hub</div>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-          <div style={{ fontSize: 76, fontWeight: 800, lineHeight: 1.05 }}>
-            Suivez votre patrimoine
-            <br />
-            <span style={{ color: theme.accent }}>sans Excel.</span>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', fontSize: 68, fontWeight: 700, lineHeight: 1.08, letterSpacing: -1.5 }}>
+            <div>Vos placements réunis.</div>
+            <div>Votre performance en clair.</div>
           </div>
-          <div style={{ fontSize: 28, color: theme.ink2, lineHeight: 1.3, maxWidth: 980 }}>
-            PEA · CTO · Livrets · Assurance-vie — un tableau de bord unique, valorisé en temps réel.
+          <div style={{ fontSize: 28, color: theme.ink2, lineHeight: 1.35, maxWidth: 980 }}>
+            Retrouvez vos PEA, CTO et livrets au même endroit. Distinguez vos versements de vos gains et comparez la performance de votre portefeuille à un indice.
           </div>
         </div>
 
@@ -74,17 +64,7 @@ export default function OpengraphImage() {
           }}
         >
           <div>fi-hub.subleet.com</div>
-          <div
-            style={{
-              background: theme.paper2,
-              border: `1px solid ${theme.rule}`,
-              borderRadius: 999,
-              color: theme.ink2,
-              padding: '8px 16px',
-            }}
-          >
-            Gratuit pour démarrer
-          </div>
+          <div>{`Gratuit jusqu’à ${PLANS.free.maxAccounts} comptes`}</div>
         </div>
       </div>
     ),
