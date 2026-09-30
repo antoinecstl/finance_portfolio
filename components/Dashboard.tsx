@@ -12,7 +12,8 @@ import {
   Settings,
   Coins,
   Upload,
-  Lock
+  Lock,
+  ArrowRight,
 } from 'lucide-react';
 import Link from 'next/link';
 import { PortfolioStats } from './PortfolioStats';
@@ -43,18 +44,36 @@ import {
 } from '@/lib/hooks';
 import { accountSupportsPositions, formatDateTime } from '@/lib/utils';
 import { useAuth } from '@/lib/auth';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import type { Transaction } from '@/lib/types';
 
 type TabType = 'dashboard' | 'accounts' | 'positions' | 'transactions' | 'dividends';
 
+const TAB_IDS: readonly TabType[] = ['dashboard', 'accounts', 'positions', 'transactions', 'dividends'];
+
+function parseTab(value: string | null): TabType {
+  return TAB_IDS.includes(value as TabType) ? (value as TabType) : 'dashboard';
+}
+
 export function Dashboard() {
-  const [activeTab, setActiveTab] = useState<TabType>('dashboard');
+  // L'onglet actif vit dans l'URL (?tab=...) : il survit au rechargement,
+  // se partage et suit le bouton retour du navigateur.
+  const searchParams = useSearchParams();
+  const activeTab = parseTab(searchParams.get('tab'));
+  const setActiveTab = useCallback((tab: TabType) => {
+    const params = new URLSearchParams(window.location.search);
+    if (tab === 'dashboard') params.delete('tab');
+    else params.set('tab', tab);
+    const query = params.toString();
+    window.history.pushState(null, '', `${window.location.pathname}${query ? `?${query}` : ''}`);
+    window.scrollTo({ top: 0 });
+  }, []);
   const [showAddAccount, setShowAddAccount] = useState(false);
   const [showAddTransaction, setShowAddTransaction] = useState(false);
   const [addTransactionDefaultAccountId, setAddTransactionDefaultAccountId] = useState<string | undefined>();
   const [addTransactionDefaultType, setAddTransactionDefaultType] = useState<Transaction['type'] | undefined>();
   const [lastUpdate, setLastUpdate] = useState(() => new Date());
+  const [refreshing, setRefreshing] = useState(false);
   const [historyPeriod, setHistoryPeriod] = useState(30);
   const [txVersion, setTxVersion] = useState(0);
   // Filtre de compte sur l'onglet Positions. null = "Tous les comptes" (vue groupée).
@@ -113,7 +132,7 @@ export function Dashboard() {
 
   // Comptes et résumé calculés avec les mêmes taux FX que l'historique dashboard.
   const enrichedAccounts = useAccountsWithCalculatedValues(accounts, transactions, enrichedPositions, quotes, dashboardFxRates);
-  const { stats: accountsYearToDateStats } = useAccountsYearToDateStats(
+  const { stats: accountsYearToDateStats, total: portfolioYearToDateStats } = useAccountsYearToDateStats(
     enrichedAccounts,
     transactions,
     { enabled: activeTab === 'dashboard' || activeTab === 'accounts' }
@@ -206,7 +225,12 @@ export function Dashboard() {
   }, [refetchAccounts, refetchTransactions, refetchQuotes]);
 
   const handleRefresh = async () => {
-    await refreshAllData();
+    setRefreshing(true);
+    try {
+      await refreshAllData();
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   const handleLogout = async () => {
@@ -231,6 +255,9 @@ export function Dashboard() {
   }, [refreshAllData]);
 
   const isLoading = loadingAccounts || loadingTransactions;
+  // Premier chargement uniquement : les rafraîchissements gardent les données affichées.
+  const isInitialLoading = isLoading && accounts.length === 0;
+  const isEmpty = !isLoading && accounts.length === 0;
 
   const tabs = [
     { id: 'dashboard' as TabType, label: 'Dashboard', icon: BarChart2 },
@@ -278,16 +305,18 @@ export function Dashboard() {
               )}
               <button
                 onClick={handleRefresh}
-                disabled={isLoading}
+                disabled={isLoading || refreshing}
                 className="p-1.5 sm:p-2 rounded-lg text-[color:var(--ink-soft)] hover:bg-[color:var(--paper-2)] hover:text-[color:var(--ink)] transition-colors disabled:opacity-50"
-                title="Rafraîchir"
+                title="Rafraîchir les données et les cours"
+                aria-label="Rafraîchir les données et les cours"
               >
-                <RefreshCw className={`h-4 w-4 sm:h-5 sm:w-5 ${isLoading ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`h-4 w-4 sm:h-5 sm:w-5 ${isLoading || refreshing ? 'animate-spin' : ''}`} />
               </button>
               <Link
                 href="/settings/profile"
                 className="p-1.5 sm:p-2 rounded-lg text-[color:var(--ink-soft)] hover:bg-[color:var(--paper-2)] hover:text-[color:var(--ink)] transition-colors"
                 title="Paramètres"
+                aria-label="Paramètres"
               >
                 <Settings className="h-4 w-4 sm:h-5 sm:w-5" />
               </Link>
@@ -295,6 +324,7 @@ export function Dashboard() {
                 onClick={handleLogout}
                 className="p-1.5 sm:p-2 rounded-lg text-[color:var(--ink-soft)] hover:bg-[color:var(--paper-2)] hover:text-[color:var(--ink)] transition-colors"
                 title="Déconnexion"
+                aria-label="Déconnexion"
               >
                 <LogOut className="h-4 w-4 sm:h-5 sm:w-5" />
               </button>
@@ -324,7 +354,14 @@ export function Dashboard() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
-        {activeTab === 'dashboard' && (
+        {activeTab === 'dashboard' && isEmpty && (
+          <GettingStarted
+            canImport={canImportTransactions}
+            onAddAccount={() => setShowAddAccount(true)}
+          />
+        )}
+
+        {activeTab === 'dashboard' && !isEmpty && (
           <div className="space-y-4 sm:space-y-6 lg:space-y-8">
             {isFree && (
               <div className="grid gap-2 sm:grid-cols-3">
@@ -346,6 +383,8 @@ export function Dashboard() {
                 positions={enrichedPositions}
                 accounts={accounts}
                 quotes={quotes}
+                yearToDate={portfolioYearToDateStats}
+                loading={isInitialLoading}
               />
             </ErrorBoundary>
 
@@ -384,6 +423,7 @@ export function Dashboard() {
                     onClick={() => setShowAddAccount(true)}
                     className="shrink-0 inline-flex items-center gap-1 text-xs sm:text-sm text-[color:var(--ink)] hover:underline underline-offset-4"
                     title="Ajouter un compte"
+                    aria-label="Ajouter un compte"
                   >
                     <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                     <span className="hidden sm:inline">Ajouter</span>
@@ -406,14 +446,26 @@ export function Dashboard() {
                   <h2 className="text-base sm:text-lg font-semibold text-zinc-900 dark:text-zinc-100 truncate">
                     Dernières transactions
                   </h2>
-                  <button
-                    onClick={() => openAddTransaction()}
-                    className="shrink-0 inline-flex items-center gap-1 text-xs sm:text-sm text-[color:var(--ink)] hover:underline underline-offset-4"
-                    title="Ajouter une transaction"
-                  >
-                    <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                    <span className="hidden sm:inline">Ajouter</span>
-                  </button>
+                  <div className="flex shrink-0 items-center gap-3 sm:gap-4">
+                    {transactions.length > 5 && (
+                      <button
+                        onClick={() => setActiveTab('transactions')}
+                        className="inline-flex items-center gap-1 text-xs sm:text-sm text-[color:var(--ink-soft)] hover:text-[color:var(--ink)] hover:underline underline-offset-4"
+                      >
+                        <span>Tout voir</span>
+                        <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+                      </button>
+                    )}
+                    <button
+                      onClick={() => openAddTransaction()}
+                      className="inline-flex items-center gap-1 text-xs sm:text-sm text-[color:var(--ink)] hover:underline underline-offset-4"
+                      title="Ajouter une transaction"
+                      aria-label="Ajouter une transaction"
+                    >
+                      <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                      <span className="hidden sm:inline">Ajouter</span>
+                    </button>
+                  </div>
                 </div>
                 <div className="w-full max-w-full overflow-hidden">
                   <ErrorBoundary label="Dernières transactions">
@@ -667,5 +719,83 @@ export function Dashboard() {
         defaultType={addTransactionDefaultType}
       />
     </div>
+  );
+}
+
+function GettingStarted({
+  canImport,
+  onAddAccount,
+}: {
+  canImport: boolean;
+  onAddAccount: () => void;
+}) {
+  const steps = [
+    {
+      title: 'Créez votre premier compte',
+      description: 'PEA, compte-titres, assurance-vie, livret… chaque enveloppe a son compte.',
+    },
+    {
+      title: 'Saisissez vos opérations',
+      description: 'Versements, achats, ventes et dividendes : Fi-Hub calcule vos positions et votre PRU.',
+    },
+    {
+      title: 'Suivez votre patrimoine',
+      description: 'Valeur totale, performance annuelle, répartition et historique se mettent à jour avec les cours.',
+    },
+  ];
+
+  return (
+    <section className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5 sm:p-8 shadow-sm">
+      <p className="mono text-[10px] sm:text-[11px] tracking-[0.12em] uppercase text-[color:var(--ink-soft)]">
+        Bienvenue
+      </p>
+      <h2 className="display mt-2 text-3xl sm:text-4xl leading-tight text-[color:var(--ink)]">
+        Votre patrimoine, en un coup d&apos;œil
+      </h2>
+      <p className="mt-2 max-w-2xl text-sm text-zinc-500 dark:text-zinc-400">
+        Commencez par ajouter un compte pour voir apparaître votre tableau de bord.
+      </p>
+
+      <ol className="mt-6 grid gap-3 sm:grid-cols-3">
+        {steps.map((step, index) => (
+          <li
+            key={step.title}
+            className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 p-4"
+          >
+            <span className="mono text-xs text-[color:var(--ink-soft)]">0{index + 1}</span>
+            <p className="mt-1 text-sm font-semibold text-zinc-900 dark:text-zinc-100">{step.title}</p>
+            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{step.description}</p>
+          </li>
+        ))}
+      </ol>
+
+      <div className="mt-6 flex flex-col gap-2 sm:flex-row">
+        <button
+          onClick={onAddAccount}
+          className="inline-flex items-center justify-center gap-2 px-4 py-2 btn-ink rounded-lg text-sm sm:text-base"
+        >
+          <Plus className="h-4 w-4" />
+          <span>Ajouter un compte</span>
+        </button>
+        {canImport ? (
+          <Link
+            href="/dashboard/import"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 btn-outline rounded-lg text-sm sm:text-base"
+          >
+            <Upload className="h-4 w-4" />
+            <span>Importer un relevé</span>
+          </Link>
+        ) : (
+          <Link
+            href="/settings/billing"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 btn-outline rounded-lg text-sm sm:text-base"
+            title="Import réservé à l’offre Pro"
+          >
+            <Lock className="h-4 w-4" />
+            <span>Importer un relevé (Pro)</span>
+          </Link>
+        )}
+      </div>
+    </section>
   );
 }

@@ -16,6 +16,7 @@ import { readSnapshots, upsertSnapshots } from '@/lib/portfolio-snapshots';
 import {
   calculateAccountValuesAtDate,
   calculateAccountYearToDateStats,
+  calculatePortfolioYearToDateStats,
   getYearStartReferenceDate,
   type AccountYearToDateStats,
 } from '@/lib/account-stats';
@@ -734,7 +735,11 @@ export function useAccountsYearToDateStats(
   accounts: EnrichedAccount[],
   transactions: Transaction[],
   options: { enabled?: boolean } = {}
-): { stats: Record<string, AccountYearToDateStats>; loading: boolean } {
+): {
+  stats: Record<string, AccountYearToDateStats>;
+  total: AccountYearToDateStats | null;
+  loading: boolean;
+} {
   const { enabled = true } = options;
   const [startValues, setStartValues] = useState<Record<string, number> | null>(null);
   const [fxRates, setFxRates] = useState<FxRateMap>({});
@@ -817,5 +822,23 @@ export function useAccountsYearToDateStats(
     return result;
   }, [accounts, transactions, startValues, fxRates, today]);
 
-  return { stats, loading };
+  // Vue consolidée de tous les comptes dont la valeur de départ est connue.
+  const total = useMemo(() => {
+    if (!startValues) return null;
+    const included = accounts.filter((account) => account.id in startValues);
+    if (included.length === 0) return null;
+    return calculatePortfolioYearToDateStats({
+      accountIds: included.map((account) => account.id),
+      transactions,
+      startValue: included.reduce((sum, account) => sum + startValues[account.id], 0),
+      currentValue: included.reduce(
+        (sum, account) => sum + (account.calculatedTotalValueInBase ?? account.calculatedTotalValue),
+        0
+      ),
+      today,
+      fxRates,
+    });
+  }, [accounts, transactions, startValues, fxRates, today]);
+
+  return { stats, total, loading };
 }

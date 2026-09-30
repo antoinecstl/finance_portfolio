@@ -4,6 +4,7 @@ import type { HistoricalQuote } from './stock-api';
 import {
   calculateAccountValuesAtDate,
   calculateAccountYearToDateStats,
+  calculatePortfolioYearToDateStats,
   getYearStartReferenceDate,
 } from './account-stats';
 
@@ -132,5 +133,27 @@ describe('calculateAccountYearToDateStats', () => {
 
     expect(stats.deposits).toBe(100);
     expect(stats.performance).toBe(0);
+  });
+});
+
+describe('calculatePortfolioYearToDateStats', () => {
+  it('consolidates several accounts and ignores the others', () => {
+    const stats = calculatePortfolioYearToDateStats({
+      accountIds: ['acc-1', 'acc-2'],
+      transactions: [
+        tx({ type: 'DEPOSIT', amount: 500, date: '2026-01-01' }),
+        tx({ account_id: 'acc-2', type: 'DEPOSIT', amount: 300, date: '2026-01-01' }),
+        tx({ account_id: 'acc-2', type: 'INTEREST', amount: 12, date: '2026-06-30' }),
+        tx({ account_id: 'other', type: 'DEPOSIT', amount: 50_000, date: '2026-02-01' }),
+      ],
+      startValue: 2000,
+      currentValue: 3000,
+      today: '2026-09-30',
+    });
+
+    expect(stats.netFlows).toBe(800);
+    expect(stats.income).toBe(12);
+    expect(stats.performance).toBe(200);
+    expect(stats.performancePercent).toBeCloseTo((200 / 2800) * 100, 5);
   });
 });
