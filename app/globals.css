@@ -84,6 +84,17 @@
   --chart-9:  #c2410c;   /* burnt orange */
   --chart-10: #4338ca;   /* deep indigo */
 
+  /* Séries par compte (aires empilées) — palette catégorielle validée
+     (séparation daltonisme + contraste) sur la surface papier. */
+  --account-1: #2f6fb5;
+  --account-2: #d9622b;
+  --account-3: #1a9a70;
+  --account-4: #d69a00;
+  --account-5: #c85a8a;
+  --account-6: #3f7f1f;
+  --account-7: #5a4bb0;
+  --account-8: #c93f3f;
+
   /* Legacy app vars some code may reference */
   --background: var(--paper);
   --foreground: var(--ink);
@@ -222,6 +233,15 @@
     --chart-8:  #a3e635;
     --chart-9:  #fb923c;
     --chart-10: #818cf8;
+
+    --account-1: #3987e5;
+    --account-2: #d95926;
+    --account-3: #199e70;
+    --account-4: #c98500;
+    --account-5: #d55181;
+    --account-6: #008300;
+    --account-7: #9085e9;
+    --account-8: #e66767;
 
     --background: var(--paper);
     --foreground: var(--ink);

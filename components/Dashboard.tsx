@@ -22,7 +22,8 @@ import { PositionsTable } from './PositionsTable';
 import { TransactionsList } from './TransactionsList';
 import { PaginatedTransactionsList } from './PaginatedTransactionsList';
 import { DividendsTable } from './DividendsTable';
-import { AllocationChart, AccountAllocationChart, PortfolioHistoryChart, PositionPerformanceChart, PortfolioPerformanceChart, PortfolioValueChart } from './Charts';
+import { AccountAllocationChart, PositionPerformanceChart, PortfolioPerformanceChart, PortfolioValueChart } from './Charts';
+import { PortfolioHistoryChart } from './PortfolioHistoryChart';
 import { ProBlur } from './ProBlur';
 import { UsageMeter } from './UsageMeter';
 import { ErrorBoundary } from './ErrorBoundary';
@@ -388,29 +389,27 @@ export function Dashboard() {
               />
             </ErrorBoundary>
 
-            {/* Charts - stack on mobile */}
-            <div className="grid gap-4 sm:gap-6 md:grid-cols-2">
-              <ErrorBoundary label="Répartition">
-                <ProBlur feature="advanced_analytics" label="Répartition détaillée — Pro">
-                  <AllocationChart positions={enrichedPositions} quotes={quotes} fxRates={dashboardFxRates} />
-                </ProBlur>
-              </ErrorBoundary>
-              <ErrorBoundary label="Allocation par compte">
-                <AccountAllocationChart accounts={enrichedAccounts} />
-              </ErrorBoundary>
+            {/* Évolution par compte + répartition actuelle (mêmes couleurs par compte) */}
+            <div className="grid gap-4 sm:gap-6 lg:grid-cols-3">
+              <div className="min-w-0 lg:col-span-2">
+                <ErrorBoundary label="Évolution du patrimoine">
+                  <ProBlur feature="advanced_analytics" label="Évolution du patrimoine — Pro">
+                    <PortfolioHistoryChart
+                      history={portfolioHistory}
+                      accounts={accounts}
+                      loading={loadingHistory}
+                      onPeriodChange={setHistoryPeriod}
+                      selectedPeriod={historyPeriod}
+                    />
+                  </ProBlur>
+                </ErrorBoundary>
+              </div>
+              <div className="min-w-0">
+                <ErrorBoundary label="Répartition par compte">
+                  <AccountAllocationChart accounts={enrichedAccounts} />
+                </ErrorBoundary>
+              </div>
             </div>
-
-            {/* History Chart */}
-            <ErrorBoundary label="Évolution du portefeuille">
-              <ProBlur feature="advanced_analytics" label="Évolution du portefeuille — Pro">
-                <PortfolioHistoryChart
-                  history={portfolioHistory}
-                  loading={loadingHistory}
-                  onPeriodChange={setHistoryPeriod}
-                  selectedPeriod={historyPeriod}
-                />
-              </ProBlur>
-            </ErrorBoundary>
 
             {/* Quick Views - stack on mobile */}
             <div className="grid gap-4 sm:gap-6 lg:grid-cols-2 w-full max-w-full">

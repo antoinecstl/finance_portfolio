@@ -137,6 +137,24 @@ export function getSectorColor(index: number): string {
   return CHART_COLORS[index % CHART_COLORS.length];
 }
 
+const ACCOUNT_COLOR_SLOTS = 8;
+export const OTHER_ACCOUNTS_COLOR = 'var(--ink-soft)';
+
+/**
+ * Couleur fixe de chaque compte, dans l'ordre des comptes (création) : la
+ * couleur suit le compte, pas son rang. Au-delà de 8 comptes, les suivants
+ * partagent la couleur neutre "Autres" plutôt que de réutiliser une teinte.
+ */
+export function getAccountColorMap(accounts: Array<{ id: string }>): Map<string, string> {
+  const colored = accounts.length <= ACCOUNT_COLOR_SLOTS ? ACCOUNT_COLOR_SLOTS : ACCOUNT_COLOR_SLOTS - 1;
+  return new Map(
+    accounts.map((account, index) => [
+      account.id,
+      index < colored ? `var(--account-${index + 1})` : OTHER_ACCOUNTS_COLOR,
+    ])
+  );
+}
+
 // Défaut "peut détenir des positions" pour un type donné.
 // PEA, CTO, ASSURANCE_VIE, CRYPTO → true. Livrets / PEL / AUTRE → false.
 export function defaultSupportsPositions(type: AccountType): boolean {

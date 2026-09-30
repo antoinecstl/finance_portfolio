@@ -6,6 +6,7 @@ export { TransactionsList } from './TransactionsList';
 export { PaginatedTransactionsList } from './PaginatedTransactionsList';
 export { BenchmarkComparisonChart } from './BenchmarkComparisonChart';
 export { ErrorBoundary } from './ErrorBoundary';
-export { AllocationChart, SectorAllocationChart, AccountAllocationChart, PortfolioHistoryChart, PositionPerformanceChart, StockHistoryChart, PortfolioPerformanceChart } from './Charts';
+export { PortfolioHistoryChart } from './PortfolioHistoryChart';
+export { AllocationChart, SectorAllocationChart, AccountAllocationChart, PositionPerformanceChart, StockHistoryChart, PortfolioPerformanceChart } from './Charts';
 export { AddAccountModal } from './AddAccountModal';
 export { AddTransactionModal } from './AddTransactionModal';

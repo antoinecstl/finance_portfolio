@@ -313,6 +313,9 @@ export interface PortfolioHistoryPoint {
   totalValue: number;
   stocksValue: number;
   savingsValue: number;
+  // Valeur de chaque compte (EUR) à cette date, indexée par id de compte.
+  // Optionnel : absent des points reconstruits hors calculatePortfolioHistory.
+  accountValues?: Record<string, number>;
   positions: Array<{
     accountId?: string;
     symbol: string;
@@ -425,6 +428,7 @@ export function calculatePortfolioHistory(
     // libellée dans une autre devise (ex: BTC-USD coté en USD).
     let stocksValue = 0;
     const positionDetails: PortfolioHistoryPoint['positions'] = [];
+    const accountValues: Record<string, number> = {};
 
     positions.forEach((pos) => {
       const quotes = historicalQuotes[pos.symbol];
@@ -435,6 +439,9 @@ export function calculatePortfolioHistory(
       const valueEur = convertToBase(valueNative, quoteCurrency, date, fxRates);
 
       stocksValue += valueEur;
+      if (pos.accountId) {
+        accountValues[pos.accountId] = (accountValues[pos.accountId] ?? 0) + valueEur;
+      }
       positionDetails.push({
         accountId: pos.accountId,
         symbol: pos.symbol,
@@ -452,17 +459,21 @@ export function calculatePortfolioHistory(
     let stockAccountsCash = 0;
     for (const acc of stockAccounts) {
       const buckets = calculateAccountCashByCurrencyAtDate(transactions, acc.id, date);
-      stockAccountsCash += hasFxRates
+      const cash = hasFxRates
         ? sumCurrencyBucketsInBase(buckets, date, fxRates)
         : sumCurrencyBuckets(buckets);
+      stockAccountsCash += cash;
+      accountValues[acc.id] = (accountValues[acc.id] ?? 0) + cash;
     }
 
     let savingsValue = 0;
     for (const acc of savingsAccounts) {
       const buckets = calculateAccountCashByCurrencyAtDate(transactions, acc.id, date);
-      savingsValue += hasFxRates
+      const cash = hasFxRates
         ? sumCurrencyBucketsInBase(buckets, date, fxRates)
         : sumCurrencyBuckets(buckets);
+      savingsValue += cash;
+      accountValues[acc.id] = cash;
     }
 
     history.push({
@@ -470,6 +481,7 @@ export function calculatePortfolioHistory(
       totalValue: stocksValue + stockAccountsCash + savingsValue,
       stocksValue: stocksValue + stockAccountsCash, // Actions + cash PEA/CTO
       savingsValue,
+      accountValues,
       positions: positionDetails,
     });
   }

@@ -1,7 +1,8 @@
 import { supabase } from '@/lib/supabase';
 import type { PortfolioHistoryPoint } from '@/lib/portfolio-calculator';
 
-const SNAPSHOT_CALC_VERSION = 2;
+// v3 : ajout de accountValues (valeur par compte) dans breakdown.
+const SNAPSHOT_CALC_VERSION = 3;
 
 // Contrat du cache snapshots :
 //  - lecture = SELECT sur portfolio_snapshots (RLS scope par user).
@@ -22,6 +23,7 @@ export type SnapshotRow = {
 type SnapshotBreakdown = {
   schemaVersion?: number;
   positions?: unknown;
+  accountValues?: unknown;
 };
 
 function isCurrentSnapshot(row: SnapshotRow): boolean {
@@ -68,7 +70,11 @@ export async function upsertSnapshots(
     total_value: p.totalValue,
     stocks_value: p.stocksValue,
     savings_value: p.savingsValue,
-    breakdown: { schemaVersion: SNAPSHOT_CALC_VERSION, positions: p.positions },
+    breakdown: {
+      schemaVersion: SNAPSHOT_CALC_VERSION,
+      positions: p.positions,
+      accountValues: p.accountValues ?? {},
+    },
   }));
 
   const { error } = await supabase
