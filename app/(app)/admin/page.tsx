@@ -1,12 +1,13 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Users, UserPlus, Activity, Crown, Wallet, Receipt, Euro } from 'lucide-react';
+import { ArrowLeft, Users, UserPlus, Activity, Crown, Wallet, Receipt, Euro, RefreshCw, Target, TrendingUp } from 'lucide-react';
 import { getAdminUser } from '@/lib/admin';
 import { getAdminStats, type AdminStats } from '@/lib/admin-stats';
 import { AdminUsersTable } from '@/components/admin/AdminUsersTable';
 import { AdminTicketBoard } from '@/components/admin/AdminTicketBoard';
 import { getAdminTickets } from '@/lib/admin-tickets';
+import { formatAdminRate } from '@/lib/admin-insights';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,12 +49,12 @@ function StatCard({
   hint?: string;
 }) {
   return (
-    <div className="ink-card rounded-2xl p-5">
+    <div className="rounded-xl border border-[color:var(--rule)] bg-[color:var(--paper)] p-4 sm:p-5">
       <div className="flex items-center gap-2 text-[color:var(--ink-soft)]">
         <Icon className="h-4 w-4" />
         <span className="text-xs font-medium uppercase tracking-wide">{label}</span>
       </div>
-      <p className="mt-2 text-3xl font-bold text-[color:var(--ink)] tabular-nums">{value}</p>
+      <p className="mt-2 text-2xl font-semibold tracking-tight text-[color:var(--ink)] tabular-nums sm:text-3xl">{value}</p>
       {hint && <p className="mt-1 text-xs text-[color:var(--ink-soft)]">{hint}</p>}
     </div>
   );
@@ -102,20 +103,37 @@ export default async function AdminPage() {
           <ArrowLeft className="h-4 w-4" /> Retour au dashboard
         </Link>
 
-        <div className="mb-8 flex flex-wrap items-end justify-between gap-3">
+        <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="display text-4xl leading-none text-[color:var(--ink)]">Admin</h1>
+            <p className="text-xs font-medium text-[color:var(--ink-soft)]">Centre de pilotage</p>
+            <h1 className="mt-1 text-3xl font-semibold tracking-tight text-[color:var(--ink)]">Administration</h1>
             <p className="text-sm text-[color:var(--ink-soft)] mt-2">
               Suivi de l&apos;activité de la plateforme · {admin.email}
             </p>
           </div>
-          <p className="text-xs text-[color:var(--ink-soft)]">
-            Généré le {dtf.format(new Date(stats.generatedAt))}
-          </p>
+          <div className="flex items-center gap-3 text-xs text-[color:var(--ink-soft)]">
+            <span>Actualisé le {dtf.format(new Date(stats.generatedAt))}</span>
+            <Link href="/admin" className="inline-flex items-center gap-1 rounded-lg border border-[color:var(--rule)] px-2.5 py-1.5 hover:bg-[color:var(--paper-2)] hover:text-[color:var(--ink)]">
+              <RefreshCw className="h-3.5 w-3.5" /> Actualiser
+            </Link>
+          </div>
         </div>
 
-        {/* KPIs */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <nav aria-label="Sections du dashboard" className="sticky top-2 z-20 mb-8 flex gap-1 overflow-x-auto rounded-xl border border-[color:var(--rule)] bg-[color:var(--paper)]/95 p-1 text-sm shadow-sm backdrop-blur">
+          <a href="#overview" className="whitespace-nowrap rounded-lg px-3 py-2 font-medium hover:bg-[color:var(--paper-2)]">Vue d’ensemble</a>
+          <a href="#users" className="whitespace-nowrap rounded-lg px-3 py-2 text-[color:var(--ink-soft)] hover:bg-[color:var(--paper-2)] hover:text-[color:var(--ink)]">Utilisateurs</a>
+          <a href="#backlog" className="whitespace-nowrap rounded-lg px-3 py-2 text-[color:var(--ink-soft)] hover:bg-[color:var(--paper-2)] hover:text-[color:var(--ink)]">Tickets</a>
+        </nav>
+
+        <section id="overview" className="scroll-mt-20" aria-labelledby="overview-title">
+          <div className="mb-4 flex items-end justify-between gap-3">
+            <div>
+              <h2 id="overview-title" className="text-xl font-semibold tracking-tight">Vue d’ensemble</h2>
+              <p className="mt-1 text-sm text-[color:var(--ink-soft)]">Les signaux essentiels de la plateforme.</p>
+            </div>
+            <span className="hidden text-xs text-[color:var(--ink-soft)] sm:block">Périodes glissantes</span>
+          </div>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <StatCard
             icon={Users}
             label="Utilisateurs"
@@ -138,9 +156,15 @@ export default async function AdminPage() {
             icon={Euro}
             label="MRR estimé"
             value={eur(stats.plans.mrrCents)}
-            hint={`${stats.plans.proActive} abonnés Pro`}
+            hint={`${stats.plans.paidPro} abonnement${stats.plans.paidPro !== 1 ? 's' : ''} payant${stats.plans.paidPro !== 1 ? 's' : ''}`}
           />
-        </div>
+          </div>
+
+          <div className="mt-4 grid divide-y divide-[color:var(--rule)] rounded-xl border border-[color:var(--rule)] bg-[color:var(--paper)] sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+            <Insight icon={TrendingUp} label="Conversion Pro" value={formatAdminRate(stats.plans.paidPro, stats.users.total)} hint="abonnements payants" />
+            <Insight icon={Target} label="Activation" value={formatAdminRate(stats.content.usersWithTransactions, stats.users.total)} hint={`${nf.format(stats.content.usersWithTransactions)} avec transaction`} />
+            <Insight icon={Wallet} label="Portefeuilles créés" value={formatAdminRate(stats.content.usersWithAccounts, stats.users.total)} hint={`${nf.format(stats.content.usersWithAccounts)} avec compte`} />
+          </div>
 
         {/* Répartition plans + contenu */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 mt-4">
@@ -196,21 +220,32 @@ export default async function AdminPage() {
             )}
           </div>
         </div>
+        </section>
 
         {/* Graphe inscriptions */}
-        <div className="mt-4">
+        <section id="users" className="mt-10 scroll-mt-20 border-t border-[color:var(--rule)] pt-8" aria-labelledby="users-title">
+          <div className="mb-4">
+            <p className="text-xs font-medium text-[color:var(--ink-soft)]">Communauté</p>
+            <h2 id="users-title" className="mt-1 text-2xl font-semibold tracking-tight">Utilisateurs</h2>
+            <p className="mt-1 text-sm text-[color:var(--ink-soft)]">Recherche, activité et gestion des accès fondateurs.</p>
+          </div>
           <SignupsChart data={stats.signupsByDay} />
-        </div>
 
-        {/* Utilisateurs — recherche, tri, filtre, drill-down & actions */}
-        <div className="mt-4">
-          <AdminUsersTable users={stats.rows} />
-        </div>
+          <div className="mt-4">
+            <AdminUsersTable users={stats.rows} />
+          </div>
+        </section>
 
-        <AdminTicketBoard initialTickets={tickets} />
+        <div id="backlog" className="scroll-mt-4">
+          <AdminTicketBoard initialTickets={tickets} />
+        </div>
       </div>
     </div>
   );
+}
+
+function Insight({ icon: Icon, label, value, hint }: { icon: typeof Users; label: string; value: string; hint: string }) {
+  return <div className="flex items-center gap-3 p-4"><span className="rounded-lg bg-[color:var(--paper-2)] p-2 text-[color:var(--ink-soft)]"><Icon className="h-4 w-4" /></span><div><p className="text-xs text-[color:var(--ink-soft)]">{label}</p><p className="mt-0.5 font-semibold tabular-nums text-[color:var(--ink)]">{value} <span className="text-xs font-normal text-[color:var(--ink-soft)]">· {hint}</span></p></div></div>;
 }
 
 function PlanRow({
