@@ -14,7 +14,7 @@ export const FAQ_ITEMS = [
   },
   {
     q: 'À quels indices puis-je comparer mon portefeuille ?',
-    a: `À ${BENCHMARK_LABELS.length} indices : ${BENCHMARK_LABELS.join(', ')}. La comparaison porte sur la performance hors apports, sur la même période.`,
+    a: `À ${BENCHMARK_LABELS.length} références prédéfinies : ${BENCHMARK_LABELS.join(', ')}. Vous pouvez aussi rechercher un autre actif. La comparaison porte sur la performance hors apports, sur la même période.`,
   },
   {
     q: 'Les cours sont-ils en temps réel ?',
