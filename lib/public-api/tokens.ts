@@ -39,31 +39,3 @@ export function extractBearerToken(authorization: string | null): string | null 
   if (!match) return null;
   return isWellFormedApiToken(match[1]) ? match[1] : null;
 }
-
-export interface ApiTokenRecord {
-  id: string;
-  user_id: string;
-  scopes: string[];
-  expires_at: string | null;
-  revoked_at: string | null;
-  last_used_at: string | null;
-}
-
-export type TokenValidation =
-  | { ok: true; userId: string; tokenId: string; scopes: string[] }
-  | { ok: false; reason: 'revoked' | 'expired' | 'not_found' };
-
-export function validateTokenRecord(record: ApiTokenRecord | null, now: Date = new Date()): TokenValidation {
-  if (!record) return { ok: false, reason: 'not_found' };
-  if (record.revoked_at) return { ok: false, reason: 'revoked' };
-  if (record.expires_at && new Date(record.expires_at).getTime() <= now.getTime()) {
-    return { ok: false, reason: 'expired' };
-  }
-  return { ok: true, userId: record.user_id, tokenId: record.id, scopes: record.scopes };
-}
-
-/** N'écrit last_used_at qu'au plus toutes les 5 minutes pour limiter les écritures. */
-export function shouldTouchLastUsed(lastUsedAt: string | null, now: Date = new Date()): boolean {
-  if (!lastUsedAt) return true;
-  return now.getTime() - new Date(lastUsedAt).getTime() > 5 * 60_000;
-}

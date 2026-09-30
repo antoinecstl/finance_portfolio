@@ -83,12 +83,15 @@ Never commit secrets. Important environment variables include:
 
 ## Public API and AI Plugins
 
-- Read-only access for AI assistants and scripts, authenticated by personal tokens (`Authorization: Bearer fih_...`).
-- Users create and revoke tokens in `app/(app)/settings/api` (routes `app/api/api-tokens`). Only a SHA-256 hash is stored (`api_tokens` table, migration `20260930_api_tokens.sql`); the clear token is shown once.
-- REST: `app/api/v1/*` (`me`, `portfolio`, `accounts`, `positions`, `transactions`), OpenAPI 3.1 spec at `/api/v1/openapi.json` for ChatGPT GPT Actions.
-- MCP: stateless Streamable HTTP JSON-RPC server at `/api/mcp` (Claude Code, Claude Desktop via `mcp-remote`, Cursor…). OAuth (needed for claude.ai web connectors) is not implemented yet.
-- Logic lives in `lib/public-api`. Requests use the service-role client without a cookie session: every query MUST filter by the token owner's `userId`.
-- Rate limit: 60 requests/minute per token (in-memory, per instance).
+- Pro-only (`api_access` feature in `lib/plans.ts`, enforced in Postgres through `public.user_has_pro_access`). Read-only access for AI assistants and scripts.
+- Two ways to authenticate, both sending `Authorization: Bearer fih_...`:
+  - Personal tokens created/revoked in `app/(app)/settings/api` (routes `app/api/api-tokens`).
+  - OAuth 2.1 (PKCE S256, dynamic client registration) for Claude/ChatGPT connectors: metadata in `app/.well-known/*`, consent screen `app/oauth/authorize`, endpoints `app/api/oauth/{register,token,revoke,authorize}`. Access tokens last 1 h, refresh tokens 60 days with rotation. OAuth grants are `api_tokens` rows with `kind = 'oauth'`.
+- Only SHA-256 hashes of tokens, codes and secrets are stored (migrations `20260930_api_tokens.sql`, `20261001_public_api_hardening.sql`).
+- REST: `app/api/v1/*` (`me`, `portfolio`, `accounts`, `positions`, `transactions`), OpenAPI 3.1 spec at `/api/v1/openapi.json` for ChatGPT GPT Actions. MCP: stateless Streamable HTTP JSON-RPC server at `/api/mcp`.
+- Data isolation lives in Postgres: the app passes the bearer token to `security definer` functions (`api_authenticate`, `api_accounts`, `api_transactions`, `api_profile`) that resolve the owner themselves. They are executable by `service_role` only. Never read user data for the public API with a `user_id` coming from application code.
+- Rate limits are shared across instances in Postgres (`api_rate_limits` + `api_rate_limit_hit`): 60 req/min per token, plus per-IP limits on OAuth registration and token endpoints.
+- Logic lives in `lib/public-api`.
 
 ## SEO and Analytics
 

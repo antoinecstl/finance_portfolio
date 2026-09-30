@@ -5,7 +5,8 @@ export type Feature =
   | 'advanced_analytics'
   | 'full_history'
   | 'dividends_module'
-  | 'import_transactions';
+  | 'import_transactions'
+  | 'api_access';
 
 export type Plan = {
   id: PlanId;
@@ -64,6 +65,7 @@ export const PLANS: Record<PlanId, Plan> = {
       'full_history',
       'dividends_module',
       'import_transactions',
+      'api_access',
     ],
     tagline: 'Pour un suivi complet et sans limite',
     highlights: [
@@ -71,6 +73,7 @@ export const PLANS: Record<PlanId, Plan> = {
       'Transactions et positions illimitées',
       'Module dividendes',
       'Import de relevés (CSV, Excel, PDF, captures)',
+      'Connexion à ChatGPT et Claude (API)',
     ],
   },
 };

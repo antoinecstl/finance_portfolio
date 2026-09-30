@@ -88,6 +88,7 @@ function buildJsonLd() {
       'Historique du patrimoine jour par jour',
       'Module dividendes (Pro)',
       'Import de relevés CSV, Excel, PDF ou captures (Pro)',
+      'Connexion à ChatGPT et Claude via API et MCP (Pro)',
       'Export JSON et PDF',
     ],
   };

@@ -5,7 +5,7 @@ import { searchParamsToObject, transactionsQuerySchema } from '@/lib/public-api/
 export const dynamic = 'force-dynamic';
 
 // GET /api/v1/transactions : historique filtrable, pagination par curseur.
-export const GET = withApiAuth(async (request, { userId }) => {
+export const GET = withApiAuth(async (request, { token }) => {
   const query = transactionsQuerySchema.parse(searchParamsToObject(new URL(request.url).searchParams));
-  return listPublicTransactions(userId, query);
+  return listPublicTransactions(token, query);
 });

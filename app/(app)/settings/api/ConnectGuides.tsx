@@ -21,20 +21,8 @@ export function ConnectGuides({ appUrl }: { appUrl: string }) {
   const openApiUrl = `${appUrl}/api/v1/openapi.json`;
   const mcpUrl = `${appUrl}/api/mcp`;
 
-  const claudeCode = `claude mcp add --transport http fi-hub ${mcpUrl} \\\n  --header "Authorization: Bearer VOTRE_JETON"`;
-  const claudeDesktop = JSON.stringify(
-    {
-      mcpServers: {
-        'fi-hub': {
-          command: 'npx',
-          args: ['-y', 'mcp-remote', mcpUrl, '--header', 'Authorization:Bearer ${FIHUB_TOKEN}'],
-          env: { FIHUB_TOKEN: 'VOTRE_JETON' },
-        },
-      },
-    },
-    null,
-    2
-  );
+  const claudeCode = `claude mcp add --transport http fi-hub ${mcpUrl}`;
+  const claudeCodeToken = `claude mcp add --transport http fi-hub ${mcpUrl} \\\n  --header "Authorization: Bearer VOTRE_JETON"`;
   const curl = `curl -H "Authorization: Bearer VOTRE_JETON" \\\n  ${appUrl}/api/v1/portfolio`;
 
   const tabs: Array<{ id: GuideId; label: string }> = [
@@ -67,46 +55,61 @@ export function ConnectGuides({ appUrl }: { appUrl: string }) {
 
       <div role="tabpanel" className="mt-4 space-y-4 text-sm text-[color:var(--ink-soft)]">
         {guide === 'chatgpt' && (
-          <ol className="list-decimal space-y-3 pl-5">
-            <li>
-              Dans ChatGPT, ouvrez <strong className="text-[color:var(--ink)]">Explorer les GPT → Créer</strong>, onglet{' '}
-              <strong className="text-[color:var(--ink)]">Configurer</strong>, puis{' '}
-              <strong className="text-[color:var(--ink)]">Créer une action</strong>.
-            </li>
-            <li>
-              Choisissez <strong className="text-[color:var(--ink)]">Importer depuis une URL</strong> et collez :
-              <Snippet value={openApiUrl} />
-            </li>
-            <li>
-              Authentification : <strong className="text-[color:var(--ink)]">Clé API</strong>, type{' '}
-              <strong className="text-[color:var(--ink)]">Bearer</strong>, et collez votre jeton.
-            </li>
-            <li>
-              Politique de confidentialité : <span className="mono text-xs">{appUrl}/legal/confidentialite</span>. Gardez le
-              GPT privé : il lit vos données avec votre jeton.
-            </li>
-          </ol>
+          <div className="space-y-5">
+            <div>
+              <p className="font-medium text-[color:var(--ink)]">Connecteur (recommandé)</p>
+              <ol className="mt-2 list-decimal space-y-2 pl-5">
+                <li>
+                  Dans les paramètres de ChatGPT, section connecteurs (mode développeur), créez un connecteur avec
+                  l&apos;URL :
+                  <Snippet value={mcpUrl} />
+                </li>
+                <li>Authentification : <strong className="text-[color:var(--ink)]">OAuth</strong>. Connectez-vous à Fi-Hub et autorisez l&apos;accès.</li>
+              </ol>
+            </div>
+            <div>
+              <p className="font-medium text-[color:var(--ink)]">GPT personnalisé (Actions)</p>
+              <ol className="mt-2 list-decimal space-y-2 pl-5">
+                <li>
+                  Créez un GPT, onglet <strong className="text-[color:var(--ink)]">Configurer</strong> →{' '}
+                  <strong className="text-[color:var(--ink)]">Créer une action</strong> → Importer depuis une URL :
+                  <Snippet value={openApiUrl} />
+                </li>
+                <li>
+                  Authentification : <strong className="text-[color:var(--ink)]">Clé API</strong>, type Bearer, avec un jeton créé
+                  ci-dessus.
+                </li>
+                <li>
+                  Politique de confidentialité : <span className="mono text-xs">{appUrl}/legal/confidentialite</span>. Gardez le GPT
+                  privé.
+                </li>
+              </ol>
+            </div>
+          </div>
         )}
 
         {guide === 'claude' && (
-          <div className="space-y-4">
-            <p>
-              Fi-Hub expose un serveur MCP (lecture seule) à l&apos;adresse{' '}
-              <span className="mono text-xs text-[color:var(--ink)]">{mcpUrl}</span>.
-            </p>
+          <div className="space-y-5">
+            <div>
+              <p className="font-medium text-[color:var(--ink)]">Claude (web, bureau, mobile)</p>
+              <ol className="mt-2 list-decimal space-y-2 pl-5">
+                <li>
+                  Paramètres → <strong className="text-[color:var(--ink)]">Connecteurs</strong> →{' '}
+                  <strong className="text-[color:var(--ink)]">Ajouter un connecteur personnalisé</strong>, avec l&apos;URL :
+                  <Snippet value={mcpUrl} />
+                </li>
+                <li>Cliquez sur Se connecter, identifiez-vous sur Fi-Hub et autorisez l&apos;accès. Aucun jeton à copier.</li>
+              </ol>
+            </div>
             <div>
               <p className="font-medium text-[color:var(--ink)]">Claude Code</p>
               <Snippet value={claudeCode} />
-            </div>
-            <div>
-              <p className="font-medium text-[color:var(--ink)]">Claude Desktop</p>
-              <p className="mt-1">
-                Réglages → Développeur → Modifier la configuration, puis ajoutez (Node.js requis) :
-              </p>
-              <Snippet value={claudeDesktop} />
+              <p className="mt-1 text-xs">Puis lancez /mcp dans Claude Code pour vous connecter. Ou, avec un jeton :</p>
+              <Snippet value={claudeCodeToken} />
             </div>
             <p className="text-xs">
-              Tout client MCP acceptant un en-tête d&apos;authentification (Cursor, VS Code…) fonctionne de la même façon.
+              Tout client MCP compatible OAuth ou acceptant un en-tête d&apos;authentification (Cursor, VS Code…) fonctionne
+              avec la même URL.
             </p>
           </div>
         )}

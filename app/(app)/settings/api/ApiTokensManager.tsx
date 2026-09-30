@@ -7,6 +7,8 @@ import { formatDateTime } from '@/lib/utils';
 type ApiToken = {
   id: string;
   name: string;
+  kind: 'personal' | 'oauth';
+  refresh_expires_at: string | null;
   token_prefix: string;
   created_at: string;
   last_used_at: string | null;
@@ -23,8 +25,11 @@ const EXPIRY_OPTIONS: Array<{ label: string; value: 30 | 90 | 365 | null }> = [
 
 function tokenStatus(token: ApiToken): { label: string; active: boolean } {
   if (token.revoked_at) return { label: 'Révoqué', active: false };
-  if (token.expires_at && new Date(token.expires_at).getTime() <= Date.now()) return { label: 'Expiré', active: false };
-  return { label: 'Actif', active: true };
+  // Une application OAuth reste connectée tant que son refresh token est valide
+  // (l'access token, lui, est renouvelé toutes les heures).
+  const expiry = token.kind === 'oauth' ? token.refresh_expires_at : token.expires_at;
+  if (expiry && new Date(expiry).getTime() <= Date.now()) return { label: 'Expiré', active: false };
+  return { label: token.kind === 'oauth' ? 'Connectée' : 'Actif', active: true };
 }
 
 export function CopyButton({ value, label = 'Copier' }: { value: string; label?: string }) {
@@ -99,7 +104,11 @@ export function ApiTokensManager() {
   };
 
   const handleRevoke = async (token: ApiToken) => {
-    if (!window.confirm(`Révoquer « ${token.name} » ? Les outils qui l'utilisent perdront l'accès immédiatement.`)) return;
+    const message =
+      token.kind === 'oauth'
+        ? `Déconnecter « ${token.name} » ? L'application perdra l'accès immédiatement.`
+        : `Révoquer « ${token.name} » ? Les outils qui l'utilisent perdront l'accès immédiatement.`;
+    if (!window.confirm(message)) return;
     setRevokingId(token.id);
     setError(null);
     try {
@@ -114,7 +123,7 @@ export function ApiTokensManager() {
   return (
     <section className="space-y-5">
       <div>
-        <h3 className="text-base font-semibold text-[color:var(--ink)]">Jetons d&apos;accès</h3>
+        <h3 className="text-base font-semibold text-[color:var(--ink)]">Jetons et applications connectées</h3>
         <p className="mt-1 text-sm text-[color:var(--ink-soft)]">
           Un jeton donne un accès en lecture seule à vos comptes, positions et transactions. Créez-en un par
           outil pour pouvoir les révoquer séparément. Ne le partagez jamais.
@@ -207,10 +216,11 @@ export function ApiTokensManager() {
                     </span>
                   </p>
                   <p className="mt-0.5 text-xs text-[color:var(--ink-soft)]" suppressHydrationWarning>
-                    <span className="mono">{token.token_prefix}…</span> · créé le {formatDateTime(token.created_at)}
+                    {token.kind === 'oauth' ? 'Application connectée' : <span className="mono">{token.token_prefix}…</span>}
+                    {' · '}créé le {formatDateTime(token.created_at)}
                     {' · '}
                     {token.last_used_at ? `utilisé le ${formatDateTime(token.last_used_at)}` : 'jamais utilisé'}
-                    {token.expires_at && status.active && ` · expire le ${formatDateTime(token.expires_at)}`}
+                    {token.kind === 'personal' && token.expires_at && status.active && ` · expire le ${formatDateTime(token.expires_at)}`}
                   </p>
                 </div>
                 {status.active && (
@@ -221,7 +231,7 @@ export function ApiTokensManager() {
                     className="inline-flex shrink-0 items-center gap-1.5 self-start rounded-lg px-2.5 py-1.5 text-xs text-[color:var(--loss)] hover:bg-[color:var(--loss-soft)] transition-colors disabled:opacity-50 sm:self-auto"
                   >
                     {revokingId === token.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-                    Révoquer
+                    {token.kind === 'oauth' ? 'Déconnecter' : 'Révoquer'}
                   </button>
                 )}
               </li>

@@ -4,8 +4,10 @@ import { enforceAuthenticatedJsonMutation } from '@/lib/api-security';
 import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { formatZodError } from '@/lib/schemas';
 import { generateApiToken, MAX_ACTIVE_TOKENS_PER_USER } from '@/lib/public-api/tokens';
+import { hasUserFeature } from '@/lib/subscription';
 
-const TOKEN_COLUMNS = 'id, name, token_prefix, scopes, created_at, last_used_at, expires_at, revoked_at';
+const TOKEN_COLUMNS =
+  'id, name, kind, token_prefix, scopes, created_at, last_used_at, expires_at, refresh_expires_at, revoked_at';
 
 const createTokenSchema = z.object({
   name: z.string().trim().min(1, 'Nom requis').max(60, '60 caractères maximum'),
@@ -45,6 +47,13 @@ export async function POST(request: Request) {
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
+  if (!(await hasUserFeature(user.id, 'api_access'))) {
+    return NextResponse.json(
+      { error: 'pro_required', message: "L'accès API est réservé à l'offre Pro." },
+      { status: 402 }
+    );
+  }
+
   const parsed = createTokenSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {
     return NextResponse.json(formatZodError(parsed.error), { status: 400 });
@@ -56,6 +65,7 @@ export async function POST(request: Request) {
     .from('api_tokens')
     .select('id', { count: 'exact', head: true })
     .eq('user_id', user.id)
+    .eq('kind', 'personal')
     .is('revoked_at', null)
     .or(`expires_at.is.null,expires_at.gt.${nowIso}`);
 

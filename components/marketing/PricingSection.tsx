@@ -36,6 +36,7 @@ const ROWS: { label: string; free: Cell; pro: Cell }[] = [
   { label: 'Export JSON et PDF', free: true, pro: true },
   { label: 'Module dividendes', ...pair(feature('dividends_module')) },
   { label: 'Import de relevés (CSV, Excel, PDF, captures)', ...pair(feature('import_transactions')) },
+  { label: 'Connexion à ChatGPT, Claude et API', ...pair(feature('api_access')) },
 ];
 
 function pair([free, pro]: [boolean, boolean]) {

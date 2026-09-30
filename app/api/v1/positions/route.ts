@@ -5,9 +5,9 @@ import { positionsQuerySchema, searchParamsToObject } from '@/lib/public-api/sch
 export const dynamic = 'force-dynamic';
 
 // GET /api/v1/positions?account_id= : positions ouvertes valorisées.
-export const GET = withApiAuth(async (request, { userId }) => {
+export const GET = withApiAuth(async (request, { token }) => {
   const query = positionsQuerySchema.parse(searchParamsToObject(new URL(request.url).searchParams));
-  const portfolio = await getPublicPortfolio(userId);
+  const portfolio = await getPublicPortfolio(token);
   const items = query.account_id
     ? portfolio.positions.filter((position) => position.account_id === query.account_id)
     : portfolio.positions;

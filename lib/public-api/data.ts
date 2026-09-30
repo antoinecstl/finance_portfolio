@@ -2,15 +2,16 @@ import 'server-only';
 import { createAdminClient } from '@/lib/supabase/server';
 import { getMultipleHistoricalQuotes, getStockQuotes } from '@/lib/stock-api';
 import { fxRateSymbol, normalizeToFiat, uniqueForeignFiats, BASE_CURRENCY, type FxRateMap } from '@/lib/fx';
-import { encodeCursor, decodeCursor } from '@/lib/pagination';
-import { getUserSubscription } from '@/lib/subscription';
 import type { Account, StockQuote, Transaction } from '@/lib/types';
 import { buildPublicPortfolio, openPositionSymbols, type PublicPortfolio } from './portfolio';
+import { decodeTransactionCursor, encodeTransactionCursor, toPublicTransaction } from './transactions';
 import type { TransactionsQuery } from './schemas';
 import { PublicApiError } from './errors';
 
-// Accès aux données pour l'API publique. Les requêtes utilisent le client
-// service role (pas de session cookie) : CHAQUE requête doit filtrer par userId.
+// Accès aux données pour l'API publique.
+// L'isolation entre utilisateurs est assurée par Postgres : on transmet le jeton
+// reçu aux fonctions api_* (security definer, réservées au service_role), qui
+// retrouvent elles-mêmes le propriétaire. Aucun user_id ne vient de l'application.
 
 function localDate(date: Date = new Date()): string {
   const y = date.getFullYear();
@@ -19,18 +20,57 @@ function localDate(date: Date = new Date()): string {
   return `${y}-${m}-${d}`;
 }
 
+// PostgREST plafonne le nombre de lignes par réponse : on pagine explicitement.
+const TRANSACTION_PAGE_SIZE = 1000;
 
-async function loadAccountsAndTransactions(userId: string): Promise<{ accounts: Account[]; transactions: Transaction[] }> {
+type TransactionRpcParams = {
+  p_token: string;
+  p_account_id?: string | null;
+  p_type?: string | null;
+  p_symbol?: string | null;
+  p_from?: string | null;
+  p_to?: string | null;
+  p_cursor_date?: string | null;
+  p_cursor_time?: string | null;
+  p_cursor_id?: string | null;
+  p_limit?: number | null;
+};
+
+async function fetchTransactions(params: TransactionRpcParams): Promise<Transaction[]> {
   const db = await createAdminClient();
-  const [accounts, transactions] = await Promise.all([
-    db.from('accounts').select('*').eq('user_id', userId).order('created_at', { ascending: true }),
-    db.from('transactions').select('*').eq('user_id', userId),
-  ]);
-  if (accounts.error || transactions.error) {
-    console.error('[public-api/data] load failed', accounts.error ?? transactions.error);
-    throw new PublicApiError('internal_error', 'Chargement des données impossible');
+  const { data, error } = await db.rpc('api_transactions', params);
+  if (error) {
+    console.error('[public-api/data] api_transactions failed', error);
+    throw new PublicApiError('internal_error', 'Chargement des transactions impossible');
   }
-  return { accounts: (accounts.data ?? []) as Account[], transactions: (transactions.data ?? []) as Transaction[] };
+  return (data ?? []) as Transaction[];
+}
+
+async function loadAccountsAndTransactions(token: string): Promise<{ accounts: Account[]; transactions: Transaction[] }> {
+  const db = await createAdminClient();
+  const { data: accounts, error } = await db.rpc('api_accounts', { p_token: token });
+  if (error) {
+    console.error('[public-api/data] api_accounts failed', error);
+    throw new PublicApiError('internal_error', 'Chargement des comptes impossible');
+  }
+
+  const transactions: Transaction[] = [];
+  let cursor: TransactionRpcParams = { p_token: token, p_limit: TRANSACTION_PAGE_SIZE };
+  for (;;) {
+    const page = await fetchTransactions(cursor);
+    transactions.push(...page);
+    if (page.length < TRANSACTION_PAGE_SIZE) break;
+    const last = page[page.length - 1];
+    cursor = {
+      p_token: token,
+      p_limit: TRANSACTION_PAGE_SIZE,
+      p_cursor_date: last.date,
+      p_cursor_time: last.effective_time ?? null,
+      p_cursor_id: last.id,
+    };
+  }
+
+  return { accounts: (accounts ?? []) as Account[], transactions };
 }
 
 async function loadLatestFxRates(currencies: string[], today: string): Promise<FxRateMap> {
@@ -59,9 +99,9 @@ async function loadLatestFxRates(currencies: string[], today: string): Promise<F
   }
 }
 
-export async function getPublicPortfolio(userId: string): Promise<PublicPortfolio> {
+export async function getPublicPortfolio(token: string): Promise<PublicPortfolio> {
   const today = localDate();
-  const { accounts, transactions } = await loadAccountsAndTransactions(userId);
+  const { accounts, transactions } = await loadAccountsAndTransactions(token);
   const symbols = openPositionSymbols(accounts, transactions, today);
 
   let quoteList: StockQuote[] = [];
@@ -87,81 +127,42 @@ export async function getPublicPortfolio(userId: string): Promise<PublicPortfoli
   return buildPublicPortfolio({ accounts, transactions, quotes, fxRates, today });
 }
 
-export async function getPublicProfile(userId: string) {
+export async function getPublicProfile(token: string) {
   const db = await createAdminClient();
-  const [{ data: authUser }, subscription] = await Promise.all([
-    db.auth.admin.getUserById(userId),
-    getUserSubscription(userId),
-  ]);
+  const { data, error } = await db.rpc('api_profile', { p_token: token }).maybeSingle<{ email: string | null; is_pro: boolean }>();
+  if (error) {
+    console.error('[public-api/data] api_profile failed', error);
+    throw new PublicApiError('internal_error', 'Chargement du profil impossible');
+  }
   return {
-    email: authUser?.user?.email ?? null,
-    plan: subscription.planId,
+    email: data?.email ?? null,
+    plan: data?.is_pro ? 'pro' : 'free',
     base_currency: BASE_CURRENCY,
   };
 }
 
-const TRANSACTION_COLUMNS =
-  'id, account_id, type, date, time, effective_time, amount, currency, stock_symbol, quantity, price_per_unit, target_amount, target_currency, description';
-
-// Le curseur est interpolé dans un filtre PostgREST : on n'accepte que des
-// valeurs au format attendu (date, heure, uuid).
-function decodeSafeCursor(raw: string | undefined) {
-  const cursor = decodeCursor(raw);
-  if (!cursor) return null;
-  const valid =
-    /^\d{4}-\d{2}-\d{2}$/.test(cursor.date) &&
-    /^\d{2}:\d{2}(:\d{2}(\.\d{1,6})?)?$/.test(cursor.effective_time) &&
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cursor.id);
-  return valid ? cursor : null;
-}
-
-export async function listPublicTransactions(userId: string, query: TransactionsQuery) {
-  const cursor = decodeSafeCursor(query.cursor);
+export async function listPublicTransactions(token: string, query: TransactionsQuery) {
+  const cursor = decodeTransactionCursor(query.cursor);
   if (query.cursor && !cursor) throw new PublicApiError('invalid_cursor', 'Curseur invalide');
 
-  const db = await createAdminClient();
-  let request = db
-    .from('transactions')
-    .select(TRANSACTION_COLUMNS)
-    .eq('user_id', userId)
-    .order('date', { ascending: false })
-    .order('effective_time', { ascending: false })
-    .order('id', { ascending: false })
-    .limit(query.limit + 1);
+  const rows = await fetchTransactions({
+    p_token: token,
+    p_account_id: query.account_id ?? null,
+    p_type: query.type ?? null,
+    p_symbol: query.symbol ?? null,
+    p_from: query.from ?? null,
+    p_to: query.to ?? null,
+    p_cursor_date: cursor?.date ?? null,
+    p_cursor_time: cursor?.effective_time ?? null,
+    p_cursor_id: cursor?.id ?? null,
+    p_limit: query.limit + 1,
+  });
 
-  if (query.account_id) request = request.eq('account_id', query.account_id);
-  if (query.type) request = request.eq('type', query.type);
-  if (query.symbol) request = request.eq('stock_symbol', query.symbol);
-  if (query.from) request = request.gte('date', query.from);
-  if (query.to) request = request.lte('date', query.to);
-  if (cursor) {
-    request = request.or(
-      [
-        `date.lt.${cursor.date}`,
-        `and(date.eq.${cursor.date},effective_time.lt.${cursor.effective_time})`,
-        `and(date.eq.${cursor.date},effective_time.eq.${cursor.effective_time},id.lt.${cursor.id})`,
-      ].join(',')
-    );
-  }
-
-  const { data, error } = await request;
-  if (error) {
-    console.error('[public-api/data] transactions failed', error);
-    throw new PublicApiError('internal_error', 'Chargement des transactions impossible');
-  }
-
-  const rows = (data ?? []) as Array<Record<string, unknown> & { date: string; effective_time: string; id: string }>;
   const hasMore = rows.length > query.limit;
   const items = hasMore ? rows.slice(0, query.limit) : rows;
   const last = items[items.length - 1];
   return {
-    // effective_time sert au tri/curseur uniquement.
-    items: items.map((row) => {
-      const { effective_time: _omit, ...rest } = row;
-      void _omit;
-      return rest;
-    }),
-    next_cursor:
-      hasMore && last ? encodeCursor({ date: last.date, effective_time: last.effective_time, id: last.id }) : null,
+    items: items.map(toPublicTransaction),
+    next_cursor: hasMore && last ? encodeTransactionCursor(last) : null,
   };
 }
