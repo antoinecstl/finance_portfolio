@@ -81,6 +81,18 @@ Never commit secrets. Important environment variables include:
 - The signup notification system is implemented as a Supabase Edge Function under `supabase/functions/new-signup-notification`.
 - Prefer selecting the Edge Function directly in the Supabase Dashboard Auth Hook UI when available.
 
+## Public API and AI Plugins
+
+- Pro-only (`api_access` feature in `lib/plans.ts`, enforced in Postgres through `public.user_has_pro_access`). Read-only access for AI assistants and scripts.
+- Two ways to authenticate, both sending `Authorization: Bearer fih_...`:
+  - Personal tokens created/revoked in `app/(app)/settings/api` (routes `app/api/api-tokens`).
+  - OAuth 2.1 (PKCE S256, dynamic client registration) for Claude/ChatGPT connectors: metadata in `app/.well-known/*`, consent screen `app/oauth/authorize`, endpoints `app/api/oauth/{register,token,revoke,authorize}`. Access tokens last 1 h, refresh tokens 60 days with rotation. OAuth grants are `api_tokens` rows with `kind = 'oauth'`.
+- Only SHA-256 hashes of tokens, codes and secrets are stored (migrations `20260930_api_tokens.sql`, `20261001_public_api_hardening.sql`).
+- REST: `app/api/v1/*` (`me`, `portfolio`, `accounts`, `positions`, `transactions`), OpenAPI 3.1 spec at `/api/v1/openapi.json` for ChatGPT GPT Actions. MCP: stateless Streamable HTTP JSON-RPC server at `/api/mcp`.
+- Data isolation lives in Postgres: the app passes the bearer token to `security definer` functions (`api_authenticate`, `api_accounts`, `api_transactions`, `api_profile`) that resolve the owner themselves. They are executable by `service_role` only. Never read user data for the public API with a `user_id` coming from application code.
+- Rate limits are shared across instances in Postgres (`api_rate_limits` + `api_rate_limit_hit`): 60 req/min per token, plus per-IP limits on OAuth registration and token endpoints.
+- Logic lives in `lib/public-api`.
+
 ## SEO and Analytics
 
 - Google Search site name is intended to be `fi-hub.subleet.com`.

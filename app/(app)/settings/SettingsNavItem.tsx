@@ -2,12 +2,13 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { User, CreditCard, Shield, AlertTriangle, type LucideIcon } from 'lucide-react';
+import { User, CreditCard, Shield, AlertTriangle, KeyRound, type LucideIcon } from 'lucide-react';
 
 const ICONS: Record<string, LucideIcon> = {
   user: User,
   billing: CreditCard,
   shield: Shield,
+  api: KeyRound,
   danger: AlertTriangle,
 };
 
