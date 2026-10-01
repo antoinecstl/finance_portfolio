@@ -510,482 +510,485 @@ export function ImportWizard() {
   return (
     <main className="py-5 sm:py-8">
       <PageContainer>
-        <PageHeader
-          title="Importer des transactions"
-          description="CSV, Excel, PDF, photo ou capture d’écran de relevé broker, ou texte collé. Une IA extrait les transactions ; vous validez avant import."
-        />
+        {/* Parcours guidé : colonne centrée, assez large pour le tableau de vérification. */}
+        <div className="mx-auto max-w-5xl">
+          <PageHeader
+            title="Importer des transactions"
+            description="CSV, Excel, PDF, photo ou capture d’écran de relevé broker, ou texte collé. Une IA extrait les transactions ; vous validez avant import."
+          />
 
-        {step === 'upload' && (
-          <div className="max-w-4xl bg-white dark:bg-zinc-900 rounded-xl sm:rounded-2xl border border-zinc-200 dark:border-zinc-800 p-4 sm:p-6 lg:p-8 space-y-5 sm:space-y-6">
-            <div>
-              <label className="block text-sm sm:text-base font-medium text-zinc-700 dark:text-zinc-300 mb-1.5 sm:mb-2">
-                Compte de destination
-              </label>
-              <select
-                value={accountId}
-                onChange={(e) => setAccountId(e.target.value)}
-                disabled={accountsLoading || accounts.length === 0}
-                className="w-full px-3 py-2 sm:py-2.5 text-sm sm:text-base border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500"
-              >
-                {accounts.length === 0 && <option value="">Aucun compte disponible</option>}
-                {accounts.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.name} ({a.type})
-                  </option>
-                ))}
-              </select>
-              {selectedAccount && !accountAcceptsPositions && (
-                <p className="mt-1.5 text-xs text-amber-600 dark:text-amber-400 inline-flex items-start gap-1">
-                  <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-                  Ce compte ne supporte pas les positions : seules les transactions cash (DEPOSIT, WITHDRAWAL, INTEREST, FEE) seront acceptées.
-                </p>
-              )}
-              {selectedAccount && hasAssetMismatch && (
-                <p className="mt-1.5 text-xs text-red-600 dark:text-red-400 inline-flex items-start gap-1">
-                  <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-                  {assetAccountMismatchMessage(selectedAccount.type)}
-                </p>
-              )}
-            </div>
-
-            <div>
-              <div className="flex gap-2 sm:gap-3 mb-3 sm:mb-4">
-                <button
-                  type="button"
-                  onClick={() => setMode('file')}
-                  className={`flex-1 inline-flex items-center justify-center gap-2 px-3 py-2 sm:py-2.5 text-sm sm:text-base rounded-lg border transition-colors ${
-                    mode === 'file'
-                      ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-500 text-blue-700 dark:text-blue-300'
-                      : 'border-zinc-300 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800'
-                  }`}
-                >
-                  <FileText className="h-4 w-4 sm:h-5 sm:w-5" />
-                  Fichier
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setMode('text')}
-                  className={`flex-1 inline-flex items-center justify-center gap-2 px-3 py-2 sm:py-2.5 text-sm sm:text-base rounded-lg border transition-colors ${
-                    mode === 'text'
-                      ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-500 text-blue-700 dark:text-blue-300'
-                      : 'border-zinc-300 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800'
-                  }`}
-                >
-                  <ClipboardPaste className="h-4 w-4 sm:h-5 sm:w-5" />
-                  Texte collé
-                </button>
-              </div>
-
-              {mode === 'file' && (
-                <label className="flex flex-col items-center justify-center gap-2 sm:gap-3 px-4 py-8 sm:py-12 lg:py-16 border-2 border-dashed border-zinc-300 dark:border-zinc-700 rounded-lg sm:rounded-xl cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors">
-                  <Upload className="h-6 w-6 sm:h-8 sm:w-8 lg:h-10 lg:w-10 text-zinc-400" />
-                  <span className="text-sm sm:text-base text-zinc-600 dark:text-zinc-400 text-center px-2">
-                    {file ? file.name : 'Cliquez pour sélectionner un fichier'}
-                  </span>
-                  <span className="text-xs sm:text-sm text-zinc-400">CSV, XLSX, PDF, JPG, PNG, WebP — max 10 MB</span>
-                  <input
-                    type="file"
-                    accept=".csv,.xlsx,.xls,.pdf,.jpg,.jpeg,.png,.webp,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/pdf,image/jpeg,image/png,image/webp"
-                    onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                    className="hidden"
-                  />
+          {step === 'upload' && (
+            <div className="bg-white dark:bg-zinc-900 rounded-xl sm:rounded-2xl border border-zinc-200 dark:border-zinc-800 p-4 sm:p-6 lg:p-8 space-y-5 sm:space-y-6">
+              <div>
+                <label className="block text-sm sm:text-base font-medium text-zinc-700 dark:text-zinc-300 mb-1.5 sm:mb-2">
+                  Compte de destination
                 </label>
-              )}
-
-              {mode === 'text' && (
-                <textarea
-                  value={pastedText}
-                  onChange={(e) => setPastedText(e.target.value)}
-                  rows={10}
-                  placeholder="Collez ici un extrait de transactions (relevé email, copier-coller depuis l'app de votre courtier, etc.)"
-                  className="w-full px-3 py-2 sm:py-2.5 text-sm sm:text-base font-mono border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 sm:min-h-[16rem]"
-                />
-              )}
-            </div>
-
-            {error && (
-              <div role="alert" className="rounded-lg bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 px-3 py-2 text-sm text-red-700 dark:text-red-300">
-                {error}
-              </div>
-            )}
-
-            <button
-              onClick={handleParse}
-              disabled={submitting || accounts.length === 0}
-              className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 sm:py-3 text-sm sm:text-base font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
-            >
-              {submitting ? <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" /> : <Upload className="h-4 w-4 sm:h-5 sm:w-5" />}
-              {submitting ? 'Analyse en cours…' : 'Analyser'}
-            </button>
-          </div>
-        )}
-
-        {step === 'preview' && (
-          <div className="space-y-4 sm:space-y-5">
-            <div className="bg-white dark:bg-zinc-900 rounded-xl sm:rounded-2xl border border-zinc-200 dark:border-zinc-800 p-4 sm:p-5 lg:p-6">
-              <div className="flex items-center justify-between gap-2 flex-wrap">
-                <div>
-                  <div className="text-sm sm:text-base font-medium text-zinc-900 dark:text-zinc-100">
-                    {rows.length} transaction(s) extraite(s)
-                  </div>
-                  {duplicatesByRow.size > 0 && (
-                    <div className="mt-1.5 inline-flex items-center gap-1 text-xs sm:text-sm text-amber-700 dark:text-amber-400">
-                      <Copy className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                      {duplicatesByRow.size} doublon(s) potentiel(s) détecté(s)
-                    </div>
-                  )}
-                </div>
-                <button
-                  onClick={() => { setStep('upload'); setRows([]); setNotes([]); setJobId(null); }}
-                  className="text-xs sm:text-sm text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
+                <select
+                  value={accountId}
+                  onChange={(e) => setAccountId(e.target.value)}
+                  disabled={accountsLoading || accounts.length === 0}
+                  className="w-full px-3 py-2 sm:py-2.5 text-sm sm:text-base border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500"
                 >
-                  Recommencer
-                </button>
-              </div>
-            </div>
-
-            {notes.length > 0 && (
-              <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-3 sm:p-4 text-sm text-amber-800 dark:text-amber-200">
-                <div className="font-medium mb-1 sm:mb-1.5 inline-flex items-center gap-1.5 sm:text-base">
-                  <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5" /> Remarques de l&apos;analyse
-                </div>
-                <ul className="list-disc list-inside space-y-0.5 sm:space-y-1 text-xs sm:text-sm">
-                  {notes.map((n, i) => (
-                    <li key={i}>
-                      {n.row !== undefined && <span className="font-mono mr-1">[L{n.row}]</span>}
-                      {n.message}
-                    </li>
+                  {accounts.length === 0 && <option value="">Aucun compte disponible</option>}
+                  {accounts.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.name} ({a.type})
+                    </option>
                   ))}
-                </ul>
+                </select>
+                {selectedAccount && !accountAcceptsPositions && (
+                  <p className="mt-1.5 text-xs text-amber-600 dark:text-amber-400 inline-flex items-start gap-1">
+                    <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                    Ce compte ne supporte pas les positions : seules les transactions cash (DEPOSIT, WITHDRAWAL, INTEREST, FEE) seront acceptées.
+                  </p>
+                )}
+                {selectedAccount && hasAssetMismatch && (
+                  <p className="mt-1.5 text-xs text-red-600 dark:text-red-400 inline-flex items-start gap-1">
+                    <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                    {assetAccountMismatchMessage(selectedAccount.type)}
+                  </p>
+                )}
               </div>
-            )}
 
-            {rows.length > 0 && (
-              <div
-                className={`rounded-xl border p-3 sm:p-4 text-sm ${
-                  cashPreviewIssue
-                    ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-800 dark:text-red-200'
-                    : 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200'
-                }`}
-              >
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="font-medium inline-flex items-center gap-1.5 sm:text-base">
-                    {cashPreviewIssue ? (
-                      <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5 shrink-0" />
-                    ) : (
-                      <Info className="h-4 w-4 sm:h-5 sm:w-5 shrink-0" />
-                    )}
-                    Tr&eacute;sorerie projet&eacute;e apr&egrave;s import
-                  </div>
-                  {existingTxsLoading && (
-                    <span className="inline-flex items-center gap-1 text-xs opacity-80">
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      Chargement des transactions existantes
-                    </span>
-                  )}
+              <div>
+                <div className="flex gap-2 sm:gap-3 mb-3 sm:mb-4">
+                  <button
+                    type="button"
+                    onClick={() => setMode('file')}
+                    className={`flex-1 inline-flex items-center justify-center gap-2 px-3 py-2 sm:py-2.5 text-sm sm:text-base rounded-lg border transition-colors ${
+                      mode === 'file'
+                        ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-500 text-blue-700 dark:text-blue-300'
+                        : 'border-zinc-300 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800'
+                    }`}
+                  >
+                    <FileText className="h-4 w-4 sm:h-5 sm:w-5" />
+                    Fichier
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMode('text')}
+                    className={`flex-1 inline-flex items-center justify-center gap-2 px-3 py-2 sm:py-2.5 text-sm sm:text-base rounded-lg border transition-colors ${
+                      mode === 'text'
+                        ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-500 text-blue-700 dark:text-blue-300'
+                        : 'border-zinc-300 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800'
+                    }`}
+                  >
+                    <ClipboardPaste className="h-4 w-4 sm:h-5 sm:w-5" />
+                    Texte collé
+                  </button>
                 </div>
 
-                {cashPreviewIssue && (
-                  <p className="mt-2 text-xs sm:text-sm">
-                    Premier blocage : solde {cashPreviewIssue.currency} &agrave;{' '}
-                    {formatSignedCurrency(cashPreviewIssue.balance, cashPreviewIssue.currency)} le{' '}
-                    {cashPreviewIssue.date}
-                    {cashPreviewIssue.rowIndex !== null
-                      ? ` sur la ligne ${cashPreviewIssue.rowIndex + 1}`
-                      : ' sur une transaction existante'}
-                    . Le solde final peut &ecirc;tre positif si le cr&eacute;dit arrive apr&egrave;s ce d&eacute;bit.
-                  </p>
+                {mode === 'file' && (
+                  <label className="flex flex-col items-center justify-center gap-2 sm:gap-3 px-4 py-8 sm:py-12 lg:py-16 border-2 border-dashed border-zinc-300 dark:border-zinc-700 rounded-lg sm:rounded-xl cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors">
+                    <Upload className="h-6 w-6 sm:h-8 sm:w-8 lg:h-10 lg:w-10 text-zinc-400" />
+                    <span className="text-sm sm:text-base text-zinc-600 dark:text-zinc-400 text-center px-2">
+                      {file ? file.name : 'Cliquez pour sélectionner un fichier'}
+                    </span>
+                    <span className="text-xs sm:text-sm text-zinc-400">CSV, XLSX, PDF, JPG, PNG, WebP — max 10 MB</span>
+                    <input
+                      type="file"
+                      accept=".csv,.xlsx,.xls,.pdf,.jpg,.jpeg,.png,.webp,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/pdf,image/jpeg,image/png,image/webp"
+                      onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                      className="hidden"
+                    />
+                  </label>
                 )}
 
-                {existingTxsLoading ? (
-                  <p className="mt-2 text-xs sm:text-sm opacity-80">
-                    Les soldes seront affich&eacute;s d&egrave;s que les transactions existantes du compte seront charg&eacute;es.
-                  </p>
-                ) : cashPreview.buckets.length > 0 ? (
-                  <div className="mt-3 overflow-x-auto">
-                    <table className="w-full min-w-[34rem] text-xs sm:text-sm">
-                      <thead className={cashPreviewIssue ? 'text-red-700/80 dark:text-red-200/80' : 'text-emerald-700/80 dark:text-emerald-200/80'}>
-                        <tr className="text-left">
-                          <th className="py-1.5 pr-3 font-medium">Devise</th>
-                          <th className="py-1.5 px-3 font-medium text-right">Avant import</th>
-                          <th className="py-1.5 px-3 font-medium text-right">Impact import</th>
-                          <th className="py-1.5 pl-3 font-medium text-right">Apr&egrave;s import</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {cashPreview.buckets.map((bucket) => (
-                          <tr key={bucket.currency} className="border-t border-current/15">
-                            <td className="py-1.5 pr-3 font-medium">{bucket.currency}</td>
-                            <td className="py-1.5 px-3 text-right tabular-nums">
-                              {formatCurrency(bucket.before, bucket.currency)}
-                            </td>
-                            <td className="py-1.5 px-3 text-right tabular-nums">
-                              {formatSignedCurrency(bucket.importDelta, bucket.currency)}
-                            </td>
-                            <td className={`py-1.5 pl-3 text-right tabular-nums font-medium ${bucket.after < -0.005 ? 'text-red-700 dark:text-red-200' : ''}`}>
-                              {formatCurrency(bucket.after, bucket.currency)}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <p className="mt-2 text-xs sm:text-sm opacity-80">
-                    Aucun mouvement cash d&eacute;tect&eacute; dans les lignes extraites.
-                  </p>
+                {mode === 'text' && (
+                  <textarea
+                    value={pastedText}
+                    onChange={(e) => setPastedText(e.target.value)}
+                    rows={10}
+                    placeholder="Collez ici un extrait de transactions (relevé email, copier-coller depuis l'app de votre courtier, etc.)"
+                    className="w-full px-3 py-2 sm:py-2.5 text-sm sm:text-base font-mono border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 sm:min-h-[16rem]"
+                  />
                 )}
               </div>
-            )}
 
-            <div className="bg-white dark:bg-zinc-900 rounded-xl sm:rounded-2xl border border-zinc-200 dark:border-zinc-800 overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs sm:text-sm">
-                  <thead className="bg-zinc-50 dark:bg-zinc-800/50 text-zinc-500 dark:text-zinc-400 text-left">
-                    <tr>
-                      <th className="px-3 py-2.5 sm:py-3 font-medium">Date</th>
-                      <th className="px-3 py-2.5 sm:py-3 font-medium">Type</th>
-                      <th className="px-3 py-2.5 sm:py-3 font-medium">Symbole</th>
-                      <th className="px-3 py-2.5 sm:py-3 font-medium text-right">Qté</th>
-                      <th className="px-3 py-2.5 sm:py-3 font-medium text-right">Prix</th>
-                      <th className="px-3 py-2.5 sm:py-3 font-medium text-right">Montant</th>
-                      <th className="px-3 py-2.5 sm:py-3 font-medium">Devise</th>
-                      <th className="px-3 py-2.5 sm:py-3 font-medium text-right">Cible</th>
-                      <th className="px-3 py-2.5 sm:py-3 font-medium">Devise cible</th>
-                      <th className="px-3 py-2.5 sm:py-3 font-medium text-right">Frais</th>
-                      <th className="px-3 py-2.5 sm:py-3 font-medium">Description</th>
-                      <th className="px-3 py-2.5 sm:py-3 w-8" />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rows.map((r, idx) => {
-                      const invalid = invalidRows.includes(idx);
-                      const isStock = r.type === 'BUY' || r.type === 'SELL';
-                      const isDividend = r.type === 'DIVIDEND';
-                      const isConversion = r.type === 'CONVERSION';
-                      const rowCurrency = (r.currency ?? selectedAccount?.currency ?? 'EUR').toUpperCase();
-                      const duplicate = duplicatesByRow.get(idx);
-                      const rowBg = invalid
-                        ? 'bg-red-50/50 dark:bg-red-900/10'
-                        : duplicate
-                          ? 'bg-amber-50/50 dark:bg-amber-900/10'
-                          : '';
-                      return (
-                        <tr key={idx} className={`border-t border-zinc-100 dark:border-zinc-800 ${rowBg}`}>
-                          <td className="px-2 py-2 sm:py-2.5 align-top">
-                            <input
-                              type="date"
-                              value={r.date}
-                              onChange={(e) => updateRow(idx, { date: e.target.value })}
-                              className="w-32 sm:w-36 px-1.5 py-1 sm:py-1.5 text-xs sm:text-sm border border-zinc-200 dark:border-zinc-700 rounded bg-white dark:bg-zinc-800"
-                            />
-                            {duplicate && (
-                              <p
-                                className="mt-1 max-w-[8rem] sm:max-w-[9rem] text-[10px] sm:text-[11px] text-amber-700 dark:text-amber-400 inline-flex items-start gap-1"
-                                title={`Existante : ${duplicate.type} ${formatCurrency(duplicate.amount, duplicate.currency)} le ${formatDate(duplicate.date)}${duplicate.stock_symbol ? ` · ${duplicate.stock_symbol}` : ''}`}
-                              >
-                                <Copy className="h-2.5 w-2.5 sm:h-3 sm:w-3 mt-0.5 shrink-0" />
-                                Doublon possible
-                              </p>
-                            )}
-                          </td>
-                          <td className="px-2 py-2 sm:py-2.5">
-                            <select
-                              value={r.type}
-                              onChange={(e) => {
-                                const nextType = e.target.value as TransactionType;
-                                updateRow(idx, {
-                                  type: nextType,
-                                  ...(nextType === 'CONVERSION'
-                                    ? { stock_symbol: null, quantity: null, price_per_unit: null, fees: 0 }
-                                    : { target_amount: null, target_currency: null }),
-                                });
-                              }}
-                              className="px-1.5 py-1 sm:py-1.5 text-xs sm:text-sm border border-zinc-200 dark:border-zinc-700 rounded bg-white dark:bg-zinc-800"
-                            >
-                              {TX_TYPES.map((t) => (
-                                <option key={t.value} value={t.value}>{t.label}</option>
-                              ))}
-                            </select>
-                          </td>
-                          <td className="px-2 py-2 sm:py-2.5">
-                            <ImportSymbolCell
-                              value={r.stock_symbol ?? ''}
-                              disabled={!isStock && !isDividend}
-                              description={r.description}
-                              isCryptoAccount={selectedAccount?.type === 'CRYPTO'}
-                              status={
-                                !r.stock_symbol
-                                  ? 'unknown'
-                                  : selectedAccount && !accountTypeAllowsAsset(selectedAccount.type, r.stock_symbol)
-                                    ? 'mismatch'
-                                    : (tickerStatus.get(r.stock_symbol.toUpperCase()) ?? 'pending')
-                              }
-                              onChange={(symbol) => updateRow(idx, { stock_symbol: symbol })}
-                            />
-                          </td>
-                          <td className="px-2 py-2 sm:py-2.5 text-right">
-                            <input
-                              type="number"
-                              step="0.0001"
-                              value={r.quantity ?? ''}
-                              onChange={(e) => updateRow(idx, { quantity: e.target.value ? Number(e.target.value) : null })}
-                              disabled={!isStock}
-                              className="w-20 sm:w-24 px-1.5 py-1 sm:py-1.5 text-xs sm:text-sm text-right border border-zinc-200 dark:border-zinc-700 rounded bg-white dark:bg-zinc-800 disabled:opacity-40"
-                            />
-                          </td>
-                          <td className="px-2 py-2 sm:py-2.5 text-right">
-                            <input
-                              type="number"
-                              step="0.01"
-                              value={r.price_per_unit ?? ''}
-                              onChange={(e) => updateRow(idx, { price_per_unit: e.target.value ? Number(e.target.value) : null })}
-                              disabled={!isStock}
-                              className="w-20 sm:w-24 px-1.5 py-1 sm:py-1.5 text-xs sm:text-sm text-right border border-zinc-200 dark:border-zinc-700 rounded bg-white dark:bg-zinc-800 disabled:opacity-40"
-                            />
-                          </td>
-                          <td className="px-2 py-2 sm:py-2.5 text-right">
-                            <input
-                              type="number"
-                              step="0.01"
-                              value={r.amount}
-                              onChange={(e) => updateRow(idx, { amount: Number(e.target.value) })}
-                              className="w-24 sm:w-28 px-1.5 py-1 sm:py-1.5 text-xs sm:text-sm text-right border border-zinc-200 dark:border-zinc-700 rounded bg-white dark:bg-zinc-800"
-                            />
-                          </td>
-                          <td className="px-2 py-2 sm:py-2.5">
-                            <input
-                              type="text"
-                              value={rowCurrency}
-                              onChange={(e) => updateRow(idx, { currency: e.target.value.toUpperCase() })}
-                              maxLength={10}
-                              className="w-16 sm:w-20 px-1.5 py-1 sm:py-1.5 text-xs sm:text-sm border border-zinc-200 dark:border-zinc-700 rounded bg-white dark:bg-zinc-800 uppercase"
-                            />
-                          </td>
-                          <td className="px-2 py-2 sm:py-2.5 text-right">
-                            <input
-                              type="number"
-                              step="0.01"
-                              value={r.target_amount ?? ''}
-                              onChange={(e) => updateRow(idx, { target_amount: e.target.value ? Number(e.target.value) : null })}
-                              disabled={!isConversion}
-                              className="w-24 sm:w-28 px-1.5 py-1 sm:py-1.5 text-xs sm:text-sm text-right border border-zinc-200 dark:border-zinc-700 rounded bg-white dark:bg-zinc-800 disabled:opacity-40"
-                            />
-                          </td>
-                          <td className="px-2 py-2 sm:py-2.5">
-                            <input
-                              type="text"
-                              value={r.target_currency ?? ''}
-                              onChange={(e) => updateRow(idx, { target_currency: e.target.value.toUpperCase() })}
-                              disabled={!isConversion}
-                              maxLength={10}
-                              className="w-16 sm:w-20 px-1.5 py-1 sm:py-1.5 text-xs sm:text-sm border border-zinc-200 dark:border-zinc-700 rounded bg-white dark:bg-zinc-800 uppercase disabled:opacity-40"
-                            />
-                          </td>
-                          <td className="px-2 py-2 sm:py-2.5 text-right">
-                            <input
-                              type="number"
-                              step="0.01"
-                              min="0"
-                              value={r.fees ?? 0}
-                              onChange={(e) => updateRow(idx, { fees: Number(e.target.value) })}
-                              disabled={r.type === 'FEE' || isConversion}
-                              className="w-20 sm:w-24 px-1.5 py-1 sm:py-1.5 text-xs sm:text-sm text-right border border-zinc-200 dark:border-zinc-700 rounded bg-white dark:bg-zinc-800 disabled:opacity-40"
-                            />
-                          </td>
-                          <td className="px-2 py-2 sm:py-2.5">
-                            <input
-                              type="text"
-                              value={r.description ?? ''}
-                              onChange={(e) => updateRow(idx, { description: e.target.value })}
-                              className="w-40 sm:w-48 lg:w-56 px-1.5 py-1 sm:py-1.5 text-xs sm:text-sm border border-zinc-200 dark:border-zinc-700 rounded bg-white dark:bg-zinc-800"
-                            />
-                          </td>
-                          <td className="px-2 py-2 sm:py-2.5 text-center">
-                            <button
-                              onClick={() => removeRow(idx)}
-                              aria-label="Supprimer la ligne"
-                              className="text-red-500 hover:text-red-700"
-                            >
-                              <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                    {rows.length === 0 && (
-                      <tr>
-                        <td colSpan={12} className="px-3 py-6 text-center text-zinc-500 dark:text-zinc-400 text-sm">
-                          Aucune transaction extraite. Reprenez un autre fichier ou ajustez le contenu.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+              {error && (
+                <div role="alert" className="rounded-lg bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 px-3 py-2 text-sm text-red-700 dark:text-red-300">
+                  {error}
+                </div>
+              )}
 
-            {error && (
-              <div role="alert" className="rounded-lg bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 px-3 py-2 text-sm text-red-700 dark:text-red-300">
-                {error}
-              </div>
-            )}
-
-            <div className="flex flex-col sm:flex-row gap-3 sm:gap-2 sm:items-center sm:justify-between">
-              <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400">
-                {invalidRows.length > 0
-                  ? `${invalidRows.length} ligne(s) à corriger avant import.`
-                  : `${rows.length} transaction(s) prêtes à importer.`}
-              </p>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => { setStep('upload'); setError(null); }}
-                  className="px-4 sm:px-5 py-2 sm:py-2.5 text-sm sm:text-base border border-zinc-300 dark:border-zinc-700 rounded-lg text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800"
-                >
-                  Annuler
-                </button>
-                <button
-                  onClick={handleCommit}
-                  disabled={submitting || rows.length === 0 || invalidRows.length > 0}
-                  className="inline-flex items-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 text-sm sm:text-base font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-                >
-                  {submitting ? <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" /> : <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5" />}
-                  Importer {rows.length} transaction(s)
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {step === 'done' && committedSummary && (
-          <div className="mt-8 sm:mt-10 bg-white dark:bg-zinc-900 rounded-xl sm:rounded-2xl border border-zinc-200 dark:border-zinc-800 p-6 sm:p-8 lg:p-10 text-center">
-            <CheckCircle2 className="h-12 w-12 sm:h-14 sm:w-14 mx-auto text-emerald-500 mb-3 sm:mb-4" />
-            <h2 className="text-xl sm:text-2xl lg:text-3xl font-semibold text-zinc-900 dark:text-zinc-100">
-              Import terminé
-            </h2>
-            <p className="mt-1.5 sm:mt-2 text-sm sm:text-base text-zinc-500 dark:text-zinc-400">
-              {committedSummary.inserted} transaction(s) ajoutée(s) sur {committedSummary.total}.
-            </p>
-            <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row gap-2 sm:gap-3 justify-center">
-              <Link
-                href="/dashboard"
-                className="px-4 sm:px-5 py-2 sm:py-2.5 text-sm sm:text-base bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-              >
-                Voir le tableau de bord
-              </Link>
               <button
-                onClick={() => {
-                  setStep('upload');
-                  setRows([]); setNotes([]); setFile(null); setPastedText('');
-                  setJobId(null); setCommittedSummary(null);
-                }}
-                className="px-4 sm:px-5 py-2 sm:py-2.5 text-sm sm:text-base border border-zinc-300 dark:border-zinc-700 rounded-lg text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800"
+                onClick={handleParse}
+                disabled={submitting || accounts.length === 0}
+                className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 sm:py-3 text-sm sm:text-base font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
               >
-                Importer un autre fichier
+                {submitting ? <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" /> : <Upload className="h-4 w-4 sm:h-5 sm:w-5" />}
+                {submitting ? 'Analyse en cours…' : 'Analyser'}
               </button>
             </div>
-          </div>
-        )}
+          )}
+
+          {step === 'preview' && (
+            <div className="space-y-4 sm:space-y-5">
+              <div className="bg-white dark:bg-zinc-900 rounded-xl sm:rounded-2xl border border-zinc-200 dark:border-zinc-800 p-4 sm:p-5 lg:p-6">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div>
+                    <div className="text-sm sm:text-base font-medium text-zinc-900 dark:text-zinc-100">
+                      {rows.length} transaction(s) extraite(s)
+                    </div>
+                    {duplicatesByRow.size > 0 && (
+                      <div className="mt-1.5 inline-flex items-center gap-1 text-xs sm:text-sm text-amber-700 dark:text-amber-400">
+                        <Copy className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                        {duplicatesByRow.size} doublon(s) potentiel(s) détecté(s)
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => { setStep('upload'); setRows([]); setNotes([]); setJobId(null); }}
+                    className="text-xs sm:text-sm text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
+                  >
+                    Recommencer
+                  </button>
+                </div>
+              </div>
+
+              {notes.length > 0 && (
+                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-3 sm:p-4 text-sm text-amber-800 dark:text-amber-200">
+                  <div className="font-medium mb-1 sm:mb-1.5 inline-flex items-center gap-1.5 sm:text-base">
+                    <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5" /> Remarques de l&apos;analyse
+                  </div>
+                  <ul className="list-disc list-inside space-y-0.5 sm:space-y-1 text-xs sm:text-sm">
+                    {notes.map((n, i) => (
+                      <li key={i}>
+                        {n.row !== undefined && <span className="font-mono mr-1">[L{n.row}]</span>}
+                        {n.message}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {rows.length > 0 && (
+                <div
+                  className={`rounded-xl border p-3 sm:p-4 text-sm ${
+                    cashPreviewIssue
+                      ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-800 dark:text-red-200'
+                      : 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200'
+                  }`}
+                >
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="font-medium inline-flex items-center gap-1.5 sm:text-base">
+                      {cashPreviewIssue ? (
+                        <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5 shrink-0" />
+                      ) : (
+                        <Info className="h-4 w-4 sm:h-5 sm:w-5 shrink-0" />
+                      )}
+                      Tr&eacute;sorerie projet&eacute;e apr&egrave;s import
+                    </div>
+                    {existingTxsLoading && (
+                      <span className="inline-flex items-center gap-1 text-xs opacity-80">
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        Chargement des transactions existantes
+                      </span>
+                    )}
+                  </div>
+
+                  {cashPreviewIssue && (
+                    <p className="mt-2 text-xs sm:text-sm">
+                      Premier blocage : solde {cashPreviewIssue.currency} &agrave;{' '}
+                      {formatSignedCurrency(cashPreviewIssue.balance, cashPreviewIssue.currency)} le{' '}
+                      {cashPreviewIssue.date}
+                      {cashPreviewIssue.rowIndex !== null
+                        ? ` sur la ligne ${cashPreviewIssue.rowIndex + 1}`
+                        : ' sur une transaction existante'}
+                      . Le solde final peut &ecirc;tre positif si le cr&eacute;dit arrive apr&egrave;s ce d&eacute;bit.
+                    </p>
+                  )}
+
+                  {existingTxsLoading ? (
+                    <p className="mt-2 text-xs sm:text-sm opacity-80">
+                      Les soldes seront affich&eacute;s d&egrave;s que les transactions existantes du compte seront charg&eacute;es.
+                    </p>
+                  ) : cashPreview.buckets.length > 0 ? (
+                    <div className="mt-3 overflow-x-auto">
+                      <table className="w-full min-w-[34rem] text-xs sm:text-sm">
+                        <thead className={cashPreviewIssue ? 'text-red-700/80 dark:text-red-200/80' : 'text-emerald-700/80 dark:text-emerald-200/80'}>
+                          <tr className="text-left">
+                            <th className="py-1.5 pr-3 font-medium">Devise</th>
+                            <th className="py-1.5 px-3 font-medium text-right">Avant import</th>
+                            <th className="py-1.5 px-3 font-medium text-right">Impact import</th>
+                            <th className="py-1.5 pl-3 font-medium text-right">Apr&egrave;s import</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {cashPreview.buckets.map((bucket) => (
+                            <tr key={bucket.currency} className="border-t border-current/15">
+                              <td className="py-1.5 pr-3 font-medium">{bucket.currency}</td>
+                              <td className="py-1.5 px-3 text-right tabular-nums">
+                                {formatCurrency(bucket.before, bucket.currency)}
+                              </td>
+                              <td className="py-1.5 px-3 text-right tabular-nums">
+                                {formatSignedCurrency(bucket.importDelta, bucket.currency)}
+                              </td>
+                              <td className={`py-1.5 pl-3 text-right tabular-nums font-medium ${bucket.after < -0.005 ? 'text-red-700 dark:text-red-200' : ''}`}>
+                                {formatCurrency(bucket.after, bucket.currency)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <p className="mt-2 text-xs sm:text-sm opacity-80">
+                      Aucun mouvement cash d&eacute;tect&eacute; dans les lignes extraites.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              <div className="bg-white dark:bg-zinc-900 rounded-xl sm:rounded-2xl border border-zinc-200 dark:border-zinc-800 overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs sm:text-sm">
+                    <thead className="bg-zinc-50 dark:bg-zinc-800/50 text-zinc-500 dark:text-zinc-400 text-left">
+                      <tr>
+                        <th className="px-3 py-2.5 sm:py-3 font-medium">Date</th>
+                        <th className="px-3 py-2.5 sm:py-3 font-medium">Type</th>
+                        <th className="px-3 py-2.5 sm:py-3 font-medium">Symbole</th>
+                        <th className="px-3 py-2.5 sm:py-3 font-medium text-right">Qté</th>
+                        <th className="px-3 py-2.5 sm:py-3 font-medium text-right">Prix</th>
+                        <th className="px-3 py-2.5 sm:py-3 font-medium text-right">Montant</th>
+                        <th className="px-3 py-2.5 sm:py-3 font-medium">Devise</th>
+                        <th className="px-3 py-2.5 sm:py-3 font-medium text-right">Cible</th>
+                        <th className="px-3 py-2.5 sm:py-3 font-medium">Devise cible</th>
+                        <th className="px-3 py-2.5 sm:py-3 font-medium text-right">Frais</th>
+                        <th className="px-3 py-2.5 sm:py-3 font-medium">Description</th>
+                        <th className="px-3 py-2.5 sm:py-3 w-8" />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rows.map((r, idx) => {
+                        const invalid = invalidRows.includes(idx);
+                        const isStock = r.type === 'BUY' || r.type === 'SELL';
+                        const isDividend = r.type === 'DIVIDEND';
+                        const isConversion = r.type === 'CONVERSION';
+                        const rowCurrency = (r.currency ?? selectedAccount?.currency ?? 'EUR').toUpperCase();
+                        const duplicate = duplicatesByRow.get(idx);
+                        const rowBg = invalid
+                          ? 'bg-red-50/50 dark:bg-red-900/10'
+                          : duplicate
+                            ? 'bg-amber-50/50 dark:bg-amber-900/10'
+                            : '';
+                        return (
+                          <tr key={idx} className={`border-t border-zinc-100 dark:border-zinc-800 ${rowBg}`}>
+                            <td className="px-2 py-2 sm:py-2.5 align-top">
+                              <input
+                                type="date"
+                                value={r.date}
+                                onChange={(e) => updateRow(idx, { date: e.target.value })}
+                                className="w-32 sm:w-36 px-1.5 py-1 sm:py-1.5 text-xs sm:text-sm border border-zinc-200 dark:border-zinc-700 rounded bg-white dark:bg-zinc-800"
+                              />
+                              {duplicate && (
+                                <p
+                                  className="mt-1 max-w-[8rem] sm:max-w-[9rem] text-[10px] sm:text-[11px] text-amber-700 dark:text-amber-400 inline-flex items-start gap-1"
+                                  title={`Existante : ${duplicate.type} ${formatCurrency(duplicate.amount, duplicate.currency)} le ${formatDate(duplicate.date)}${duplicate.stock_symbol ? ` · ${duplicate.stock_symbol}` : ''}`}
+                                >
+                                  <Copy className="h-2.5 w-2.5 sm:h-3 sm:w-3 mt-0.5 shrink-0" />
+                                  Doublon possible
+                                </p>
+                              )}
+                            </td>
+                            <td className="px-2 py-2 sm:py-2.5">
+                              <select
+                                value={r.type}
+                                onChange={(e) => {
+                                  const nextType = e.target.value as TransactionType;
+                                  updateRow(idx, {
+                                    type: nextType,
+                                    ...(nextType === 'CONVERSION'
+                                      ? { stock_symbol: null, quantity: null, price_per_unit: null, fees: 0 }
+                                      : { target_amount: null, target_currency: null }),
+                                  });
+                                }}
+                                className="px-1.5 py-1 sm:py-1.5 text-xs sm:text-sm border border-zinc-200 dark:border-zinc-700 rounded bg-white dark:bg-zinc-800"
+                              >
+                                {TX_TYPES.map((t) => (
+                                  <option key={t.value} value={t.value}>{t.label}</option>
+                                ))}
+                              </select>
+                            </td>
+                            <td className="px-2 py-2 sm:py-2.5">
+                              <ImportSymbolCell
+                                value={r.stock_symbol ?? ''}
+                                disabled={!isStock && !isDividend}
+                                description={r.description}
+                                isCryptoAccount={selectedAccount?.type === 'CRYPTO'}
+                                status={
+                                  !r.stock_symbol
+                                    ? 'unknown'
+                                    : selectedAccount && !accountTypeAllowsAsset(selectedAccount.type, r.stock_symbol)
+                                      ? 'mismatch'
+                                      : (tickerStatus.get(r.stock_symbol.toUpperCase()) ?? 'pending')
+                                }
+                                onChange={(symbol) => updateRow(idx, { stock_symbol: symbol })}
+                              />
+                            </td>
+                            <td className="px-2 py-2 sm:py-2.5 text-right">
+                              <input
+                                type="number"
+                                step="0.0001"
+                                value={r.quantity ?? ''}
+                                onChange={(e) => updateRow(idx, { quantity: e.target.value ? Number(e.target.value) : null })}
+                                disabled={!isStock}
+                                className="w-20 sm:w-24 px-1.5 py-1 sm:py-1.5 text-xs sm:text-sm text-right border border-zinc-200 dark:border-zinc-700 rounded bg-white dark:bg-zinc-800 disabled:opacity-40"
+                              />
+                            </td>
+                            <td className="px-2 py-2 sm:py-2.5 text-right">
+                              <input
+                                type="number"
+                                step="0.01"
+                                value={r.price_per_unit ?? ''}
+                                onChange={(e) => updateRow(idx, { price_per_unit: e.target.value ? Number(e.target.value) : null })}
+                                disabled={!isStock}
+                                className="w-20 sm:w-24 px-1.5 py-1 sm:py-1.5 text-xs sm:text-sm text-right border border-zinc-200 dark:border-zinc-700 rounded bg-white dark:bg-zinc-800 disabled:opacity-40"
+                              />
+                            </td>
+                            <td className="px-2 py-2 sm:py-2.5 text-right">
+                              <input
+                                type="number"
+                                step="0.01"
+                                value={r.amount}
+                                onChange={(e) => updateRow(idx, { amount: Number(e.target.value) })}
+                                className="w-24 sm:w-28 px-1.5 py-1 sm:py-1.5 text-xs sm:text-sm text-right border border-zinc-200 dark:border-zinc-700 rounded bg-white dark:bg-zinc-800"
+                              />
+                            </td>
+                            <td className="px-2 py-2 sm:py-2.5">
+                              <input
+                                type="text"
+                                value={rowCurrency}
+                                onChange={(e) => updateRow(idx, { currency: e.target.value.toUpperCase() })}
+                                maxLength={10}
+                                className="w-16 sm:w-20 px-1.5 py-1 sm:py-1.5 text-xs sm:text-sm border border-zinc-200 dark:border-zinc-700 rounded bg-white dark:bg-zinc-800 uppercase"
+                              />
+                            </td>
+                            <td className="px-2 py-2 sm:py-2.5 text-right">
+                              <input
+                                type="number"
+                                step="0.01"
+                                value={r.target_amount ?? ''}
+                                onChange={(e) => updateRow(idx, { target_amount: e.target.value ? Number(e.target.value) : null })}
+                                disabled={!isConversion}
+                                className="w-24 sm:w-28 px-1.5 py-1 sm:py-1.5 text-xs sm:text-sm text-right border border-zinc-200 dark:border-zinc-700 rounded bg-white dark:bg-zinc-800 disabled:opacity-40"
+                              />
+                            </td>
+                            <td className="px-2 py-2 sm:py-2.5">
+                              <input
+                                type="text"
+                                value={r.target_currency ?? ''}
+                                onChange={(e) => updateRow(idx, { target_currency: e.target.value.toUpperCase() })}
+                                disabled={!isConversion}
+                                maxLength={10}
+                                className="w-16 sm:w-20 px-1.5 py-1 sm:py-1.5 text-xs sm:text-sm border border-zinc-200 dark:border-zinc-700 rounded bg-white dark:bg-zinc-800 uppercase disabled:opacity-40"
+                              />
+                            </td>
+                            <td className="px-2 py-2 sm:py-2.5 text-right">
+                              <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={r.fees ?? 0}
+                                onChange={(e) => updateRow(idx, { fees: Number(e.target.value) })}
+                                disabled={r.type === 'FEE' || isConversion}
+                                className="w-20 sm:w-24 px-1.5 py-1 sm:py-1.5 text-xs sm:text-sm text-right border border-zinc-200 dark:border-zinc-700 rounded bg-white dark:bg-zinc-800 disabled:opacity-40"
+                              />
+                            </td>
+                            <td className="px-2 py-2 sm:py-2.5">
+                              <input
+                                type="text"
+                                value={r.description ?? ''}
+                                onChange={(e) => updateRow(idx, { description: e.target.value })}
+                                className="w-40 sm:w-48 lg:w-56 px-1.5 py-1 sm:py-1.5 text-xs sm:text-sm border border-zinc-200 dark:border-zinc-700 rounded bg-white dark:bg-zinc-800"
+                              />
+                            </td>
+                            <td className="px-2 py-2 sm:py-2.5 text-center">
+                              <button
+                                onClick={() => removeRow(idx)}
+                                aria-label="Supprimer la ligne"
+                                className="text-red-500 hover:text-red-700"
+                              >
+                                <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                      {rows.length === 0 && (
+                        <tr>
+                          <td colSpan={12} className="px-3 py-6 text-center text-zinc-500 dark:text-zinc-400 text-sm">
+                            Aucune transaction extraite. Reprenez un autre fichier ou ajustez le contenu.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {error && (
+                <div role="alert" className="rounded-lg bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 px-3 py-2 text-sm text-red-700 dark:text-red-300">
+                  {error}
+                </div>
+              )}
+
+              <div className="flex flex-col sm:flex-row gap-3 sm:gap-2 sm:items-center sm:justify-between">
+                <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400">
+                  {invalidRows.length > 0
+                    ? `${invalidRows.length} ligne(s) à corriger avant import.`
+                    : `${rows.length} transaction(s) prêtes à importer.`}
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => { setStep('upload'); setError(null); }}
+                    className="px-4 sm:px-5 py-2 sm:py-2.5 text-sm sm:text-base border border-zinc-300 dark:border-zinc-700 rounded-lg text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    onClick={handleCommit}
+                    disabled={submitting || rows.length === 0 || invalidRows.length > 0}
+                    className="inline-flex items-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 text-sm sm:text-base font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    {submitting ? <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" /> : <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5" />}
+                    Importer {rows.length} transaction(s)
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {step === 'done' && committedSummary && (
+            <div className="mt-8 sm:mt-10 bg-white dark:bg-zinc-900 rounded-xl sm:rounded-2xl border border-zinc-200 dark:border-zinc-800 p-6 sm:p-8 lg:p-10 text-center">
+              <CheckCircle2 className="h-12 w-12 sm:h-14 sm:w-14 mx-auto text-emerald-500 mb-3 sm:mb-4" />
+              <h2 className="text-xl sm:text-2xl lg:text-3xl font-semibold text-zinc-900 dark:text-zinc-100">
+                Import terminé
+              </h2>
+              <p className="mt-1.5 sm:mt-2 text-sm sm:text-base text-zinc-500 dark:text-zinc-400">
+                {committedSummary.inserted} transaction(s) ajoutée(s) sur {committedSummary.total}.
+              </p>
+              <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row gap-2 sm:gap-3 justify-center">
+                <Link
+                  href="/dashboard"
+                  className="px-4 sm:px-5 py-2 sm:py-2.5 text-sm sm:text-base bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  Voir le tableau de bord
+                </Link>
+                <button
+                  onClick={() => {
+                    setStep('upload');
+                    setRows([]); setNotes([]); setFile(null); setPastedText('');
+                    setJobId(null); setCommittedSummary(null);
+                  }}
+                  className="px-4 sm:px-5 py-2 sm:py-2.5 text-sm sm:text-base border border-zinc-300 dark:border-zinc-700 rounded-lg text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800"
+                >
+                  Importer un autre fichier
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </PageContainer>
     </main>
   );

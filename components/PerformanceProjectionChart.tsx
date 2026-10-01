@@ -8,7 +8,7 @@ import type { Transaction } from '@/lib/types';
 import type { FxRateMap } from '@/lib/fx';
 import { balanceProjectionTimeline, buildPerformanceProjection } from '@/lib/performance-projection';
 import { buildNiceYAxisScale } from '@/lib/chart-axis';
-import { formatCurrency, formatPercent } from '@/lib/utils';
+import { formatAxisCurrency, formatCurrency, formatPercent } from '@/lib/utils';
 
 interface PerformanceProjectionChartProps {
   history: PortfolioHistoryPoint[];
@@ -95,9 +95,9 @@ export function PerformanceProjectionChart({
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={chartData}>
             <defs><linearGradient id="projectionActualFill" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="var(--chart-primary)" stopOpacity={0.18} /><stop offset="95%" stopColor="var(--chart-primary)" stopOpacity={0} /></linearGradient></defs>
-            <CartesianGrid stroke="var(--rule)" strokeDasharray="3 3" />
-            <XAxis dataKey="label" tick={{ fontSize: 10 }} stroke="var(--ink-soft)" tickLine={false} interval="preserveStartEnd" />
-            <YAxis tickFormatter={value => formatCurrency(value).replace('€', '').trim()} tick={{ fontSize: 10 }} stroke="var(--ink-soft)" width={62} domain={yAxis.domain} ticks={yAxis.ticks} />
+            <CartesianGrid stroke="var(--rule)" strokeDasharray="3 3" vertical={false} />
+            <XAxis dataKey="label" tick={{ fontSize: 10 }} stroke="var(--ink-soft)" tickLine={false} interval="preserveStartEnd" minTickGap={24} />
+            <YAxis tickFormatter={formatAxisCurrency} tick={{ fontSize: 10 }} stroke="var(--ink-soft)" width={48} domain={yAxis.domain} ticks={yAxis.ticks} />
             <Tooltip formatter={(value, name) => {
               if (name === 'Fourchette estimée') return [null, null];
               return [formatCurrency(Number(value)), String(name)];

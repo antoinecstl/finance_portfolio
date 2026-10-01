@@ -25,6 +25,7 @@ import {
   AlertTriangle,
   Wallet,
   ArrowLeftRight,
+  ArrowRight,
 } from 'lucide-react';
 import { useToast } from './Toast';
 import { EditTransactionModal } from './EditTransactionModal';
@@ -307,6 +308,8 @@ interface TransactionsListProps {
   showFilters?: boolean;
   onDeleted?: () => void | Promise<void>;
   onEdited?: () => void | Promise<void>;
+  // Si fourni, le pied « +N autres transactions » devient un lien vers l'historique complet.
+  onShowAll?: () => void;
 }
 
 export function TransactionsList({
@@ -316,6 +319,7 @@ export function TransactionsList({
   showFilters = false,
   onDeleted,
   onEdited,
+  onShowAll,
 }: TransactionsListProps) {
   const [filterType, setFilterType] = useState<string>('');
   const [filterAccount, setFilterAccount] = useState<string>('');
@@ -643,9 +647,20 @@ export function TransactionsList({
               />
             ))}
             {limit && filteredTransactions.length > limit && (
-              <p className="text-center text-sm text-zinc-500 dark:text-zinc-400 pt-4">
-                +{filteredTransactions.length - limit} autres transactions
-              </p>
+              onShowAll ? (
+                <button
+                  type="button"
+                  onClick={onShowAll}
+                  className="group mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg py-2.5 text-sm text-zinc-600 transition-colors hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+                >
+                  Voir les {filteredTransactions.length - limit} autres transactions
+                  <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+                </button>
+              ) : (
+                <p className="text-center text-sm text-zinc-500 dark:text-zinc-400 pt-4">
+                  +{filteredTransactions.length - limit} autres transactions
+                </p>
+              )
             )}
           </>
         )}

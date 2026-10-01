@@ -843,3 +843,31 @@ export function useAccountsYearToDateStats(
 
   return { stats, total, loading };
 }
+
+/**
+ * Taux de change historiques (EUR ↔ devises) entre `startDate` et aujourd'hui,
+ * pour convertir des montants passés au taux du jour de l'opération.
+ */
+export function useFxRates(currencies: string[], startDate: string | null): FxRateMap {
+  const [rates, setRates] = useState<FxRateMap>({});
+  const fiats = useMemo(() => mergeFiats(uniqueForeignFiats(currencies.map((currency) => ({ currency })))), [currencies]);
+  const fiatsKey = fiats.join(',');
+
+  const enabled = Boolean(startDate) && fiatsKey !== '';
+
+  useEffect(() => {
+    if (!enabled || !startDate) return;
+    let cancelled = false;
+    fetchFxRates(fiatsKey.split(','), startDate, formatLocalDate(new Date())).then((next) => {
+      if (!cancelled) setRates(next);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [enabled, fiatsKey, startDate]);
+
+  // Tout en EUR : aucune conversion nécessaire.
+  return enabled ? rates : EMPTY_FX_RATES;
+}
+
+const EMPTY_FX_RATES: FxRateMap = {};

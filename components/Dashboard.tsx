@@ -6,7 +6,6 @@ import {
   Plus,
   Upload,
   Lock,
-  ArrowRight,
 } from 'lucide-react';
 import Link from 'next/link';
 import { PortfolioStats } from './PortfolioStats';
@@ -417,15 +416,6 @@ export function Dashboard() {
                     Dernières transactions
                   </h2>
                   <div className="flex shrink-0 items-center gap-3 sm:gap-4">
-                    {transactions.length > 5 && (
-                      <button
-                        onClick={() => navigateToDashboardTab('transactions')}
-                        className="inline-flex items-center gap-1 text-xs sm:text-sm text-[color:var(--ink-soft)] hover:text-[color:var(--ink)] hover:underline underline-offset-4"
-                      >
-                        <span>Tout voir</span>
-                        <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
-                      </button>
-                    )}
                     <button
                       onClick={() => openAddTransaction()}
                       className="inline-flex items-center gap-1 text-xs sm:text-sm text-[color:var(--ink)] hover:underline underline-offset-4"
@@ -443,6 +433,7 @@ export function Dashboard() {
                       transactions={transactions}
                       accounts={accounts}
                       limit={5}
+                      onShowAll={() => navigateToDashboardTab('transactions')}
                       onDeleted={handleMutationSuccess}
                       onEdited={handleMutationSuccess}
                     />
@@ -594,10 +585,11 @@ export function Dashboard() {
 
         {activeTab === 'dividends' && (
           <div>
-            <DividendsTable 
+            <DividendsTable
               transactions={transactions}
               positions={enrichedPositions}
               quotes={quotes}
+              accounts={accounts}
             />
           </div>
         )}

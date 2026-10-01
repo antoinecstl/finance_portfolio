@@ -22,7 +22,7 @@ import {
 import { StockPosition, StockQuote, Transaction, Account } from '@/lib/types';
 import { PortfolioHistoryPoint, calculatePortfolioPerformance } from '@/lib/portfolio-calculator';
 import { convertToBase, type FxRateMap } from '@/lib/fx';
-import { formatCurrency, formatNumber, formatPercent, getAccountColorMap, getSectorColor } from '@/lib/utils';
+import { formatAxisCurrency, formatCurrency, formatCurrencyRounded, formatNumber, formatPercent, getAccountColorMap, getSectorColor } from '@/lib/utils';
 import { compareTransactionSequence } from '@/lib/transaction-ordering';
 import { positionDisplaySymbol } from '@/lib/position-display';
 import { buildPositionMetrics, type PositionMetrics } from '@/lib/position-metrics';
@@ -494,8 +494,8 @@ function PositionInlineHistoryChart({
         <div className="h-[240px] sm:h-[280px]">
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={chartData} margin={{ top: 10, right: 12, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--rule)" />
-              <XAxis dataKey="label" tick={{ fontSize: 10 }} stroke="var(--ink-soft)" interval="preserveStartEnd" />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--rule)" vertical={false} />
+              <XAxis dataKey="label" tick={{ fontSize: 10 }} stroke="var(--ink-soft)" interval="preserveStartEnd" minTickGap={24} />
               <YAxis
                 domain={yScale.domain}
                 ticks={yScale.ticks}
@@ -1470,7 +1470,9 @@ export function PortfolioValueChart({
   );
 
   return (
-    <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-4 sm:p-6">
+    // Carte en colonne : le graphique occupe toute la hauteur restante quand la
+    // carte est étirée à la hauteur de sa voisine (grille deux colonnes).
+    <div className="flex flex-col bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-4 sm:p-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
         <div className="flex items-center gap-2">
           <LineChartIcon className="h-4 w-4 sm:h-5 sm:w-5 text-emerald-600" />
@@ -1534,7 +1536,7 @@ export function PortfolioValueChart({
       )}
 
       {/* Graphique */}
-      <div className="h-[220px] sm:h-[280px]">
+      <div className="h-[220px] flex-1 sm:h-auto sm:min-h-[280px]">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={chartData}>
             <defs>
@@ -1547,19 +1549,20 @@ export function PortfolioValueChart({
                 <stop offset="95%" stopColor="var(--chart-primary)" stopOpacity={0}/>
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--rule)" />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--rule)" vertical={false} />
             <XAxis 
               dataKey="date" 
               tick={{ fontSize: 10 }}
               stroke="var(--ink-soft)"
               tickLine={false}
               interval="preserveStartEnd"
+              minTickGap={24}
             />
             <YAxis 
-              tickFormatter={(value) => formatCurrency(value).replace('€', '').trim()}
+              tickFormatter={formatAxisCurrency}
               tick={{ fontSize: 10 }}
               stroke="var(--ink-soft)"
-              width={60}
+              width={48}
               domain={positionYAxis.domain}
               ticks={positionYAxis.ticks}
             />
@@ -2011,12 +2014,13 @@ export function StockHistoryChart({
       <div className="h-[280px] sm:h-[350px]">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--rule)" />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--rule)" vertical={false} />
             <XAxis 
               dataKey="date" 
               tick={{ fontSize: 10 }}
               stroke="var(--ink-soft)"
               interval="preserveStartEnd"
+              minTickGap={24}
             />
             <YAxis 
               domain={yDomain}
@@ -2252,7 +2256,9 @@ export function PortfolioPerformanceChart({
   const currentYearTone = currentYearIsPositive ? 'var(--gain)' : 'var(--loss)';
 
   return (
-    <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-4 sm:p-6 space-y-4">
+    // @container : la liste ou le tableau dépend de la largeur de la carte (étroite
+    // en vue deux colonnes, même sur grand écran), pas de celle de l'écran.
+    <div className="@container bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-4 sm:p-6 space-y-4">
       {/* Header */}
       <div className="flex flex-wrap items-center gap-2">
         <LineChartIcon className="h-4 w-4 sm:h-5 sm:w-5 text-indigo-600" />
@@ -2318,7 +2324,7 @@ export function PortfolioPerformanceChart({
         <div className="h-[200px] sm:h-[250px]">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={yearlyChartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--rule)" />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--rule)" vertical={false} />
               <XAxis 
                 dataKey="year" 
                 tick={{ fontSize: 12 }}
@@ -2367,7 +2373,7 @@ export function PortfolioPerformanceChart({
       )}
 
       {/* Tableau détaillé par année */}
-      <div className="space-y-3 sm:hidden">
+      <div className="space-y-3 @xl:hidden">
         {displayedYears.map((year) => (
           <div
             key={`mobile-${year.year}`}
@@ -2449,104 +2455,85 @@ export function PortfolioPerformanceChart({
           </button>
         )}
       </div>
-      <div className="hidden overflow-x-auto sm:block">
-        <table className="w-full text-sm">
-          <thead className="bg-zinc-50 dark:bg-zinc-800/50">
+      <div className="hidden overflow-x-auto @xl:block">
+        {/* Montants arrondis à l'euro : le détail au centime est dans l'encadré ci-dessus. */}
+        <table className="w-full whitespace-nowrap text-sm tabular-nums">
+          <thead className="bg-zinc-50 dark:bg-zinc-800/50 text-xs">
             <tr>
-              <th className="py-2 px-3 text-left font-semibold text-zinc-600 dark:text-zinc-400">Année</th>
-              <th className="py-2 px-3 text-right font-semibold text-zinc-600 dark:text-zinc-400">Début</th>
-              <th className="py-2 px-3 text-right font-semibold text-zinc-600 dark:text-zinc-400">Fin</th>
-              <th className="py-2 px-3 text-right font-semibold text-zinc-600 dark:text-zinc-400">Apports</th>
-              <th className="py-2 px-3 text-right font-semibold text-zinc-600 dark:text-zinc-400">Gain/Perte</th>
-              <th className="py-2 px-3 text-right font-semibold text-zinc-600 dark:text-zinc-400">Performance</th>
-              <th className="py-2 px-3 text-right font-semibold text-zinc-600 dark:text-zinc-400">Dividendes</th>
+              <th className="py-2 px-2.5 text-left font-semibold text-zinc-600 dark:text-zinc-400">Année</th>
+              <th className="py-2 px-2.5 text-right font-semibold text-zinc-600 dark:text-zinc-400">Perf.</th>
+              <th className="py-2 px-2.5 text-right font-semibold text-zinc-600 dark:text-zinc-400">Gain/Perte</th>
+              <th className="py-2 px-2.5 text-right font-semibold text-zinc-600 dark:text-zinc-400">Apports</th>
+              <th className="py-2 px-2.5 text-right font-semibold text-zinc-600 dark:text-zinc-400">Valeur fin</th>
+              <th className="py-2 px-2.5 text-right font-semibold text-zinc-600 dark:text-zinc-400">Dividendes</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
             {displayedYears.map((year) => (
-              <tr 
-                key={year.year} 
+              <tr
+                key={year.year}
                 className={`hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors ${
                   year.year === currentYear ? 'bg-indigo-50/50 dark:bg-indigo-900/10' : ''
                 }`}
               >
-                <td className="py-2 px-3 font-semibold text-zinc-900 dark:text-zinc-100">
+                <td className="py-2 px-2.5 font-semibold text-zinc-900 dark:text-zinc-100">
                   {year.year}
                   {year.year === currentYear && (
-                    <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400">
+                    <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400">
                       En cours
                     </span>
                   )}
                 </td>
-                <td className="py-2 px-3 text-right text-zinc-600 dark:text-zinc-400">
-                  {formatCurrency(year.startValue)}
-                </td>
-                <td className="py-2 px-3 text-right text-zinc-900 dark:text-zinc-100 font-medium">
-                  {formatCurrency(year.endValue)}
-                </td>
-                <td className="py-2 px-3 text-right text-zinc-600 dark:text-zinc-400">
-                  {year.netFlows >= 0 ? '+' : ''}{formatCurrency(year.netFlows)}
-                </td>
-                <td className={`py-2 px-3 text-right font-medium ${year.gainLoss >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                  {year.gainLoss >= 0 ? '+' : ''}{formatCurrency(year.gainLoss)}
-                </td>
-                <td className={`py-2 px-3 text-right font-bold ${year.gainLossPercent >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                <td className={`py-2 px-2.5 text-right font-bold ${year.gainLossPercent >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                   {year.gainLossPercent >= 0 ? '+' : ''}{formatNumber(year.gainLossPercent, 2)}%
                 </td>
-                <td className="py-2 px-3 text-right font-medium text-[color:var(--gain)]">
-                  +{formatCurrency(year.dividends)}
+                <td className={`py-2 px-2.5 text-right font-medium ${year.gainLoss >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                  {year.gainLoss >= 0 ? '+' : ''}{formatCurrencyRounded(year.gainLoss)}
+                </td>
+                <td className="py-2 px-2.5 text-right text-zinc-600 dark:text-zinc-400">
+                  {year.netFlows >= 0 ? '+' : ''}{formatCurrencyRounded(year.netFlows)}
+                </td>
+                <td className="py-2 px-2.5 text-right font-medium text-zinc-900 dark:text-zinc-100">
+                  {formatCurrencyRounded(year.endValue)}
+                </td>
+                <td className="py-2 px-2.5 text-right text-[color:var(--gain)]">
+                  +{formatCurrencyRounded(year.dividends)}
                 </td>
               </tr>
             ))}
           </tbody>
-          {/* Bouton pour voir plus d'années */}
-          {sortedYears.length > 2 && (
-            <tfoot>
-              <tr>
-                <td colSpan={7} className="py-2 px-3">
-                  <button
-                    onClick={() => setShowAllYears(!showAllYears)}
-                    className="w-full text-center text-sm text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 font-medium py-1"
-                  >
-                    {showAllYears ? (
-                      <span className="flex items-center justify-center gap-1">
-                        <ChevronDown className="h-4 w-4 rotate-180" />
-                        {sortedYears.length - 2 > 1 ? 'Masquer les années précédentes' : 'Masquer l’année précédente'}
-                      </span>
-                    ) : (
-                      <span className="flex items-center justify-center gap-1">
-                        <ChevronDown className="h-4 w-4" />
-                        {sortedYears.length - 2 > 1 ? `Voir les ${sortedYears.length - 2} années précédentes` : 'Voir l’année précédente'}
-                      </span>
-                    )}
-                  </button>
-                </td>
-              </tr>
-            </tfoot>
-          )}
-          {/* Total global */}
-          <tfoot className="bg-zinc-100 dark:bg-zinc-800 font-semibold">
+          <tfoot className="border-t border-zinc-200 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800 font-semibold">
             <tr>
-              <td className="py-2 px-3 text-zinc-900 dark:text-zinc-100">Total</td>
-              <td className="py-2 px-3 text-right text-zinc-600 dark:text-zinc-400">-</td>
-              <td className="py-2 px-3 text-right text-zinc-900 dark:text-zinc-100">
-                {formatCurrency(performance.currentValue)}
-              </td>
-              <td className="py-2 px-3 text-right text-zinc-600 dark:text-zinc-400">
-                {formatCurrency(performance.netDeposits)}
-              </td>
-              <td className={`py-2 px-3 text-right ${performance.absoluteGain >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                {performance.absoluteGain >= 0 ? '+' : ''}{formatCurrency(performance.absoluteGain)}
-              </td>
-              <td className={`py-2 px-3 text-right ${performance.absoluteGainPercent >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+              <td className="py-2 px-2.5 text-zinc-900 dark:text-zinc-100">Total</td>
+              <td className={`py-2 px-2.5 text-right ${performance.absoluteGainPercent >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                 {performance.absoluteGainPercent >= 0 ? '+' : ''}{formatNumber(performance.absoluteGainPercent, 2)}%
               </td>
-              <td className="py-2 px-3 text-right font-medium text-[color:var(--gain)]">
-                +{formatCurrency(performance.totalDividends)}
+              <td className={`py-2 px-2.5 text-right ${performance.absoluteGain >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                {performance.absoluteGain >= 0 ? '+' : ''}{formatCurrencyRounded(performance.absoluteGain)}
+              </td>
+              <td className="py-2 px-2.5 text-right text-zinc-600 dark:text-zinc-400">
+                {formatCurrencyRounded(performance.netDeposits)}
+              </td>
+              <td className="py-2 px-2.5 text-right text-zinc-900 dark:text-zinc-100">
+                {formatCurrencyRounded(performance.currentValue)}
+              </td>
+              <td className="py-2 px-2.5 text-right text-[color:var(--gain)]">
+                +{formatCurrencyRounded(performance.totalDividends)}
               </td>
             </tr>
           </tfoot>
         </table>
+        {sortedYears.length > 2 && (
+          <button
+            onClick={() => setShowAllYears(!showAllYears)}
+            className="mt-2 flex w-full items-center justify-center gap-1 py-1 text-sm font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300"
+          >
+            <ChevronDown className={`h-4 w-4 ${showAllYears ? 'rotate-180' : ''}`} />
+            {showAllYears
+              ? sortedYears.length - 2 > 1 ? 'Masquer les années précédentes' : 'Masquer l’année précédente'
+              : sortedYears.length - 2 > 1 ? `Voir les ${sortedYears.length - 2} années précédentes` : 'Voir l’année précédente'}
+          </button>
+        )}
       </div>
     </div>
   );

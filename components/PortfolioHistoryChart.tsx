@@ -15,7 +15,7 @@ import type { Account } from '@/lib/types';
 import type { PortfolioHistoryPoint } from '@/lib/portfolio-calculator';
 import { buildAccountHistorySeries, type AccountHistorySeries } from '@/lib/account-history';
 import { buildNiceYAxisScale } from '@/lib/chart-axis';
-import { formatCurrency, formatNumber, formatPercent } from '@/lib/utils';
+import { formatAxisCurrency, formatCurrency, formatPercent } from '@/lib/utils';
 
 const MS_PER_DAY = 86_400_000;
 
@@ -42,13 +42,6 @@ interface PortfolioHistoryChartProps {
   loading?: boolean;
   onPeriodChange?: (days: number) => void;
   selectedPeriod?: number;
-}
-
-function formatAxisValue(value: number): string {
-  if (Math.abs(value) >= 1000) {
-    return `${formatNumber(value / 1000, value % 1000 === 0 ? 0 : 1)}k€`;
-  }
-  return `${value.toFixed(0)}€`;
 }
 
 function formatShortDate(date: string): string {
@@ -283,7 +276,7 @@ export function PortfolioHistoryChart({
               domain={yAxis.domain}
               ticks={yAxis.ticks}
               allowDataOverflow
-              tickFormatter={formatAxisValue}
+              tickFormatter={formatAxisCurrency}
               tick={{ fontSize: 10, fill: 'var(--ink-soft)' }}
               axisLine={false}
               tickLine={false}

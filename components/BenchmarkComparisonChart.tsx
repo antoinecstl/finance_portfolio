@@ -376,12 +376,13 @@ export function BenchmarkComparisonChart({
         ) : (
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--rule)" />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--rule)" vertical={false} />
               <XAxis
                 dataKey="date"
                 tick={{ fontSize: 11 }}
                 tickFormatter={(d) => d.slice(5)}
                 interval="preserveStartEnd"
+                minTickGap={24}
               />
               <YAxis
                 tick={{ fontSize: 11 }}
