@@ -6,6 +6,8 @@ import { SubscriptionProvider } from '@/lib/subscription-client';
 import { ToastProvider } from '@/components/Toast';
 import { LimitReachedProvider } from '@/components/LimitReachedModal';
 import { Onboarding } from '@/components/Onboarding';
+import { AppShell } from '@/components/app-shell/AppShell';
+import { isAdminEmail } from '@/lib/admin';
 
 export const dynamic = 'force-dynamic';
 
@@ -50,7 +52,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       }}
     >
       <ToastProvider>
-        <LimitReachedProvider>{children}</LimitReachedProvider>
+        <LimitReachedProvider>
+          <AppShell email={user.email ?? ''} isAdmin={isAdminEmail(user.email)}>
+            {children}
+          </AppShell>
+        </LimitReachedProvider>
       </ToastProvider>
     </SubscriptionProvider>
   );

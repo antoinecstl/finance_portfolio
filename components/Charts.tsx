@@ -242,14 +242,14 @@ export function AccountAllocationChart({ accounts }: AccountAllocationChartProps
   };
 
   return (
-    <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-4 sm:p-6">
+    <div className="flex flex-col bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-4 sm:p-6">
       <div className="flex items-center gap-2 mb-3 sm:mb-4">
         <Wallet className="h-4 w-4 sm:h-5 sm:w-5 text-emerald-600" />
         <h3 className="font-semibold text-sm sm:text-base text-zinc-900 dark:text-zinc-100">
           Répartition par compte
         </h3>
       </div>
-      <div className="space-y-2">
+      <div className="mb-4 flex flex-1 flex-col justify-evenly gap-2">
         {barData.map((item) => (
           <div key={item.name} className="space-y-1">
             <div className="flex justify-between text-xs sm:text-sm">
@@ -277,7 +277,8 @@ export function AccountAllocationChart({ accounts }: AccountAllocationChartProps
           </div>
         ))}
       </div>
-      <div className="mt-4 pt-3 border-t border-zinc-200 dark:border-zinc-700">
+      {/* Total ancré en bas quand la carte s'étire à la hauteur de sa voisine. */}
+      <div className="mt-auto pt-3 border-t border-zinc-200 dark:border-zinc-700">
         <div className="flex justify-between text-sm font-medium">
           <span className="text-zinc-900 dark:text-zinc-100">Total</span>
           <span className="text-zinc-900 dark:text-zinc-100">{formatCurrency(totalValue)}</span>

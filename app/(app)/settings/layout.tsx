@@ -1,5 +1,4 @@
-import Link from 'next/link';
-import { ArrowLeft } from 'lucide-react';
+import { PageContainer, PageHeader } from '@/components/app-shell/PageLayout';
 import { SettingsNavItem, type SettingsIconKey } from './SettingsNavItem';
 
 const tabs: {
@@ -18,25 +17,12 @@ const tabs: {
 
 export default function SettingsLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-[color:var(--paper)] text-[color:var(--ink)]">
-      <div className="max-w-5xl mx-auto px-4 py-8 sm:py-10">
-        <Link
-          href="/dashboard"
-          className="inline-flex items-center gap-1.5 text-sm text-[color:var(--ink-soft)] hover:text-[color:var(--accent)] mb-6 transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4" /> Retour au dashboard
-        </Link>
+    <main className="py-5 text-[color:var(--ink)] sm:py-8">
+      <PageContainer>
+        <PageHeader title="Paramètres" description="Gérez votre compte, votre abonnement et vos préférences." />
 
-        <div className="mb-8">
-          <h1 className="display text-4xl leading-none text-[color:var(--ink)]">
-            Paramètres
-          </h1>
-          <p className="text-sm text-[color:var(--ink-soft)] mt-2">
-            Gérez votre compte, votre abonnement et vos préférences.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-[260px_1fr] gap-8">
+        {/* Formulaires : largeur de lecture limitée, alignée à gauche avec le reste de l'app. */}
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-[240px_minmax(0,56rem)] lg:gap-8">
           <aside>
             <nav className="space-y-1 md:sticky md:top-6">
               {tabs.map((t) => (
@@ -52,11 +38,11 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
             </nav>
           </aside>
 
-          <main className="ink-card rounded-2xl pop-shadow p-6 sm:p-8">
+          <section className="ink-card rounded-2xl pop-shadow p-6 sm:p-8">
             {children}
-          </main>
+          </section>
         </div>
-      </div>
-    </div>
+      </PageContainer>
+    </main>
   );
 }

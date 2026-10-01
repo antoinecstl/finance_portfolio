@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Users, UserPlus, Activity, Crown, Wallet, Receipt, Euro, RefreshCw, Target, TrendingUp } from 'lucide-react';
+import { PageContainer, PageHeader } from '@/components/app-shell/PageLayout';
+import { Users, UserPlus, Activity, Crown, Wallet, Receipt, Euro, RefreshCw, Target, TrendingUp } from 'lucide-react';
 import { getAdminUser } from '@/lib/admin';
 import { getAdminStats, type AdminStats } from '@/lib/admin-stats';
 import { AdminUsersTable } from '@/components/admin/AdminUsersTable';
@@ -94,32 +95,22 @@ export default async function AdminPage() {
   const [stats, tickets] = await Promise.all([getAdminStats(), getAdminTickets()]);
 
   return (
-    <div className="min-h-screen bg-[color:var(--paper)] text-[color:var(--ink)]">
-      <div className="max-w-6xl mx-auto px-4 py-8 sm:py-10">
-        <Link
-          href="/dashboard"
-          className="inline-flex items-center gap-1.5 text-sm text-[color:var(--ink-soft)] hover:text-[color:var(--accent)] mb-6 transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4" /> Retour au dashboard
-        </Link>
+    <main className="py-5 text-[color:var(--ink)] sm:py-8">
+      <PageContainer>
+        <PageHeader
+          title="Administration"
+          description={<>Suivi de l&apos;activité de la plateforme · {admin.email}</>}
+          actions={
+            <div className="flex items-center gap-3 text-xs text-[color:var(--ink-soft)]">
+              <span>Actualisé le {dtf.format(new Date(stats.generatedAt))}</span>
+              <Link href="/admin" className="inline-flex items-center gap-1 rounded-lg border border-[color:var(--rule)] px-2.5 py-1.5 hover:bg-[color:var(--paper-2)] hover:text-[color:var(--ink)]">
+                <RefreshCw className="h-3.5 w-3.5" /> Actualiser
+              </Link>
+            </div>
+          }
+        />
 
-        <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <p className="text-xs font-medium text-[color:var(--ink-soft)]">Centre de pilotage</p>
-            <h1 className="mt-1 text-3xl font-semibold tracking-tight text-[color:var(--ink)]">Administration</h1>
-            <p className="text-sm text-[color:var(--ink-soft)] mt-2">
-              Suivi de l&apos;activité de la plateforme · {admin.email}
-            </p>
-          </div>
-          <div className="flex items-center gap-3 text-xs text-[color:var(--ink-soft)]">
-            <span>Actualisé le {dtf.format(new Date(stats.generatedAt))}</span>
-            <Link href="/admin" className="inline-flex items-center gap-1 rounded-lg border border-[color:var(--rule)] px-2.5 py-1.5 hover:bg-[color:var(--paper-2)] hover:text-[color:var(--ink)]">
-              <RefreshCw className="h-3.5 w-3.5" /> Actualiser
-            </Link>
-          </div>
-        </div>
-
-        <nav aria-label="Sections du dashboard" className="sticky top-2 z-20 mb-8 flex gap-1 overflow-x-auto rounded-xl border border-[color:var(--rule)] bg-[color:var(--paper)]/95 p-1 text-sm shadow-sm backdrop-blur">
+        <nav aria-label="Sections du dashboard" className="sticky top-[7.25rem] z-20 mb-8 xl:top-4 flex gap-1 overflow-x-auto rounded-xl border border-[color:var(--rule)] bg-[color:var(--paper)]/95 p-1 text-sm shadow-sm backdrop-blur">
           <a href="#overview" className="whitespace-nowrap rounded-lg px-3 py-2 font-medium hover:bg-[color:var(--paper-2)]">Vue d’ensemble</a>
           <a href="#users" className="whitespace-nowrap rounded-lg px-3 py-2 text-[color:var(--ink-soft)] hover:bg-[color:var(--paper-2)] hover:text-[color:var(--ink)]">Utilisateurs</a>
           <a href="#backlog" className="whitespace-nowrap rounded-lg px-3 py-2 text-[color:var(--ink-soft)] hover:bg-[color:var(--paper-2)] hover:text-[color:var(--ink)]">Tickets</a>
@@ -239,8 +230,8 @@ export default async function AdminPage() {
         <div id="backlog" className="scroll-mt-4">
           <AdminTicketBoard initialTickets={tickets} />
         </div>
-      </div>
-    </div>
+      </PageContainer>
+    </main>
   );
 }
 

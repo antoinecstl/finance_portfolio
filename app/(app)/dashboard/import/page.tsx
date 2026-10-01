@@ -1,7 +1,8 @@
 import { ImportWizard } from '@/components/ImportWizard';
 import { createClient } from '@/lib/supabase/server';
 import { getUserSubscription } from '@/lib/subscription';
-import { ArrowLeft, Lock } from 'lucide-react';
+import { Lock } from 'lucide-react';
+import { PageContainer } from '@/components/app-shell/PageLayout';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
@@ -24,17 +25,9 @@ export default async function ImportPage() {
 
   if (!hasImportAccess) {
     return (
-      <div className="min-h-[calc(100vh-4rem)] bg-[color:var(--paper)] text-[color:var(--ink)]">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
-          <Link
-            href="/dashboard"
-            className="inline-flex items-center gap-1.5 text-sm text-[color:var(--ink-soft)] hover:text-[color:var(--accent)] mb-6"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Retour au tableau de bord
-          </Link>
-
-          <div className="ink-card rounded-2xl pop-shadow p-6 sm:p-8 text-center">
+      <main className="py-5 text-[color:var(--ink)] sm:py-8">
+        <PageContainer>
+          <div className="mx-auto max-w-2xl ink-card rounded-2xl pop-shadow p-6 sm:p-8 text-center">
             <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-[color:var(--accent-soft)] text-[color:var(--accent)] mb-4">
               <Lock className="h-6 w-6" />
             </div>
@@ -51,8 +44,8 @@ export default async function ImportPage() {
               Passer Pro
             </Link>
           </div>
-        </div>
-      </div>
+        </PageContainer>
+      </main>
     );
   }
 

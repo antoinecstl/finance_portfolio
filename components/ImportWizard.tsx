@@ -2,7 +2,8 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Upload, FileText, ClipboardPaste, Loader2, CheckCircle2, AlertTriangle, Trash2, Info, Search, Copy } from 'lucide-react';
+import { PageContainer, PageHeader } from './app-shell/PageLayout';
+import { Upload, FileText, ClipboardPaste, Loader2, CheckCircle2, AlertTriangle, Trash2, Info, Search, Copy } from 'lucide-react';
 import { useAccounts, useStockSearch, useTransactions } from '@/lib/hooks';
 import type { ProposedTransaction, ImportNote } from '@/lib/import/types';
 import type { Transaction, TransactionType } from '@/lib/types';
@@ -507,25 +508,15 @@ export function ImportWizard() {
   }
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-zinc-50 dark:bg-zinc-950">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10 lg:py-12">
-        <Link
-          href="/dashboard"
-          className="inline-flex items-center gap-1.5 text-sm text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 mb-4 sm:mb-5"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Retour au tableau de bord
-        </Link>
-
-        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-zinc-900 dark:text-zinc-100">
-          Importer des transactions
-        </h1>
-        <p className="text-sm sm:text-base text-zinc-500 dark:text-zinc-400 mt-1.5 sm:mt-2 max-w-3xl">
-          CSV, Excel, PDF, photo ou capture d’écran de relevé broker, ou texte collé. Une IA extrait les transactions ; vous validez avant import.
-        </p>
+    <main className="py-5 sm:py-8">
+      <PageContainer>
+        <PageHeader
+          title="Importer des transactions"
+          description="CSV, Excel, PDF, photo ou capture d’écran de relevé broker, ou texte collé. Une IA extrait les transactions ; vous validez avant import."
+        />
 
         {step === 'upload' && (
-          <div className="mt-6 sm:mt-8 lg:mt-10 bg-white dark:bg-zinc-900 rounded-xl sm:rounded-2xl border border-zinc-200 dark:border-zinc-800 p-4 sm:p-6 lg:p-8 space-y-5 sm:space-y-6">
+          <div className="max-w-4xl bg-white dark:bg-zinc-900 rounded-xl sm:rounded-2xl border border-zinc-200 dark:border-zinc-800 p-4 sm:p-6 lg:p-8 space-y-5 sm:space-y-6">
             <div>
               <label className="block text-sm sm:text-base font-medium text-zinc-700 dark:text-zinc-300 mb-1.5 sm:mb-2">
                 Compte de destination
@@ -630,7 +621,7 @@ export function ImportWizard() {
         )}
 
         {step === 'preview' && (
-          <div className="mt-6 sm:mt-8 lg:mt-10 space-y-4 sm:space-y-5">
+          <div className="space-y-4 sm:space-y-5">
             <div className="bg-white dark:bg-zinc-900 rounded-xl sm:rounded-2xl border border-zinc-200 dark:border-zinc-800 p-4 sm:p-5 lg:p-6">
               <div className="flex items-center justify-between gap-2 flex-wrap">
                 <div>
@@ -995,7 +986,7 @@ export function ImportWizard() {
             </div>
           </div>
         )}
-      </div>
-    </div>
+      </PageContainer>
+    </main>
   );
 }
