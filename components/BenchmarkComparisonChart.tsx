@@ -372,59 +372,63 @@ export function BenchmarkComparisonChart({
         </div>
       )}
 
-      <div className="h-60 w-full flex-1 sm:h-auto sm:min-h-72">
-        {!mounted || isLoading ? (
-          <div className="flex h-full items-center justify-center text-xs sm:text-sm text-zinc-500 dark:text-zinc-400">
-            Chargement…
-          </div>
-        ) : chartData.length === 0 ? (
-          <div className="flex h-full items-center justify-center text-xs sm:text-sm text-zinc-500 dark:text-zinc-400">
-            Pas encore assez de données pour comparer.
-          </div>
-        ) : (
-          <ResponsiveContainer width="100%" height="100%" onResize={xTicks.onResize}>
-            <LineChart data={chartData} margin={{ top: 5, right: 24, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--rule)" />
-              <XAxis
-                dataKey="date"
-                tick={{ fontSize: 11 }}
-                tickFormatter={(d) => d.slice(5)}
-                ticks={xTicks.ticks}
-                interval={0}
-              />
-              <YAxis
-                tick={{ fontSize: 11 }}
-                domain={yAxisScale.domain}
-                ticks={yAxisScale.ticks}
-              />
-              <Tooltip
-                formatter={(v, name) => [
-                  `${typeof v === 'number' ? v.toFixed(2) : v} (base 100)`,
-                  String(name),
-                ]}
-                labelFormatter={(d) => `Date: ${d}`}
-              />
-              <Legend wrapperStyle={{ fontSize: 12 }} />
-              <Line
-                type="monotone"
-                dataKey="portfolio"
-                name="Portefeuille (hors apports)"
-                stroke="var(--gain)"
-                strokeWidth={2}
-                dot={false}
-              />
-              <Line
-                type="monotone"
-                dataKey="benchmark"
-                name={selectedBenchmarkLabel}
-                stroke={isPresetBenchmark(selectedBenchmark) ? BENCHMARKS[selectedBenchmark].color : 'var(--chart-3)'}
-                strokeWidth={2}
-                strokeDasharray="5 5"
-                dot={false}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        )}
+      <div className="relative min-h-60 w-full flex-1 sm:min-h-72">
+        {/* Enfant absolu : hauteur définie, que la carte soit étirée (deux colonnes)
+            ou non (mobile, où la hauteur minimale s'applique). */}
+        <div className="absolute inset-0">
+          {!mounted || isLoading ? (
+            <div className="flex h-full items-center justify-center text-xs sm:text-sm text-zinc-500 dark:text-zinc-400">
+              Chargement…
+            </div>
+          ) : chartData.length === 0 ? (
+            <div className="flex h-full items-center justify-center text-xs sm:text-sm text-zinc-500 dark:text-zinc-400">
+              Pas encore assez de données pour comparer.
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height="100%" onResize={xTicks.onResize}>
+              <LineChart data={chartData} margin={{ top: 5, right: 24, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--rule)" />
+                <XAxis
+                  dataKey="date"
+                  tick={{ fontSize: 11 }}
+                  tickFormatter={(d) => d.slice(5)}
+                  ticks={xTicks.ticks}
+                  interval={0}
+                />
+                <YAxis
+                  tick={{ fontSize: 11 }}
+                  domain={yAxisScale.domain}
+                  ticks={yAxisScale.ticks}
+                />
+                <Tooltip
+                  formatter={(v, name) => [
+                    `${typeof v === 'number' ? v.toFixed(2) : v} (base 100)`,
+                    String(name),
+                  ]}
+                  labelFormatter={(d) => `Date: ${d}`}
+                />
+                <Legend wrapperStyle={{ fontSize: 12 }} />
+                <Line
+                  type="monotone"
+                  dataKey="portfolio"
+                  name="Portefeuille (hors apports)"
+                  stroke="var(--gain)"
+                  strokeWidth={2}
+                  dot={false}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="benchmark"
+                  name={selectedBenchmarkLabel}
+                  stroke={isPresetBenchmark(selectedBenchmark) ? BENCHMARKS[selectedBenchmark].color : 'var(--chart-3)'}
+                  strokeWidth={2}
+                  strokeDasharray="5 5"
+                  dot={false}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          )}
+  </div>
       </div>
     </div>
   );

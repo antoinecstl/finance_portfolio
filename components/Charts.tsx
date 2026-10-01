@@ -1547,80 +1547,84 @@ export function PortfolioValueChart({
       )}
 
       {/* Graphique */}
-      <div className="h-[220px] flex-1 sm:h-auto sm:min-h-[280px]">
-        <ResponsiveContainer width="100%" height="100%" onResize={xTicks.onResize}>
-          <AreaChart data={chartData} margin={{ top: 5, right: 24, left: 0, bottom: 0 }}>
-            <defs>
-              <linearGradient id="colorValeur" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="var(--gain)" stopOpacity={0.24}/>
-                <stop offset="95%" stopColor="var(--gain)" stopOpacity={0}/>
-              </linearGradient>
-              <linearGradient id="colorInvesti" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="var(--chart-primary)" stopOpacity={0.12}/>
-                <stop offset="95%" stopColor="var(--chart-primary)" stopOpacity={0}/>
-              </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--rule)" />
-            <XAxis 
-              dataKey="date" 
-              tick={{ fontSize: 10 }}
-              stroke="var(--ink-soft)"
-              tickLine={false}
-              ticks={xTicks.ticks}
-              interval={0}
-            />
-            <YAxis 
-              tickFormatter={formatAxisCurrency}
-              tick={{ fontSize: 10 }}
-              stroke="var(--ink-soft)"
-              width={48}
-              domain={positionYAxis.domain}
-              ticks={positionYAxis.ticks}
-            />
-            <Tooltip 
-              formatter={(value, name) => {
-                const numValue = Number(value) || 0;
-                const label = name === 'Valeur actuelle' ? 'Valeur actuelle' : 'Montant investi';
-                return [formatCurrency(numValue), label];
-              }}
-              labelFormatter={(_, payload) => {
-                if (payload && payload.length > 0) {
-                  const data = payload[0].payload;
-                  return `${data.fullDate}\n+/- Value latente: ${data.plusValue >= 0 ? '+' : ''}${formatCurrency(data.plusValue)} (${formatPercent(data.gainPercent)})`;
-                }
-                return '';
-              }}
-              contentStyle={{
-                backgroundColor: 'var(--paper-2)',
-                border: '1px solid var(--rule)',
-                borderRadius: '8px',
-                color: 'var(--ink)',
-                whiteSpace: 'pre-line',
-              }}
-            />
-            <Legend wrapperStyle={CHART_LEGEND_WRAPPER_STYLE} />
-            {/* Zone entre les deux courbes pour visualiser le gain/perte */}
-            <Area 
-              type="monotone" 
-              dataKey="investissement" 
-              stroke="var(--chart-primary)"
-              strokeWidth={2}
-              fill="url(#colorInvesti)"
-              strokeDasharray="5 5"
-              name="Montant investi"
-              legendType="line"
-            />
-            <Area 
-              type="monotone" 
-              dataKey="valeurActuelle" 
-              stroke="var(--gain)"
-              strokeWidth={2.5}
-              fill="url(#colorValeur)"
-              name="Valeur actuelle"
-              legendType="line"
-            />
-          </AreaChart>
-        </ResponsiveContainer>
+      <div className="relative min-h-[220px] flex-1 sm:min-h-[280px]">
+        {/* Enfant absolu : hauteur définie, que la carte soit étirée (deux colonnes)
+            ou non (mobile, où la hauteur minimale s'applique). */}
+        <div className="absolute inset-0">
+          <ResponsiveContainer width="100%" height="100%" onResize={xTicks.onResize}>
+            <AreaChart data={chartData} margin={{ top: 5, right: 24, left: 0, bottom: 0 }}>
+              <defs>
+                <linearGradient id="colorValeur" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="var(--gain)" stopOpacity={0.24}/>
+                  <stop offset="95%" stopColor="var(--gain)" stopOpacity={0}/>
+                </linearGradient>
+                <linearGradient id="colorInvesti" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="var(--chart-primary)" stopOpacity={0.12}/>
+                  <stop offset="95%" stopColor="var(--chart-primary)" stopOpacity={0}/>
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--rule)" />
+              <XAxis 
+                dataKey="date" 
+                tick={{ fontSize: 10 }}
+                stroke="var(--ink-soft)"
+                tickLine={false}
+                ticks={xTicks.ticks}
+                interval={0}
+              />
+              <YAxis 
+                tickFormatter={formatAxisCurrency}
+                tick={{ fontSize: 10 }}
+                stroke="var(--ink-soft)"
+                width={48}
+                domain={positionYAxis.domain}
+                ticks={positionYAxis.ticks}
+              />
+              <Tooltip 
+                formatter={(value, name) => {
+                  const numValue = Number(value) || 0;
+                  const label = name === 'Valeur actuelle' ? 'Valeur actuelle' : 'Montant investi';
+                  return [formatCurrency(numValue), label];
+                }}
+                labelFormatter={(_, payload) => {
+                  if (payload && payload.length > 0) {
+                    const data = payload[0].payload;
+                    return `${data.fullDate}\n+/- Value latente: ${data.plusValue >= 0 ? '+' : ''}${formatCurrency(data.plusValue)} (${formatPercent(data.gainPercent)})`;
+                  }
+                  return '';
+                }}
+                contentStyle={{
+                  backgroundColor: 'var(--paper-2)',
+                  border: '1px solid var(--rule)',
+                  borderRadius: '8px',
+                  color: 'var(--ink)',
+                  whiteSpace: 'pre-line',
+                }}
+              />
+              <Legend wrapperStyle={CHART_LEGEND_WRAPPER_STYLE} />
+              {/* Zone entre les deux courbes pour visualiser le gain/perte */}
+              <Area 
+                type="monotone" 
+                dataKey="investissement" 
+                stroke="var(--chart-primary)"
+                strokeWidth={2}
+                fill="url(#colorInvesti)"
+                strokeDasharray="5 5"
+                name="Montant investi"
+                legendType="line"
+              />
+              <Area 
+                type="monotone" 
+                dataKey="valeurActuelle" 
+                stroke="var(--gain)"
+                strokeWidth={2.5}
+                fill="url(#colorValeur)"
+                name="Valeur actuelle"
+                legendType="line"
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+  </div>
       </div>
     </div>
   );
