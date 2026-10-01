@@ -4,16 +4,8 @@ import { useState, useMemo, useCallback } from 'react';
 import {
   RefreshCw,
   Plus,
-  Wallet,
-  BarChart2,
-  History,
-  TrendingUp,
-  LogOut,
-  Settings,
-  Coins,
   Upload,
   Lock,
-  ArrowRight,
 } from 'lucide-react';
 import Link from 'next/link';
 import { PortfolioStats } from './PortfolioStats';
@@ -44,31 +36,17 @@ import {
   usePositionsWithCalculatedValues
 } from '@/lib/hooks';
 import { accountSupportsPositions, formatDateTime } from '@/lib/utils';
-import { useAuth } from '@/lib/auth';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import type { Transaction } from '@/lib/types';
-
-type TabType = 'dashboard' | 'accounts' | 'positions' | 'transactions' | 'dividends';
-
-const TAB_IDS: readonly TabType[] = ['dashboard', 'accounts', 'positions', 'transactions', 'dividends'];
-
-function parseTab(value: string | null): TabType {
-  return TAB_IDS.includes(value as TabType) ? (value as TabType) : 'dashboard';
-}
+import { DASHBOARD_TABS, navigateToDashboardTab, parseDashboardTab } from './app-shell/navigation';
+import { PageContainer, PageHeader } from './app-shell/PageLayout';
 
 export function Dashboard() {
   // L'onglet actif vit dans l'URL (?tab=...) : il survit au rechargement,
   // se partage et suit le bouton retour du navigateur.
+  // La navigation entre onglets est portée par la coque (AppShell).
   const searchParams = useSearchParams();
-  const activeTab = parseTab(searchParams.get('tab'));
-  const setActiveTab = useCallback((tab: TabType) => {
-    const params = new URLSearchParams(window.location.search);
-    if (tab === 'dashboard') params.delete('tab');
-    else params.set('tab', tab);
-    const query = params.toString();
-    window.history.pushState(null, '', `${window.location.pathname}${query ? `?${query}` : ''}`);
-    window.scrollTo({ top: 0 });
-  }, []);
+  const activeTab = parseDashboardTab(searchParams.get('tab'));
   const [showAddAccount, setShowAddAccount] = useState(false);
   const [showAddTransaction, setShowAddTransaction] = useState(false);
   const [addTransactionDefaultAccountId, setAddTransactionDefaultAccountId] = useState<string | undefined>();
@@ -80,8 +58,6 @@ export function Dashboard() {
   // Filtre de compte sur l'onglet Positions. null = "Tous les comptes" (vue groupée).
   const [positionsAccountFilter, setPositionsAccountFilter] = useState<string | null>(null);
 
-  const { user, signOut } = useAuth();
-  const router = useRouter();
   const { isFree, hasFeature, limits } = useSubscription();
   const canImportTransactions = hasFeature('import_transactions');
 
@@ -234,12 +210,6 @@ export function Dashboard() {
     }
   };
 
-  const handleLogout = async () => {
-    await signOut();
-    router.push('/login');
-    router.refresh();
-  };
-
   const openAddTransaction = useCallback((
     defaults: { accountId?: string; type?: Transaction['type'] } = {}
   ) => {
@@ -260,101 +230,104 @@ export function Dashboard() {
   const isInitialLoading = isLoading && accounts.length === 0;
   const isEmpty = !isLoading && accounts.length === 0;
 
-  const tabs = [
-    { id: 'dashboard' as TabType, label: 'Dashboard', icon: BarChart2 },
-    { id: 'accounts' as TabType, label: 'Comptes', icon: Wallet },
-    { id: 'positions' as TabType, label: 'Positions', icon: TrendingUp },
-    { id: 'transactions' as TabType, label: 'Transactions', icon: History },
-    { id: 'dividends' as TabType, label: 'Dividendes', icon: Coins },
-  ];
+  const currentTab = DASHBOARD_TABS.find((tab) => tab.id === activeTab) ?? DASHBOARD_TABS[0];
+  const busy = isLoading || refreshing;
+
+  const refreshButton = (
+    <button
+      type="button"
+      onClick={handleRefresh}
+      disabled={busy}
+      className="inline-flex items-center justify-center rounded-lg border border-[color:var(--rule)] p-2 text-[color:var(--ink-soft)] transition-colors hover:bg-[color:var(--paper-2)] hover:text-[color:var(--ink)] disabled:opacity-50"
+      title="Rafraîchir les données et les cours"
+      aria-label="Rafraîchir les données et les cours"
+    >
+      <RefreshCw className={`h-4 w-4 ${busy ? 'animate-spin' : ''}`} />
+    </button>
+  );
+
+  const importButton = canImportTransactions ? (
+    <Link
+      href="/dashboard/import"
+      className="inline-flex items-center justify-center gap-2 rounded-lg border border-zinc-300 px-3.5 py-2 text-sm text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+    >
+      <Upload className="h-4 w-4" />
+      <span>Importer</span>
+    </Link>
+  ) : (
+    <Link
+      href="/settings/billing"
+      className="btn-outline inline-flex items-center justify-center gap-2 rounded-lg px-3.5 py-2 text-sm"
+      title="Import réservé à l’offre Pro"
+    >
+      <Lock className="h-4 w-4" />
+      <span>Importer</span>
+    </Link>
+  );
+
+  const primaryButtonClass = 'btn-ink inline-flex items-center justify-center gap-2 rounded-lg px-3.5 py-2 text-sm';
+
+  // En-tête commun à toutes les sections : titre, contexte et actions de la section.
+  const header = {
+    dashboard: { description: undefined, actions: null },
+    accounts: {
+      description: 'Vos enveloppes : comptes titres, épargne, crypto.',
+      actions: (
+        <button type="button" onClick={() => setShowAddAccount(true)} className={primaryButtonClass}>
+          <Plus className="h-4 w-4" />
+          <span>Ajouter un compte</span>
+        </button>
+      ),
+    },
+    positions: {
+      description: 'Ajoutez une position via une transaction d’achat.',
+      actions: (
+        <button
+          type="button"
+          onClick={() =>
+            openAddTransaction({ accountId: selectedPositionsAccountFilter ?? undefined, type: 'BUY' })
+          }
+          className={primaryButtonClass}
+        >
+          <Plus className="h-4 w-4" />
+          <span>Ajouter une position</span>
+        </button>
+      ),
+    },
+    transactions: {
+      description: 'Historique complet de vos opérations.',
+      actions: (
+        <>
+          {importButton}
+          <button type="button" onClick={() => openAddTransaction()} className={primaryButtonClass}>
+            <Plus className="h-4 w-4" />
+            <span>Ajouter une transaction</span>
+          </button>
+        </>
+      ),
+    },
+    dividends: { description: 'Ajoutez vos dividendes depuis la section Transactions.', actions: null },
+  }[activeTab];
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 overflow-x-hidden">
-      {/* Header */}
-      <header className="sticky top-0 z-40 backdrop-blur-md bg-[color:var(--paper)]/85 border-b border-[color:var(--rule)]">
-        <div className="max-w-7xl mx-auto px-5">
-          <div className="flex items-center justify-between h-14">
-            <div className="flex items-center gap-4 min-w-0">
-              <Link
-                href="/dashboard"
-                className="flex items-baseline gap-2 text-[color:var(--ink)] hover:opacity-80 transition-opacity"
-              >
-                <span className="display text-2xl leading-none">Fi&#8209;Hub</span>
-              </Link>
-              <p
-                className="hidden sm:block mono text-[10px] tracking-[0.12em] uppercase text-[color:var(--ink-soft)] truncate"
-                suppressHydrationWarning
-              >
-                Mis à jour : {formatDateTime(lastUpdate)}
-              </p>
-            </div>
+    <main className="overflow-x-hidden py-5 sm:py-8">
+      <PageContainer>
+        <PageHeader
+          title={currentTab.title}
+          description={header.description}
+          meta={
+            <p className="mono text-[10px] uppercase tracking-[0.12em] text-[color:var(--ink-soft)]" suppressHydrationWarning>
+              Mis à jour : {formatDateTime(lastUpdate)}
+            </p>
+          }
+          actions={
+            <>
+              {header.actions}
+              {refreshButton}
+            </>
+          }
+        />
 
-            <div className="flex items-center gap-1 sm:gap-3">
-              <span className="hidden md:inline truncate max-w-[180px] mono text-[11px] tracking-[0.08em] text-[color:var(--ink-soft)]">
-                {user?.email}
-              </span>
-              {isFree && (
-                <Link
-                  href="/settings/billing"
-                  className="btn-ink inline-flex shrink-0 items-center justify-center rounded-full px-3 py-2 text-xs font-medium sm:px-4 sm:text-sm"
-                  title="Passer pro"
-                  aria-label="Passer pro"
-                >
-                  <span className="sm:hidden">Pro</span>
-                  <span className="hidden sm:inline">Passer pro</span>
-                </Link>
-              )}
-              <button
-                onClick={handleRefresh}
-                disabled={isLoading || refreshing}
-                className="p-1.5 sm:p-2 rounded-lg text-[color:var(--ink-soft)] hover:bg-[color:var(--paper-2)] hover:text-[color:var(--ink)] transition-colors disabled:opacity-50"
-                title="Rafraîchir les données et les cours"
-                aria-label="Rafraîchir les données et les cours"
-              >
-                <RefreshCw className={`h-4 w-4 sm:h-5 sm:w-5 ${isLoading || refreshing ? 'animate-spin' : ''}`} />
-              </button>
-              <Link
-                href="/settings/profile"
-                className="p-1.5 sm:p-2 rounded-lg text-[color:var(--ink-soft)] hover:bg-[color:var(--paper-2)] hover:text-[color:var(--ink)] transition-colors"
-                title="Paramètres"
-                aria-label="Paramètres"
-              >
-                <Settings className="h-4 w-4 sm:h-5 sm:w-5" />
-              </Link>
-              <button
-                onClick={handleLogout}
-                className="p-1.5 sm:p-2 rounded-lg text-[color:var(--ink-soft)] hover:bg-[color:var(--paper-2)] hover:text-[color:var(--ink)] transition-colors"
-                title="Déconnexion"
-                aria-label="Déconnexion"
-              >
-                <LogOut className="h-4 w-4 sm:h-5 sm:w-5" />
-              </button>
-            </div>
-          </div>
-
-          {/* Tabs - five equal columns (icon above label) on mobile, inline row from sm */}
-          <nav className="-mx-5 grid grid-cols-5 -mb-px border-t border-[color:var(--rule)]/70 sm:mx-0 sm:flex sm:gap-1">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                aria-current={activeTab === tab.id ? 'page' : undefined}
-                className={`flex min-h-[52px] min-w-0 flex-col items-center justify-center gap-1 px-0.5 py-2 text-[11px] font-medium leading-tight border-b-2 transition-colors whitespace-nowrap sm:min-h-0 sm:flex-row sm:gap-2 sm:px-4 sm:py-3 sm:font-mono sm:font-normal sm:tracking-[0.12em] sm:uppercase ${
-                  activeTab === tab.id
-                    ? 'border-[color:var(--accent)] text-[color:var(--ink)]'
-                    : 'border-transparent text-[color:var(--ink-soft)] hover:text-[color:var(--ink)]'
-                }`}
-              >
-                <tab.icon className="h-5 w-5 sm:h-4 sm:w-4" aria-hidden="true" />
-                <span>{tab.label}</span>
-              </button>
-            ))}
-          </nav>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
         {activeTab === 'dashboard' && isEmpty && (
           <GettingStarted
             canImport={canImportTransactions}
@@ -390,29 +363,26 @@ export function Dashboard() {
             </ErrorBoundary>
 
             {/* Évolution par compte + répartition actuelle (mêmes couleurs par compte) */}
-            <div className="grid gap-4 sm:gap-6 lg:grid-cols-3">
-              <div className="min-w-0 lg:col-span-2">
-                <ErrorBoundary label="Évolution du patrimoine">
-                  <ProBlur feature="advanced_analytics" label="Évolution du patrimoine — Pro">
-                    <PortfolioHistoryChart
-                      history={portfolioHistory}
-                      accounts={accounts}
-                      loading={loadingHistory}
-                      onPeriodChange={setHistoryPeriod}
-                      selectedPeriod={historyPeriod}
-                    />
-                  </ProBlur>
-                </ErrorBoundary>
-              </div>
-              <div className="min-w-0">
-                <ErrorBoundary label="Répartition par compte">
-                  <AccountAllocationChart accounts={enrichedAccounts} />
-                </ErrorBoundary>
-              </div>
+            {/* Les cartes sont directement les cellules de la grille : même hauteur par ligne. */}
+            <div className="grid gap-4 sm:gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+              <ErrorBoundary label="Évolution du patrimoine">
+                <ProBlur feature="advanced_analytics" label="Évolution du patrimoine — Pro">
+                  <PortfolioHistoryChart
+                    history={portfolioHistory}
+                    accounts={accounts}
+                    loading={loadingHistory}
+                    onPeriodChange={setHistoryPeriod}
+                    selectedPeriod={historyPeriod}
+                  />
+                </ProBlur>
+              </ErrorBoundary>
+              <ErrorBoundary label="Répartition par compte">
+                <AccountAllocationChart accounts={enrichedAccounts} />
+              </ErrorBoundary>
             </div>
 
             {/* Quick Views - stack on mobile */}
-            <div className="grid gap-4 sm:gap-6 lg:grid-cols-2 w-full max-w-full">
+            <div className="grid gap-4 sm:gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
               <div className="min-w-0 w-full max-w-full">
                 <div className="flex items-center justify-between gap-2 mb-3 sm:mb-4 min-w-0">
                   <h2 className="text-base sm:text-lg font-semibold text-zinc-900 dark:text-zinc-100 truncate">
@@ -446,15 +416,6 @@ export function Dashboard() {
                     Dernières transactions
                   </h2>
                   <div className="flex shrink-0 items-center gap-3 sm:gap-4">
-                    {transactions.length > 5 && (
-                      <button
-                        onClick={() => setActiveTab('transactions')}
-                        className="inline-flex items-center gap-1 text-xs sm:text-sm text-[color:var(--ink-soft)] hover:text-[color:var(--ink)] hover:underline underline-offset-4"
-                      >
-                        <span>Tout voir</span>
-                        <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
-                      </button>
-                    )}
                     <button
                       onClick={() => openAddTransaction()}
                       className="inline-flex items-center gap-1 text-xs sm:text-sm text-[color:var(--ink)] hover:underline underline-offset-4"
@@ -472,6 +433,7 @@ export function Dashboard() {
                       transactions={transactions}
                       accounts={accounts}
                       limit={5}
+                      onShowAll={() => navigateToDashboardTab('transactions')}
                       onDeleted={handleMutationSuccess}
                       onEdited={handleMutationSuccess}
                     />
@@ -484,18 +446,6 @@ export function Dashboard() {
 
         {activeTab === 'accounts' && (
           <div>
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 sm:mb-6">
-              <h2 className="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-zinc-100">
-                Mes comptes
-              </h2>
-              <button
-                onClick={() => setShowAddAccount(true)}
-                className="flex items-center justify-center gap-2 px-4 py-2 btn-ink rounded-lg text-sm sm:text-base"
-              >
-                <Plus className="h-4 w-4" />
-                <span>Ajouter un compte</span>
-              </button>
-            </div>
             <AccountList
               accounts={enrichedAccounts}
               yearToDateStats={accountsYearToDateStats}
@@ -507,27 +457,6 @@ export function Dashboard() {
 
         {activeTab === 'positions' && (
           <div className="space-y-4 sm:space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-              <div>
-                <h2 className="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-zinc-100">
-                  Mes positions
-                </h2>
-                <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 mt-1">
-                  Ajoutez une position via une transaction d&apos;achat
-                </p>
-              </div>
-              <button
-                onClick={() => openAddTransaction({
-                  accountId: selectedPositionsAccountFilter ?? undefined,
-                  type: 'BUY',
-                })}
-                className="inline-flex items-center justify-center gap-2 px-4 py-2 btn-ink rounded-lg text-sm sm:text-base"
-              >
-                <Plus className="h-4 w-4" />
-                <span>Ajouter une position</span>
-              </button>
-            </div>
-
             {stockAccounts.length > 1 && (
               <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-2 sm:p-3">
                 <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
@@ -579,50 +508,55 @@ export function Dashboard() {
               />
             </ErrorBoundary>
 
-            <ErrorBoundary label="Valeur vs investissement">
-              <PortfolioValueChart
-                history={positionsFullPortfolioHistory}
-                transactions={positionsScoped.transactions}
-                loading={loadingPositionsFullHistory}
-                currentTotalValue={scopedPortfolioSummary.totalValue}
-                currentTotalInvested={scopedPortfolioSummary.totalInvested}
-                fxRates={positionsFxRates}
-              />
-            </ErrorBoundary>
-
-            <ErrorBoundary label="Performance annuelle">
-              <ProBlur feature="advanced_analytics" partial label="Performance annuelle — Pro">
-                <PortfolioPerformanceChart
-                  transactions={positionsScoped.transactions}
-                  portfolioHistory={positionsFullPortfolioHistory}
-                  accounts={positionsScoped.accounts}
-                  loading={loadingPositionsFullHistory}
-                  currentPortfolioValue={scopedStockPortfolioValue}
-                  fxRates={positionsFxRates}
-                />
-              </ProBlur>
-            </ErrorBoundary>
-
-            <ErrorBoundary label="Comparaison benchmark">
-              <ProBlur feature="advanced_analytics" partial label="Comparaison benchmark — Pro">
-                <BenchmarkComparisonChart
-                  portfolioHistory={positionsFullPortfolioHistory}
+            {/* Très grand écran : graphiques temporels deux par deux. */}
+            <div className="grid gap-4 sm:gap-6 2xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+              <ErrorBoundary label="Valeur vs investissement">
+                <PortfolioValueChart
+                  history={positionsFullPortfolioHistory}
                   transactions={positionsScoped.transactions}
                   loading={loadingPositionsFullHistory}
-                  currentPortfolioValue={scopedStockPortfolioValue}
+                  currentTotalValue={scopedPortfolioSummary.totalValue}
+                  currentTotalInvested={scopedPortfolioSummary.totalInvested}
                   fxRates={positionsFxRates}
                 />
-              </ProBlur>
-            </ErrorBoundary>
+              </ErrorBoundary>
 
-            <ErrorBoundary label="Projection du patrimoine">
-              <PerformanceProjectionChart
-                history={positionsFullPortfolioHistory}
-                transactions={positionsScoped.transactions}
-                loading={loadingPositionsFullHistory}
-                fxRates={positionsFxRates}
-              />
-            </ErrorBoundary>
+              <ErrorBoundary label="Performance annuelle">
+                <ProBlur feature="advanced_analytics" partial label="Performance annuelle — Pro">
+                  <PortfolioPerformanceChart
+                    transactions={positionsScoped.transactions}
+                    portfolioHistory={positionsFullPortfolioHistory}
+                    accounts={positionsScoped.accounts}
+                    loading={loadingPositionsFullHistory}
+                    currentPortfolioValue={scopedStockPortfolioValue}
+                    fxRates={positionsFxRates}
+                  />
+                </ProBlur>
+              </ErrorBoundary>
+            </div>
+
+            <div className="grid gap-4 sm:gap-6 2xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+              <ErrorBoundary label="Comparaison benchmark">
+                <ProBlur feature="advanced_analytics" partial label="Comparaison benchmark — Pro">
+                  <BenchmarkComparisonChart
+                    portfolioHistory={positionsFullPortfolioHistory}
+                    transactions={positionsScoped.transactions}
+                    loading={loadingPositionsFullHistory}
+                    currentPortfolioValue={scopedStockPortfolioValue}
+                    fxRates={positionsFxRates}
+                  />
+                </ProBlur>
+              </ErrorBoundary>
+
+              <ErrorBoundary label="Projection du patrimoine">
+                <PerformanceProjectionChart
+                  history={positionsFullPortfolioHistory}
+                  transactions={positionsScoped.transactions}
+                  loading={loadingPositionsFullHistory}
+                  fxRates={positionsFxRates}
+                />
+              </ErrorBoundary>
+            </div>
 
             <ErrorBoundary label="Tableau des positions">
               <PositionsTable
@@ -639,38 +573,6 @@ export function Dashboard() {
 
         {activeTab === 'transactions' && (
           <div>
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 sm:mb-6">
-              <h2 className="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-zinc-100">
-                Historique des Transactions
-              </h2>
-              <div className="flex flex-col sm:flex-row gap-2">
-                {canImportTransactions ? (
-                  <Link
-                    href="/dashboard/import"
-                    className="flex items-center justify-center gap-2 px-4 py-2 border border-zinc-300 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors text-sm sm:text-base"
-                  >
-                    <Upload className="h-4 w-4" />
-                    <span>Importer</span>
-                  </Link>
-                ) : (
-                  <Link
-                    href="/settings/billing"
-                    className="flex items-center justify-center gap-2 px-4 py-2 btn-outline rounded-lg text-sm sm:text-base"
-                    title="Import réservé à l’offre Pro"
-                  >
-                    <Lock className="h-4 w-4" />
-                    <span>Importer vos données</span>
-                  </Link>
-                )}
-                <button
-                  onClick={() => openAddTransaction()}
-                  className="flex items-center justify-center gap-2 px-4 py-2 btn-ink rounded-lg text-sm sm:text-base"
-                >
-                  <Plus className="h-4 w-4" />
-                  <span>Ajouter une transaction</span>
-                </button>
-              </div>
-            </div>
             <PaginatedTransactionsList
               accounts={accounts}
               pageSize={50}
@@ -683,22 +585,15 @@ export function Dashboard() {
 
         {activeTab === 'dividends' && (
           <div>
-            <div className="mb-4 sm:mb-6">
-              <h2 className="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-zinc-100">
-                Mes dividendes
-              </h2>
-              <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 mt-1">
-                Ajoutez vos dividendes via l&apos;onglet Transactions
-              </p>
-            </div>
-            <DividendsTable 
+            <DividendsTable
               transactions={transactions}
               positions={enrichedPositions}
               quotes={quotes}
+              accounts={accounts}
             />
           </div>
         )}
-      </main>
+      </PageContainer>
 
       {/* Modals */}
       <AddAccountModal
@@ -717,7 +612,7 @@ export function Dashboard() {
         defaultAccountId={addTransactionDefaultAccountId}
         defaultType={addTransactionDefaultType}
       />
-    </div>
+    </main>
   );
 }
 

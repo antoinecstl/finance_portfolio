@@ -164,7 +164,10 @@ export function PortfolioStats({
     { label: 'Actions', value: Math.max(0, totalValue), color: 'var(--chart-1)' },
     { label: 'Liquidités', value: cashTotal, color: 'var(--chart-3)' },
     { label: 'Épargne', value: Math.max(0, savingsTotal), color: 'var(--chart-2)' },
-  ].filter((part) => part.value > 0.005);
+  ]
+    .filter((part) => part.value > 0.005)
+    // Du plus grand au plus petit, pour la barre comme pour la légende.
+    .sort((a, b) => b.value - a.value);
   const compositionTotal = composition.reduce((sum, part) => sum + part.value, 0);
 
   const currentYear = yearToDate?.year ?? now.getFullYear();
@@ -219,9 +222,9 @@ export function PortfolioStats({
           </div>
 
           {!loading && compositionTotal > 0 && (
-            <div className="w-full lg:max-w-sm">
+            <div className="w-full lg:max-w-md xl:max-w-xl 2xl:max-w-2xl">
               <div
-                className="flex h-2 w-full overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800"
+                className="flex h-2 w-full overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800 xl:h-3"
                 role="img"
                 aria-label={composition
                   .map((part) => `${part.label} ${Math.round((part.value / compositionTotal) * 100)} %`)

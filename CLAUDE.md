@@ -61,6 +61,12 @@ Never commit secrets. Important environment variables include:
 - `RESEND_API_KEY` / `RESEND_FROM` for transactional email.
 - Supabase Edge Function signup notifications use function secrets such as `SIGNUP_SLACK_WEBHOOK_URL`, `SIGNUP_DISCORD_WEBHOOK_URL`, `APP_URL`, or `NEXT_PUBLIC_APP_URL`.
 
+## App Layout
+
+- Authenticated pages render inside `components/app-shell/AppShell.tsx`, mounted in `app/(app)/layout.tsx`: fixed sidebar from `xl` (1280px), compact top bar + section tabs below.
+- Dashboard sections are client-side tabs synced with `?tab=` (`components/app-shell/navigation.ts`); use `navigateToDashboardTab` / `dashboardTabHref` rather than duplicating tab lists.
+- Wrap page content in `PageContainer` (shared max width and gutters, so edges align across pages) and start pages with `PageHeader` (`components/app-shell/PageLayout.tsx`). Do not add per-page back links or full-screen backgrounds.
+
 ## Billing and Paddle
 
 - Billing UI lives in `app/(app)/settings/billing`.

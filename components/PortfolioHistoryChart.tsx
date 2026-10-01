@@ -15,7 +15,8 @@ import type { Account } from '@/lib/types';
 import type { PortfolioHistoryPoint } from '@/lib/portfolio-calculator';
 import { buildAccountHistorySeries, type AccountHistorySeries } from '@/lib/account-history';
 import { buildNiceYAxisScale } from '@/lib/chart-axis';
-import { formatCurrency, formatNumber, formatPercent } from '@/lib/utils';
+import { useEvenXTicks } from '@/lib/use-even-x-ticks';
+import { formatAxisCurrency, formatCurrency, formatPercent } from '@/lib/utils';
 
 const MS_PER_DAY = 86_400_000;
 
@@ -42,13 +43,6 @@ interface PortfolioHistoryChartProps {
   loading?: boolean;
   onPeriodChange?: (days: number) => void;
   selectedPeriod?: number;
-}
-
-function formatAxisValue(value: number): string {
-  if (Math.abs(value) >= 1000) {
-    return `${formatNumber(value / 1000, value % 1000 === 0 ? 0 : 1)}k€`;
-  }
-  return `${value.toFixed(0)}€`;
 }
 
 function formatShortDate(date: string): string {
@@ -172,6 +166,10 @@ export function PortfolioHistoryChart({
     () => accountHistory?.rows ?? history.map((point) => ({ date: point.date, total: point.totalValue })),
     [accountHistory, history]
   );
+  // Repères X réguliers (premier et dernier point inclus) : la grille verticale
+  // suit ces repères jusqu'au bout du graphique.
+  const xTickValues = useMemo(() => rows.map((row) => row.date), [rows]);
+  const xTicks = useEvenXTicks(xTickValues);
 
   if (loading && history.length === 0) {
     return (
@@ -261,29 +259,29 @@ export function PortfolioHistoryChart({
       </div>
 
       <div className="h-[240px] sm:h-[320px]">
-        <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={rows} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+        <ResponsiveContainer width="100%" height="100%" onResize={xTicks.onResize}>
+          <AreaChart data={rows} margin={{ top: 4, right: 24, bottom: 0, left: 0 }}>
             <defs>
               <linearGradient id="historyTotalFill" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor="var(--chart-primary)" stopOpacity={0.18} />
                 <stop offset="100%" stopColor="var(--chart-primary)" stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid vertical={false} stroke="var(--rule)" strokeOpacity={0.6} />
+            <CartesianGrid stroke="var(--rule)" strokeOpacity={0.6} />
             <XAxis
               dataKey="date"
               tickFormatter={formatShortDate}
               tick={{ fontSize: 10, fill: 'var(--ink-soft)' }}
               stroke="var(--rule)"
               tickLine={false}
-              interval="preserveStartEnd"
-              minTickGap={24}
+              ticks={xTicks.ticks}
+              interval={0}
             />
             <YAxis
               domain={yAxis.domain}
               ticks={yAxis.ticks}
               allowDataOverflow
-              tickFormatter={formatAxisValue}
+              tickFormatter={formatAxisCurrency}
               tick={{ fontSize: 10, fill: 'var(--ink-soft)' }}
               axisLine={false}
               tickLine={false}

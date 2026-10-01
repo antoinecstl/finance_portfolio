@@ -70,3 +70,30 @@ function buildTicks(min: number, max: number, step: number): number[] {
 
   return ticks;
 }
+
+/** Nombre de repères d'axe X lisibles pour une largeur de graphique donnée. */
+export function tickCountForWidth(width: number, minLabelWidth = 96): number {
+  if (!Number.isFinite(width) || width <= 0) return 5;
+  return Math.max(2, Math.min(9, Math.floor(width / minLabelWidth)));
+}
+
+/**
+ * Repères d'axe X régulièrement espacés, premier et dernier point inclus.
+ * À utiliser avec `interval={0}` : la grille verticale suit exactement ces
+ * repères, sans trou irrégulier en fin de graphique (ce que produit
+ * `interval="preserveStartEnd"` en forçant le dernier libellé).
+ */
+export function evenlySpacedTicks<T>(values: readonly T[], count: number): T[] {
+  if (values.length <= count) return [...values];
+  if (count <= 1) return [values[values.length - 1]];
+  const ticks: T[] = [];
+  const seen = new Set<number>();
+  for (let i = 0; i < count; i += 1) {
+    const index = Math.round((i * (values.length - 1)) / (count - 1));
+    if (!seen.has(index)) {
+      seen.add(index);
+      ticks.push(values[index]);
+    }
+  }
+  return ticks;
+}

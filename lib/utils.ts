@@ -59,6 +59,19 @@ export function formatNumber(num: number, decimals: number = 2): string {
   }).format(num);
 }
 
+/** Montant en euros arrondi à l'unité, pour les tableaux denses. */
+export function formatCurrencyRounded(amount: number): string {
+  return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(amount);
+}
+
+/** Montant compact pour les axes de graphiques : 1 250 → « 1,3k€ », 980 → « 980€ ». */
+export function formatAxisCurrency(value: number): string {
+  if (Math.abs(value) >= 1000) {
+    return `${formatNumber(value / 1000, value % 1000 === 0 ? 0 : 1)}k€`;
+  }
+  return `${value.toFixed(0)}€`;
+}
+
 export function formatPercent(num: number): string {
   const sign = num >= 0 ? '+' : '';
   return `${sign}${formatNumber(num, 2)}%`;
