@@ -9,6 +9,7 @@ import type { Transaction } from '@/lib/types';
 import type { FxRateMap } from '@/lib/fx';
 import { findClosestQuote } from '@/lib/stock-api';
 import { buildNiceYAxisScale } from '@/lib/chart-axis';
+import { useEvenXTicks } from '@/lib/use-even-x-ticks';
 import { formatNumber } from '@/lib/utils';
 import { BENCHMARKS, DEFAULT_BENCHMARK, isPresetBenchmark, type BenchmarkKey } from '@/lib/benchmarks';
 import { useStockSearch } from '@/lib/hooks';
@@ -239,12 +240,19 @@ export function BenchmarkComparisonChart({
   }, [chartData]);
 
   const isLoading = loading || benchmarkLoading;
+  // Repères X réguliers (premier et dernier point inclus) : la grille verticale
+  // suit ces repères jusqu'au bout du graphique.
+  const xTickValues = useMemo(() => chartData.map((point) => point.date), [chartData]);
+  const xTicks = useEvenXTicks(xTickValues);
+
   const yAxisScale = useMemo(() => buildNiceYAxisScale(
     chartData.flatMap((point) => [point.portfolio, point.benchmark]),
   ), [chartData]);
 
   return (
-    <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-4 sm:p-6">
+    // Carte en colonne : le graphique occupe la hauteur restante quand la carte
+    // est étirée à la hauteur de sa voisine (grille deux colonnes).
+    <div className="flex flex-col bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-4 sm:p-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-0 mb-3 sm:mb-4">
         <div className="flex flex-wrap items-center gap-2">
           <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
@@ -364,7 +372,7 @@ export function BenchmarkComparisonChart({
         </div>
       )}
 
-      <div className="h-60 sm:h-72 w-full">
+      <div className="h-60 w-full flex-1 sm:h-auto sm:min-h-72">
         {!mounted || isLoading ? (
           <div className="flex h-full items-center justify-center text-xs sm:text-sm text-zinc-500 dark:text-zinc-400">
             Chargement…
@@ -374,15 +382,15 @@ export function BenchmarkComparisonChart({
             Pas encore assez de données pour comparer.
           </div>
         ) : (
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--rule)" vertical={false} />
+          <ResponsiveContainer width="100%" height="100%" onResize={xTicks.onResize}>
+            <LineChart data={chartData} margin={{ top: 5, right: 24, left: 0, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--rule)" />
               <XAxis
                 dataKey="date"
                 tick={{ fontSize: 11 }}
                 tickFormatter={(d) => d.slice(5)}
-                interval="preserveStartEnd"
-                minTickGap={24}
+                ticks={xTicks.ticks}
+                interval={0}
               />
               <YAxis
                 tick={{ fontSize: 11 }}

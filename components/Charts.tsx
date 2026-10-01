@@ -31,6 +31,7 @@ import { PieChart as PieChartIcon, TrendingUp, TrendingDown, Loader2, BarChart2,
 import { useSubscription } from '@/lib/subscription-client';
 import { ProBlur } from './ProBlur';
 import { buildNiceYAxisScale } from '@/lib/chart-axis';
+import { useEvenXTicks } from '@/lib/use-even-x-ticks';
 import { getPortfolioMarketStatus } from '@/lib/market-status';
 
 const MS_PER_DAY = 86_400_000;
@@ -458,6 +459,11 @@ function PositionInlineHistoryChart({
     return { domain: scale.domain, ticks: scale.ticks, decimals };
   }, [chartData]);
 
+  // Repères X réguliers (premier et dernier point inclus) : la grille verticale
+  // suit ces repères jusqu'au bout du graphique.
+  const xTickValues = useMemo(() => chartData.map((point) => point.label), [chartData]);
+  const xTicks = useEvenXTicks(xTickValues);
+
   return (
     <div className="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 p-3 sm:p-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
@@ -492,10 +498,10 @@ function PositionInlineHistoryChart({
         <div className="h-[180px] flex items-center justify-center text-sm text-zinc-500">Aucun historique disponible.</div>
       ) : (
         <div className="h-[240px] sm:h-[280px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={chartData} margin={{ top: 10, right: 12, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--rule)" vertical={false} />
-              <XAxis dataKey="label" tick={{ fontSize: 10 }} stroke="var(--ink-soft)" interval="preserveStartEnd" minTickGap={24} />
+          <ResponsiveContainer width="100%" height="100%" onResize={xTicks.onResize}>
+            <ComposedChart data={chartData} margin={{ top: 10, right: 24, left: 0, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--rule)" />
+              <XAxis dataKey="label" tick={{ fontSize: 10 }} stroke="var(--ink-soft)" ticks={xTicks.ticks} interval={0} />
               <YAxis
                 domain={yScale.domain}
                 ticks={yScale.ticks}
@@ -1429,6 +1435,11 @@ export function PortfolioValueChart({
     };
   }, [chartData]);
 
+  // Repères X réguliers (premier et dernier point inclus) : la grille verticale
+  // suit ces repères jusqu'au bout du graphique.
+  const xTickValues = useMemo(() => chartData.map((point) => point.date), [chartData]);
+  const xTicks = useEvenXTicks(xTickValues);
+
   if (loading) {
     return (
       <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-4 sm:p-6">
@@ -1537,8 +1548,8 @@ export function PortfolioValueChart({
 
       {/* Graphique */}
       <div className="h-[220px] flex-1 sm:h-auto sm:min-h-[280px]">
-        <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={chartData}>
+        <ResponsiveContainer width="100%" height="100%" onResize={xTicks.onResize}>
+          <AreaChart data={chartData} margin={{ top: 5, right: 24, left: 0, bottom: 0 }}>
             <defs>
               <linearGradient id="colorValeur" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="var(--gain)" stopOpacity={0.24}/>
@@ -1549,14 +1560,14 @@ export function PortfolioValueChart({
                 <stop offset="95%" stopColor="var(--chart-primary)" stopOpacity={0}/>
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--rule)" vertical={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--rule)" />
             <XAxis 
               dataKey="date" 
               tick={{ fontSize: 10 }}
               stroke="var(--ink-soft)"
               tickLine={false}
-              interval="preserveStartEnd"
-              minTickGap={24}
+              ticks={xTicks.ticks}
+              interval={0}
             />
             <YAxis 
               tickFormatter={formatAxisCurrency}
@@ -1877,6 +1888,11 @@ export function StockHistoryChart({
     return buildNiceYAxisScale([min, max], { includeZero: true }).ticks;
   }, [chartData, symbols, selectedSymbols]);
 
+  // Repères X réguliers (premier et dernier point inclus) : la grille verticale
+  // suit ces repères jusqu'au bout du graphique.
+  const xTickValues = useMemo(() => chartData.map((point) => point.date), [chartData]);
+  const xTicks = useEvenXTicks(xTickValues);
+
   if (loading) {
     return (
       <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-4 sm:p-6">
@@ -2012,15 +2028,15 @@ export function StockHistoryChart({
       
       {/* Graphique principal */}
       <div className="h-[280px] sm:h-[350px]">
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--rule)" vertical={false} />
+        <ResponsiveContainer width="100%" height="100%" onResize={xTicks.onResize}>
+          <LineChart data={chartData} margin={{ top: 5, right: 24, left: 0, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--rule)" />
             <XAxis 
               dataKey="date" 
               tick={{ fontSize: 10 }}
               stroke="var(--ink-soft)"
-              interval="preserveStartEnd"
-              minTickGap={24}
+              ticks={xTicks.ticks}
+              interval={0}
             />
             <YAxis 
               domain={yDomain}
@@ -2324,7 +2340,7 @@ export function PortfolioPerformanceChart({
         <div className="h-[200px] sm:h-[250px]">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={yearlyChartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--rule)" vertical={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--rule)" />
               <XAxis 
                 dataKey="year" 
                 tick={{ fontSize: 12 }}
