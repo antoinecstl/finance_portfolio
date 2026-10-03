@@ -348,6 +348,13 @@ function positionMarkerColor(type?: Transaction['type']) {
   return 'var(--chart-primary)';
 }
 
+// Badges de l'historique : même couleur que le marqueur du graphique (légende).
+function positionTxBadgeStyle(type?: Transaction['type']): React.CSSProperties {
+  if (type !== 'BUY' && type !== 'SELL' && type !== 'DIVIDEND') return {};
+  const color = positionMarkerColor(type);
+  return { color, backgroundColor: `color-mix(in srgb, ${color} 16%, transparent)` };
+}
+
 function positionTxLabel(type?: Transaction['type']) {
   if (type === 'BUY') return 'Achat';
   if (type === 'SELL') return 'Vente';
@@ -956,12 +963,12 @@ export function PositionPerformanceChart({
                             {stats.allTransactions.slice(0, 10).map((t) => (
                               <div key={t.id} className="flex justify-between items-center text-xs py-1 border-b border-zinc-100 dark:border-zinc-800 last:border-0">
                                 <div className="flex items-center gap-2">
-                                  <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
-                                    t.type === 'BUY' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' :
-                                    t.type === 'SELL' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
-                                    t.type === 'DIVIDEND' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
-                                    'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-400'
-                                  }`}>
+                                  <span
+                                    className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                                      ['BUY', 'SELL', 'DIVIDEND'].includes(t.type) ? '' : 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-400'
+                                    }`}
+                                    style={positionTxBadgeStyle(t.type)}
+                                  >
                                     {t.type === 'BUY' ? 'Achat' : t.type === 'SELL' ? 'Vente' : t.type === 'DIVIDEND' ? 'Div.' : t.type}
                                   </span>
                                   <span className="text-zinc-500">{new Date(t.date).toLocaleDateString('fr-FR')}</span>
@@ -1197,12 +1204,12 @@ export function PositionPerformanceChart({
                                           {new Date(t.date).toLocaleDateString('fr-FR')}
                                         </td>
                                         <td className="py-2 px-3">
-                                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
-                                            t.type === 'BUY' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' :
-                                            t.type === 'SELL' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
-                                            t.type === 'DIVIDEND' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
-                                            'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-400'
-                                          }`}>
+                                          <span
+                                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
+                                              ['BUY', 'SELL', 'DIVIDEND'].includes(t.type) ? '' : 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-400'
+                                            }`}
+                                            style={positionTxBadgeStyle(t.type)}
+                                          >
                                             {t.type === 'BUY' && <ShoppingCart className="h-3 w-3" />}
                                             {t.type === 'SELL' && <DollarSign className="h-3 w-3" />}
                                             {t.type === 'DIVIDEND' && <Banknote className="h-3 w-3" />}
