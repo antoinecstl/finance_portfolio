@@ -23,7 +23,7 @@ export const metadata: Metadata = {
     siteName: SEARCH_SITE_NAME,
     title: 'Fi-Hub — Vos placements réunis. Votre performance en clair.',
     description:
-      'Positions et PRU recalculés depuis vos transactions, performance hors apports face au CAC 40, au S&P 500 ou à un autre indice, dividendes et import de relevés avec Pro.',
+      'Positions et PRU recalculés depuis vos transactions, performance hors apports face au CAC 40, au S&P 500 ou à un autre indice, projection du patrimoine. Dividendes, import de relevés et connexion à Claude ou ChatGPT avec Pro.',
   },
 };
 
@@ -44,7 +44,7 @@ function buildJsonLd() {
     applicationCategory: 'FinanceApplication',
     operatingSystem: 'Web',
     description:
-      'Suivi de patrimoine personnel : PEA, CTO, livrets, assurance-vie, positions et PRU, performance hors apports comparée à un indice, dividendes, import de relevés.',
+      'Suivi de patrimoine personnel : PEA, CTO, livrets, assurance-vie, positions et PRU, performance hors apports comparée à un indice, projection, dividendes, import de relevés et connexion à Claude ou ChatGPT.',
     url: SITE_URL,
     offers: [
       { '@type': 'Offer', name: 'Free', price: '0', priceCurrency: 'EUR', category: 'Free' },
@@ -84,8 +84,12 @@ function buildJsonLd() {
     featureList: [
       'PEA, CTO, livrets, PEL, assurance-vie et comptes crypto',
       'Positions et PRU recalculés depuis les transactions',
+      'Performance de l’année hors apports, au total et par compte',
       'Performance hors apports comparée à un indice',
-      'Historique du patrimoine jour par jour',
+      'Historique du patrimoine jour par jour, empilé par compte',
+      'Cours de chaque titre avec achats, ventes et dividendes',
+      'Projection du patrimoine selon trois scénarios',
+      'Carte de partage d’une position',
       'Module dividendes (Pro)',
       'Import de relevés CSV, Excel, PDF ou captures (Pro)',
       'Connexion à ChatGPT et Claude via API et MCP (Pro)',
@@ -156,7 +160,7 @@ export default function LandingPage() {
           <ProductFigure
             figure={FIGURES.overview}
             priority
-            caption="Tableau de bord : valeur totale, portefeuille actions, variation du jour, épargne et évolution sur un an."
+            caption="Vue d’ensemble : patrimoine total, performance de l’année hors apports, évolution sur un an par compte et répartition."
           />
         </div>
       </section>
@@ -164,14 +168,35 @@ export default function LandingPage() {
       {/* ───────── Ce que Fi-Hub calcule ───────── */}
       <div id="calculs" className="scroll-mt-20">
         <FeatureSection
+          id="patrimoine"
+          plan="free"
+          title="Tout votre patrimoine, compte par compte."
+          body="La vue d’ensemble additionne vos comptes titres, votre épargne et vos liquidités. Pour l’année en cours, Fi-Hub sépare ce que vous avez versé de ce que vos placements ont rapporté, sur l’ensemble du patrimoine et pour chaque compte."
+          points={[
+            'Performance de l’année hors apports, au total et par compte, avec les apports nets et les revenus perçus.',
+            'Évolution du patrimoine empilée par compte, d’une semaine à tout l’historique.',
+            'Répartition entre actions, épargne et liquidités, et poids de chaque compte.',
+          ]}
+          link={{ href: '/guides/performance-portefeuille', label: 'Mesurer la performance d’un portefeuille' }}
+          layout="side-right"
+          figure={
+            <ProductFigure
+              figure={FIGURES.accounts}
+              variant="narrow"
+              caption="Vue mobile : variation de chaque compte depuis le 1er janvier, PEA déplié."
+            />
+          }
+        />
+
+        <FeatureSection
           id="positions"
           plan="free"
           title="Chaque position recalculée à partir de vos transactions."
           body="Quantité, PRU, cours, valeur, poids dans le portefeuille et plus ou moins-value latente : Fi-Hub dérive tout de l’historique de vos achats et ventes. Si vous corrigez une opération ancienne, les positions sont recalculées."
           points={[
             'Positions regroupées par compte : PEA, CTO, assurance-vie, crypto.',
-            'Liquidités suivies à part des titres. Les frais sont enregistrés avec l’opération et débités du compte.',
-            'Plusieurs devises dans un même compte.',
+            'Variation du jour avec l’état de la séance : en cours, ou dernière séance une fois le marché fermé.',
+            'Liquidités suivies à part des titres, plusieurs devises dans un même compte, positions clôturées conservées.',
           ]}
           link={{ href: '/fonctionnalites/positions-pru', label: 'Positions et PRU en détail' }}
           figure={
@@ -183,12 +208,33 @@ export default function LandingPage() {
         />
 
         <FeatureSection
+          id="operations"
+          plan="free"
+          title="Le cours de chaque titre, avec vos opérations dessus."
+          body="Dépliez une position : Fi-Hub trace le cours du titre et place chaque achat, vente et dividende à sa date. Vous voyez à quel prix vous êtes entré, ce que la ligne vous a déjà versé et tout son historique."
+          points={[
+            'Cours sur une semaine à cinq ans, avec un repère par opération.',
+            'Totaux des achats, des ventes et des dividendes reçus sur la ligne.',
+            'Carte de partage en image : aucun montant ni compte affiché par défaut, vous choisissez ce qui apparaît.',
+          ]}
+          link={{ href: '/guides/calcul-pru', label: 'Comprendre le calcul du PRU' }}
+          layout="side-left"
+          figure={
+            <ProductFigure
+              figure={FIGURES.positionDetail}
+              variant="narrow"
+              caption="Vue mobile : une position dépliée, cours sur six mois et historique de la ligne."
+            />
+          }
+        />
+
+        <FeatureSection
           id="benchmark"
           plan="free"
           title="Votre performance hors apports, face à un indice."
           body="Un versement fait monter la valeur d’un portefeuille sans rien dire de vos choix. Fi-Hub neutralise les apports et les retraits (méthode de Dietz modifiée), puis compare le résultat à l’indice de votre choix sur la même période."
           points={[
-            `${BENCHMARK_REFERENCE_COUNT} références, dont le S&P 500, le MSCI World, Bitcoin et Ethereum, ou tout actif recherché.`,
+            `${BENCHMARK_REFERENCE_COUNT} références, dont le CAC 40, le S&P 500, le MSCI World et Bitcoin, ou tout actif recherché.`,
             'Périodes d’une semaine à un an, depuis le 1er janvier ou depuis le début.',
             'Quand le portefeuille fait moins bien que l’indice, l’écart l’indique, comme dans cet exemple.',
           ]}
@@ -204,22 +250,42 @@ export default function LandingPage() {
         />
 
         <FeatureSection
+          id="projection"
+          plan="free"
+          title="Où mène votre rythme actuel, sans promesse."
+          body="La projection prolonge la performance passée de votre portefeuille, hors futurs apports, sur un à vingt ans. Trois scénarios encadrent l’estimation : pessimiste, moyen et optimiste, d’après la volatilité observée."
+          points={[
+            'Historique analysé au choix : un an, trois ans ou tout l’historique.',
+            'Rendement annuel estimé affiché pour chaque scénario.',
+            'Une estimation, pas une prévision : les performances passées ne préjugent pas des performances futures.',
+          ]}
+          layout="side-left"
+          figure={
+            <ProductFigure
+              figure={FIGURES.projection}
+              variant="narrow"
+              caption="Vue mobile : projection à trois ans, sans futurs apports."
+            />
+          }
+        />
+
+        <FeatureSection
           id="dividendes"
           plan="pro"
           title="Ce que vos dividendes rapportent, rapporté à votre prix d’achat."
-          body="Chaque dividende est rattaché à son titre. Fi-Hub en tire le total reçu, le nombre de versements, le montant moyen par action et le rendement sur coût, année par année."
+          body="Chaque dividende est rattaché à son titre. Fi-Hub en tire le total reçu, le rythme des douze derniers mois, la comparaison avec l’an dernier et, pour chaque ligne, le rendement sur coût."
           points={[
-            'Évolution des dividendes par année.',
-            'Rendement sur coût par action, calculé sur votre PRU.',
-            'Historique détaillé de chaque versement.',
+            'Année en cours comparée à la même période de l’année précédente.',
+            'Revenus par année et meilleure ligne au total.',
+            'Par position : montant moyen par action et rendement sur coût, calculé sur votre PRU.',
           ]}
           link={{ href: '/fonctionnalites/dividendes', label: 'Le module dividendes en détail' }}
-          layout="side-left"
+          layout="side-right"
           figure={
             <ProductFigure
               figure={FIGURES.dividends}
               variant="narrow"
-              caption="Vue mobile : totaux, évolution par année et rendement sur coût."
+              caption="Vue mobile : totaux, revenus par année et rendement sur coût."
             />
           }
         />
@@ -262,6 +328,28 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ───────── Assistants IA (Pro) ───────── */}
+      <FeatureSection
+        id="assistants"
+        plan="pro"
+        title="Posez vos questions à Claude ou à ChatGPT."
+        body="Connectez Fi-Hub à votre assistant, puis interrogez votre patrimoine en langage courant : répartition, plus-values, dividendes, opérations d’une période. L’accès est en lecture seule : l’assistant lit vos comptes, positions et transactions, il ne peut rien modifier."
+        points={[
+          'Connexion par autorisation, sans jeton à copier, depuis Claude (web, bureau, mobile) ou un connecteur ChatGPT.',
+          'Jetons personnels et API REST documentée pour vos scripts et tableurs.',
+          'Chaque application et chaque jeton se révoquent séparément, depuis les paramètres.',
+        ]}
+        link={{ href: '#pricing', label: 'Voir l’offre Pro' }}
+        layout="side-left"
+        figure={
+          <ProductFigure
+            figure={FIGURES.api}
+            variant="narrow"
+            caption="Vue mobile : Claude connecté et un jeton personnel, révocables à tout moment."
+          />
+        }
+      />
+
       {/* ───────── Ce que Fi-Hub fait, et ne fait pas ───────── */}
       <section aria-labelledby="scope-title" className="border-t border-[color:var(--border)]">
         <div className="mx-auto max-w-6xl px-5 py-16 lg:px-8 lg:py-24">
@@ -288,7 +376,8 @@ export default function LandingPage() {
               icon="no"
               items={[
                 'Pas de connexion à votre banque ou à votre courtier : vous saisissez ou importez vos opérations.',
-                'Pas de conseil en investissement : Fi-Hub mesure, il ne recommande rien.',
+                'Pas de conseil en investissement : Fi-Hub mesure, il ne recommande rien. La projection est une estimation, pas une prévision.',
+                'Pas d’écriture par les assistants connectés : ils lisent vos données, sans pouvoir créer, modifier ni supprimer une opération.',
                 'Pas de publicité ni de traceur publicitaire.',
               ]}
             />
@@ -354,7 +443,7 @@ function FeatureSection({
   title: string;
   body: string;
   points: string[];
-  link: { href: string; label: string };
+  link?: { href: string; label: string };
   figure: React.ReactNode;
   // stacked: wide capture below the text. side-*: narrow capture beside it.
   layout?: 'stacked' | 'side-right' | 'side-left';
@@ -384,10 +473,12 @@ function FeatureSection({
           </li>
         ))}
       </ul>
-      <Link href={link.href} className="link mt-6 inline-flex items-center gap-1.5 text-[15px] font-medium">
-        {link.label}
-        <ArrowRight className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" />
-      </Link>
+      {link && (
+        <Link href={link.href} className="link mt-6 inline-flex items-center gap-1.5 text-[15px] font-medium">
+          {link.label}
+          <ArrowRight className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" />
+        </Link>
+      )}
     </>
   );
 

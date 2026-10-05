@@ -17,6 +17,10 @@ export const FAQ_ITEMS = [
     a: `À ${BENCHMARK_LABELS.length} références prédéfinies : ${BENCHMARK_LABELS.join(', ')}. Vous pouvez aussi rechercher un autre actif. La comparaison porte sur la performance hors apports, sur la même période.`,
   },
   {
+    q: 'Puis-je interroger mon patrimoine depuis Claude ou ChatGPT ?',
+    a: 'Oui, avec l’offre Pro. Depuis Paramètres → Accès API, vous connectez Claude ou ChatGPT par autorisation, ou créez un jeton personnel pour vos scripts. L’accès est en lecture seule : l’assistant lit vos comptes, positions et transactions sans pouvoir les modifier. Les réponses sont produites par l’assistant que vous connectez, qui reçoit les données nécessaires à vos questions. Chaque connexion se révoque séparément.',
+  },
+  {
     q: 'Les cours sont-ils en temps réel ?',
     a: 'Les cours sont récupérés automatiquement auprès d’un fournisseur de données de marché et gardés en cache une minute. Selon la place de cotation, ils peuvent être différés. Actions et ETF français, européens et américains sont couverts.',
   },

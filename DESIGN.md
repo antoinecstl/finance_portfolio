@@ -48,15 +48,19 @@ Déclarés dans `app/globals.css` (`:root`), avec leurs variantes sombres. Ils s
 
 | # | Section | Question du visiteur |
 |---|---|---|
-| 1 | Hero : « Vos placements réunis. Votre performance en clair. », sous-titre, « Créer un compte gratuit », lien « Voir ce que Fi-Hub calcule », rappel Free, capture du tableau de bord | Qu'est-ce que c'est, et est-ce pour moi ? |
-| 2 | Positions et PRU · Free — **empilée** : texte, puis capture bureau pleine largeur | Qu'est-ce que je gagne par rapport à mon tableur ? |
-| 3 | Performance hors apports et benchmark · Free (10 indices) — **côte à côte** : texte, puis vue mobile à droite | Est-ce que je bats vraiment le marché ? |
-| 4 | Dividendes · Pro — **côte à côte inversé** : vue mobile à gauche, texte à droite | Que rapportent mes dividendes ? |
-| 5 | Import en 3 étapes · Pro (`ImportSteps`) | Dois-je tout ressaisir ? |
-| 6 | Ce que Fi-Hub fait, et ne fait pas | Quelles limites, quelles garanties ? |
-| 7 | Tarifs : tableau comparatif Free/Pro à lignes communes, ouvert sur « Mensuel » | Combien ça coûte, qu'est-ce qui est gratuit ? |
-| 8 | FAQ (`<details>` natifs) | Objections restantes |
-| 9 | Conclusion + bouton | Passer à l'action |
+| 1 | Hero : « Vos placements réunis. Votre performance en clair. », sous-titre, « Créer un compte gratuit », lien « Voir ce que Fi-Hub calcule », rappel Free, capture de la vue d'ensemble | Qu'est-ce que c'est, et est-ce pour moi ? |
+| 2 | Patrimoine par compte · Free — **côte à côte** : texte, vue mobile des comptes à droite | Combien ai-je gagné cette année, hors versements ? |
+| 3 | Positions et PRU · Free — **empilée** : texte, puis capture bureau pleine largeur | Qu'est-ce que je gagne par rapport à mon tableur ? |
+| 4 | Cours et opérations · Free — **côte à côte inversé** : position dépliée à gauche | À quel prix suis-je entré, que m'a versé la ligne ? |
+| 5 | Performance hors apports et benchmark · Free — **côte à côte** | Est-ce que je bats vraiment le marché ? |
+| 6 | Projection du patrimoine · Free — **côte à côte inversé** | Où mène mon rythme actuel ? |
+| 7 | Dividendes · Pro — **côte à côte** | Que rapportent mes dividendes ? |
+| 8 | Import en 3 étapes · Pro (`ImportSteps`) | Dois-je tout ressaisir ? |
+| 9 | Assistants (Claude, ChatGPT, API) · Pro — **côte à côte inversé** | Puis-je interroger mes données depuis mon assistant ? |
+| 10 | Ce que Fi-Hub fait, et ne fait pas | Quelles limites, quelles garanties ? |
+| 11 | Tarifs : tableau comparatif Free/Pro à lignes communes, ouvert sur « Mensuel » | Combien ça coûte, qu'est-ce qui est gratuit ? |
+| 12 | FAQ (`<details>` natifs) | Objections restantes |
+| 13 | Conclusion + bouton | Passer à l'action |
 
 **Appels à l'action :**
 - **Principal**, libellé unique « Créer un compte gratuit ». Emplacements : navbar (« Créer un compte » sur mobile), hero, tarifs, conclusion, fin des articles SEO.
@@ -128,27 +132,37 @@ Aucune nouvelle police. **Geist** pour tout le texte, **Fraunces** pour le logot
 
 ## 8. Montrer le produit
 
-- **Source :** composants réels de l'application (`PortfolioStats`, `PortfolioHistoryChart`, `PositionPerformanceChart`, `BenchmarkComparisonChart`, `DividendsTable`), rendus localement avec un **portefeuille fictif**.
-  - Portefeuille : PEA, CTO, Livret A.
-  - Titres : CW8, SU, OR, SAN, ESE, SAP.
-  - Une ligne en perte, et un portefeuille qui **sous-performe** le CAC 40.
+- **Source :** l'application réelle, rendue en build de production avec un **portefeuille fictif** servi par un faux backend local (aucune session ni base réelle).
+  - Comptes : PEA, Compte-titres, Livret A, LDDS.
+  - Titres : CW8, SU, OR, SAN, ESE (PEA), SAP (CTO), avec versements programmés, une vente et des dividendes.
+  - Une ligne en perte, et un portefeuille qui **sous-performe** le CAC 40 depuis le 1er janvier.
 - **Aucune donnée de compte réel.** Les anciennes captures `Page_Position.png`, `Dividende_page.png` et `Benchmark_vue.png`, qui provenaient d'un compte réel, ont été supprimées de `public/`.
 - **Thème :** chaque capture existe en clair et en **sombre**, rendue dans le vrai thème sombre de l'application (pas de filtre d'inversion). `<picture>` choisit selon `prefers-color-scheme`.
 - **Variantes :** `wide`, avec la capture bureau à partir de 640 px ; `narrow`, avec la vue mobile à toutes les tailles (sections côte à côte, 380 px maximum).
-- **Fichiers :** `public/marketing/*.webp` (suffixe `-sombre` pour le thème sombre).
-  - Capture à 2x ; version bureau de 1152 px CSS, version mobile de 390 px.
-  - Recadrée sur la carte, entre 41 et 96 Ko.
-  - Déclarée dans `FIGURES` (`ProductFigure.tsx`).
+- **Fichiers :** `public/marketing/*.webp` (suffixe `-sombre` pour le thème sombre), déclarés dans `FIGURES` (`ProductFigure.tsx`).
+
+| Figure | Fichier | Contenu |
+|---|---|---|
+| `overview` | `apercu-synthese` | Vue d'ensemble : patrimoine total, performance de l'année, tuiles, évolution par compte (1A), répartition |
+| `accounts` | `comptes` | Onglet Comptes, PEA déplié (bilan depuis le 1er janvier) |
+| `positions` | `positions-pru` | Carte « Détail par position » |
+| `positionDetail` | `cours-operations` | Position SU.PA dépliée : cours et opérations, historique |
+| `benchmark` | `benchmark` | Benchmark, référence CAC 40, YTD |
+| `projection` | `projection` | Projection du patrimoine à 3 ans |
+| `dividends` | `dividendes` | Onglet Dividendes : tuiles, revenus par année, par position |
+| `api` | `acces-api` | Paramètres → Accès API, Claude connecté et un jeton personnel (mobile recadré avant « Connecter un assistant ») |
+
+- **Capture :** à 2x ; bureau dans une fenêtre de 1440 px (zone de contenu de 1136 px, barre latérale exclue), mobile à 390 px (carte de 358 px). Fenêtre très haute pour que la barre mobile fixe ne recouvre pas les captures longues.
 - **Affichage :** `<picture>` avec une source mobile, `next/image` en qualité 75, `alt` descriptif. Légende systématique « Données d'exemple, portefeuille fictif. ».
 - **Règles :**
   - figure sur toute la largeur du conteneur, jamais réduite sous environ 90 % de sa largeur CSS d'origine ;
   - pas de faux navigateur, pas de maquette d'appareil.
 - **Regénérer les captures :**
-  1. Créer une page temporaire qui rend ces composants avec des données fictives, en simulant `/api/stocks/history`.
-  2. Capturer l'élément à 2x, en 1200 px puis 390 px.
-  3. Recadrer sur la carte et exporter en WebP (qualité 84, avec `sharp`).
-  4. Supprimer la page temporaire.
-  5. Les séries fictives dépendent de la date du jour : générer le thème clair et le thème sombre **le même jour**, sinon les chiffres diffèrent.
+  1. Lancer un faux Supabase local (GoTrue `/auth/v1/user` et un sous-ensemble PostgREST : `accounts`, `transactions`, `profiles`, `subscriptions`) qui sert le portefeuille fictif.
+  2. `next build` puis `next start` avec `NEXT_PUBLIC_SUPABASE_URL` pointé vers ce faux serveur et `NEXT_PUBLIC_APP_URL=https://fi-hub.subleet.com` (URL affichées sur la page Accès API).
+  3. Avec Playwright : cookie de session `sb-<hôte>-auth-token` fictif, `bypassCSP`, et réponses simulées pour `/api/stocks/*`, `/api/fx/history`, `/api/transactions` et `/api/api-tokens`. Cours générés de façon déterministe.
+  4. Capturer chaque carte à 2x, en clair puis en sombre, le même jour (les séries dépendent de la date). Attendre la fin des animations Recharts après chaque interaction.
+  5. Exporter en WebP (qualité 84, avec `sharp`).
   6. Vider `.next/**/cache/images` avant de vérifier le rendu, car l'optimiseur d'images sert sinon d'anciennes versions.
 
 ## 9. Ton rédactionnel
@@ -159,7 +173,7 @@ Aucune nouvelle police. **Geist** pour tout le texte, **Fraunces** pour le logot
 - indiquer l'offre de chaque fonction ;
 - dire ce qui n'existe pas ;
 - aucune promesse de rendement ni de sécurité absolue ;
-- aucun fournisseur d'IA nommé sur le marketing.
+- aucun fournisseur d'IA de traitement (import) nommé sur le marketing ; Claude et ChatGPT ne sont cités que comme assistants que l'utilisateur connecte lui-même (offre Pro).
 
 **Faits dérivés du code, jamais saisis à la main :** limites Free (`PLANS`), nombre et liste d'indices (`lib/benchmarks.ts`), libellés d'essai (`MONTHLY_TRIAL_LABEL`, `YEARLY_VALUE_LABEL`).
 
