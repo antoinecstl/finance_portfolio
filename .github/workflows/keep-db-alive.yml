@@ -6,21 +6,36 @@ on:
     - cron: '0 8 */3 * *'
   workflow_dispatch: # Allow manual trigger
 
+permissions:
+  contents: read
+
 jobs:
   ping:
     name: Ping Supabase
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
-      - name: Ping Supabase REST API
+      - name: Query the database through the REST API
+        env:
+          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
         run: |
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-            "${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}/rest/v1/" \
-            -H "apikey: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" \
-            -H "Authorization: Bearer ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}")
-          echo "HTTP status: $STATUS"
-          if [ "$STATUS" -ge 200 ] && [ "$STATUS" -lt 300 ]; then
-            echo "Supabase is alive!"
-          else
-            echo "Unexpected status code: $STATUS" >&2
-            exit 1
-          fi
+          # The REST root (/rest/v1/) answered 401 to the anon key, which made
+          # this ping fail with 401. A real (empty, RLS-filtered) table read runs
+          # a Postgres query, which is what keeps the project from pausing.
+          for attempt in 1 2 3; do
+            rm -f response.txt
+            STATUS=$(curl -sS -o response.txt -w "%{http_code}" --max-time 30 \
+              "${SUPABASE_URL%/}/rest/v1/accounts?select=id&limit=1" \
+              -H "apikey: ${SUPABASE_ANON_KEY}" \
+              -H "Authorization: Bearer ${SUPABASE_ANON_KEY}") || STATUS=000
+            echo "Attempt $attempt: HTTP $STATUS"
+            if [ "$STATUS" -ge 200 ] && [ "$STATUS" -lt 300 ]; then
+              echo "Supabase is alive!"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "Supabase did not answer as expected. Last response:" >&2
+          head -c 500 response.txt >&2 2>/dev/null || true
+          exit 1
