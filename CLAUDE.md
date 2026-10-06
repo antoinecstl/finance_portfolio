@@ -65,6 +65,7 @@ Never commit secrets. Important environment variables include:
 
 - Authenticated pages render inside `components/app-shell/AppShell.tsx`, mounted in `app/(app)/layout.tsx`: fixed sidebar from `xl` (1280px), compact top bar + section tabs below.
 - Dashboard sections are client-side tabs synced with `?tab=` (`components/app-shell/navigation.ts`); use `navigateToDashboardTab` / `dashboardTabHref` rather than duplicating tab lists.
+- New users go through the onboarding tunnel (`components/Onboarding.tsx`, logic in `lib/onboarding.ts`) until `profiles.onboarded_at` is set: profile, first account, first transaction (a purchase is saved with the deposit that funded it), then the optional Pro import. `app/(app)/layout.tsx` resumes at the right step from existing accounts and transactions; `/api/account/onboard` takes `step: 'profile' | 'complete'`.
 - Wrap page content in `PageContainer` (shared max width and gutters, so edges align across pages) and start pages with `PageHeader` (`components/app-shell/PageLayout.tsx`). Do not add per-page back links or full-screen backgrounds.
 
 ## Billing and Paddle
