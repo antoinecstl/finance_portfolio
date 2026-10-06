@@ -57,7 +57,7 @@ Un import peut réunir jusqu'à **5 documents** (`MAX_IMPORT_FILES`,
   `import_job_ids` (tous les jobs du lot). Le lot est inséré en une seule
   transaction ; le RPC clôt le job principal avec le total inséré, la route
   clôt les autres jobs.
-- Chaque document compte dans la limite de 10 analyses par heure.
+- Chaque document compte dans la limite de 20 analyses par heure (4 lots de 5 documents).
 
 ## Sources et pipelines
 
@@ -117,7 +117,7 @@ a un index unique `(user_id, idempotency_key)` :
 | ----------------------- | ---------------------------------------------------- |
 | Auth                    | `supabase.auth.getUser()` sur les deux routes        |
 | Pro requis              | `hasUserFeature('import_transactions')` → 402 sinon  |
-| Rate limit              | 10 imports/heure/user (déclenche un appel LLM payant) |
+| Rate limit              | 20 analyses/heure/user, une par document (appel OCR/LLM payant) |
 | Saturation OCR          | 2 nouvelles tentatives avec backoff, puis erreur 429 explicite |
 | Taille fichier          | 10 MB max (multipart) / 200 000 chars max (texte)    |
 | Format autorisé         | CSV, XLSX, PDF, JPG, PNG, WebP → 415 sinon              |
@@ -185,7 +185,7 @@ Idem pour OCR : implémenter `OCRProvider` ([ocr.ts:17](ocr.ts#L17)).
 | 413    | `file_too_large`       | > 10 MB                                   |
 | 413    | `text_too_long`        | > 200 000 chars                           |
 | 415    | `unsupported_format`   | Extension/MIME non reconnu                |
-| 429    | `rate_limited`         | > 10 imports / heure                      |
+| 429    | `rate_limited`         | > 20 analyses / heure                     |
 | 500    | `internal_error`       | Persist `import_jobs` échoué              |
 | 502    | `extraction_failed`    | Pipeline OCR/LLM en erreur                |
 
