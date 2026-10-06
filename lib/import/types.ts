@@ -65,8 +65,13 @@ export const parseRequestSchema = z.object({
   account_id: z.string().uuid('Compte invalide'),
 });
 
+// Nombre maximum de documents analysés puis validés ensemble (un job par document).
+export const MAX_IMPORT_FILES = 5;
+
 export const commitRequestSchema = z.object({
   import_job_id: z.string().uuid(),
+  // Import de plusieurs documents : tous les jobs du lot (import_job_id compris).
+  import_job_ids: z.array(z.string().uuid()).min(1).max(MAX_IMPORT_FILES).optional(),
   account_id: z.string().uuid(),
   transactions: z.array(proposedTransactionSchema).min(1).max(5000),
 });

@@ -1,11 +1,11 @@
 const STEPS = [
   {
-    title: 'Déposez un relevé',
-    body: 'CSV, Excel, PDF, capture d’écran ou texte collé, de n’importe quel courtier. Les exports Boursorama et Trade Republic sont reconnus directement.',
+    title: 'Déposez vos relevés',
+    body: 'Jusqu’à 5 documents à la fois : CSV, Excel, PDF, captures d’écran ou texte collé, de n’importe quel courtier. Les exports Boursorama et Trade Republic sont reconnus directement.',
   },
   {
     title: 'Vérifiez les lignes proposées',
-    body: 'Fi-Hub lit le relevé et propose des transactions : type, date, titre, quantité, prix. Il signale les doublons, les tickers à confirmer et les soldes de liquidités qui deviendraient négatifs.',
+    body: 'Fi-Hub lit chaque document et réunit les transactions proposées : type, date, titre, quantité, prix. Il signale les doublons, y compris entre documents, les tickers à confirmer et les soldes de liquidités qui deviendraient négatifs.',
   },
   {
     title: 'Validez',

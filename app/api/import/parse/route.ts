@@ -41,8 +41,8 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Rate limit : 10 imports / heure / user (l'import déclenche potentiellement un appel LLM).
-  const rl = rateLimit(`import-parse:${clientKey(request, user.id)}`, 10, 60 * 60 * 1000);
+  // Rate limit : 20 analyses / heure / user, une par document (chaque analyse peut déclencher un appel OCR/LLM payant).
+  const rl = rateLimit(`import-parse:${clientKey(request, user.id)}`, 20, 60 * 60 * 1000);
   if (!rl.ok) {
     return NextResponse.json(
       { error: 'rate_limited', retryAfterMs: rl.resetMs },

@@ -39,6 +39,26 @@ Client                  /api/import/commit
                    └─────────────────────────────┘
 ```
 
+## Plusieurs documents
+
+Un import peut réunir jusqu'à **5 documents** (`MAX_IMPORT_FILES`,
+[types.ts](types.ts)), par exemple 5 relevés PDF ou captures :
+
+- Le client ([ImportWizard](../../components/ImportWizard.tsx)) appelle
+  `/api/import/parse` **une fois par document**, l'un après l'autre. Chaque
+  requête reste sous la limite de taille des fonctions, et un document
+  illisible n'empêche pas les autres d'être vérifiés. Chaque document a son
+  `import_job` (et son idempotence).
+- Les propositions sont fusionnées dans une seule vérification
+  ([multi-file.ts](multi-file.ts)) : lignes dans l'ordre de sélection,
+  remarques préfixées par le nom du document, doublons signalés aussi
+  **entre documents** du lot.
+- `/api/import/commit` reçoit `import_job_id` (job principal) et
+  `import_job_ids` (tous les jobs du lot). Le lot est inséré en une seule
+  transaction ; le RPC clôt le job principal avec le total inséré, la route
+  clôt les autres jobs.
+- Chaque document compte dans la limite de 20 analyses par heure (4 lots de 5 documents).
+
 ## Sources et pipelines
 
 L'orchestrateur ([orchestrator.ts](orchestrator.ts)) route chaque source vers
@@ -97,7 +117,7 @@ a un index unique `(user_id, idempotency_key)` :
 | ----------------------- | ---------------------------------------------------- |
 | Auth                    | `supabase.auth.getUser()` sur les deux routes        |
 | Pro requis              | `hasUserFeature('import_transactions')` → 402 sinon  |
-| Rate limit              | 10 imports/heure/user (déclenche un appel LLM payant) |
+| Rate limit              | 20 analyses/heure/user, une par document (appel OCR/LLM payant) |
 | Saturation OCR          | 2 nouvelles tentatives avec backoff, puis erreur 429 explicite |
 | Taille fichier          | 10 MB max (multipart) / 200 000 chars max (texte)    |
 | Format autorisé         | CSV, XLSX, PDF, JPG, PNG, WebP → 415 sinon              |
@@ -165,7 +185,7 @@ Idem pour OCR : implémenter `OCRProvider` ([ocr.ts:17](ocr.ts#L17)).
 | 413    | `file_too_large`       | > 10 MB                                   |
 | 413    | `text_too_long`        | > 200 000 chars                           |
 | 415    | `unsupported_format`   | Extension/MIME non reconnu                |
-| 429    | `rate_limited`         | > 10 imports / heure                      |
+| 429    | `rate_limited`         | > 20 analyses / heure                     |
 | 500    | `internal_error`       | Persist `import_jobs` échoué              |
 | 502    | `extraction_failed`    | Pipeline OCR/LLM en erreur                |
 
@@ -174,13 +194,13 @@ Idem pour OCR : implémenter `OCRProvider` ([ocr.ts:17](ocr.ts#L17)).
 | Status | `error`                              | Quand                                           |
 | ------ | ------------------------------------ | ----------------------------------------------- |
 | 400    | `invalid_rows`                       | Une ligne échoue la re-validation Zod           |
-| 400    | `account_mismatch`                   | account_id ≠ celui du job                       |
+| 400    | `account_mismatch`                   | account_id ≠ celui d'un job du lot              |
 | 400    | `asset_account_mismatch`             | Ticker incompatible (ex: action US sur PEA)     |
 | 401    | `unauthorized`                       | Pas de session                                  |
 | 402    | `pro_required` / `limit_reached`     | Pro requis ou quota free-tier dépassé           |
 | 403    | `invalid_account` /                  |                                                 |
 |        | `account_does_not_support_positions` |                                                 |
-| 404    | `job_not_found`                      | Job inexistant ou pas à l'utilisateur           |
+| 404    | `job_not_found`                      | Un job du lot inexistant ou pas à l'utilisateur |
 | 409    | `job_already_committed`              | Status ≠ previewing                             |
 | 422    | `unknown_symbols`                    | Ticker non reconnu                              |
 | 500    | `internal_error`                     | RPC en erreur (job marqué `failed`)             |
@@ -195,5 +215,6 @@ Idem pour OCR : implémenter `OCRProvider` ([ocr.ts:17](ocr.ts#L17)).
 | [`llm.ts`](llm.ts)                             | Provider LLM (OpenAI Structured Outputs)      |
 | [`ocr.ts`](ocr.ts)                             | Provider OCR (Mistral document_annotation)    |
 | [`orchestrator.ts`](orchestrator.ts)           | Routing + idempotency key                     |
+| [`multi-file.ts`](multi-file.ts)               | Sélection et fusion de plusieurs documents    |
 | [`../../app/api/import/parse/route.ts`](../../app/api/import/parse/route.ts)   | Route /parse  |
 | [`../../app/api/import/commit/route.ts`](../../app/api/import/commit/route.ts) | Route /commit |
