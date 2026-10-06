@@ -5,6 +5,12 @@ import { sendWelcome } from '@/lib/email';
 
 export const runtime = 'nodejs';
 
+// Tunnel d'onboarding en deux appels :
+// - step 'profile'  : nom, préférence email et acceptation des CGU, au début
+//   du tunnel. L'utilisateur reste dans le tunnel (onboarded_at vide) pour
+//   créer son premier compte et sa première opération.
+// - step 'complete' (défaut) : fin du tunnel, onboarded_at renseigné, l'app
+//   s'ouvre. Sans step, l'ancien appel unique reste accepté.
 export async function POST(request: Request) {
   const securityError = enforceAuthenticatedJsonMutation(request);
   if (securityError) return securityError;
@@ -19,13 +25,15 @@ export async function POST(request: Request) {
   }
 
   const body = (await request.json().catch(() => ({}))) as {
+    step?: 'profile' | 'complete';
     fullName?: string;
     marketingOptIn?: boolean;
   };
+  const step = body.step === 'profile' ? 'profile' : 'complete';
 
   const { data: current, error: currentError } = await supabase
     .from('profiles')
-    .select('onboarded_at')
+    .select('onboarded_at, terms_accepted_at')
     .eq('id', user.id)
     .maybeSingle();
 
@@ -34,30 +42,28 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'internal_error' }, { status: 500 });
   }
 
-  const alreadyDone = Boolean(current?.onboarded_at);
+  // Le mail de bienvenue part une seule fois, au premier enregistrement.
+  const firstVisit = !current?.onboarded_at && !current?.terms_accepted_at;
   const now = new Date().toISOString();
 
-  const { error } = await supabase
-    .from('profiles')
-    .upsert(
-      {
-        id: user.id,
-        full_name: body.fullName?.trim() || null,
-        marketing_opt_in: Boolean(body.marketingOptIn),
-        onboarded_at: now,
-        terms_accepted_at: now,
-      },
-      { onConflict: 'id' }
-    );
+  const update: Record<string, unknown> = {
+    id: user.id,
+    terms_accepted_at: current?.terms_accepted_at ?? now,
+  };
+  if (step === 'complete') update.onboarded_at = current?.onboarded_at ?? now;
+  if (step === 'profile' || body.fullName !== undefined) update.full_name = body.fullName?.trim() || null;
+  if (step === 'profile' || body.marketingOptIn !== undefined) update.marketing_opt_in = Boolean(body.marketingOptIn);
+
+  const { error } = await supabase.from('profiles').upsert(update, { onConflict: 'id' });
 
   if (error) {
     console.error('[api/account/onboard] upsert failed', error);
     return NextResponse.json({ error: 'internal_error' }, { status: 500 });
   }
 
-  if (!alreadyDone && user.email) {
+  if (firstVisit && user.email) {
     await sendWelcome(user.email);
   }
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, step });
 }
