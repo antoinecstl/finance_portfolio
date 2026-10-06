@@ -39,15 +39,18 @@ export async function POST(request: Request) {
     return NextResponse.json(formatZodError(parsed.error), { status: 400 });
   }
   const { import_job_id, account_id, transactions } = parsed.data;
+  // Un lot multi-documents porte un job par document ; import_job_id reste le
+  // job principal (celui que le RPC marque committed avec le total inséré).
+  const jobIds = Array.from(new Set([import_job_id, ...(parsed.data.import_job_ids ?? [])]));
 
-  // Vérifie le job ET son appartenance. Status doit être previewing pour committer.
-  const { data: job } = await supabase
+  // Vérifie les jobs ET leur appartenance. Status doit être previewing pour committer.
+  const { data: jobs } = await supabase
     .from('import_jobs')
     .select('id, status, account_id, rows_imported, rows_total')
-    .eq('id', import_job_id)
-    .eq('user_id', user.id)
-    .maybeSingle();
-  if (!job) {
+    .in('id', jobIds)
+    .eq('user_id', user.id);
+  const job = jobs?.find((j) => j.id === import_job_id);
+  if (!job || !jobs || jobs.length !== jobIds.length) {
     return NextResponse.json({ error: 'job_not_found' }, { status: 404 });
   }
   if (job.status === 'committed') {
@@ -57,13 +60,13 @@ export async function POST(request: Request) {
       already_committed: true,
     });
   }
-  if (job.status !== 'previewing') {
+  if (jobs.some((j) => j.status !== 'previewing')) {
     return NextResponse.json(
-      { error: 'job_already_committed', status: job.status },
+      { error: 'job_already_committed', status: jobs.find((j) => j.status !== 'previewing')?.status },
       { status: 409 }
     );
   }
-  if (job.account_id !== account_id) {
+  if (jobs.some((j) => j.account_id !== account_id)) {
     return NextResponse.json({ error: 'account_mismatch' }, { status: 400 });
   }
 
@@ -272,13 +275,25 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
     }
     console.error('[api/import/commit] rpc failed', error);
-    // Marque le job en échec pour permettre une nouvelle tentative.
+    // Marque les jobs en échec pour permettre une nouvelle tentative.
     await supabase
       .from('import_jobs')
       .update({ status: 'failed' })
-      .eq('id', import_job_id)
+      .in('id', jobIds)
       .eq('user_id', user.id);
     return NextResponse.json({ error: 'internal_error' }, { status: 500 });
+  }
+
+  // Le RPC a clos le job principal ; les autres documents du lot sont clos
+  // ici (leurs lignes sont comptées dans le job principal).
+  const otherJobIds = jobIds.filter((id) => id !== import_job_id);
+  if (otherJobIds.length > 0) {
+    const { error: closeError } = await supabase
+      .from('import_jobs')
+      .update({ status: 'committed', rows_imported: 0 })
+      .in('id', otherJobIds)
+      .eq('user_id', user.id);
+    if (closeError) console.error('[api/import/commit] closing batch jobs failed', closeError);
   }
 
   return NextResponse.json(data ?? { inserted: validated.length, total: validated.length });

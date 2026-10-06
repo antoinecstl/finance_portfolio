@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { PageContainer, PageHeader } from './app-shell/PageLayout';
-import { Upload, FileText, ClipboardPaste, Loader2, CheckCircle2, AlertTriangle, Trash2, Info, Search, Copy } from 'lucide-react';
+import { Upload, FileText, ClipboardPaste, Loader2, CheckCircle2, AlertTriangle, Trash2, Info, Search, Copy, X } from 'lucide-react';
 import { useAccounts, useStockSearch, useTransactions } from '@/lib/hooks';
 import type { ProposedTransaction, ImportNote } from '@/lib/import/types';
 import type { Transaction, TransactionType } from '@/lib/types';
@@ -11,6 +11,14 @@ import { accountSupportsPositions, accountTypeAllowsAsset, assetAccountMismatchM
 import { getApiErrorMessage } from '@/lib/api-errors';
 import { findDuplicateTransaction } from '@/lib/transaction-duplicates';
 import { buildImportCashPreview } from '@/lib/import/cash-preview';
+import {
+  MAX_IMPORT_FILES,
+  addImportFiles,
+  describeRejectedFiles,
+  findInBatchDuplicates,
+  mergeParsedDocuments,
+  type ParsedImportDocument,
+} from '@/lib/import/multi-file';
 
 type Step = 'upload' | 'preview' | 'done';
 
@@ -41,6 +49,21 @@ function formatSignedCurrency(amount: number, currency: string): string {
 }
 
 type TickerStatus = 'valid' | 'invalid' | 'pending' | 'unknown' | 'mismatch';
+
+// Message d'erreur d'un appel à /api/import/parse. `stop` : inutile d'analyser
+// les documents suivants (offre Pro requise, limite d'imports atteinte).
+function parseErrorMessage(status: number, data: { error?: string; message?: string }): { message: string; stop: boolean } {
+  if (status === 402) return { message: data.message ?? 'L\'import de transactions est réservé à l’offre Pro.', stop: true };
+  if (status === 429) {
+    return data.error === 'ocr_rate_limited'
+      ? { message: data.message ?? 'Le service d\'analyse est momentanément saturé. Réessayez dans quelques instants.', stop: true }
+      : { message: 'Trop d\'imports récents. Réessayez dans une heure.', stop: true };
+  }
+  if (status === 413) return { message: 'Fichier trop volumineux (max 10 MB).', stop: false };
+  if (status === 415) return { message: 'Format non supporté. Formats acceptés : CSV, XLSX, PDF, JPG, PNG, WebP ou texte collé.', stop: false };
+  if (status === 409) return { message: data.message ?? 'Ce fichier a déjà été importé.', stop: false };
+  return { message: getApiErrorMessage(data, 'Erreur lors de l\'analyse.', status), stop: false };
+}
 
 function ImportSymbolCell({
   value,
@@ -180,13 +203,22 @@ export function ImportWizard() {
   // de charger l'historique d'autres comptes.
   const { transactions: existingTxs, loading: existingTxsLoading } = useTransactions(accountId || undefined);
   const [mode, setMode] = useState<'file' | 'text'>('file');
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
+  const [fileNotice, setFileNotice] = useState<string | null>(null);
+  const [dragActive, setDragActive] = useState(false);
+  // Analyse en cours : document n sur total.
+  const [progress, setProgress] = useState<{ current: number; total: number; name: string } | null>(null);
   const [pastedText, setPastedText] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [jobId, setJobId] = useState<string | null>(null);
+  // Un job d'import par document analysé ; le premier porte le lot au commit.
+  const [jobIds, setJobIds] = useState<string[]>([]);
   const [rows, setRows] = useState<ProposedTransaction[]>([]);
+  // Document d'origine de chaque ligne (affiché quand plusieurs documents).
+  const [rowSources, setRowSources] = useState<string[]>([]);
+  // Documents qui n'ont pas pu être analysés alors que d'autres l'ont été.
+  const [failedDocuments, setFailedDocuments] = useState<Array<{ name: string; message: string }>>([]);
   const [notes, setNotes] = useState<ImportNote[]>([]);
   const [committedSummary, setCommittedSummary] = useState<{ inserted: number; total: number } | null>(null);
   // Statut de vérification par ticker (uppercase). 'pending' = vérification
@@ -291,14 +323,45 @@ export function ImportWizard() {
     return () => clearTimeout(handle);
   }, [rows, tickerStatus, verifyTickers]);
 
+  function addFiles(picked: FileList | null) {
+    if (!picked || picked.length === 0) return;
+    const { files: next, rejected } = addImportFiles(files, Array.from(picked));
+    setFiles(next);
+    setFileNotice(describeRejectedFiles(rejected));
+    setError(null);
+  }
+
+  function removeFile(index: number) {
+    setFiles((prev) => prev.filter((_, i) => i !== index));
+    setFileNotice(null);
+  }
+
+  function showPreview(documents: ParsedImportDocument[], ids: string[]) {
+    const merged = mergeParsedDocuments(documents);
+    setJobIds(ids);
+    setRows(merged.rows);
+    setRowSources(merged.rowSources);
+    setNotes(merged.notes);
+    setTickerStatus(new Map());
+    setStep('preview');
+    // Vérification immédiate (sans attendre le debounce de l'effet) des
+    // tickers extraits par le LLM pour BUY/SELL/DIVIDEND.
+    const extracted = merged.rows
+      .filter((r) => r.type === 'BUY' || r.type === 'SELL' || r.type === 'DIVIDEND')
+      .map((r) => r.stock_symbol)
+      .filter((s): s is string => Boolean(s));
+    if (extracted.length > 0) verifyTickers(extracted);
+  }
+
   async function handleParse() {
     setError(null);
+    setFailedDocuments([]);
     if (!accountId) {
       setError('Sélectionnez un compte');
       return;
     }
-    if (mode === 'file' && !file) {
-      setError('Sélectionnez un fichier');
+    if (mode === 'file' && files.length === 0) {
+      setError('Sélectionnez au moins un fichier');
       return;
     }
     if (mode === 'text' && pastedText.trim().length < 20) {
@@ -308,70 +371,70 @@ export function ImportWizard() {
 
     setSubmitting(true);
     try {
-      let res: Response;
-      if (mode === 'file' && file) {
-        const fd = new FormData();
-        fd.append('account_id', accountId);
-        fd.append('file', file);
-        res = await fetch('/api/import/parse', { method: 'POST', body: fd });
-      } else {
-        res = await fetch('/api/import/parse', {
+      if (mode === 'text') {
+        const res = await fetch('/api/import/parse', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ account_id: accountId, text: pastedText }),
         });
-      }
-
-      if (res.status === 402) {
         const data = await res.json().catch(() => ({}));
-        setError(data.message ?? 'L\'import de transactions est réservé à l’offre Pro.');
+        if (!res.ok) {
+          setError(parseErrorMessage(res.status, data).message);
+          return;
+        }
+        showPreview([{ filename: 'Texte collé', transactions: data.transactions ?? [], notes: data.notes ?? [] }], [data.import_job_id]);
         return;
       }
-      if (res.status === 429) {
+
+      // Un appel par document : chaque requête reste sous la limite de taille
+      // des fonctions, et un document illisible n'empêche pas les autres.
+      const documents: ParsedImportDocument[] = [];
+      const ids: string[] = [];
+      const failures: Array<{ name: string; message: string }> = [];
+      let stopMessage: string | null = null;
+      for (let i = 0; i < files.length; i++) {
+        const current = files[i];
+        setProgress({ current: i + 1, total: files.length, name: current.name });
+        const fd = new FormData();
+        fd.append('account_id', accountId);
+        fd.append('file', current);
+        let res: Response;
+        try {
+          res = await fetch('/api/import/parse', { method: 'POST', body: fd });
+        } catch (err) {
+          failures.push({ name: current.name, message: err instanceof Error ? err.message : 'Erreur réseau' });
+          continue;
+        }
         const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          const { message, stop } = parseErrorMessage(res.status, data);
+          failures.push({ name: current.name, message });
+          if (stop) {
+            stopMessage = message;
+            files.slice(i + 1).forEach((rest) => failures.push({ name: rest.name, message: 'Non analysé.' }));
+            break;
+          }
+          continue;
+        }
+        // Le même job peut revenir si un document identique a été choisi deux fois.
+        if (ids.includes(data.import_job_id)) continue;
+        ids.push(data.import_job_id);
+        documents.push({ filename: current.name, transactions: data.transactions ?? [], notes: data.notes ?? [] });
+      }
+
+      if (documents.length === 0) {
         setError(
-          data.error === 'ocr_rate_limited'
-            ? (data.message ?? 'Le service d\'analyse est momentanément saturé. Réessayez dans quelques instants.')
-            : 'Trop d\'imports récents. Réessayez dans une heure.'
+          stopMessage
+            ?? (failures.length === 1 ? failures[0].message : failures.map((f) => `${f.name} : ${f.message}`).join(' · '))
         );
         return;
       }
-      if (res.status === 413) {
-        setError('Fichier trop volumineux (max 10 MB).');
-        return;
-      }
-      if (res.status === 415) {
-        setError('Format non supporté. Formats acceptés : CSV, XLSX, PDF, JPG, PNG, WebP ou texte collé.');
-        return;
-      }
-      if (res.status === 409) {
-        const data = await res.json().catch(() => ({}));
-        setError(data.message ?? 'Ce fichier a déjà été importé.');
-        return;
-      }
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setError(getApiErrorMessage(data, 'Erreur lors de l\'analyse.', res.status));
-        return;
-      }
-
-      const data = await res.json();
-      setJobId(data.import_job_id);
-      const proposed: ProposedTransaction[] = data.transactions ?? [];
-      setRows(proposed);
-      setNotes(data.notes ?? []);
-      setTickerStatus(new Map());
-      setStep('preview');
-      // Vérification immédiate (sans attendre le debounce de l'effet) des
-      // tickers extraits par le LLM pour BUY/SELL/DIVIDEND.
-      const extracted = proposed
-        .filter((r) => r.type === 'BUY' || r.type === 'SELL' || r.type === 'DIVIDEND')
-        .map((r) => r.stock_symbol)
-        .filter((s): s is string => Boolean(s));
-      if (extracted.length > 0) verifyTickers(extracted);
+      setFailedDocuments(failures);
+      showPreview(documents, ids);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur réseau');
     } finally {
+      setProgress(null);
       setSubmitting(false);
     }
   }
@@ -381,7 +444,16 @@ export function ImportWizard() {
   }
   function removeRow(idx: number) {
     setRows((prev) => prev.filter((_, i) => i !== idx));
+    setRowSources((prev) => prev.filter((_, i) => i !== idx));
   }
+
+  function resetImport() {
+    setStep('upload');
+    setRows([]); setRowSources([]); setNotes([]); setJobIds([]);
+    setFailedDocuments([]); setError(null);
+  }
+
+  const multipleDocuments = new Set(rowSources).size > 1;
 
   // Doublons potentiels : pour chaque ligne du preview, on cherche une tx
   // existante du même compte qui correspond (même date, même type, même
@@ -412,6 +484,14 @@ export function ImportWizard() {
     });
     return map;
   }, [rows, existingTxs, accountId, selectedAccount?.currency]);
+
+  // Lignes présentes deux fois dans le lot (relevés qui se chevauchent, même
+  // capture envoyée deux fois…) : avertissement, comme les doublons existants.
+  const batchDuplicatesByRow = useMemo(
+    () => (accountId ? findInBatchDuplicates(rows, accountId, selectedAccount?.currency ?? 'EUR') : new Map<number, number>()),
+    [rows, accountId, selectedAccount?.currency]
+  );
+  const duplicateCount = new Set([...duplicatesByRow.keys(), ...batchDuplicatesByRow.keys()]).size;
 
   // Validation locale rapide pour griser le bouton commit s'il y a des lignes invalides.
   // Inclut la vérification du ticker : BUY/SELL/DIVIDEND avec un
@@ -471,7 +551,7 @@ export function ImportWizard() {
   async function handleCommit() {
     if (submitting) return;
     setError(null);
-    if (!jobId) return;
+    if (jobIds.length === 0) return;
     if (invalidRows.length > 0) {
       setError(`${invalidRows.length} ligne(s) invalides. Corrigez ou supprimez avant de continuer.`);
       return;
@@ -482,7 +562,8 @@ export function ImportWizard() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          import_job_id: jobId,
+          import_job_id: jobIds[0],
+          import_job_ids: jobIds,
           account_id: accountId,
           transactions: rows,
         }),
@@ -514,7 +595,7 @@ export function ImportWizard() {
         <div className="mx-auto max-w-5xl">
           <PageHeader
             title="Importer des transactions"
-            description="CSV, Excel, PDF, photo ou capture d’écran de relevé broker, ou texte collé. Une IA extrait les transactions ; vous validez avant import."
+            description="Jusqu’à 5 documents à la fois : CSV, Excel, PDF, photos ou captures d’écran de relevés, ou texte collé. Une IA extrait les transactions ; vous validez avant import."
           />
 
           {step === 'upload' && (
@@ -579,19 +660,70 @@ export function ImportWizard() {
                 </div>
 
                 {mode === 'file' && (
-                  <label className="flex flex-col items-center justify-center gap-2 sm:gap-3 px-4 py-8 sm:py-12 lg:py-16 border-2 border-dashed border-zinc-300 dark:border-zinc-700 rounded-lg sm:rounded-xl cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors">
-                    <Upload className="h-6 w-6 sm:h-8 sm:w-8 lg:h-10 lg:w-10 text-zinc-400" />
-                    <span className="text-sm sm:text-base text-zinc-600 dark:text-zinc-400 text-center px-2">
-                      {file ? file.name : 'Cliquez pour sélectionner un fichier'}
-                    </span>
-                    <span className="text-xs sm:text-sm text-zinc-400">CSV, XLSX, PDF, JPG, PNG, WebP — max 10 MB</span>
-                    <input
-                      type="file"
-                      accept=".csv,.xlsx,.xls,.pdf,.jpg,.jpeg,.png,.webp,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/pdf,image/jpeg,image/png,image/webp"
-                      onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                      className="hidden"
-                    />
-                  </label>
+                  <div className="space-y-3">
+                    <label
+                      onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
+                      onDragLeave={() => setDragActive(false)}
+                      onDrop={(e) => { e.preventDefault(); setDragActive(false); addFiles(e.dataTransfer.files); }}
+                      className={`flex flex-col items-center justify-center gap-2 sm:gap-3 px-4 py-8 sm:py-12 lg:py-16 border-2 border-dashed rounded-lg sm:rounded-xl transition-colors ${
+                        files.length >= MAX_IMPORT_FILES
+                          ? 'border-zinc-200 dark:border-zinc-800 opacity-60 cursor-not-allowed'
+                          : dragActive
+                            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 cursor-pointer'
+                            : 'border-zinc-300 dark:border-zinc-700 cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800/50'
+                      }`}
+                    >
+                      <Upload className="h-6 w-6 sm:h-8 sm:w-8 lg:h-10 lg:w-10 text-zinc-400" />
+                      <span className="text-sm sm:text-base text-zinc-600 dark:text-zinc-400 text-center px-2">
+                        {files.length === 0
+                          ? 'Cliquez ou déposez jusqu’à 5 documents'
+                          : files.length >= MAX_IMPORT_FILES
+                            ? `${MAX_IMPORT_FILES} documents sélectionnés (maximum)`
+                            : 'Ajouter d’autres documents'}
+                      </span>
+                      <span className="text-xs sm:text-sm text-zinc-400 text-center">
+                        CSV, XLSX, PDF, JPG, PNG, WebP — 10 MB max par document, {MAX_IMPORT_FILES} documents max
+                      </span>
+                      <input
+                        type="file"
+                        multiple
+                        disabled={files.length >= MAX_IMPORT_FILES}
+                        accept=".csv,.xlsx,.xls,.pdf,.jpg,.jpeg,.png,.webp,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/pdf,image/jpeg,image/png,image/webp"
+                        onChange={(e) => { addFiles(e.target.files); e.target.value = ''; }}
+                        className="hidden"
+                      />
+                    </label>
+
+                    {files.length > 0 && (
+                      <ul className="divide-y divide-zinc-100 dark:divide-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-800">
+                        {files.map((f, i) => (
+                          <li key={`${f.name}-${f.size}-${f.lastModified}`} className="flex items-center gap-3 px-3 py-2 text-sm">
+                            <FileText className="h-4 w-4 shrink-0 text-zinc-400" />
+                            <span className="min-w-0 flex-1 truncate text-zinc-800 dark:text-zinc-200">{f.name}</span>
+                            <span className="shrink-0 text-xs tabular-nums text-zinc-400">
+                              {f.size >= 1024 * 1024 ? `${(f.size / 1024 / 1024).toFixed(1).replace('.', ',')} MB` : `${Math.max(1, Math.round(f.size / 1024))} KB`}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => removeFile(i)}
+                              disabled={submitting}
+                              aria-label={`Retirer ${f.name}`}
+                              className="shrink-0 rounded p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 disabled:opacity-40 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+
+                    {fileNotice && (
+                      <p className="text-xs sm:text-sm text-amber-700 dark:text-amber-400 inline-flex items-start gap-1.5">
+                        <Info className="h-3.5 w-3.5 sm:h-4 sm:w-4 mt-0.5 shrink-0" />
+                        <span>Non ajouté — {fileNotice}</span>
+                      </p>
+                    )}
+                  </div>
                 )}
 
                 {mode === 'text' && (
@@ -617,7 +749,13 @@ export function ImportWizard() {
                 className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 sm:py-3 text-sm sm:text-base font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
               >
                 {submitting ? <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" /> : <Upload className="h-4 w-4 sm:h-5 sm:w-5" />}
-                {submitting ? 'Analyse en cours…' : 'Analyser'}
+                {submitting
+                  ? progress && progress.total > 1
+                    ? `Analyse du document ${progress.current} sur ${progress.total}…`
+                    : 'Analyse en cours…'
+                  : mode === 'file' && files.length > 1
+                    ? `Analyser les ${files.length} documents`
+                    : 'Analyser'}
               </button>
             </div>
           )}
@@ -630,21 +768,40 @@ export function ImportWizard() {
                     <div className="text-sm sm:text-base font-medium text-zinc-900 dark:text-zinc-100">
                       {rows.length} transaction(s) extraite(s)
                     </div>
-                    {duplicatesByRow.size > 0 && (
+                    {jobIds.length > 1 && (
+                      <div className="mt-0.5 text-xs sm:text-sm text-zinc-500 dark:text-zinc-400">
+                        depuis {jobIds.length} documents
+                      </div>
+                    )}
+                    {duplicateCount > 0 && (
                       <div className="mt-1.5 inline-flex items-center gap-1 text-xs sm:text-sm text-amber-700 dark:text-amber-400">
                         <Copy className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                        {duplicatesByRow.size} doublon(s) potentiel(s) détecté(s)
+                        {duplicateCount} doublon(s) potentiel(s) détecté(s)
                       </div>
                     )}
                   </div>
                   <button
-                    onClick={() => { setStep('upload'); setRows([]); setNotes([]); setJobId(null); }}
+                    onClick={resetImport}
                     className="text-xs sm:text-sm text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
                   >
                     Recommencer
                   </button>
                 </div>
               </div>
+
+              {failedDocuments.length > 0 && (
+                <div role="alert" className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-3 sm:p-4 text-sm text-red-800 dark:text-red-200">
+                  <div className="font-medium mb-1 sm:mb-1.5 inline-flex items-center gap-1.5 sm:text-base">
+                    <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5" />
+                    {failedDocuments.length} document(s) non analysé(s), absents de la vérification
+                  </div>
+                  <ul className="list-disc list-inside space-y-0.5 text-xs sm:text-sm">
+                    {failedDocuments.map((f) => (
+                      <li key={f.name}><span className="font-medium">{f.name}</span> : {f.message}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
               {notes.length > 0 && (
                 <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-3 sm:p-4 text-sm text-amber-800 dark:text-amber-200">
@@ -767,9 +924,10 @@ export function ImportWizard() {
                         const isConversion = r.type === 'CONVERSION';
                         const rowCurrency = (r.currency ?? selectedAccount?.currency ?? 'EUR').toUpperCase();
                         const duplicate = duplicatesByRow.get(idx);
+                        const batchDuplicateOf = batchDuplicatesByRow.get(idx);
                         const rowBg = invalid
                           ? 'bg-red-50/50 dark:bg-red-900/10'
-                          : duplicate
+                          : duplicate || batchDuplicateOf !== undefined
                             ? 'bg-amber-50/50 dark:bg-amber-900/10'
                             : '';
                         return (
@@ -788,6 +946,23 @@ export function ImportWizard() {
                                 >
                                   <Copy className="h-2.5 w-2.5 sm:h-3 sm:w-3 mt-0.5 shrink-0" />
                                   Doublon possible
+                                </p>
+                              )}
+                              {!duplicate && batchDuplicateOf !== undefined && (
+                                <p
+                                  className="mt-1 max-w-[8rem] sm:max-w-[9rem] text-[10px] sm:text-[11px] text-amber-700 dark:text-amber-400 inline-flex items-start gap-1"
+                                  title={`Identique à la ligne ${batchDuplicateOf + 1}${rowSources[batchDuplicateOf] ? ` (${rowSources[batchDuplicateOf]})` : ''}`}
+                                >
+                                  <Copy className="h-2.5 w-2.5 sm:h-3 sm:w-3 mt-0.5 shrink-0" />
+                                  Déjà ligne {batchDuplicateOf + 1}
+                                </p>
+                              )}
+                              {multipleDocuments && rowSources[idx] && (
+                                <p
+                                  className="mt-1 max-w-[8rem] sm:max-w-[9rem] truncate text-[10px] sm:text-[11px] text-zinc-500 dark:text-zinc-400"
+                                  title={rowSources[idx]}
+                                >
+                                  {rowSources[idx]}
                                 </p>
                               )}
                             </td>
@@ -977,13 +1152,13 @@ export function ImportWizard() {
                 </Link>
                 <button
                   onClick={() => {
-                    setStep('upload');
-                    setRows([]); setNotes([]); setFile(null); setPastedText('');
-                    setJobId(null); setCommittedSummary(null);
+                    resetImport();
+                    setFiles([]); setFileNotice(null); setPastedText('');
+                    setCommittedSummary(null);
                   }}
                   className="px-4 sm:px-5 py-2 sm:py-2.5 text-sm sm:text-base border border-zinc-300 dark:border-zinc-700 rounded-lg text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800"
                 >
-                  Importer un autre fichier
+                  Importer d’autres documents
                 </button>
               </div>
             </div>
