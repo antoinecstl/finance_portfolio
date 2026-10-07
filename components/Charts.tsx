@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { 
   Cell, 
   ResponsiveContainer, 
@@ -478,7 +479,12 @@ function PositionInlineHistoryChart({
           <LineChartIcon className="h-4 w-4 text-blue-600" />
           <div>
             <h4 className="font-semibold text-sm text-zinc-900 dark:text-zinc-100">Cours et opérations</h4>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400">{displaySymbol} · marqueurs alignés sur la cotation disponible</p>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+              {displaySymbol} · marqueurs alignés sur la cotation disponible ·{' '}
+              <Link href={`/marches/${encodeURIComponent(marketSymbol)}`} className="underline underline-offset-2 hover:text-zinc-900 dark:hover:text-zinc-100">
+                Voir la fiche
+              </Link>
+            </p>
           </div>
         </div>
         <div className="flex flex-wrap gap-1">

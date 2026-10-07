@@ -1,4 +1,13 @@
 import { StockQuote } from './types';
+import { parseChartResponse, type ParsedChart } from './market/chart-data';
+import {
+  fundamentalsSeriesTypes,
+  parseQuoteSummary,
+  parseTimeseriesResponse,
+  type QuoteSummaryData,
+  type SeriesMap,
+} from './market/fundamentals';
+import { parseProviderNews, type NewsItem } from './market/news';
 
 const MARKET_DATA_TIMEOUT_MS = 5_000;
 const MARKET_DATA_HEADERS = {
@@ -10,15 +19,19 @@ const MARKET_DATA_PROVIDER = 'ya' + 'hoo';
 const MARKET_DATA_DOMAIN = `finance.${MARKET_DATA_PROVIDER}.com`;
 const MARKET_DATA_CHART_URL = `https://query1.${MARKET_DATA_DOMAIN}/v8/finance/chart`;
 const MARKET_DATA_SEARCH_URL = `https://query2.${MARKET_DATA_DOMAIN}/v1/finance/search`;
+const MARKET_DATA_TIMESERIES_URL = `https://query1.${MARKET_DATA_DOMAIN}/ws/fundamentals-timeseries/v1/finance/timeseries`;
+const MARKET_DATA_SUMMARY_URL = `https://query2.${MARKET_DATA_DOMAIN}/v10/finance/quoteSummary`;
+const MARKET_DATA_CRUMB_URL = `https://query1.${MARKET_DATA_DOMAIN}/v1/test/getcrumb`;
+const MARKET_DATA_COOKIE_URL = `https://fc.${MARKET_DATA_PROVIDER}.com`;
 
-async function fetchWithTimeout(url: string, ms = MARKET_DATA_TIMEOUT_MS): Promise<Response> {
+async function fetchWithTimeout(url: string, ms = MARKET_DATA_TIMEOUT_MS, revalidate = 60): Promise<Response> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), ms);
   try {
     return await fetch(url, {
       headers: MARKET_DATA_HEADERS,
       signal: controller.signal,
-      next: { revalidate: 60 },
+      next: { revalidate },
     });
   } finally {
     clearTimeout(timer);
@@ -113,10 +126,48 @@ export async function getStockQuote(symbol: string): Promise<StockQuote | null> 
   return quotes[0] || null;
 }
 
+export type MarketChartResult =
+  | { status: 'ok'; chart: ParsedChart }
+  | { status: 'not_found' }
+  | { status: 'error' };
+
+/**
+ * Historique complet pour l'explorateur de marchés : OHLC, volume, métadonnées
+ * de cotation et, sur demande, dividendes et splits. `not_found` distingue un
+ * symbole inconnu d'une panne du fournisseur.
+ */
+export async function getMarketChart(
+  symbol: string,
+  options: { range: string; interval: string; events?: boolean; revalidate?: number }
+): Promise<MarketChartResult> {
+  const params = new URLSearchParams({ range: options.range, interval: options.interval, includePrePost: 'false' });
+  if (options.events) params.set('events', 'div,split');
+  try {
+    const response = await fetchWithTimeout(
+      `${MARKET_DATA_CHART_URL}/${encodeURIComponent(symbol)}?${params.toString()}`,
+      10_000,
+      options.revalidate ?? 60
+    );
+    if (response.status === 404) return { status: 'not_found' };
+    if (!response.ok) {
+      console.error(`Market chart error for ${symbol}: ${response.status}`);
+      return { status: 'error' };
+    }
+    const chart = parseChartResponse(await response.json(), symbol);
+    return chart ? { status: 'ok', chart } : { status: 'not_found' };
+  } catch (error) {
+    console.error(`Error fetching market chart for ${symbol}:`, error);
+    return { status: 'error' };
+  }
+}
+
 /**
  * Recherche d'actions par nom ou symbole
  */
-export async function searchStocks(query: string): Promise<Array<{ symbol: string; name: string; exchange: string }>> {
+export async function searchStocks(
+  query: string,
+  options: { includeIndices?: boolean } = {}
+): Promise<Array<{ symbol: string; name: string; exchange: string }>> {
   if (!query || query.length < 2) return [];
 
   try {
@@ -134,6 +185,7 @@ export async function searchStocks(query: string): Promise<Array<{ symbol: strin
     return (data.quotes || [])
       .filter((q: { quoteType?: string }) =>
         q.quoteType === 'EQUITY' || q.quoteType === 'ETF' || q.quoteType === 'CRYPTOCURRENCY'
+        || (options.includeIndices && q.quoteType === 'INDEX')
       )
       .map((q: { symbol: string; shortname?: string; longname?: string; exchange?: string; quoteType?: string }) => ({
         symbol: q.symbol,
@@ -332,4 +384,119 @@ export function findClosestQuote(
 
   // Si aucune date avant, retourner la première
   return historicalQuotes[0];
+}
+
+// ── Fondamentaux et actualités de l'explorateur de marchés ──────────────────
+
+/**
+ * Comptes annuels, 12 mois glissants et ratios publiés, par l'endpoint de
+ * séries temporelles (sans jeton de session). Mis en cache 6 h.
+ */
+export async function getFundamentalsSeries(symbol: string): Promise<SeriesMap | null> {
+  const now = Math.floor(Date.now() / 1000);
+  const params = new URLSearchParams({
+    symbol,
+    type: fundamentalsSeriesTypes().join(','),
+    period1: String(now - 7 * 365 * 86_400),
+    period2: String(now + 86_400),
+  });
+  try {
+    const response = await fetchWithTimeout(
+      `${MARKET_DATA_TIMESERIES_URL}/${encodeURIComponent(symbol)}?${params.toString()}`,
+      10_000,
+      6 * 3600
+    );
+    if (!response.ok) {
+      console.error(`Fundamentals error for ${symbol}: ${response.status}`);
+      return null;
+    }
+    return parseTimeseriesResponse(await response.json());
+  } catch (error) {
+    console.error(`Error fetching fundamentals for ${symbol}:`, error);
+    return null;
+  }
+}
+
+// Le module « résumé » exige un cookie de session et un jeton associé. Ils sont
+// gardés 30 min en mémoire ; après un échec, on attend 10 min avant de réessayer
+// pour ne pas solliciter le fournisseur à chaque fiche ouverte.
+let providerSession: { cookie: string; crumb: string; expires: number } | null = null;
+let providerSessionRetryAt = 0;
+
+async function getProviderSession(force = false): Promise<{ cookie: string; crumb: string } | null> {
+  if (!force && providerSession && providerSession.expires > Date.now()) return providerSession;
+  if (!force && Date.now() < providerSessionRetryAt) return null;
+  providerSession = null;
+  try {
+    const first = await fetch(MARKET_DATA_COOKIE_URL, {
+      headers: { 'User-Agent': MARKET_DATA_HEADERS['User-Agent'] },
+      redirect: 'manual',
+      cache: 'no-store',
+      signal: AbortSignal.timeout(MARKET_DATA_TIMEOUT_MS),
+    });
+    const cookie = first.headers.getSetCookie().map((c) => c.split(';')[0]).filter(Boolean).join('; ');
+    if (!cookie) throw new Error('no session cookie');
+    const crumbResponse = await fetch(MARKET_DATA_CRUMB_URL, {
+      headers: { ...MARKET_DATA_HEADERS, Accept: 'text/plain', Cookie: cookie },
+      cache: 'no-store',
+      signal: AbortSignal.timeout(MARKET_DATA_TIMEOUT_MS),
+    });
+    const crumb = (await crumbResponse.text()).trim();
+    if (!crumbResponse.ok || !crumb || crumb.length > 64 || /[\s<{]/.test(crumb)) throw new Error(`crumb ${crumbResponse.status}`);
+    providerSession = { cookie, crumb, expires: Date.now() + 30 * 60_000 };
+    return providerSession;
+  } catch (error) {
+    console.warn('Market data session unavailable:', error);
+    providerSessionRetryAt = Date.now() + 10 * 60_000;
+    return null;
+  }
+}
+
+const SUMMARY_MODULES = ['assetProfile', 'summaryDetail', 'defaultKeyStatistics', 'financialData', 'calendarEvents', 'earningsTrend'];
+const summaryCache = new Map<string, { data: QuoteSummaryData | null; expires: number }>();
+
+/**
+ * Profil, consensus des analystes et statistiques de marché. Facultatif : la
+ * fiche reste complète sans (null), les ratios étant calculés par Fi-Hub.
+ */
+export async function getQuoteSummary(symbol: string): Promise<QuoteSummaryData | null> {
+  const cached = summaryCache.get(symbol);
+  if (cached && cached.expires > Date.now()) return cached.data;
+
+  for (const force of [false, true]) {
+    const session = await getProviderSession(force);
+    if (!session) return null;
+    try {
+      const params = new URLSearchParams({ modules: SUMMARY_MODULES.join(','), crumb: session.crumb });
+      const response = await fetch(`${MARKET_DATA_SUMMARY_URL}/${encodeURIComponent(symbol)}?${params.toString()}`, {
+        headers: { ...MARKET_DATA_HEADERS, Cookie: session.cookie },
+        cache: 'no-store',
+        signal: AbortSignal.timeout(10_000),
+      });
+      if (response.status === 401 || response.status === 403) continue; // jeton expiré : une nouvelle session
+      const data = response.ok ? parseQuoteSummary(await response.json()) : null;
+      if (summaryCache.size > 300) summaryCache.clear();
+      summaryCache.set(symbol, { data, expires: Date.now() + (data ? 6 * 3600_000 : 600_000) });
+      return data;
+    } catch (error) {
+      console.error(`Error fetching summary for ${symbol}:`, error);
+      return null;
+    }
+  }
+  return null;
+}
+
+/** Derniers articles liés au symbole selon la recherche du fournisseur. */
+export async function getProviderNews(symbol: string): Promise<NewsItem[]> {
+  try {
+    const response = await fetchWithTimeout(
+      `${MARKET_DATA_SEARCH_URL}?q=${encodeURIComponent(symbol)}&quotesCount=0&newsCount=10`,
+      MARKET_DATA_TIMEOUT_MS,
+      1800
+    );
+    return response.ok ? parseProviderNews(await response.json()) : [];
+  } catch (error) {
+    console.error(`Error fetching provider news for ${symbol}:`, error);
+    return [];
+  }
 }

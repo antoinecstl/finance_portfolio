@@ -3,7 +3,7 @@
 import { Suspense, type MouseEvent, type ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { LogOut, Settings, ShieldCheck, Sparkles, Upload, type LucideIcon } from 'lucide-react';
+import { CandlestickChart, LogOut, Settings, ShieldCheck, Sparkles, Upload, type LucideIcon } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { useSubscription } from '@/lib/subscription-client';
 import {
@@ -126,6 +126,11 @@ function Sidebar({ email, isAdmin }: { email: string; isAdmin: boolean }) {
           ))}
         </div>
 
+        <SectionLabel>Analyse</SectionLabel>
+        <div className="space-y-0.5">
+          <SidebarLink href="/marches" icon={CandlestickChart} label="Marchés" active={pathname.startsWith('/marches')} />
+        </div>
+
         <SectionLabel>Outils</SectionLabel>
         <div className="space-y-0.5">
           <SidebarLink href="/dashboard/import" icon={Upload} label="Importer un relevé" active={pathname === '/dashboard/import'} />
@@ -192,6 +197,14 @@ function MobileHeader() {
               Pro
             </Link>
           )}
+          <Link
+            href="/marches"
+            className={`${iconButton} ${pathname.startsWith('/marches') ? 'text-[color:var(--ink)]' : ''}`}
+            title="Marchés"
+            aria-label="Marchés"
+          >
+            <CandlestickChart className="h-5 w-5" />
+          </Link>
           <Link
             href="/settings"
             className={`${iconButton} ${pathname.startsWith('/settings') ? 'text-[color:var(--ink)]' : ''}`}

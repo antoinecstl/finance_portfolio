@@ -68,6 +68,12 @@ Never commit secrets. Important environment variables include:
 - New users go through the onboarding tunnel (`components/Onboarding.tsx`, logic in `lib/onboarding.ts`) until `profiles.onboarded_at` is set: profile, first account, first transaction (a purchase is saved with the deposit that funded it), then the optional Pro import. `app/(app)/layout.tsx` resumes at the right step from existing accounts and transactions; `/api/account/onboard` takes `step: 'profile' | 'complete'`.
 - Wrap page content in `PageContainer` (shared max width and gutters, so edges align across pages) and start pages with `PageHeader` (`components/app-shell/PageLayout.tsx`). Do not add per-page back links or full-screen backgrounds.
 
+## Market Explorer
+
+- Pages `app/(app)/marches` (home: search, holdings, indices) and `app/(app)/marches/[symbol]` (symbol page: chart, stats, dividends). Spec in `docs/specs/explorateur-marches.md`, competitor notes in `docs/analyses/baggr.md`.
+- Routes `app/api/market/{chart,overview,fundamentals,news}` (auth + 60 req/min), backed by `lib/stock-api.ts` (`getMarketChart`, `getFundamentalsSeries`, `getQuoteSummary` with a cookie/crumb session, `getProviderNews`) and `lib/news-feed.ts` (Google News RSS, French). Never name the market data provider in the UI.
+- Pure logic (periods, parsing, performance/volatility/drawdown/dividends, recents) lives in `lib/market`; UI in `components/market`.
+
 ## Billing and Paddle
 
 - Billing UI lives in `app/(app)/settings/billing`.

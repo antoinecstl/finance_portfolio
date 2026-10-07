@@ -13,11 +13,14 @@ export function PageHeader({
   description,
   meta,
   actions,
+  wideActions = false,
 }: {
   title: ReactNode;
   description?: ReactNode;
   meta?: ReactNode;
   actions?: ReactNode;
+  /** Sur petit écran, les actions (ex. un champ de recherche) prennent toute la largeur. */
+  wideActions?: boolean;
 }) {
   return (
     // Les actions restent à droite du titre tant qu'il y a la place, sinon passent dessous.
@@ -27,7 +30,9 @@ export function PageHeader({
         {description && <p className="mt-2 text-sm text-[color:var(--ink-soft)]">{description}</p>}
         {meta && <div className="mt-1.5">{meta}</div>}
       </div>
-      {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
+      {actions && (
+        <div className={`flex shrink-0 flex-wrap items-center gap-2 ${wideActions ? 'w-full sm:w-auto' : ''}`}>{actions}</div>
+      )}
     </header>
   );
 }
