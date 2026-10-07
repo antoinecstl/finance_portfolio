@@ -109,6 +109,9 @@ export const viewport: Viewport = {
   ],
   width: "device-width",
   initialScale: 1,
+  // Contenu jusqu'aux bords de l'écran : la barre d'onglets du bas réserve
+  // elle-même la zone de l'indicateur d'accueil (env(safe-area-inset-bottom)).
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
