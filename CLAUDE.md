@@ -71,7 +71,7 @@ Never commit secrets. Important environment variables include:
 ## Market Explorer
 
 - Pages `app/(app)/marches` (home: search, holdings, indices) and `app/(app)/marches/[symbol]` (symbol page: chart, stats, dividends). Spec in `docs/specs/explorateur-marches.md`, competitor notes in `docs/analyses/baggr.md`.
-- Routes `app/api/market/{chart,overview}` (auth + 60 req/min), backed by `getMarketChart` in `lib/stock-api.ts`. Never name the market data provider in the UI.
+- Routes `app/api/market/{chart,overview,fundamentals,news}` (auth + 60 req/min), backed by `lib/stock-api.ts` (`getMarketChart`, `getFundamentalsSeries`, `getQuoteSummary` with a cookie/crumb session, `getProviderNews`) and `lib/news-feed.ts` (Google News RSS, French). Never name the market data provider in the UI.
 - Pure logic (periods, parsing, performance/volatility/drawdown/dividends, recents) lives in `lib/market`; UI in `components/market`.
 
 ## Billing and Paddle

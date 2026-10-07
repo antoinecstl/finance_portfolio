@@ -40,3 +40,24 @@ export function instrumentLabel(type: string): string {
     default: return type ? type.charAt(0) + type.slice(1).toLowerCase() : '';
   }
 }
+
+/** Multiple de valorisation : « 18,4 × ». */
+export function fmtMultiple(value: number | null | undefined): string {
+  if (value === null || value === undefined || !Number.isFinite(value)) return '—';
+  return `${new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(value)}${NBSP}×`;
+}
+
+/** Pourcentage sans signe « + » (marges, rendements, parts). */
+export function fmtShare(value: number | null | undefined, digits = 1): string {
+  return fmtPct(value, digits).replace('+', '');
+}
+
+/** Montant abrégé avec devise : « 12,3 Md € ». */
+export function fmtMoneyCompact(value: number | null | undefined, currency: string): string {
+  if (value === null || value === undefined || !Number.isFinite(value)) return '—';
+  try {
+    return new Intl.NumberFormat('fr-FR', { style: 'currency', currency, notation: 'compact', maximumFractionDigits: 1 }).format(value);
+  } catch {
+    return `${fmtCompact(value)} ${currency}`.trim();
+  }
+}

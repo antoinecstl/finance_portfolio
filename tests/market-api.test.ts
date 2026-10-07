@@ -4,6 +4,10 @@ import type { MarketPoint, ParsedChart } from '@/lib/market/chart-data';
 
 const getMarketChart = vi.fn();
 const getStockQuote = vi.fn();
+const getFundamentalsSeries = vi.fn();
+const getQuoteSummary = vi.fn();
+const getProviderNews = vi.fn();
+const getFrenchNews = vi.fn();
 let user: { id: string } | null = { id: 'user-1' };
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -12,10 +16,18 @@ vi.mock('@/lib/supabase/server', () => ({
 vi.mock('@/lib/stock-api', () => ({
   getMarketChart: (...args: unknown[]) => getMarketChart(...args),
   getStockQuote: (...args: unknown[]) => getStockQuote(...args),
+  getFundamentalsSeries: (...args: unknown[]) => getFundamentalsSeries(...args),
+  getQuoteSummary: (...args: unknown[]) => getQuoteSummary(...args),
+  getProviderNews: (...args: unknown[]) => getProviderNews(...args),
+}));
+vi.mock('@/lib/news-feed', () => ({
+  getFrenchNews: (...args: unknown[]) => getFrenchNews(...args),
 }));
 
 const { GET: chartGET } = await import('@/app/api/market/chart/route');
 const { GET: overviewGET } = await import('@/app/api/market/overview/route');
+const { GET: fundamentalsGET } = await import('@/app/api/market/fundamentals/route');
+const { GET: newsGET } = await import('@/app/api/market/news/route');
 
 const DAY = 86_400;
 const now = Math.floor(Date.now() / 1000);
@@ -40,6 +52,10 @@ beforeEach(() => {
   user = { id: `user-${Math.random()}` }; // limite de débit propre à chaque test
   getMarketChart.mockReset();
   getStockQuote.mockReset();
+  getFundamentalsSeries.mockReset();
+  getQuoteSummary.mockReset();
+  getProviderNews.mockReset();
+  getFrenchNews.mockReset();
 });
 
 describe('GET /api/market/chart', () => {
@@ -97,5 +113,62 @@ describe('GET /api/market/overview', () => {
     getMarketChart.mockResolvedValueOnce({ status: 'error' });
     getStockQuote.mockResolvedValueOnce(null);
     expect((await overviewGET(req('/api/market/overview?symbol=NOPE'))).status).toBe(502);
+  });
+});
+
+const pt = (date: string, value: number, currency = 'USD') => [{ date, value, currency }];
+
+describe('GET /api/market/fundamentals', () => {
+  it('reports a provider outage and missing accounts distinctly', async () => {
+    getFundamentalsSeries.mockResolvedValue(null);
+    getQuoteSummary.mockResolvedValue(null);
+    getStockQuote.mockResolvedValue(null);
+    expect((await fundamentalsGET(req('/api/market/fundamentals?symbol=AAPL'))).status).toBe(502);
+
+    getFundamentalsSeries.mockResolvedValue({});
+    const res = await fundamentalsGET(req('/api/market/fundamentals?symbol=AAPL'));
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ available: false });
+  });
+
+  it('converts the price into the reporting currency before computing ratios', async () => {
+    // Cotée en pence à Londres, comptes en dollars.
+    getStockQuote.mockImplementation(async (s: string) =>
+      s === 'GBPUSD=X' ? { price: 1.25, currency: 'USD' } : { price: 2000, currency: 'GBp' }
+    );
+    getQuoteSummary.mockResolvedValue(null);
+    getFundamentalsSeries.mockResolvedValue({
+      annualTotalRevenue: pt('2025-12-31', 100e9),
+      trailingTotalRevenue: pt('2026-06-30', 100e9),
+      trailingDilutedEPS: pt('2026-06-30', 2),
+      quarterlyOrdinarySharesNumber: pt('2026-06-30', 1e9),
+    });
+    const res = await fundamentalsGET(req('/api/market/fundamentals?symbol=SHEL.L'));
+    const body = await res.json();
+    expect(getStockQuote).toHaveBeenCalledWith('GBPUSD=X');
+    expect(body).toMatchObject({ available: true, currency: 'USD', priceCurrency: 'GBp', priceInStatementCurrency: 25, fxRate: 1.25 });
+    expect(body.ratios.per).toBeCloseTo(12.5, 10);
+    expect(body.ratios.marketCap).toBe(25e9);
+    expect(body.dcfDefaults).toEqual({ growth: 0.04, discountRate: 0.09, terminalGrowth: 0.02 });
+  });
+});
+
+describe('GET /api/market/news', () => {
+  it('searches French news by company name and merges both sources', async () => {
+    getProviderNews.mockResolvedValue([{ title: 'Intl', url: 'https://x/1', publisher: 'X', publishedAt: '2026-10-05T00:00:00.000Z', lang: 'intl' }]);
+    getFrenchNews.mockResolvedValue([{ title: 'Fr', url: 'https://y/1', publisher: 'Y', publishedAt: '2026-10-06T00:00:00.000Z', lang: 'fr' }]);
+    const res = await newsGET(req('/api/market/news?symbol=SU.PA&q=Schneider%20Electric%20SE'));
+    expect(res.status).toBe(200);
+    expect(getFrenchNews).toHaveBeenCalledWith('Schneider Electric');
+    expect(getProviderNews).toHaveBeenCalledWith('SU.PA');
+    const body = await res.json();
+    expect(body.items.map((n: { title: string }) => n.title)).toEqual(['Fr', 'Intl']);
+  });
+
+  it('requires a session and a valid symbol', async () => {
+    user = null;
+    expect((await newsGET(req('/api/market/news?symbol=SU.PA'))).status).toBe(401);
+    user = { id: 'u-news' };
+    expect((await newsGET(req('/api/market/news?symbol=%3Cscript%3E'))).status).toBe(400);
   });
 });

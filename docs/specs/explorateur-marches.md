@@ -45,7 +45,9 @@ Fi-Hub reste un outil de patrimoine. L'explorateur doit donc **relier le marché
 | Place de cotation, devise, fuseau, type d'instrument | Oui | Métadonnées |
 | Dividendes, splits | Oui | Événements du graphique |
 | Recherche par nom ou symbole | Oui | Déjà utilisé (`searchStocks`) |
-| Bilans, comptes de résultat, ratios, consensus | **Non** (pas de façon fiable) | Nécessite un fournisseur contractuel (v2) |
+| Comptes annuels et 12 mois glissants (CA, résultats, BPA, flux de trésorerie, dette, capitaux propres) | Oui (v1.1) | Endpoint de séries temporelles, sans jeton ; voir §12 |
+| Profil, consensus des analystes, estimations | Partiel (v1.1) | Module « résumé » : exige un cookie et un jeton de session, donc fragile ; facultatif |
+| Actualités | Oui (v1.1) | Recherche du fournisseur (international) + flux RSS Google Actualités (français) |
 
 **Contraintes :**
 - **Fournisseur non contractuel :** il peut changer de format ou limiter le débit. Tous les appels passent par nos routes serveur, avec cache, délai maximum et limite par utilisateur. Le nom du fournisseur n'apparaît pas dans l'interface (convention existante).
@@ -190,7 +192,7 @@ Les recherches et les sparklines réutilisent `/api/stocks/search`, `/api/stocks
 |---|---|
 | v1.1 | Watchlists persistées (table `watchlist_items`, RLS) ; mode *Total Return* (cours ajusté des dividendes) ; « Voir la fiche » depuis chaque ligne de transaction |
 | v2 | Alertes de cours par email (cron) ; RSI, MACD ; éligibilité PEA (liste ISIN) |
-| v3 | Fondamentaux et ratios, screener : choisir un fournisseur contractuel (coût, couverture Europe, licence d'affichage) |
+| v3 | Screener ; fondamentaux fiabilisés par un fournisseur contractuel (coût, couverture Europe, licence d'affichage) |
 | Transverse | « Demander à Claude » depuis la fiche, via la connexion MCP existante |
 
 ## 11. Risques
@@ -199,4 +201,46 @@ Les recherches et les sparklines réutilisent `/api/stocks/search`, `/api/stocks
 |---|---|---|
 | Changement ou limitation du fournisseur | Fiches vides | Cache, limite par utilisateur, message d'erreur clair, lecture tolérante de la réponse ; à moyen terme, fournisseur contractuel |
 | Coût en appels sur des pages très consultées | 429 du fournisseur | Cache serveur, sparklines groupées en un appel |
+| Fondamentaux indisponibles (jeton refusé, format changé) | Sections consensus / profil absentes | Les ratios reposent sur les séries temporelles, sans jeton ; module « résumé » facultatif, mis en cache 6 h, pause de 10 min après un échec |
 | Confusion avec un conseil en investissement | Juridique | Aucune recommandation ni signal d'achat ; indicateurs descriptifs ; mention « Données de marché fournies à titre informatif » |
+
+## 12. Fondamentaux et actualités (v1.1)
+
+Ajoutés à la fiche après la v1, à la demande produit : rendre la fiche utile pour l'analyse fondamentale, au-delà du cours.
+
+**Périmètre :** actions uniquement pour les fondamentaux (ETF, indices et cryptos n'ont pas de comptes) ; actualités pour tous les titres.
+
+**Sources :**
+- **Comptes :** séries annuelles (5 exercices), 12 mois glissants pour les flux, dernier trimestre pour le bilan. Cache 6 h.
+- **PER et PEG prévisionnels :** publiés par le fournisseur (estimations d'analystes).
+- **Consensus, profil, bêta, actionnariat, dates de résultats et de détachement :** module « résumé », facultatif. Sans lui, la section reste complète hors consensus et profil.
+- **Actualités :** titre, média, date et lien uniquement ; jamais le contenu des articles. Cache 30 min. Liens http(s) seulement, ouverts dans un nouvel onglet (`noopener noreferrer nofollow`).
+
+**Ratios calculés par Fi-Hub** (`lib/market/fundamentals.ts`), au cours actuel converti dans la devise des comptes (change du jour si besoin, cotations en centimes comme GBp ramenées en unités) :
+
+| Ratio | Formule |
+|---|---|
+| Capitalisation | cours × actions en circulation (dernier trimestre) |
+| Valeur d'entreprise (VE) | capitalisation + dette financière − trésorerie |
+| PER | cours / BPA dilué 12 mois (vide si BPA ≤ 0) |
+| PEG historique | PER / (croissance annuelle moyenne du BPA sur les exercices publiés × 100) ; vide si la croissance ≤ 0 ou moins de 3 exercices |
+| P/B, P/S, P/FCF | capitalisation / capitaux propres, chiffre d'affaires, free cash flow |
+| VE / EBITDA, VE / CA | sur 12 mois |
+| Rendement FCF, rendement bénéficiaire | FCF / capitalisation ; BPA / cours |
+| Marges | brute, opérationnelle, nette, FCF : rapportées au chiffre d'affaires 12 mois |
+| ROE, ROA | résultat net / capitaux propres ; / total du bilan |
+| Dette nette / EBITDA ; dette / capitaux propres | levier |
+| Taux de distribution | dividendes versés / résultat net ; / FCF |
+| Croissances | CA du dernier exercice ; croissance annuelle moyenne du CA, du BPA et du FCF |
+| Free cash flow | publié, ou flux d'exploitation + investissements (capex négatif) |
+| Nombre de Graham | √(22,5 × BPA × actif net par action) |
+
+**Simulateur DCF :** part du FCF par action sur 12 mois ; croissance saisie pendant 5 ans, ralentissement linéaire jusqu'au taux perpétuel entre les années 6 et 10, valeur terminale de Gordon-Shapiro. Valeurs par défaut : croissance historique du FCF bornée entre 0 et 12 %, actualisation 9 %, perpétuelle 2 %. Désactivé si le FCF est négatif ou si l'actualisation ne dépasse pas la croissance perpétuelle. Présenté comme une simulation pédagogique, pas comme une estimation de Fi-Hub.
+
+**API :**
+- `GET /api/market/fundamentals?symbol=` → `{ available, currency, priceCurrency, priceInStatementCurrency, fxRate, annual, ttm, ratios, summary, dcfDefaults }` ; `{ available: false }` sans comptes ; 502 si aucune source ne répond.
+- `GET /api/market/news?symbol=&q=<nom affiché>` → `{ query, items: [{ title, url, publisher, publishedAt, lang: 'fr' | 'intl' }] }` (12 au plus, dédoublonnés, du plus récent au plus ancien).
+
+Même session et même limite de 60 requêtes par minute que les autres routes de l'explorateur.
+
+**Offre :** accessible à tous comme le reste de l'explorateur. Candidat naturel au plan Pro si l'on veut une incitation (simulateur DCF, comptes sur 5 ans).
