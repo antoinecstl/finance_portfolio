@@ -900,3 +900,10 @@ button:focus-visible {
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
+
+/* Hauteur de la barre d'onglets du bas (pages connectées, sous 1280 px) :
+   les éléments fixés en bas d'écran (notifications) se placent au-dessus. */
+:root { --app-bottom-nav: 0px; }
+@media (max-width: 1279.98px) {
+  :root:has([data-bottom-nav]) { --app-bottom-nav: calc(3.75rem + env(safe-area-inset-bottom)); }
+}

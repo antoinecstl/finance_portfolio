@@ -22,9 +22,12 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
         <PageHeader title="Paramètres" description="Gérez votre compte, votre abonnement et vos préférences." />
 
         {/* Formulaires : largeur de lecture limitée, alignée à gauche avec le reste de l'app. */}
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-[240px_minmax(0,56rem)] lg:gap-8">
+        <div className="grid grid-cols-1 gap-4 md:gap-6 md:grid-cols-[240px_minmax(0,56rem)] lg:gap-8">
           <aside>
-            <nav className="space-y-1 md:sticky md:top-6">
+            <nav
+              aria-label="Paramètres"
+              className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 scrollbar-hide sm:-mx-6 sm:px-6 md:sticky md:top-6 md:mx-0 md:block md:space-y-1 md:overflow-visible md:px-0 md:pb-0"
+            >
               {tabs.map((t) => (
                 <SettingsNavItem
                   key={t.href}
@@ -38,7 +41,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
             </nav>
           </aside>
 
-          <section className="ink-card rounded-2xl pop-shadow p-6 sm:p-8">
+          <section className="ink-card rounded-2xl pop-shadow p-4 sm:p-8">
             {children}
           </section>
         </div>
