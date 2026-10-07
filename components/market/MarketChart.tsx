@@ -172,19 +172,25 @@ export function MarketChart({
     }
     const values: number[] = [];
     for (const r of rows) {
+      // Échelle calée sur le cours seul : une moyenne mobile éloignée (MM 200 sur
+      // 1 mois) écraserait la courbe ; elle est coupée au bord du graphique.
       if (mode === 'candles') values.push(r.l, r.h);
       else values.push(r.c);
-      for (const days of movingAverages) {
-        const v = r[`sma${days}`];
-        if (typeof v === 'number') values.push(v);
-      }
     }
     if (period === '1J' && previousClose) values.push(previousClose);
     return buildNiceYAxisScale(values, { includeZero: false });
-  }, [rows, comparing, compare, mode, movingAverages, period, previousClose]);
+  }, [rows, comparing, compare, mode, period, previousClose]);
 
   const maxVolume = useMemo(() => Math.max(0, ...rows.map((r) => r.v)), [rows]);
   const priceDecimals = yScale.step >= 10 ? 0 : yScale.step >= 1 ? 1 : yScale.step >= 0.1 ? 2 : 3;
+  const formatY = (v: number) =>
+    comparing
+      ? fmtPct(v, 0)
+      : new Intl.NumberFormat('fr-FR', { minimumFractionDigits: priceDecimals, maximumFractionDigits: priceDecimals }).format(v);
+  // Axe Y à la largeur de ses libellés (≈ 6,5 px par caractère à 11 px) : le graphique garde toute la largeur.
+  const yAxisWidth = Math.ceil(Math.max(...yScale.ticks.map((v) => formatY(v).length), 3) * 6.5) + 10;
+  const firstTick = ticks.ticks[0];
+  const lastTick = ticks.ticks[ticks.ticks.length - 1];
 
   if (rows.length === 0) {
     return (
@@ -205,7 +211,7 @@ export function MarketChart({
       <p className="sr-only">{summary}</p>
       <div className="h-[320px] sm:h-[400px]" aria-hidden="true">
         <ResponsiveContainer width="100%" height="100%" onResize={ticks.onResize}>
-          <ComposedChart data={rows} margin={{ top: 8, right: 12, left: 18, bottom: 0 }} barCategoryGap={rows.length > 150 ? 0 : '15%'}>
+          <ComposedChart data={rows} margin={{ top: 8, right: 4, left: 4, bottom: 0 }} barCategoryGap={rows.length > 150 ? 0 : '15%'}>
             <defs>
               <linearGradient id="marketAreaFill" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="var(--chart-primary)" stopOpacity={0.14} />
@@ -217,24 +223,31 @@ export function MarketChart({
               dataKey="key"
               ticks={ticks.ticks}
               interval={0}
-              tickFormatter={(t) => tickFormat.format(new Date(Number(t) * 1000))}
-              tick={{ fontSize: 11, fill: 'var(--chart-axis)' }}
+              tick={(props: { x?: number | string; y?: number | string; payload?: { value?: number } }) => {
+                const value = Number(props.payload?.value);
+                // Première et dernière dates alignées sur les bords, pour ne pas être coupées.
+                const anchor = value === firstTick ? 'start' : value === lastTick ? 'end' : 'middle';
+                return (
+                  <text x={Number(props.x)} y={Number(props.y) + 12} textAnchor={anchor} fontSize={11} fill="var(--chart-axis)">
+                    {tickFormat.format(new Date(value * 1000))}
+                  </text>
+                );
+              }}
               stroke="var(--chart-grid)"
               minTickGap={8}
             />
+            {/* Axe séparé pour le volume : sinon Recharts place ses barres à côté des chandeliers et les rétrécit. */}
+            <XAxis xAxisId="volume" dataKey="key" hide />
             <YAxis
               yAxisId="price"
               orientation="right"
               domain={yScale.domain}
               ticks={yScale.ticks}
-              width={56}
+              width={yAxisWidth}
+              allowDataOverflow
               tick={{ fontSize: 11, fill: 'var(--chart-axis)' }}
               stroke="var(--chart-grid)"
-              tickFormatter={(v) =>
-                comparing
-                  ? fmtPct(Number(v), 0)
-                  : new Intl.NumberFormat('fr-FR', { minimumFractionDigits: priceDecimals, maximumFractionDigits: priceDecimals }).format(Number(v))
-              }
+              tickFormatter={(v) => formatY(Number(v))}
             />
             <YAxis yAxisId="volume" hide domain={[0, maxVolume * 4 || 1]} />
 
@@ -282,7 +295,7 @@ export function MarketChart({
             />
 
             {!comparing && maxVolume > 0 && (
-              <Bar yAxisId="volume" dataKey="v" fill="var(--chart-axis)" fillOpacity={0.22} isAnimationActive={false} />
+              <Bar xAxisId="volume" yAxisId="volume" dataKey="v" fill="var(--chart-axis)" fillOpacity={0.22} isAnimationActive={false} />
             )}
 
             {period === '1J' && previousClose && !comparing && (
@@ -321,12 +334,14 @@ export function MarketChart({
                   const { cx, cy, payload } = props as { cx?: number; cy?: number; payload?: Row };
                   const type = payload?.markerType as MarkerType | undefined;
                   if (cx == null || cy == null || !type) return <g />;
-                  const offset = type === 'SELL' ? -12 : 16;
-                  return (
-                    <text x={cx} y={cy + offset} textAnchor="middle" fontSize={13} fill={MARKER[type].color}>
-                      {MARKER[type].glyph}
-                    </text>
-                  );
+                  // Symbole centré sur la clôture du jour, détouré pour rester lisible sur la courbe.
+                  const r = 6;
+                  const d = type === 'BUY'
+                    ? `M${cx},${cy - r} L${cx + r},${cy + r * 0.75} L${cx - r},${cy + r * 0.75} Z`
+                    : type === 'SELL'
+                      ? `M${cx},${cy + r} L${cx + r},${cy - r * 0.75} L${cx - r},${cy - r * 0.75} Z`
+                      : `M${cx},${cy - r} L${cx + r},${cy} L${cx},${cy + r} L${cx - r},${cy} Z`;
+                  return <path d={d} fill={MARKER[type].color} stroke="var(--paper)" strokeWidth={1.5} strokeLinejoin="round" />;
                 }}
               />
             )}

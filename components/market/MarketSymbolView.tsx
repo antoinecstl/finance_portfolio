@@ -176,6 +176,7 @@ export function MarketSymbolView({ symbol }: { symbol: string }) {
         description={
           data ? [data.symbol, data.exchange, data.currency, instrumentLabel(data.instrumentType)].filter(Boolean).join(' · ') : 'Chargement…'
         }
+        wideActions
         actions={<div className="w-full sm:w-72"><MarketSearch size="sm" placeholder="Autre titre…" /></div>}
       />
 

@@ -182,26 +182,26 @@ export function MarketFundamentals({ symbol, price, priceCurrency }: { symbol: s
       {(years.length > 0 || showTtm) && (
         <div className="mt-6">
           <h3 className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Comptes annuels ({currency})</h3>
-          <div className="-mx-4 mt-2 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+          <div className="mt-2 overflow-x-auto">
             <table className="w-full min-w-[560px] text-sm">
               <thead>
                 <tr className="border-b border-zinc-200 text-xs text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
-                  <th scope="col" className="sticky left-0 bg-white py-2 pr-3 text-left font-medium dark:bg-zinc-900">Exercice</th>
-                  {years.map((y) => <th key={y.date} scope="col" className="px-2 py-2 text-right font-medium tabular-nums">{y.date.slice(0, 4)}</th>)}
+                  <th scope="col" className="sticky left-0 z-10 min-w-[8.5rem] bg-white py-2 pr-3 text-left font-medium shadow-[1px_0_0_var(--rule)] dark:bg-zinc-900">Exercice</th>
+                  {years.map((y) => <th key={y.date} scope="col" className="whitespace-nowrap px-2 py-2 text-right font-medium tabular-nums">{y.date.slice(0, 4)}</th>)}
                   {showTtm && <th scope="col" className="py-2 pl-2 text-right font-medium">12 mois</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
                 {ROWS.filter((r) => years.some((y) => y[r.key] !== null) || (showTtm && data.ttm?.[r.key] != null)).map((r) => (
                   <tr key={r.key}>
-                    <th scope="row" className="sticky left-0 bg-white py-1.5 pr-3 text-left font-normal text-zinc-600 dark:bg-zinc-900 dark:text-zinc-300">{r.label}</th>
+                    <th scope="row" className="sticky left-0 z-10 min-w-[8.5rem] bg-white py-1.5 pr-3 text-left font-normal leading-tight text-zinc-600 shadow-[1px_0_0_var(--rule)] dark:bg-zinc-900 dark:text-zinc-300">{r.label}</th>
                     {years.map((y) => (
-                      <td key={y.date} className="px-2 py-1.5 text-right tabular-nums text-zinc-900 dark:text-zinc-100">
+                      <td key={y.date} className="whitespace-nowrap px-2 py-1.5 text-right tabular-nums text-zinc-900 dark:text-zinc-100">
                         {r.perShare ? fmtPrice(y[r.key], currency) : fmtMoneyCompact(y[r.key], currency)}
                       </td>
                     ))}
                     {showTtm && (
-                      <td className="py-1.5 pl-2 text-right tabular-nums text-zinc-900 dark:text-zinc-100">
+                      <td className="whitespace-nowrap py-1.5 pl-2 text-right tabular-nums text-zinc-900 dark:text-zinc-100">
                         {r.perShare ? fmtPrice(data.ttm?.[r.key], currency) : fmtMoneyCompact(data.ttm?.[r.key], currency)}
                       </td>
                     )}
@@ -332,26 +332,32 @@ function Profile({ summary }: { summary: QuoteSummaryData }) {
   );
 }
 
+// Champ en pourcentage saisi comme du texte : on peut effacer le champ, taper
+// « 7,5 » avec une virgule, et la valeur n'est transmise que si elle est lisible.
 function PercentInput({ id, label, value, onChange, hint }: { id: string; label: string; value: number; onChange: (v: number) => void; hint: string }) {
+  const [text, setText] = useState(() => (Number.isFinite(value) ? String(Math.round(value * 1000) / 10).replace('.', ',') : ''));
   return (
-    <div>
-      <label htmlFor={id} className="text-xs text-zinc-500 dark:text-zinc-400">{label}</label>
+    <div className="min-w-0">
+      <label htmlFor={id} className="block min-h-[2rem] text-xs leading-tight text-zinc-500 dark:text-zinc-400">{label}</label>
       <div className="mt-1 flex items-center gap-1">
         <input
           id={id}
-          type="number"
+          type="text"
           inputMode="decimal"
-          step={0.5}
-          min={-20}
-          max={40}
-          value={Number.isFinite(value) ? Math.round(value * 1000) / 10 : ''}
-          onChange={(e) => onChange(Number(e.target.value) / 100)}
+          autoComplete="off"
+          value={text}
+          onChange={(e) => {
+            const next = e.target.value.replace(/[^\d,.-]/g, '').slice(0, 6);
+            setText(next);
+            const n = Number(next.replace(',', '.'));
+            if (next.trim() !== '' && Number.isFinite(n) && n >= -50 && n <= 100) onChange(n / 100);
+          }}
           aria-describedby={`${id}-hint`}
-          className="w-20 rounded-md border border-zinc-300 bg-white px-2 py-1 text-sm tabular-nums text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+          className="w-full min-w-0 rounded-md border border-zinc-300 bg-white px-2 py-1 text-sm tabular-nums text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
         />
-        <span className="text-sm text-zinc-500">%</span>
+        <span className="shrink-0 text-sm text-zinc-500">%</span>
       </div>
-      <p id={`${id}-hint`} className="mt-0.5 text-[11px] text-zinc-500 dark:text-zinc-400">{hint}</p>
+      <p id={`${id}-hint`} className="mt-0.5 text-[11px] leading-tight text-zinc-500 dark:text-zinc-400">{hint}</p>
     </div>
   );
 }
