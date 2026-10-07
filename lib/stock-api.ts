@@ -1,4 +1,5 @@
 import { StockQuote } from './types';
+import { parseChartResponse, type ParsedChart } from './market/chart-data';
 
 const MARKET_DATA_TIMEOUT_MS = 5_000;
 const MARKET_DATA_HEADERS = {
@@ -11,14 +12,14 @@ const MARKET_DATA_DOMAIN = `finance.${MARKET_DATA_PROVIDER}.com`;
 const MARKET_DATA_CHART_URL = `https://query1.${MARKET_DATA_DOMAIN}/v8/finance/chart`;
 const MARKET_DATA_SEARCH_URL = `https://query2.${MARKET_DATA_DOMAIN}/v1/finance/search`;
 
-async function fetchWithTimeout(url: string, ms = MARKET_DATA_TIMEOUT_MS): Promise<Response> {
+async function fetchWithTimeout(url: string, ms = MARKET_DATA_TIMEOUT_MS, revalidate = 60): Promise<Response> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), ms);
   try {
     return await fetch(url, {
       headers: MARKET_DATA_HEADERS,
       signal: controller.signal,
-      next: { revalidate: 60 },
+      next: { revalidate },
     });
   } finally {
     clearTimeout(timer);
@@ -113,10 +114,48 @@ export async function getStockQuote(symbol: string): Promise<StockQuote | null> 
   return quotes[0] || null;
 }
 
+export type MarketChartResult =
+  | { status: 'ok'; chart: ParsedChart }
+  | { status: 'not_found' }
+  | { status: 'error' };
+
+/**
+ * Historique complet pour l'explorateur de marchés : OHLC, volume, métadonnées
+ * de cotation et, sur demande, dividendes et splits. `not_found` distingue un
+ * symbole inconnu d'une panne du fournisseur.
+ */
+export async function getMarketChart(
+  symbol: string,
+  options: { range: string; interval: string; events?: boolean; revalidate?: number }
+): Promise<MarketChartResult> {
+  const params = new URLSearchParams({ range: options.range, interval: options.interval, includePrePost: 'false' });
+  if (options.events) params.set('events', 'div,split');
+  try {
+    const response = await fetchWithTimeout(
+      `${MARKET_DATA_CHART_URL}/${encodeURIComponent(symbol)}?${params.toString()}`,
+      10_000,
+      options.revalidate ?? 60
+    );
+    if (response.status === 404) return { status: 'not_found' };
+    if (!response.ok) {
+      console.error(`Market chart error for ${symbol}: ${response.status}`);
+      return { status: 'error' };
+    }
+    const chart = parseChartResponse(await response.json(), symbol);
+    return chart ? { status: 'ok', chart } : { status: 'not_found' };
+  } catch (error) {
+    console.error(`Error fetching market chart for ${symbol}:`, error);
+    return { status: 'error' };
+  }
+}
+
 /**
  * Recherche d'actions par nom ou symbole
  */
-export async function searchStocks(query: string): Promise<Array<{ symbol: string; name: string; exchange: string }>> {
+export async function searchStocks(
+  query: string,
+  options: { includeIndices?: boolean } = {}
+): Promise<Array<{ symbol: string; name: string; exchange: string }>> {
   if (!query || query.length < 2) return [];
 
   try {
@@ -134,6 +173,7 @@ export async function searchStocks(query: string): Promise<Array<{ symbol: strin
     return (data.quotes || [])
       .filter((q: { quoteType?: string }) =>
         q.quoteType === 'EQUITY' || q.quoteType === 'ETF' || q.quoteType === 'CRYPTOCURRENCY'
+        || (options.includeIndices && q.quoteType === 'INDEX')
       )
       .map((q: { symbol: string; shortname?: string; longname?: string; exchange?: string; quoteType?: string }) => ({
         symbol: q.symbol,

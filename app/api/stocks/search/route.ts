@@ -29,7 +29,8 @@ export async function GET(request: Request) {
   }
 
   try {
-    const results = await searchStocks(query);
+    // L'explorateur de marchés cherche aussi les indices (^FCHI…), pas la saisie de transactions.
+    const results = await searchStocks(query, { includeIndices: searchParams.get('indices') === '1' });
     return NextResponse.json({ results });
   } catch (error) {
     console.error('Stock search API error:', error);

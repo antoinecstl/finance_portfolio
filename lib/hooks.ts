@@ -307,7 +307,8 @@ export function usePortfolioSummary(
 }
 
 // Hook pour la recherche d'actions
-export function useStockSearch() {
+export function useStockSearch(options: { includeIndices?: boolean } = {}) {
+  const { includeIndices = false } = options;
   const [results, setResults] = useState<Array<{ symbol: string; name: string; exchange: string }>>([]);
   const [loading, setLoading] = useState(false);
 
@@ -319,7 +320,7 @@ export function useStockSearch() {
 
     try {
       setLoading(true);
-      const response = await fetch(`/api/stocks/search?q=${encodeURIComponent(query)}`);
+      const response = await fetch(`/api/stocks/search?q=${encodeURIComponent(query)}${includeIndices ? '&indices=1' : ''}`);
       
       if (!response.ok) {
         throw new Error('Erreur lors de la recherche');
@@ -333,7 +334,7 @@ export function useStockSearch() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [includeIndices]);
 
   return { results, loading, search };
 }
