@@ -31,6 +31,7 @@ import { PositionShareModal } from './share/PositionShareModal';
 import { PieChart as PieChartIcon, TrendingUp, TrendingDown, Loader2, BarChart2, Target, Scale, Activity, ChevronDown, ChevronRight, ShoppingCart, DollarSign, Banknote, Percent, Wallet, LineChart as LineChartIcon, Lock, Share2 } from 'lucide-react';
 import { useSubscription } from '@/lib/subscription-client';
 import { ProBlur } from './ProBlur';
+import { Skeleton } from './Skeleton';
 import { buildNiceYAxisScale } from '@/lib/chart-axis';
 import { useEvenXTicks } from '@/lib/use-even-x-ticks';
 import { getPortfolioMarketStatus } from '@/lib/market-status';
@@ -185,9 +186,40 @@ export function SectorAllocationChart() {
 
 interface AccountAllocationChartProps {
   accounts: Array<Account & { calculatedTotalValue: number; calculatedTotalValueInBase?: number }>;
+  // Valeurs pas encore définitives : silhouette au lieu de barres qui bougent.
+  loading?: boolean;
 }
 
-export function AccountAllocationChart({ accounts }: AccountAllocationChartProps) {
+export function AccountAllocationChart({ accounts, loading = false }: AccountAllocationChartProps) {
+  if (loading) {
+    return (
+      <div aria-busy="true" className="flex flex-col bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-4 sm:p-6">
+        <div className="flex items-center gap-2 mb-3 sm:mb-4">
+          <Wallet className="h-4 w-4 sm:h-5 sm:w-5 text-emerald-600" />
+          <h3 className="font-semibold text-sm sm:text-base text-zinc-900 dark:text-zinc-100">
+            Répartition par compte
+          </h3>
+        </div>
+        <span className="sr-only">Chargement…</span>
+        <div className="mb-4 flex flex-1 flex-col justify-evenly gap-3">
+          {Array.from({ length: Math.min(Math.max(accounts.length, 3), 5) }, (_, index) => (
+            <div key={index} className="space-y-1.5">
+              <div className="flex justify-between gap-4">
+                <Skeleton className="h-3.5 w-24" />
+                <Skeleton className="h-3.5 w-20" />
+              </div>
+              <Skeleton className="block h-3 w-full rounded-full" />
+            </div>
+          ))}
+        </div>
+        <div className="mt-auto pt-3 border-t border-zinc-200 dark:border-zinc-700 flex justify-between">
+          <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100">Total</span>
+          <Skeleton className="h-4 w-24" />
+        </div>
+      </div>
+    );
+  }
+
   // Mêmes couleurs par compte que l'évolution du patrimoine.
   const accountColors = getAccountColorMap(accounts);
   const data = accounts

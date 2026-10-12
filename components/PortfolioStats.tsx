@@ -15,6 +15,7 @@ import { formatCurrency, formatPercent } from '@/lib/utils';
 import { getPortfolioMarketStatus } from '@/lib/market-status';
 import type { Account, StockPosition, StockQuote } from '@/lib/types';
 import type { AccountYearToDateStats } from '@/lib/account-stats';
+import { Skeleton } from './Skeleton';
 
 interface StatCardProps {
   title: string;
@@ -37,15 +38,6 @@ const icons = {
   chart: BarChart3,
   coins: Coins,
 };
-
-function Skeleton({ className }: { className: string }) {
-  return (
-    <span
-      className={`inline-block animate-pulse rounded bg-[color:var(--rule)] ${className}`}
-      aria-hidden="true"
-    />
-  );
-}
 
 export function StatCard({ 
   title, 
@@ -129,9 +121,12 @@ interface PortfolioStatsProps {
   positions: StockPosition[];
   accounts: Account[];
   quotes: Record<string, StockQuote>;
-  // Statistiques consolidées depuis le 1er janvier (null tant qu'elles se calculent).
+  // Statistiques consolidées depuis le 1er janvier (null si indisponibles).
   yearToDate?: AccountYearToDateStats | null;
+  // Valeurs du jour pas encore définitives : silhouette plutôt que des chiffres provisoires.
   loading?: boolean;
+  // Performance depuis le 1er janvier encore en calcul (plus lente que le reste).
+  yearToDateLoading?: boolean;
 }
 
 export function PortfolioStats({
@@ -147,6 +142,7 @@ export function PortfolioStats({
   quotes,
   yearToDate = null,
   loading = false,
+  yearToDateLoading = false,
 }: PortfolioStatsProps) {
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
@@ -189,8 +185,8 @@ export function PortfolioStats({
               {loading ? <Skeleton className="h-10 w-56 sm:h-12 sm:w-72" /> : formatCurrency(totalPortfolioValue)}
             </p>
             <div className="mt-3 min-h-[1.25rem] text-xs sm:text-sm text-[color:var(--ink-soft)]">
-              {loading ? (
-                <Skeleton className="h-4 w-64" />
+              {loading || yearToDateLoading ? (
+                <Skeleton className="h-4 w-64 max-w-full" />
               ) : yearToDate ? (
                 <>
                   <p className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
@@ -215,9 +211,7 @@ export function PortfolioStats({
                     </p>
                   )}
                 </>
-              ) : (
-                <p>Performance {currentYear} en cours de calcul…</p>
-              )}
+              ) : null}
             </div>
           </div>
 
@@ -291,7 +285,7 @@ export function PortfolioStats({
           value={yearToDate ? formatCurrency(yearToDate.income) : '—'}
           changeLabel="Dividendes et intérêts"
           icon="coins"
-          loading={loading}
+          loading={loading || yearToDateLoading}
         />
       </div>
     </div>

@@ -17,6 +17,7 @@ import {
 import { useFxRates } from '@/lib/hooks';
 import { useSubscription } from '@/lib/subscription-client';
 import { ProBlur } from './ProBlur';
+import { PanelSkeleton } from './Skeleton';
 
 interface DividendsTableProps {
   transactions: Transaction[];
@@ -75,7 +76,7 @@ export function DividendsTable({ transactions, quotes, accounts = [] }: Dividend
     () => dividendTransactions.reduce<string | null>((min, tx) => (min === null || tx.date < min ? tx.date : min), null),
     [dividendTransactions]
   );
-  const fxRates = useFxRates(currencies, firstDate);
+  const { rates: fxRates, ready: fxReady } = useFxRates(currencies, firstDate);
   const hasForeignCurrency = currencies.some((currency) => currency !== 'EUR');
 
   const events = useMemo(() => buildDividendEvents(transactions, fxRates), [transactions, fxRates]);
@@ -90,6 +91,12 @@ export function DividendsTable({ transactions, quotes, accounts = [] }: Dividend
 
   const accountName = (id: string) => accounts.find((account) => account.id === id)?.name;
   const positionName = (symbol: string | null) => (symbol ? quotes[symbol]?.name || symbol : 'Non attribué');
+
+  // Montants en devises : on attend les taux plutôt que d'afficher des sommes
+  // non converties qui changeraient une seconde plus tard.
+  if (!fxReady) {
+    return <PanelSkeleton title="Dividendes" rows={5} />;
+  }
 
   if (events.length === 0) {
     return (
