@@ -66,7 +66,7 @@ export function DangerZone() {
       const res = await fetch('/api/account/delete', { method: 'POST' });
       if (!res.ok) {
         const body = await res.json().catch(() => ({ error: 'Suppression échouée' }));
-        throw new Error(body.error ?? 'Suppression échouée');
+        throw new Error(body.message ?? body.error ?? 'Suppression échouée');
       }
       await supabase.auth.signOut();
       router.push('/');

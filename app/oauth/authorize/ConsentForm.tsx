@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Check, Eye, Loader2, ShieldCheck, X } from 'lucide-react';
+import { AlertTriangle, Check, Eye, Loader2, ShieldCheck, X } from 'lucide-react';
 
 const PERMISSIONS = [
   'Voir vos comptes et leur valeur',
@@ -12,11 +12,13 @@ const PERMISSIONS = [
 export function ConsentForm({
   clientName,
   redirectHost,
+  knownClient,
   email,
   params,
 }: {
   clientName: string;
   redirectHost: string;
+  knownClient: boolean;
   email: string;
   params: Record<string, string>;
 }) {
@@ -54,6 +56,16 @@ export function ConsentForm({
       <p className="mt-1 text-sm text-[color:var(--ink-soft)]">
         Redirection vers <strong className="mono text-xs text-[color:var(--ink)]">{redirectHost}</strong> · connecté en tant que <span className="text-[color:var(--ink)]">{email}</span>
       </p>
+
+      {!knownClient && (
+        <p role="note" className="mt-4 flex items-start gap-2 rounded-lg border border-[color:var(--loss)] px-3 py-2.5 text-xs text-[color:var(--ink)]">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--loss)]" />
+          <span>
+            Application non reconnue par Fi-Hub : son nom est déclaré par l&apos;application elle-même. N&apos;autorisez que
+            si vous venez de lancer cette connexion et que vous reconnaissez <strong className="mono">{redirectHost}</strong>.
+          </span>
+        </p>
+      )}
 
       <ul className="mt-5 space-y-2.5">
         {PERMISSIONS.map((permission) => (

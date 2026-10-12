@@ -39,7 +39,7 @@ If `npm install` hits optional peer dependency conflicts, use `--legacy-peer-dep
 
 ## Known Local Warnings
 
-- `npm run lint` currently reports an existing warning in `app/(marketing)/page.tsx`: `ENVELOPES` is assigned but unused.
+- `npm run lint` reports warnings only: `react-hooks/set-state-in-effect` (downgraded to warn after the Next 16.4 upgrade, existing data-loading hooks to migrate) and an unused helper in `lib/portfolio-calculator.ts`.
 - Local `npm run build` may log `UNABLE_TO_VERIFY_LEAF_SIGNATURE` while fetching static marketing chart data. The build can still pass.
 
 ## Environment
@@ -107,6 +107,14 @@ Never commit secrets. Important environment variables include:
 - Data isolation lives in Postgres: the app passes the bearer token to `security definer` functions (`api_authenticate`, `api_accounts`, `api_transactions`, `api_profile`) that resolve the owner themselves. They are executable by `service_role` only. Never read user data for the public API with a `user_id` coming from application code.
 - Rate limits are shared across instances in Postgres (`api_rate_limits` + `api_rate_limit_hit`): 60 req/min per token, plus per-IP limits on OAuth registration and token endpoints.
 - Logic lives in `lib/public-api`.
+
+## Security
+
+- Last audit: `docs/securite/audit-2026-10.md` (findings, fixes, remaining console settings).
+- Anything that costs money per call (OCR, LLM) must use `sharedRateLimit` (`lib/shared-rate-limit.ts`, Postgres counter); `lib/rate-limit.ts` is per-instance memory only. Give each route its own bucket prefix.
+- Never trust `custom_data.user_id` from Paddle alone: it is set by the browser at checkout. Bind subscription changes to `paddle_subscription_id` / customer.
+- New `SECURITY DEFINER` functions that take a user id must `revoke execute ... from public, anon, authenticated`.
+- Return generic error messages to the browser; keep provider details in server logs.
 
 ## SEO and Analytics
 

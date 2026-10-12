@@ -36,9 +36,7 @@ export async function POST(request: Request) {
     if (!url) return NextResponse.json({ error: 'no_portal_url' }, { status: 500 });
     return NextResponse.json({ url });
   } catch (e) {
-    return NextResponse.json(
-      { error: e instanceof Error ? e.message : 'portal_error' },
-      { status: 500 }
-    );
+    console.error('[api/billing/portal] session failed', e);
+    return NextResponse.json({ error: 'portal_error' }, { status: 500 });
   }
 }

@@ -52,7 +52,18 @@ function bearerToken(request: Request): string {
 function isAuthorized(request: Request, expectedSecret: string): boolean {
   const suppliedSecret =
     bearerToken(request) || request.headers.get('x-signup-notification-secret')?.trim() || '';
-  return suppliedSecret.length > 0 && suppliedSecret === expectedSecret;
+  return suppliedSecret.length > 0 && constantTimeEqual(suppliedSecret, expectedSecret);
+}
+
+// Comparaison en temps constant : le temps de réponse ne révèle pas le préfixe correct.
+function constantTimeEqual(a: string, b: string): boolean {
+  const left = new TextEncoder().encode(a);
+  const right = new TextEncoder().encode(b);
+  let diff = left.length ^ right.length;
+  for (let i = 0; i < Math.max(left.length, right.length); i++) {
+    diff |= (left[i] ?? 0) ^ (right[i] ?? 0);
+  }
+  return diff === 0;
 }
 
 function extractUser(payload: SignupPayload): SignupUser {

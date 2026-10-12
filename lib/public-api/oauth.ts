@@ -27,6 +27,21 @@ export function isAllowedRedirectUri(value: string): boolean {
   return url.protocol === 'http:' && LOOPBACK_HOSTS.has(url.hostname);
 }
 
+// Hôtes de retour des assistants connus. Le nom d'un client enregistré
+// dynamiquement est déclaré par le client lui-même : en dehors de ces hôtes,
+// l'écran de consentement prévient que l'application n'est pas reconnue.
+const KNOWN_CLIENT_HOSTS = new Set(['chatgpt.com', 'chat.openai.com', 'claude.ai', 'claude.com']);
+
+export function isKnownClientRedirect(value: string): boolean {
+  try {
+    const { hostname, protocol } = new URL(value);
+    if (protocol === 'http:') return LOOPBACK_HOSTS.has(hostname);
+    return KNOWN_CLIENT_HOSTS.has(hostname) || [...KNOWN_CLIENT_HOSTS].some((host) => hostname.endsWith(`.${host}`));
+  } catch {
+    return false;
+  }
+}
+
 const redirectUriSchema = z
   .string()
   .max(2000)
