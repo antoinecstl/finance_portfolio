@@ -19,6 +19,7 @@ import { PortfolioHistoryChart } from './PortfolioHistoryChart';
 import { ProBlur } from './ProBlur';
 import { UsageMeter } from './UsageMeter';
 import { ErrorBoundary } from './ErrorBoundary';
+import { PanelSkeleton } from './Skeleton';
 import { BenchmarkComparisonChart } from './BenchmarkComparisonChart';
 import { PerformanceProjectionChart } from './PerformanceProjectionChart';
 import { useSubscription } from '@/lib/subscription-client';
@@ -33,6 +34,7 @@ import {
   useFullPortfolioHistory,
   useAccountsWithCalculatedValues,
   useAccountsYearToDateStats,
+  useCurrentFxRates,
   usePositionsWithCalculatedValues
 } from '@/lib/hooks';
 import { accountSupportsPositions, formatDateTime } from '@/lib/utils';
@@ -40,6 +42,15 @@ import { useSearchParams } from 'next/navigation';
 import type { Transaction } from '@/lib/types';
 import { DASHBOARD_TABS, navigateToDashboardTab, parseDashboardTab } from './app-shell/navigation';
 import { PageContainer, PageHeader } from './app-shell/PageLayout';
+
+// Passe à true une fois pour toutes : après le premier affichage, les
+// rafraîchissements (cours, ajout d'opération) gardent les chiffres à l'écran
+// au lieu de remontrer la silhouette de chargement.
+function useReadyOnce(ready: boolean): boolean {
+  const [latched, setLatched] = useState(ready);
+  if (ready && !latched) setLatched(true);
+  return latched || ready;
+}
 
 export function Dashboard() {
   // L'onglet actif vit dans l'URL (?tab=...) : il survit au rechargement,
@@ -97,24 +108,29 @@ export function Dashboard() {
 
     return Array.from(symbolSet);
   }, [enrichedPositions, transactions]);
-  const { quotes, refetch: refetchQuotes } = useStockQuotes(symbols);
+  const { quotes, ready: quotesReady, refetch: refetchQuotes } = useStockQuotes(symbols);
+  // Taux du jour pour les montants en devises, quel que soit l'onglet ouvert.
+  const { rates: currentFxRates, ready: currentFxReady } = useCurrentFxRates(transactions, accounts, quotes);
 
   // Historique du portefeuille (calculé dynamiquement)
-  const { history: portfolioHistory, fxRates: dashboardFxRates, loading: loadingHistory } = usePortfolioHistory(
+  const { history: portfolioHistory, loading: loadingHistory, ready: historyReady } = usePortfolioHistory(
     transactions,
     accounts,
     historyPeriod,
     { enabled: activeTab === 'dashboard', quotes }
   );
 
-  // Comptes et résumé calculés avec les mêmes taux FX que l'historique dashboard.
-  const enrichedAccounts = useAccountsWithCalculatedValues(accounts, transactions, enrichedPositions, quotes, dashboardFxRates);
-  const { stats: accountsYearToDateStats, total: portfolioYearToDateStats } = useAccountsYearToDateStats(
+  const enrichedAccounts = useAccountsWithCalculatedValues(accounts, transactions, enrichedPositions, quotes, currentFxRates);
+  const {
+    stats: accountsYearToDateStats,
+    total: portfolioYearToDateStats,
+    ready: yearToDateStatsReady,
+  } = useAccountsYearToDateStats(
     enrichedAccounts,
     transactions,
     { enabled: activeTab === 'dashboard' || activeTab === 'accounts' }
   );
-  const portfolioSummary = usePortfolioSummary(enrichedPositions, quotes, dashboardFxRates);
+  const portfolioSummary = usePortfolioSummary(enrichedPositions, quotes, currentFxRates);
   // Calculer le total épargne (comptes non-actions)
   const savingsTotal = useMemo(() => {
     return enrichedAccounts
@@ -162,6 +178,7 @@ export function Dashboard() {
   const {
     history: positionsFullPortfolioHistory,
     fxRates: positionsFxRates,
+    fxReady: positionsFxReady,
     loading: loadingPositionsFullHistory,
   } = useFullPortfolioHistory(
     positionsScoped.transactions,
@@ -173,7 +190,7 @@ export function Dashboard() {
     : null;
 
   // Résumé recalculé selon le scope (pour les KPIs des charts du tab Positions)
-  const scopedPortfolioSummary = usePortfolioSummary(positionsScoped.positions, quotes, positionsFxRates);
+  const scopedPortfolioSummary = usePortfolioSummary(positionsScoped.positions, quotes, currentFxRates);
   const scopedStockCashTotal = useMemo(() => {
     return positionsScoped.accounts
       .filter(accountSupportsPositions)
@@ -226,9 +243,20 @@ export function Dashboard() {
   }, [refreshAllData]);
 
   const isLoading = loadingAccounts || loadingTransactions;
-  // Premier chargement uniquement : les rafraîchissements gardent les données affichées.
-  const isInitialLoading = isLoading && accounts.length === 0;
   const isEmpty = !isLoading && accounts.length === 0;
+  // Les montants ne s'affichent qu'une fois définitifs (comptes, opérations,
+  // cours et taux du jour chargés) : sinon ils passent par 0 €, puis le PRU,
+  // puis des devises non converties avant la vraie valeur.
+  const valuesReady = useReadyOnce(!isLoading && quotesReady && currentFxReady);
+  const yearToDateReady = useReadyOnce(valuesReady && yearToDateStatsReady);
+  // Onglet Positions : plus-values réalisées converties au taux du jour de la vente.
+  const positionsReady = useReadyOnce(valuesReady && positionsFxReady);
+  // Courbe : au premier affichage, pas d'instantané en cache (partiel ou d'hier)
+  // remplacé une seconde plus tard ; ensuite, un changement de période garde
+  // l'ancienne courbe pendant le recalcul.
+  // (Tant que les opérations chargent, l'historique « vide » ne compte pas.)
+  const historyComputed = !isLoading && historyReady;
+  const historyShown = useReadyOnce(historyComputed);
 
   const currentTab = DASHBOARD_TABS.find((tab) => tab.id === activeTab) ?? DASHBOARD_TABS[0];
   const busy = isLoading || refreshing;
@@ -358,7 +386,8 @@ export function Dashboard() {
                 accounts={accounts}
                 quotes={quotes}
                 yearToDate={portfolioYearToDateStats}
-                loading={isInitialLoading}
+                loading={!valuesReady}
+                yearToDateLoading={!yearToDateReady}
               />
             </ErrorBoundary>
 
@@ -368,16 +397,16 @@ export function Dashboard() {
               <ErrorBoundary label="Évolution du patrimoine">
                 <ProBlur feature="advanced_analytics" label="Évolution du patrimoine — Pro">
                   <PortfolioHistoryChart
-                    history={portfolioHistory}
+                    history={historyShown ? portfolioHistory : []}
                     accounts={accounts}
-                    loading={loadingHistory}
+                    loading={loadingHistory || !historyComputed}
                     onPeriodChange={setHistoryPeriod}
                     selectedPeriod={historyPeriod}
                   />
                 </ProBlur>
               </ErrorBoundary>
               <ErrorBoundary label="Répartition par compte">
-                <AccountAllocationChart accounts={enrichedAccounts} />
+                <AccountAllocationChart accounts={enrichedAccounts} loading={!valuesReady} />
               </ErrorBoundary>
             </div>
 
@@ -403,6 +432,8 @@ export function Dashboard() {
                     <AccountList
                       accounts={enrichedAccounts}
                       yearToDateStats={accountsYearToDateStats}
+                      loading={!valuesReady}
+                      yearToDateLoading={!yearToDateReady}
                       positionActivityAccountIds={positionActivityAccountIds}
                       onChanged={handleMutationSuccess}
                     />
@@ -449,6 +480,8 @@ export function Dashboard() {
             <AccountList
               accounts={enrichedAccounts}
               yearToDateStats={accountsYearToDateStats}
+              loading={!valuesReady}
+              yearToDateLoading={!yearToDateReady}
               positionActivityAccountIds={positionActivityAccountIds}
               onChanged={handleMutationSuccess}
             />
@@ -492,20 +525,24 @@ export function Dashboard() {
             )}
 
             <ErrorBoundary label="Performance par position">
-              <PositionPerformanceChart
-                positions={positionsScoped.positions}
-                quotes={quotes}
-                transactions={positionsScoped.transactions}
-                accounts={positionsScoped.accounts}
-                groupByAccount={selectedPositionsAccountFilter === null && stockAccounts.length > 1}
-                portfolioTotalValue={scopedPortfolioSummary.totalValue}
-                portfolioTotalInvested={scopedPortfolioSummary.totalInvested}
-                portfolioTotalGain={scopedPortfolioSummary.totalGain}
-                portfolioTotalGainPercent={scopedPortfolioSummary.totalGainPercent}
-                portfolioDayChange={scopedPortfolioSummary.dayChange}
-                portfolioDayChangePercent={scopedPortfolioSummary.dayChangePercent}
-                fxRates={positionsFxRates}
-              />
+              {!positionsReady ? (
+                <PanelSkeleton title="Vue d'ensemble des performances" rows={4} />
+              ) : (
+                <PositionPerformanceChart
+                  positions={positionsScoped.positions}
+                  quotes={quotes}
+                  transactions={positionsScoped.transactions}
+                  accounts={positionsScoped.accounts}
+                  groupByAccount={selectedPositionsAccountFilter === null && stockAccounts.length > 1}
+                  portfolioTotalValue={scopedPortfolioSummary.totalValue}
+                  portfolioTotalInvested={scopedPortfolioSummary.totalInvested}
+                  portfolioTotalGain={scopedPortfolioSummary.totalGain}
+                  portfolioTotalGainPercent={scopedPortfolioSummary.totalGainPercent}
+                  portfolioDayChange={scopedPortfolioSummary.dayChange}
+                  portfolioDayChangePercent={scopedPortfolioSummary.dayChangePercent}
+                  fxRates={positionsFxRates}
+                />
+              )}
             </ErrorBoundary>
 
             {/* Très grand écran : graphiques temporels deux par deux. */}
@@ -514,7 +551,7 @@ export function Dashboard() {
                 <PortfolioValueChart
                   history={positionsFullPortfolioHistory}
                   transactions={positionsScoped.transactions}
-                  loading={loadingPositionsFullHistory}
+                  loading={loadingPositionsFullHistory || !positionsReady}
                   currentTotalValue={scopedPortfolioSummary.totalValue}
                   currentTotalInvested={scopedPortfolioSummary.totalInvested}
                   fxRates={positionsFxRates}
@@ -527,7 +564,7 @@ export function Dashboard() {
                     transactions={positionsScoped.transactions}
                     portfolioHistory={positionsFullPortfolioHistory}
                     accounts={positionsScoped.accounts}
-                    loading={loadingPositionsFullHistory}
+                    loading={loadingPositionsFullHistory || !positionsReady}
                     currentPortfolioValue={scopedStockPortfolioValue}
                     fxRates={positionsFxRates}
                   />
@@ -541,7 +578,7 @@ export function Dashboard() {
                   <BenchmarkComparisonChart
                     portfolioHistory={positionsFullPortfolioHistory}
                     transactions={positionsScoped.transactions}
-                    loading={loadingPositionsFullHistory}
+                    loading={loadingPositionsFullHistory || !positionsReady}
                     currentPortfolioValue={scopedStockPortfolioValue}
                     fxRates={positionsFxRates}
                   />
@@ -552,21 +589,25 @@ export function Dashboard() {
                 <PerformanceProjectionChart
                   history={positionsFullPortfolioHistory}
                   transactions={positionsScoped.transactions}
-                  loading={loadingPositionsFullHistory}
+                  loading={loadingPositionsFullHistory || !positionsReady}
                   fxRates={positionsFxRates}
                 />
               </ErrorBoundary>
             </div>
 
             <ErrorBoundary label="Tableau des positions">
-              <PositionsTable
-                positions={positionsScoped.positions}
-                quotes={quotes}
-                accounts={positionsScoped.accounts}
-                transactions={positionsScoped.transactions}
-                groupByAccount={selectedPositionsAccountFilter === null && stockAccounts.length > 1}
-                fxRates={positionsFxRates}
-              />
+              {!positionsReady ? (
+                <PanelSkeleton title="Positions" rows={6} />
+              ) : (
+                <PositionsTable
+                  positions={positionsScoped.positions}
+                  quotes={quotes}
+                  accounts={positionsScoped.accounts}
+                  transactions={positionsScoped.transactions}
+                  groupByAccount={selectedPositionsAccountFilter === null && stockAccounts.length > 1}
+                  fxRates={positionsFxRates}
+                />
+              )}
             </ErrorBoundary>
           </div>
         )}
@@ -585,12 +626,16 @@ export function Dashboard() {
 
         {activeTab === 'dividends' && (
           <div>
-            <DividendsTable
-              transactions={transactions}
-              positions={enrichedPositions}
-              quotes={quotes}
-              accounts={accounts}
-            />
+            {!valuesReady ? (
+              <PanelSkeleton title="Dividendes" rows={5} />
+            ) : (
+              <DividendsTable
+                transactions={transactions}
+                positions={enrichedPositions}
+                quotes={quotes}
+                accounts={accounts}
+              />
+            )}
           </div>
         )}
       </PageContainer>

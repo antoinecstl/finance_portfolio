@@ -208,6 +208,8 @@ export function useStockQuotes(symbols: string[], options: StockQuotesOptions = 
   const [quotes, setQuotes] = useState<Record<string, StockQuote>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Jeu de symboles dont la dernière requête est terminée (succès ou échec).
+  const [loadedKey, setLoadedKey] = useState<string | null>(null);
 
   // Clé stable : évite les re-fetch quand `symbols` change de référence mais pas de contenu
   // (sinon refetch(nextSymbols) + useEffect déclenchent deux appels consécutifs).
@@ -215,9 +217,11 @@ export function useStockQuotes(symbols: string[], options: StockQuotesOptions = 
 
   const fetchQuotes = useCallback(async (overrideSymbols?: string[]) => {
     const targetSymbols = overrideSymbols ?? (symbolsKey ? symbolsKey.split(',') : []);
+    const targetKey = [...targetSymbols].map(s => s.toUpperCase()).sort().join(',');
 
     if (targetSymbols.length === 0) {
       setQuotes({});
+      setLoadedKey(targetKey);
       return;
     }
 
@@ -241,6 +245,7 @@ export function useStockQuotes(symbols: string[], options: StockQuotesOptions = 
       setError(err instanceof Error ? err.message : 'Erreur lors du chargement');
     } finally {
       setLoading(false);
+      setLoadedKey(targetKey);
     }
   }, [symbolsKey]);
 
@@ -257,7 +262,11 @@ export function useStockQuotes(symbols: string[], options: StockQuotesOptions = 
     return () => clearInterval(interval);
   }, [enabled, fetchQuotes, refreshMs]);
 
-  return { quotes, loading, error, refetch: fetchQuotes };
+  // Prêt quand les cours des symboles demandés sont arrivés (ou ont échoué) :
+  // avant, les valeurs seraient calculées au PRU puis recalculées.
+  const ready = !enabled || symbolsKey === '' || loadedKey === symbolsKey;
+
+  return { quotes, loading, ready, error, refetch: fetchQuotes };
 }
 
 // Hook pour calculer le résumé du portefeuille
@@ -351,9 +360,11 @@ export function usePortfolioHistory(
   const [fxRates, setFxRates] = useState<FxRateMap>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Paramètres (période, symboles, devises) dont le calcul est terminé.
+  const [settledKey, setSettledKey] = useState<string | null>(null);
 
-  // Déterminer les dates, symboles et devises non-EUR nécessaires
-  const { startDate, endDate, symbols, foreignFiats } = useMemo(() => {
+  // Déterminer les dates et symboles nécessaires
+  const { startDate, endDate, symbols } = useMemo(() => {
     const end = formatLocalDate(new Date());
 
     // Trouver la première transaction ou utiliser la période demandée
@@ -374,19 +385,27 @@ export function usePortfolioHistory(
     }
 
     const syms = getUniqueSymbolsFromTransactions(transactions);
-    const fiats = mergeFiats(uniqueForeignFiats(transactions), foreignFiatsFromQuotes(options.quotes));
 
-    return { startDate: start, endDate: end, symbols: syms, foreignFiats: fiats };
-  }, [transactions, periodDays, options.quotes]);
+    return { startDate: start, endDate: end, symbols: syms };
+  }, [transactions, periodDays]);
 
-  const foreignFiatsKey = useMemo(() => [...foreignFiats].sort().join(','), [foreignFiats]);
+  // Devises non-EUR : clé texte, pour ne pas tout recalculer à chaque
+  // rafraîchissement des cours (seule une nouvelle devise compte).
+  const foreignFiatsKey = useMemo(
+    () => mergeFiats(uniqueForeignFiats(transactions), foreignFiatsFromQuotes(options.quotes)).join(','),
+    [transactions, options.quotes]
+  );
+  const inputKey = `${transactions.length}|${symbols.join(',')}|${startDate}|${endDate}|${periodDays}|${foreignFiatsKey}`;
 
   // Récupérer les cours historiques et calculer l'historique
   const fetchHistory = useCallback(async () => {
     if (!enabled) return;
+    const key = inputKey;
+    const foreignFiats = foreignFiatsKey ? foreignFiatsKey.split(',') : [];
 
     if (transactions.length === 0) {
       setHistory([]);
+      setSettledKey(key);
       return;
     }
 
@@ -462,15 +481,17 @@ export function usePortfolioHistory(
       setError(err instanceof Error ? err.message : 'Erreur');
     } finally {
       setLoading(false);
+      setSettledKey(key);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled, transactions, accounts, symbols, startDate, endDate, periodDays, foreignFiatsKey]);
+  }, [enabled, transactions, accounts, symbols, startDate, endDate, periodDays, foreignFiatsKey, inputKey]);
 
   useEffect(() => {
     fetchHistory();
   }, [fetchHistory]);
 
-  return { history, fxRates, loading, error, refetch: fetchHistory };
+  const ready = enabled && settledKey === inputKey;
+
+  return { history, fxRates, loading, ready, error, refetch: fetchHistory };
 }
 
 /**
@@ -487,9 +508,11 @@ export function useFullPortfolioHistory(
   const [fxRates, setFxRates] = useState<FxRateMap>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Devises/période pour lesquelles les taux sont arrivés.
+  const [fxSettledKey, setFxSettledKey] = useState<string | null>(null);
 
-  // Déterminer les dates, les symboles et les devises non-EUR nécessaires
-  const { startDate, endDate, symbols, foreignFiats } = useMemo(() => {
+  // Déterminer les dates et les symboles nécessaires
+  const { startDate, endDate, symbols } = useMemo(() => {
     const end = formatLocalDate(new Date());
 
     // Trouver la première transaction
@@ -507,24 +530,39 @@ export function useFullPortfolioHistory(
     }
 
     const syms = getUniqueSymbolsFromTransactions(transactions);
-    const fiats = mergeFiats(uniqueForeignFiats(transactions), foreignFiatsFromQuotes(options.quotes));
 
-    return { startDate: start, endDate: end, symbols: syms, foreignFiats: fiats };
-  }, [transactions, options.quotes]);
+    return { startDate: start, endDate: end, symbols: syms };
+  }, [transactions]);
 
-  const foreignFiatsKey = useMemo(() => [...foreignFiats].sort().join(','), [foreignFiats]);
+  // Devises non-EUR : clé texte, pour ne pas tout recalculer à chaque
+  // rafraîchissement des cours (seule une nouvelle devise compte).
+  const foreignFiatsKey = useMemo(
+    () => mergeFiats(uniqueForeignFiats(transactions), foreignFiatsFromQuotes(options.quotes)).join(','),
+    [transactions, options.quotes]
+  );
+  const fxKey = `${foreignFiatsKey}|${startDate}|${endDate}`;
 
   // Récupérer les cours historiques et calculer l'historique
   const fetchHistory = useCallback(async () => {
     if (!enabled) return;
+    const foreignFiats = foreignFiatsKey ? foreignFiatsKey.split(',') : [];
 
     if (transactions.length === 0) {
       setHistory([]);
+      setFxSettledKey(fxKey);
       return;
     }
 
     setLoading(true);
     setError(null);
+
+    // Les taux des devises déjà connues partent en parallèle des cours : le
+    // tableau des positions n'attend pas l'historique complet pour s'afficher.
+    const knownFxPromise = fetchFxRates(foreignFiats, startDate, endDate).then((rates) => {
+      setFxRates(rates);
+      setFxSettledKey(fxKey);
+      return rates;
+    });
 
     try {
       let historicalQuotes: Record<string, HistoricalQuote[]> = {};
@@ -541,11 +579,12 @@ export function useFullPortfolioHistory(
         historicalQuotes = await response.json();
       }
 
-      const fetchedFxRates = await fetchFxRates(
-        mergeFiats(foreignFiats, foreignFiatsFromHistoricalQuotes(historicalQuotes)),
-        startDate,
-        endDate
-      );
+      const knownFxRates = await knownFxPromise;
+      const extraFiats = foreignFiatsFromHistoricalQuotes(historicalQuotes)
+        .filter((fiat) => !foreignFiats.includes(fiat));
+      const fetchedFxRates = extraFiats.length > 0
+        ? { ...knownFxRates, ...(await fetchFxRates(extraFiats, startDate, endDate)) }
+        : knownFxRates;
 
       // Calculer l'historique avec intervalle quotidien pour plus de précision sur les graphiques
       const calculatedHistory = calculatePortfolioHistory(
@@ -566,14 +605,15 @@ export function useFullPortfolioHistory(
     } finally {
       setLoading(false);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled, transactions, accounts, symbols, startDate, endDate, foreignFiatsKey]);
+  }, [enabled, transactions, accounts, symbols, startDate, endDate, foreignFiatsKey, fxKey]);
 
   useEffect(() => {
     fetchHistory();
   }, [fetchHistory]);
 
-  return { history, fxRates, loading, error, refetch: fetchHistory };
+  const fxReady = enabled && fxSettledKey === fxKey;
+
+  return { history, fxRates, fxReady, loading, error, refetch: fetchHistory };
 }
 
 /**
@@ -741,11 +781,14 @@ export function useAccountsYearToDateStats(
   stats: Record<string, AccountYearToDateStats>;
   total: AccountYearToDateStats | null;
   loading: boolean;
+  ready: boolean;
 } {
   const { enabled = true } = options;
   const [startValues, setStartValues] = useState<Record<string, number> | null>(null);
   const [fxRates, setFxRates] = useState<FxRateMap>({});
   const [loading, setLoading] = useState(false);
+  // Entrées (nombre d'opérations, comptes) dont le calcul est terminé.
+  const [settledKey, setSettledKey] = useState<string | null>(null);
 
   const today = formatLocalDate(new Date());
   const year = Number(today.slice(0, 4));
@@ -753,12 +796,15 @@ export function useAccountsYearToDateStats(
   // Les valeurs actuelles des comptes changent à chaque rafraîchissement des
   // cours : on ne recharge l'historique que si les comptes eux-mêmes changent.
   const accountsKey = accounts.map((a) => `${a.id}:${a.type}:${a.supports_positions}`).join(',');
+  const inputKey = `${transactions.length}|${accountsKey}|${referenceDate}`;
 
   const fetchStartValues = useCallback(async () => {
     if (!enabled) return;
+    const key = inputKey;
     if (transactions.length === 0 || accounts.length === 0) {
       setStartValues({});
       setFxRates({});
+      setSettledKey(key);
       return;
     }
 
@@ -799,9 +845,10 @@ export function useAccountsYearToDateStats(
       setStartValues(null);
     } finally {
       setLoading(false);
+      setSettledKey(key);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled, transactions, accountsKey, referenceDate, today, year]);
+  }, [enabled, transactions, accountsKey, referenceDate, today, year, inputKey]);
 
   useEffect(() => {
     fetchStartValues();
@@ -842,33 +889,79 @@ export function useAccountsYearToDateStats(
     });
   }, [accounts, transactions, startValues, fxRates, today]);
 
-  return { stats, total, loading };
+  return { stats, total, loading, ready: enabled && settledKey === inputKey };
 }
 
 /**
  * Taux de change historiques (EUR ↔ devises) entre `startDate` et aujourd'hui,
  * pour convertir des montants passés au taux du jour de l'opération.
  */
-export function useFxRates(currencies: string[], startDate: string | null): FxRateMap {
-  const [rates, setRates] = useState<FxRateMap>({});
+export function useFxRates(
+  currencies: string[],
+  startDate: string | null
+): { rates: FxRateMap; ready: boolean } {
+  const [state, setState] = useState<{ key: string; rates: FxRateMap } | null>(null);
   const fiats = useMemo(() => mergeFiats(uniqueForeignFiats(currencies.map((currency) => ({ currency })))), [currencies]);
   const fiatsKey = fiats.join(',');
 
   const enabled = Boolean(startDate) && fiatsKey !== '';
+  const key = `${fiatsKey}|${startDate}`;
 
   useEffect(() => {
     if (!enabled || !startDate) return;
     let cancelled = false;
     fetchFxRates(fiatsKey.split(','), startDate, formatLocalDate(new Date())).then((next) => {
-      if (!cancelled) setRates(next);
+      if (!cancelled) setState({ key, rates: next });
     });
     return () => {
       cancelled = true;
     };
-  }, [enabled, fiatsKey, startDate]);
+  }, [enabled, fiatsKey, startDate, key]);
 
   // Tout en EUR : aucune conversion nécessaire.
-  return enabled ? rates : EMPTY_FX_RATES;
+  if (!enabled) return { rates: EMPTY_FX_RATES, ready: true };
+  return { rates: state?.rates ?? EMPTY_FX_RATES, ready: state?.key === key };
 }
 
 const EMPTY_FX_RATES: FxRateMap = {};
+
+/**
+ * Taux de change des derniers jours, pour valoriser comptes et positions
+ * aujourd'hui. Indépendant de l'historique (lent, et chargé seulement sur
+ * certains onglets) : sans lui, les montants en devises s'affichent d'abord
+ * non convertis puis sautent quand l'historique arrive.
+ */
+export function useCurrentFxRates(
+  transactions: Transaction[],
+  accounts: Account[],
+  quotes: Record<string, StockQuote>
+): { rates: FxRateMap; ready: boolean } {
+  const fiatsKey = useMemo(
+    () => mergeFiats(
+      uniqueForeignFiats(transactions),
+      uniqueForeignFiats(accounts),
+      foreignFiatsFromQuotes(quotes)
+    ).join(','),
+    [transactions, accounts, quotes]
+  );
+  // On garde les taux précédents pendant un rechargement (nouvelle devise).
+  const [state, setState] = useState<{ key: string; rates: FxRateMap } | null>(null);
+
+  useEffect(() => {
+    if (fiatsKey === '') return;
+    let cancelled = false;
+    const end = new Date();
+    const start = new Date(end);
+    // Fenêtre de quelques jours : couvre week-ends et jours fériés.
+    start.setDate(start.getDate() - 10);
+    fetchFxRates(fiatsKey.split(','), formatLocalDate(start), formatLocalDate(end)).then((rates) => {
+      if (!cancelled) setState({ key: fiatsKey, rates });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [fiatsKey]);
+
+  if (fiatsKey === '') return { rates: EMPTY_FX_RATES, ready: true };
+  return { rates: state?.rates ?? EMPTY_FX_RATES, ready: state?.key === fiatsKey };
+}

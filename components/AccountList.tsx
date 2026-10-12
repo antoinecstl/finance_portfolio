@@ -5,6 +5,7 @@ import { EnrichedAccount } from '@/lib/hooks';
 import type { AccountType } from '@/lib/types';
 import type { AccountYearToDateStats } from '@/lib/account-stats';
 import { getApiErrorMessage } from '@/lib/api-errors';
+import { Skeleton } from './Skeleton';
 import {
   accountSupportsPositions,
   canChangeAccountType,
@@ -153,6 +154,9 @@ function YearToDateStats({
 interface AccountCardProps {
   account: EnrichedAccount;
   yearToDate?: AccountYearToDateStats;
+  // Montants pas encore définitifs (cours, taux) / variation annuelle en calcul.
+  loading?: boolean;
+  yearToDateLoading?: boolean;
   defaultExpanded?: boolean;
   onRequestEdit?: (account: EnrichedAccount) => void;
   onRequestDelete?: (account: EnrichedAccount) => void;
@@ -161,6 +165,8 @@ interface AccountCardProps {
 export function AccountCard({
   account,
   yearToDate,
+  loading = false,
+  yearToDateLoading = false,
   defaultExpanded = false,
   onRequestEdit,
   onRequestDelete,
@@ -189,11 +195,15 @@ export function AccountCard({
   const showYearToDate = yearToDate !== undefined && hasYearToDateActivity(yearToDate);
 
   return (
-    <div className="w-full max-w-full overflow-hidden bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm hover:shadow-md transition-all">
+    <div
+      aria-busy={loading || undefined}
+      className="w-full max-w-full overflow-hidden bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm hover:shadow-md transition-all"
+    >
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
-        aria-expanded={expanded}
+        aria-expanded={expanded && !loading}
+        disabled={loading}
         className="w-full text-left p-3 sm:p-4 lg:p-5 hover:border-blue-300 dark:hover:border-blue-700"
       >
         <div className="flex items-center gap-3 sm:gap-4">
@@ -210,9 +220,11 @@ export function AccountCard({
           </div>
           <div className="text-right flex-shrink-0 max-w-[42%]">
             <p className="font-bold text-sm sm:text-base lg:text-lg text-zinc-900 dark:text-zinc-100 truncate">
-              {headlineValue}
+              {loading ? <Skeleton className="h-5 w-20 sm:w-28 align-middle" /> : headlineValue}
             </p>
-            {showYearToDate ? (
+            {loading || yearToDateLoading ? (
+              <Skeleton className="mt-1 h-3 w-16 sm:w-20" />
+            ) : showYearToDate ? (
               <p
                 className={`text-[10px] sm:text-xs truncate ${trendClass(yearToDate.change)}`}
                 title={`Variation depuis le 1er janvier ${yearToDate.year}`}
@@ -234,7 +246,7 @@ export function AccountCard({
         </div>
       </button>
 
-      {expanded && (
+      {expanded && !loading && (
         <div className="px-3 sm:px-4 lg:px-5 pb-3 sm:pb-4 lg:pb-5 border-t border-zinc-100 dark:border-zinc-800 pt-3 sm:pt-4">
           <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs sm:text-sm">
             {supportsPositions && account.calculatedCash !== undefined && (
@@ -283,7 +295,7 @@ export function AccountCard({
             </div>
           </dl>
 
-          {showYearToDate && (
+          {showYearToDate && !yearToDateLoading && (
             <YearToDateStats stats={yearToDate} accountCurrency={account.currency} />
           )}
 
@@ -541,6 +553,8 @@ function DeleteAccountDialog({
 interface AccountListProps {
   accounts: EnrichedAccount[];
   yearToDateStats?: Record<string, AccountYearToDateStats>;
+  loading?: boolean;
+  yearToDateLoading?: boolean;
   positionActivityAccountIds?: ReadonlySet<string>;
   onChanged?: () => void | Promise<void>;
   onDeleted?: () => void | Promise<void>;
@@ -549,6 +563,8 @@ interface AccountListProps {
 export function AccountList({
   accounts,
   yearToDateStats,
+  loading = false,
+  yearToDateLoading = false,
   positionActivityAccountIds,
   onChanged,
   onDeleted,
@@ -671,6 +687,27 @@ export function AccountList({
     }
   };
 
+  if (accounts.length === 0 && loading) {
+    return (
+      <div aria-busy="true" className="w-full max-w-full space-y-2 sm:space-y-3">
+        <span className="sr-only">Chargement des comptes…</span>
+        {[0, 1, 2].map((index) => (
+          <div
+            key={index}
+            className="flex items-center gap-3 sm:gap-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-3 sm:p-4 lg:p-5 shadow-sm"
+          >
+            <Skeleton className="h-8 w-8 sm:h-11 sm:w-11 rounded-lg flex-shrink-0" />
+            <div className="flex-1 min-w-0 space-y-2">
+              <Skeleton className="block h-4 w-32 max-w-full" />
+              <Skeleton className="block h-3 w-20" />
+            </div>
+            <Skeleton className="h-5 w-20 sm:w-28" />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
   if (accounts.length === 0) {
     return (
       <div className="text-center py-8 sm:py-12 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800">
@@ -692,6 +729,8 @@ export function AccountList({
           key={account.id}
           account={account}
           yearToDate={yearToDateStats?.[account.id]}
+          loading={loading}
+          yearToDateLoading={yearToDateLoading}
           onRequestEdit={onMutated ? openEdit : undefined}
           onRequestDelete={onMutated ? openDelete : undefined}
         />
