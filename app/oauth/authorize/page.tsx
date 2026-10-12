@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation';
 import { AlertTriangle, Lock } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { getUserSubscription } from '@/lib/subscription';
-import { buildRedirectUrl } from '@/lib/public-api/oauth';
+import { buildRedirectUrl, isKnownClientRedirect } from '@/lib/public-api/oauth';
 import { resolveAuthorizationRequest } from '@/lib/public-api/oauth-server';
 import { ConsentForm } from './ConsentForm';
 
@@ -103,6 +103,7 @@ export default async function AuthorizePage({ searchParams }: { searchParams: Se
       <ConsentForm
         clientName={client.client_name}
         redirectHost={redirectHost}
+        knownClient={isKnownClientRedirect(request.redirect_uri)}
         email={user.email ?? ''}
         params={params}
       />

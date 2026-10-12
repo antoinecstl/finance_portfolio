@@ -9,7 +9,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
 import { createClient } from '@/lib/supabase/server';
-import { rateLimit, clientKey } from '@/lib/rate-limit';
+import { sharedRateLimit } from '@/lib/shared-rate-limit';
 import { runImportPipeline, buildIdempotencyKey } from '@/lib/import/orchestrator';
 import type { ImportSourceType } from '@/lib/import/types';
 import { detectImportSourceType } from '@/lib/import/file-types';
@@ -41,12 +41,14 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Rate limit : 20 analyses / heure / user, une par document (chaque analyse peut déclencher un appel OCR/LLM payant).
-  const rl = rateLimit(`import-parse:${clientKey(request, user.id)}`, 20, 60 * 60 * 1000);
+  // Rate limit : 20 analyses / heure / user, une par document (chaque analyse peut
+  // déclencher un appel OCR/LLM payant). Compteur partagé en base : un limiteur en
+  // mémoire se contourne en répartissant les requêtes sur plusieurs instances.
+  const rl = await sharedRateLimit(`import-parse:u:${user.id}`, 20, 60 * 60);
   if (!rl.ok) {
     return NextResponse.json(
-      { error: 'rate_limited', retryAfterMs: rl.resetMs },
-      { status: 429 }
+      { error: 'rate_limited', retryAfterMs: rl.retryAfterMs },
+      { status: 429, headers: { 'Retry-After': String(Math.max(1, Math.ceil(rl.retryAfterMs / 1000))) } }
     );
   }
 
@@ -160,9 +162,13 @@ export async function POST(request: NextRequest) {
         }
       );
     }
-    const message = err instanceof Error ? err.message : 'pipeline_failed';
+    // Le détail (réponse du fournisseur OCR/LLM, configuration) reste dans les
+    // journaux serveur : il n'a pas à être renvoyé au navigateur.
     return NextResponse.json(
-      { error: 'extraction_failed', message },
+      {
+        error: 'extraction_failed',
+        message: 'Impossible d\'analyser ce document. Vérifiez qu\'il est lisible ou réessayez plus tard.',
+      },
       { status: 502 }
     );
   }

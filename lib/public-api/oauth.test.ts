@@ -101,3 +101,16 @@ describe('metadata', () => {
     expect(server.registration_endpoint).toMatch(/\/api\/oauth\/register$/);
   });
 });
+
+describe('isKnownClientRedirect', () => {
+  it('recognises the assistants and local clients only', async () => {
+    const { isKnownClientRedirect } = await import('./oauth');
+    expect(isKnownClientRedirect('https://chatgpt.com/connector_platform_oauth_redirect')).toBe(true);
+    expect(isKnownClientRedirect('https://claude.ai/api/mcp/auth_callback')).toBe(true);
+    expect(isKnownClientRedirect('http://localhost:6274/oauth/callback')).toBe(true);
+    expect(isKnownClientRedirect('https://claude.ai.evil.com/cb')).toBe(false);
+    expect(isKnownClientRedirect('https://evilclaude.ai/cb')).toBe(false);
+    expect(isKnownClientRedirect('http://chatgpt.com/cb')).toBe(false);
+    expect(isKnownClientRedirect('pas une url')).toBe(false);
+  });
+});

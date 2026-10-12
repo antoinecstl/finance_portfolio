@@ -26,6 +26,7 @@ export async function getAdminUser(): Promise<User | null> {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user || !isAdminEmail(user.email)) return null;
+  // Email confirmé exigé : une adresse non vérifiée ne prouve pas qu'on la possède.
+  if (!user || !user.email_confirmed_at || !isAdminEmail(user.email)) return null;
   return user;
 }
