@@ -37,6 +37,8 @@ $env:NEXT_TURBOPACK_EXPERIMENTAL_USE_SYSTEM_TLS_CERTS='1'; npm run build
 
 If `npm install` hits optional peer dependency conflicts, use `--legacy-peer-deps`. This was needed when adding the Vercel Analytics packages because npm tried to resolve optional Svelte/Vite peers that are not used by this Next.js app.
 
+Before pushing a `package-lock.json` change, check it the way CI does: `rm -rf node_modules && npm ci` under Node 20 (CI and the Vercel install are strict; a lockfile written with `--legacy-peer-deps` can pass locally and fail there). Vitest stays on 4.x while CI runs Node 20 (Vitest 5 requires Node 22.12+). If npm 10 crashes with `Cannot read properties of null (reading 'edgesOut')`, generate the lockfile with `npx npm@11 install`, then verify with `npm ci`.
+
 ## Known Local Warnings
 
 - `npm run lint` reports warnings only: `react-hooks/set-state-in-effect` (downgraded to warn after the Next 16.4 upgrade, existing data-loading hooks to migrate) and an unused helper in `lib/portfolio-calculator.ts`.
