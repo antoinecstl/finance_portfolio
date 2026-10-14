@@ -205,6 +205,13 @@ export function seriesCagr(rows: StatementRow[], key: StatementItem): number | n
   return cagr(first[key], last[key], Math.round(years));
 }
 
+/** Années couvertes par un poste (premier → dernier exercice renseigné), arrondies. */
+export function seriesSpanYears(rows: StatementRow[], key: StatementItem): number | null {
+  const values = rows.filter((r) => r[key] !== null);
+  if (values.length < 3) return null;
+  return Math.round((Date.parse(values[values.length - 1].date) - Date.parse(values[0].date)) / (365.25 * 86_400_000));
+}
+
 const ratio = (a: number | null | undefined, b: number | null | undefined, positiveDenominator = true): number | null => {
   if (a === null || a === undefined || b === null || b === undefined || b === 0) return null;
   if (positiveDenominator && b < 0) return null;
@@ -241,6 +248,8 @@ export interface FundamentalRatios {
   revenueCagr: number | null;
   epsCagr: number | null;
   fcfCagr: number | null;
+  /** Années sur lesquelles portent les croissances moyennes (CA). */
+  growthYears: number | null;
   eps: number | null;
   fcfPerShare: number | null;
   bookValuePerShare: number | null;
@@ -297,6 +306,7 @@ export function computeRatios(statements: Statements, price: number): Fundamenta
     revenueCagr: seriesCagr(annual, 'revenue'),
     epsCagr,
     fcfCagr: seriesCagr(annual, 'freeCashFlow'),
+    growthYears: seriesSpanYears(annual, 'revenue'),
     eps,
     fcfPerShare: ratio(fcf, shares),
     bookValuePerShare,
@@ -333,12 +343,6 @@ export function dcfValuePerShare({ fcfPerShare, growth, discountRate, terminalGr
   const terminal = (flow * (1 + terminalGrowth)) / (discountRate - terminalGrowth);
   value += terminal / Math.pow(1 + discountRate, years);
   return Number.isFinite(value) ? value : null;
-}
-
-/** Croissance proposée par défaut au simulateur : historique du FCF, bornée entre 0 et 12 %. */
-export function defaultDcfGrowth(ratios: Pick<FundamentalRatios, 'fcfCagr' | 'revenueCagr'>): number {
-  const g = ratios.fcfCagr ?? ratios.revenueCagr ?? 0.04;
-  return Math.min(Math.max(Math.round(g * 100) / 100, 0), 0.12);
 }
 
 /**
@@ -378,6 +382,8 @@ export interface QuoteSummaryData {
     forwardPe: number | null;
     peg: number | null;
     earningsGrowthNextYear: number | null;
+    /** Croissance annuelle du BPA attendue sur 5 ans (consensus), rarement publiée hors États-Unis. */
+    earningsGrowth5y: number | null;
     sharesFloat: number | null;
     heldByInsiders: number | null;
     heldByInstitutions: number | null;
@@ -417,9 +423,11 @@ export function parseQuoteSummary(json: unknown): QuoteSummaryData | null {
   const calendar = mod('calendarEvents');
   const trend = mod('earningsTrend');
 
-  const nextYear = Array.isArray(trend.trend)
-    ? (trend.trend as unknown[]).find((t) => isRecord(t) && t.period === '+1y')
-    : undefined;
+  const trendFor = (period: string) => (Array.isArray(trend.trend)
+    ? (trend.trend as unknown[]).find((t) => isRecord(t) && t.period === period)
+    : undefined);
+  const nextYear = trendFor('+1y');
+  const nextFiveYears = trendFor('+5y');
   const earningsDates = isRecord(calendar.earnings) && Array.isArray(calendar.earnings.earningsDate)
     ? calendar.earnings.earningsDate
     : [];
@@ -448,6 +456,7 @@ export function parseQuoteSummary(json: unknown): QuoteSummaryData | null {
       forwardPe: rawNumber(detail.forwardPE) ?? rawNumber(keyStats.forwardPE),
       peg: rawNumber(keyStats.pegRatio),
       earningsGrowthNextYear: isRecord(nextYear) ? rawNumber(nextYear.growth) : null,
+      earningsGrowth5y: isRecord(nextFiveYears) ? rawNumber(nextFiveYears.growth) : null,
       sharesFloat: rawNumber(keyStats.floatShares),
       heldByInsiders: rawNumber(keyStats.heldPercentInsiders),
       heldByInstitutions: rawNumber(keyStats.heldPercentInstitutions),

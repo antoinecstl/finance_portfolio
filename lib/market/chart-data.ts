@@ -8,6 +8,8 @@ export interface MarketPoint {
   l: number;
   c: number;
   v: number;
+  /** Clôture ajustée des dividendes et splits (rendement total), si publiée. */
+  ac?: number;
 }
 
 export interface MarketDividend {
@@ -36,6 +38,8 @@ export interface MarketMeta {
   fiftyTwoWeekLow: number | null;
   regularMarketStart: number | null;
   regularMarketEnd: number | null;
+  /** Première séance cotée (YYYY-MM-DD), si publiée. */
+  firstTradeDate?: string | null;
 }
 
 export interface ParsedChart {
@@ -58,7 +62,7 @@ export function parseChartResponse(json: unknown, requestedSymbol: string): Pars
     | {
         meta?: Record<string, unknown>;
         timestamp?: unknown[];
-        indicators?: { quote?: Array<Record<string, unknown[] | undefined>> };
+        indicators?: { quote?: Array<Record<string, unknown[] | undefined>>; adjclose?: Array<{ adjclose?: unknown[] }> };
         events?: {
           dividends?: Record<string, { amount?: unknown; date?: unknown }>;
           splits?: Record<string, { date?: unknown; numerator?: unknown; denominator?: unknown; splitRatio?: unknown }>;
@@ -85,23 +89,28 @@ export function parseChartResponse(json: unknown, requestedSymbol: string): Pars
     fiftyTwoWeekLow: num(meta.fiftyTwoWeekLow),
     regularMarketStart: num(regular?.start),
     regularMarketEnd: num(regular?.end),
+    firstTradeDate: num(meta.firstTradeDate) !== null && (meta.firstTradeDate as number) > 0 ? isoDate(meta.firstTradeDate as number) : null,
   };
 
   const timestamps = Array.isArray(result.timestamp) ? result.timestamp : [];
   const quote = result.indicators?.quote?.[0] ?? {};
+  const adjusted = result.indicators?.adjclose?.[0]?.adjclose;
   const points: MarketPoint[] = [];
   timestamps.forEach((rawT, i) => {
     const t = num(rawT);
     const c = num(quote.close?.[i]);
     if (t === null || c === null) return;
-    points.push({
+    const point: MarketPoint = {
       t,
       c,
       o: num(quote.open?.[i]) ?? c,
       h: num(quote.high?.[i]) ?? c,
       l: num(quote.low?.[i]) ?? c,
       v: num(quote.volume?.[i]) ?? 0,
-    });
+    };
+    const ac = Array.isArray(adjusted) ? num(adjusted[i]) : null;
+    if (ac !== null && ac > 0) point.ac = ac;
+    points.push(point);
   });
   points.sort((a, b) => a.t - b.t);
 

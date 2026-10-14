@@ -6,10 +6,12 @@ const getMarketChart = vi.fn();
 const getStockQuote = vi.fn();
 const getFundamentalsSeries = vi.fn();
 const getQuoteSummary = vi.fn();
+const getQuoteSummaryRaw = vi.fn();
 const getProviderNews = vi.fn();
 const getFrenchNews = vi.fn();
 let user: { id: string } | null = { id: 'user-1' };
 
+vi.mock('server-only', () => ({}));
 vi.mock('@/lib/supabase/server', () => ({
   createClient: async () => ({ auth: { getUser: async () => ({ data: { user } }) } }),
 }));
@@ -18,6 +20,7 @@ vi.mock('@/lib/stock-api', () => ({
   getStockQuote: (...args: unknown[]) => getStockQuote(...args),
   getFundamentalsSeries: (...args: unknown[]) => getFundamentalsSeries(...args),
   getQuoteSummary: (...args: unknown[]) => getQuoteSummary(...args),
+  getQuoteSummaryRaw: (...args: unknown[]) => getQuoteSummaryRaw(...args),
   getProviderNews: (...args: unknown[]) => getProviderNews(...args),
 }));
 vi.mock('@/lib/news-feed', () => ({
@@ -28,6 +31,9 @@ const { GET: chartGET } = await import('@/app/api/market/chart/route');
 const { GET: overviewGET } = await import('@/app/api/market/overview/route');
 const { GET: fundamentalsGET } = await import('@/app/api/market/fundamentals/route');
 const { GET: newsGET } = await import('@/app/api/market/news/route');
+const { GET: performanceGET } = await import('@/app/api/market/performance/route');
+const { GET: valuationGET } = await import('@/app/api/market/valuation/route');
+const { GET: detailsGET } = await import('@/app/api/market/details/route');
 
 const DAY = 86_400;
 const now = Math.floor(Date.now() / 1000);
@@ -54,6 +60,7 @@ beforeEach(() => {
   getStockQuote.mockReset();
   getFundamentalsSeries.mockReset();
   getQuoteSummary.mockReset();
+  getQuoteSummaryRaw.mockReset();
   getProviderNews.mockReset();
   getFrenchNews.mockReset();
 });
@@ -119,6 +126,10 @@ describe('GET /api/market/overview', () => {
 const pt = (date: string, value: number, currency = 'USD') => [{ date, value, currency }];
 
 describe('GET /api/market/fundamentals', () => {
+  beforeEach(() => {
+    getMarketChart.mockResolvedValue({ status: 'error' });
+  });
+
   it('reports a provider outage and missing accounts distinctly', async () => {
     getFundamentalsSeries.mockResolvedValue(null);
     getQuoteSummary.mockResolvedValue(null);
@@ -149,7 +160,7 @@ describe('GET /api/market/fundamentals', () => {
     expect(body).toMatchObject({ available: true, currency: 'USD', priceCurrency: 'GBp', priceInStatementCurrency: 25, fxRate: 1.25 });
     expect(body.ratios.per).toBeCloseTo(12.5, 10);
     expect(body.ratios.marketCap).toBe(25e9);
-    expect(body.dcfDefaults).toEqual({ growth: 0.04, discountRate: 0.09, terminalGrowth: 0.02 });
+    expect(body.dcf.scenarios.central).toEqual({ growth: 0.04, discountRate: 0.09, terminalGrowth: 0.02 });
   });
 });
 
@@ -170,5 +181,61 @@ describe('GET /api/market/news', () => {
     expect((await newsGET(req('/api/market/news?symbol=SU.PA'))).status).toBe(401);
     user = { id: 'u-news' };
     expect((await newsGET(req('/api/market/news?symbol=%3Cscript%3E'))).status).toBe(400);
+  });
+});
+
+describe('GET /api/market/performance', () => {
+  it('computes long-term figures from daily and monthly closes', async () => {
+    getMarketChart.mockImplementation(async (_symbol: string, options: { interval: string }) =>
+      options.interval === '1mo' ? { status: 'ok', chart: chart({ points: points.filter((_, i) => i % 21 === 0) }) } : { status: 'ok', chart: chart() }
+    );
+    const res = await performanceGET(req('/api/market/performance?symbol=PERF1.PA'));
+    expect(res.status).toBe(200);
+    expect(getMarketChart).toHaveBeenCalledWith('PERF1.PA', { range: '10y', interval: '1d', revalidate: 21600 });
+    const body = await res.json();
+    expect(body).toMatchObject({ found: true, assetClass: 'etf', stale: false });
+    expect(body.stats.maxDrawdown.value).toBe(0);
+    expect(body.annualReturns.length).toBeGreaterThan(1);
+    expect(body.monthly.years.length).toBeGreaterThan(1);
+  });
+
+  it('distinguishes an unknown symbol from an outage', async () => {
+    getMarketChart.mockResolvedValue({ status: 'not_found' });
+    expect((await performanceGET(req('/api/market/performance?symbol=NOPE1'))).status).toBe(404);
+    getMarketChart.mockResolvedValue({ status: 'error' });
+    expect((await performanceGET(req('/api/market/performance?symbol=DOWN1'))).status).toBe(502);
+  });
+});
+
+describe('GET /api/market/details', () => {
+  it('reads crypto supply and the correlation with bitcoin', async () => {
+    const crypto = chart({ meta: { ...chart().meta, symbol: 'ETH-USD', instrumentType: 'CRYPTOCURRENCY', currency: 'USD' } });
+    getMarketChart.mockResolvedValue({ status: 'ok', chart: crypto });
+    getQuoteSummaryRaw.mockResolvedValue({ quoteSummary: { result: [{ summaryDetail: { marketCap: { raw: 4e11 }, circulatingSupply: { raw: 120e6 } } }] } });
+    const res = await detailsGET(req('/api/market/details?symbol=ETH-USD'));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.assetClass).toBe('crypto');
+    expect(body.crypto).toMatchObject({ marketCap: 4e11, circulatingSupply: 120e6, issuedShare: null });
+    expect(body.crypto.correlation).toMatchObject({ with: 'BTC-USD', value: expect.any(Number) });
+  });
+
+  it('returns nothing specific for an index', async () => {
+    getMarketChart.mockResolvedValue({ status: 'ok', chart: chart({ meta: { ...chart().meta, symbol: '^FCHI', instrumentType: 'INDEX' } }) });
+    const body = await (await detailsGET(req('/api/market/details?symbol=%5EFCHI'))).json();
+    expect(body).toMatchObject({ found: true, assetClass: 'index', etf: null, crypto: null });
+    expect(getQuoteSummaryRaw).not.toHaveBeenCalled();
+  });
+});
+
+describe('GET /api/market/valuation', () => {
+  it('reports when there are no accounts to value', async () => {
+    getMarketChart.mockResolvedValue({ status: 'error' });
+    getStockQuote.mockResolvedValue({ price: 10, currency: 'EUR' });
+    getFundamentalsSeries.mockResolvedValue({});
+    getQuoteSummary.mockResolvedValue(null);
+    const res = await valuationGET(req('/api/market/valuation?symbol=EMPTY.PA'));
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ available: false });
   });
 });

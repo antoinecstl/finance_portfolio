@@ -397,7 +397,7 @@ export async function getFundamentalsSeries(symbol: string): Promise<SeriesMap |
   const params = new URLSearchParams({
     symbol,
     type: fundamentalsSeriesTypes().join(','),
-    period1: String(now - 7 * 365 * 86_400),
+    period1: String(now - 20 * 365 * 86_400),
     period2: String(now + 86_400),
   });
   try {
@@ -456,34 +456,42 @@ const SUMMARY_MODULES = ['assetProfile', 'summaryDetail', 'defaultKeyStatistics'
 const summaryCache = new Map<string, { data: QuoteSummaryData | null; expires: number }>();
 
 /**
- * Profil, consensus des analystes et statistiques de marché. Facultatif : la
- * fiche reste complète sans (null), les ratios étant calculés par Fi-Hub.
+ * Réponse brute du module « résumé » pour une liste de sous-modules (profil
+ * d'ETF, données crypto…). Null si la session ou la source est indisponible.
  */
-export async function getQuoteSummary(symbol: string): Promise<QuoteSummaryData | null> {
-  const cached = summaryCache.get(symbol);
-  if (cached && cached.expires > Date.now()) return cached.data;
-
+export async function getQuoteSummaryRaw(symbol: string, modules: string[]): Promise<unknown | null> {
   for (const force of [false, true]) {
     const session = await getProviderSession(force);
     if (!session) return null;
     try {
-      const params = new URLSearchParams({ modules: SUMMARY_MODULES.join(','), crumb: session.crumb });
+      const params = new URLSearchParams({ modules: modules.join(','), crumb: session.crumb });
       const response = await fetch(`${MARKET_DATA_SUMMARY_URL}/${encodeURIComponent(symbol)}?${params.toString()}`, {
         headers: { ...MARKET_DATA_HEADERS, Cookie: session.cookie },
         cache: 'no-store',
         signal: AbortSignal.timeout(10_000),
       });
       if (response.status === 401 || response.status === 403) continue; // jeton expiré : une nouvelle session
-      const data = response.ok ? parseQuoteSummary(await response.json()) : null;
-      if (summaryCache.size > 300) summaryCache.clear();
-      summaryCache.set(symbol, { data, expires: Date.now() + (data ? 6 * 3600_000 : 600_000) });
-      return data;
+      return response.ok ? await response.json() : null;
     } catch (error) {
       console.error(`Error fetching summary for ${symbol}:`, error);
       return null;
     }
   }
   return null;
+}
+
+/**
+ * Profil, consensus des analystes et statistiques de marché. Facultatif : la
+ * fiche reste complète sans (null), les ratios étant calculés par Fi-Hub.
+ */
+export async function getQuoteSummary(symbol: string): Promise<QuoteSummaryData | null> {
+  const cached = summaryCache.get(symbol);
+  if (cached && cached.expires > Date.now()) return cached.data;
+  const json = await getQuoteSummaryRaw(symbol, SUMMARY_MODULES);
+  const data = json ? parseQuoteSummary(json) : null;
+  if (summaryCache.size > 300) summaryCache.clear();
+  summaryCache.set(symbol, { data, expires: Date.now() + (data ? 6 * 3600_000 : 600_000) });
+  return data;
 }
 
 /** Derniers articles liés au symbole selon la recherche du fournisseur. */

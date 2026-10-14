@@ -61,6 +61,7 @@ Never commit secrets. Important environment variables include:
 - `PADDLE_PRO_PRICE_ID`
 - `PADDLE_PRO_YEARLY_PRICE_ID`
 - `RESEND_API_KEY` / `RESEND_FROM` for transactional email.
+- `SEC_USER_AGENT`: app name + contact email sent to SEC EDGAR (market explorer, US company accounts).
 - Supabase Edge Function signup notifications use function secrets such as `SIGNUP_SLACK_WEBHOOK_URL`, `SIGNUP_DISCORD_WEBHOOK_URL`, `APP_URL`, or `NEXT_PUBLIC_APP_URL`.
 
 ## App Layout
@@ -74,9 +75,12 @@ Never commit secrets. Important environment variables include:
 
 ## Market Explorer
 
-- Pages `app/(app)/marches` (home: search, holdings, indices) and `app/(app)/marches/[symbol]` (symbol page: chart, stats, dividends). Spec in `docs/specs/explorateur-marches.md`, competitor notes in `docs/analyses/baggr.md`.
-- Routes `app/api/market/{chart,overview,fundamentals,news}` (auth + 60 req/min), backed by `lib/stock-api.ts` (`getMarketChart`, `getFundamentalsSeries`, `getQuoteSummary` with a cookie/crumb session, `getProviderNews`) and `lib/news-feed.ts` (Google News RSS, French). Never name the market data provider in the UI.
-- Pure logic (periods, parsing, performance/volatility/drawdown/dividends, recents) lives in `lib/market`; UI in `components/market`.
+- Pages `app/(app)/marches` (home: search, holdings, indices) and `app/(app)/marches/[symbol]` (symbol page). Specs: `docs/specs/explorateur-marches.md` (v1) and `docs/specs/explorateur-marches-v2.md` (adaptive page, sources, resilience); competitor notes in `docs/analyses/baggr.md`.
+- The symbol page adapts to the asset class (`lib/market/asset-class.ts`): tabs in `?vue=` — equity: Aperçu, Performance, Finances, Valorisation, Profil; ETF: + Composition; crypto: + Marché; index/other: Aperçu, Performance. A tab loads its data only when opened; modules hide when their data is missing (never an empty section).
+- Routes `app/api/market/{chart,overview,performance,fundamentals,valuation,details,news}` (session + 60 req/min via `lib/market/route-guard.ts`). Server composition lives in `lib/market/services/*` (`server-only`); pure, tested logic in `lib/market/*` (performance, history, valuation, details, sec parsing); UI in `components/market`.
+- Sources: `lib/stock-api.ts` (chart, timeseries, `getQuoteSummary` / `getQuoteSummaryRaw` with a cookie/crumb session, search, news) and SEC EDGAR `companyfacts` for US companies (`lib/market/sources/sec.ts`, US GAAP 10-K facts, merged with the provider in `lib/market/history.ts`, official values win). SEC needs `SEC_USER_AGENT` (app name + contact email). Never name the market data provider in the UI.
+- Resilience: `lib/market/sources/resilient-fetch.ts` (timeout, one retry, per-source circuit breaker) and `lib/market/sources/cache.ts` (instance memory + `market_data_cache` table, service role only, migration `20261014_market_data_cache.sql`; serves the last good copy marked `stale` when a source fails; works memory-only without the table). Cache compact computed results, never raw provider payloads.
+- Charts follow one y-scale per chart (no dual axis); multi-series colors use the validated `--series-1..4` tokens in fixed order.
 
 ## Billing and Paddle
 
