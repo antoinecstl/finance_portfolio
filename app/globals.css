@@ -84,6 +84,13 @@
   --chart-9:  #c2410c;   /* burnt orange */
   --chart-10: #4338ca;   /* deep indigo */
 
+  /* Indicateurs comparés de l'explorateur de marchés (marges, graphique
+     personnalisé) — ordre fixe, validé sur les surfaces blanche et papier. */
+  --series-1: #047857;
+  --series-2: #4338ca;
+  --series-3: #b45309;
+  --series-4: #7e22ce;
+
   /* Séries par compte (aires empilées) — palette catégorielle validée
      (séparation daltonisme + contraste) sur la surface papier. */
   --account-1: #2f6fb5;
@@ -233,6 +240,11 @@
     --chart-8:  #a3e635;
     --chart-9:  #fb923c;
     --chart-10: #818cf8;
+
+    --series-1: #059669;
+    --series-2: #6366f1;
+    --series-3: #d97706;
+    --series-4: #a855f7;
 
     --account-1: #3987e5;
     --account-2: #d95926;

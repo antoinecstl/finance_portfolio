@@ -13,9 +13,15 @@ import { PageHeader } from '../app-shell/PageLayout';
 import { COMPARE_COLORS, MOVING_AVERAGES, MarketChart, type CompareSeries } from './MarketChart';
 import { MarketSearch } from './MarketSearch';
 import { changeClass, fmtCompact, fmtPct, fmtPrice, instrumentLabel } from './format';
-import { MarketFundamentals } from './MarketFundamentals';
+import { FinancesPanel } from './FinancesPanel';
+import { ValuationPanel } from './ValuationPanel';
+import { ProfilePanel } from './ProfilePanel';
+import { CryptoMarketPanel, EtfCompositionPanel } from './DetailsPanels';
 import { MarketNews } from './MarketNews';
 import { useJson } from './useJson';
+import { assetClassOf, resolveTab, tabsFor, type AssetClass, type MarketTab } from '@/lib/market/asset-class';
+import { MarketTabs } from './MarketTabs';
+import { PerformancePanel } from './PerformancePanel';
 
 interface Overview {
   symbol: string;
@@ -23,6 +29,7 @@ interface Overview {
   exchange: string;
   currency: string;
   instrumentType: string;
+  assetClass?: AssetClass;
   timezone: string;
   price: number;
   change: number | null;
@@ -128,6 +135,16 @@ export function MarketSymbolView({ symbol }: { symbol: string }) {
     if (data?.symbol) pushRecent({ symbol: data.symbol, name: data.name });
   }, [data?.symbol, data?.name]);
 
+  const assetClass: AssetClass = data?.assetClass ?? assetClassOf(data?.instrumentType);
+  const tab: MarketTab = resolveTab(assetClass, searchParams.get('vue'));
+  const setTab = (next: MarketTab) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (next === 'apercu') params.delete('vue');
+    else params.set('vue', next);
+    const query = params.toString();
+    router.replace(`${pathname}${query ? `?${query}` : ''}`, { scroll: false });
+  };
+
   const setPeriod = (next: ChartPeriod) => {
     const params = new URLSearchParams(searchParams.toString());
     if (next === DEFAULT_CHART_PERIOD) params.delete('p');
@@ -168,6 +185,8 @@ export function MarketSymbolView({ symbol }: { symbol: string }) {
   const comparing = compare.length > 0 && !chart.data?.intraday;
   const compareSeries: CompareSeries[] = compare.map((c) => ({ ...c, points: comparePoints[c.symbol] ?? [] }));
   const position52 = data ? rangePosition(data.price, data.fiftyTwoWeekLow, data.fiftyTwoWeekHigh) : null;
+  // Dividendes : actions et ETF (y compris « aucun versement »), autres actifs seulement s'il y en a.
+  const showDividends = Boolean(data && (assetClass === 'equity' || assetClass === 'etf' || data.dividends.length > 0));
 
   return (
     <>
@@ -249,200 +268,211 @@ export function MarketSymbolView({ symbol }: { symbol: string }) {
           </section>
         )}
 
-        {/* Graphique */}
-        <section className={`${card} p-3 sm:p-5`} aria-label="Graphique du cours">
-          <div className="mb-3 flex flex-wrap items-center gap-2 sm:gap-3">
-            <div className="-mx-1 flex max-w-full overflow-x-auto px-1" role="group" aria-label="Période">
-              {CHART_PERIODS.map((p) => (
-                <button key={p.id} type="button" onClick={() => setPeriod(p.id)} aria-current={p.id === period ? 'true' : undefined} className={segmentClass(p.id === period)}>
-                  {p.label}
-                </button>
-              ))}
-            </div>
-            {!comparing && (
-              <div className="flex rounded-lg border border-zinc-200 p-0.5 dark:border-zinc-700" role="group" aria-label="Affichage">
-                <button type="button" aria-pressed={mode === 'line'} onClick={() => setMode('line')} className={segmentClass(mode === 'line')}>Ligne</button>
-                <button type="button" aria-pressed={mode === 'candles'} onClick={() => setMode('candles')} className={segmentClass(mode === 'candles')}>Chandeliers</button>
-              </div>
-            )}
-            {!comparing && !chart.data?.intraday && (
-              <div className="flex flex-wrap gap-1" role="group" aria-label="Moyennes mobiles">
-                {MOVING_AVERAGES.map((m) => {
-                  const on = movingAverages.includes(m.days);
-                  return (
-                    <button
-                      key={m.days}
-                      type="button"
-                      aria-pressed={on}
-                      onClick={() => toggleAverage(m.days)}
-                      className={`rounded-md border px-2 py-1 text-xs transition-colors ${on ? 'border-zinc-400 text-zinc-900 dark:border-zinc-500 dark:text-zinc-100' : 'border-zinc-200 text-zinc-500 dark:border-zinc-700'}`}
-                    >
-                      <span style={{ color: m.color }}>━</span> MM {m.days}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-            {chart.loading && <Loader2 className="h-4 w-4 animate-spin text-zinc-400" aria-label="Chargement" />}
-          </div>
+        {data && <MarketTabs tabs={tabsFor(assetClass)} active={tab} onChange={setTab} />}
 
-          {/* Comparaison */}
-          <div className="mb-3 flex flex-wrap items-center gap-2 text-xs">
-            {compare.map((c, n) => (
-              <span key={c.symbol} className="inline-flex items-center gap-1.5 rounded-full border border-zinc-200 py-1 pl-2.5 pr-1 dark:border-zinc-700">
-                <span style={{ color: COMPARE_COLORS[n] }}>━</span>
-                <span className="text-zinc-700 dark:text-zinc-300">{c.label}</span>
-                <button type="button" onClick={() => setCompare((prev) => prev.filter((x) => x.symbol !== c.symbol))} aria-label={`Retirer ${c.label} de la comparaison`} className="rounded-full p-0.5 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800">
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              </span>
-            ))}
-            {chart.data?.intraday ? (
-              compare.length > 0 && <span className="text-zinc-500 dark:text-zinc-400">Comparaison disponible à partir de 1M.</span>
-            ) : compare.length < 3 && (
-              picking ? (
-                <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
-                  {QUICK_COMPARE.filter((q) => !compareSymbols.includes(q.symbol) && q.symbol !== symbolUpper).map((q) => (
-                    <button key={q.symbol} type="button" onClick={() => addCompare({ symbol: q.symbol, name: q.label })} className="rounded-full border border-zinc-200 px-2.5 py-1 text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800">
-                      {q.label}
+        {tab === 'performance' && data && <PerformancePanel symbol={data.symbol} />}
+        {tab === 'finances' && data && <FinancesPanel symbol={data.symbol} priceCurrency={currency} />}
+        {tab === 'valorisation' && data && <ValuationPanel symbol={data.symbol} price={data.price} priceCurrency={currency} />}
+        {tab === 'profil' && data && <ProfilePanel symbol={data.symbol} priceCurrency={currency} />}
+        {tab === 'composition' && data && <EtfCompositionPanel symbol={data.symbol} />}
+        {tab === 'marche' && data && <CryptoMarketPanel symbol={data.symbol} />}
+
+        {tab === 'apercu' && (
+          <>
+            {/* Graphique */}
+            <section className={`${card} p-3 sm:p-5`} aria-label="Graphique du cours">
+              <div className="mb-3 flex flex-wrap items-center gap-2 sm:gap-3">
+                <div className="-mx-1 flex max-w-full overflow-x-auto px-1" role="group" aria-label="Période">
+                  {CHART_PERIODS.map((p) => (
+                    <button key={p.id} type="button" onClick={() => setPeriod(p.id)} aria-current={p.id === period ? 'true' : undefined} className={segmentClass(p.id === period)}>
+                      {p.label}
                     </button>
                   ))}
-                  <div className="w-full sm:w-56"><MarketSearch size="sm" autoFocus onSelect={addCompare} placeholder="Autre titre ou indice…" /></div>
-                  <button type="button" onClick={() => setPicking(false)} className="text-zinc-500 underline underline-offset-4">Annuler</button>
                 </div>
-              ) : (
-                <button type="button" onClick={() => setPicking(true)} className="inline-flex items-center gap-1 rounded-full border border-dashed border-zinc-300 px-2.5 py-1 text-zinc-600 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800">
-                  <Plus className="h-3.5 w-3.5" /> Comparer
-                </button>
-              )
-            )}
-          </div>
-
-          {chart.error ? (
-            <div className="flex h-[320px] flex-col items-center justify-center gap-3 text-sm text-zinc-500 dark:text-zinc-400">
-              {chart.error === 'not_found' ? 'Aucune cotation sur cette période.' : chart.error}
-              <button type="button" onClick={chart.reload} className="inline-flex items-center gap-1.5 underline underline-offset-4"><RefreshCw className="h-4 w-4" /> Réessayer</button>
-            </div>
-          ) : chart.data ? (
-            <div className={chart.loading ? 'opacity-50 transition-opacity' : 'transition-opacity'}>
-              <MarketChart
-                points={chart.data.points}
-                displayFrom={chart.data.displayFrom}
-                period={chart.data.period}
-                interval={chart.data.interval}
-                intraday={chart.data.intraday}
-                timezone={chart.data.timezone || 'UTC'}
-                currency={currency}
-                mode={mode}
-                movingAverages={movingAverages}
-                compare={comparing ? compareSeries : []}
-                transactions={symbolTransactions}
-                previousClose={data?.previousClose ?? null}
-                symbolLabel={data?.name ?? symbolUpper}
-              />
-            </div>
-          ) : (
-            <div className="h-[320px] animate-pulse rounded-lg bg-zinc-100 dark:bg-zinc-800 sm:h-[400px]" />
-          )}
-        </section>
-
-        {data && (
-          <div className="grid gap-4 sm:gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-            {/* Statistiques */}
-            <section className={`${card} p-4 sm:p-5`} aria-labelledby="stats-title">
-              <h2 id="stats-title" className="text-base font-semibold text-zinc-900 dark:text-zinc-100">Statistiques</h2>
-              <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">Performance du cours, hors dividendes.</p>
-              <dl className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                {PERFORMANCE_KEYS.map((key) => (
-                  <div key={key} className="rounded-lg bg-zinc-50 px-3 py-2 dark:bg-zinc-800/60">
-                    <dt className="text-xs text-zinc-500 dark:text-zinc-400">{PERF_LABELS[key]}</dt>
-                    <dd className={`text-sm font-medium tabular-nums ${changeClass(data.performance[key])}`}>{fmtPct(data.performance[key])}</dd>
+                {!comparing && (
+                  <div className="flex rounded-lg border border-zinc-200 p-0.5 dark:border-zinc-700" role="group" aria-label="Affichage">
+                    <button type="button" aria-pressed={mode === 'line'} onClick={() => setMode('line')} className={segmentClass(mode === 'line')}>Ligne</button>
+                    <button type="button" aria-pressed={mode === 'candles'} onClick={() => setMode('candles')} className={segmentClass(mode === 'candles')}>Chandeliers</button>
                   </div>
+                )}
+                {!comparing && !chart.data?.intraday && (
+                  <div className="flex flex-wrap gap-1" role="group" aria-label="Moyennes mobiles">
+                    {MOVING_AVERAGES.map((m) => {
+                      const on = movingAverages.includes(m.days);
+                      return (
+                        <button
+                          key={m.days}
+                          type="button"
+                          aria-pressed={on}
+                          onClick={() => toggleAverage(m.days)}
+                          className={`rounded-md border px-2 py-1 text-xs transition-colors ${on ? 'border-zinc-400 text-zinc-900 dark:border-zinc-500 dark:text-zinc-100' : 'border-zinc-200 text-zinc-500 dark:border-zinc-700'}`}
+                        >
+                          <span style={{ color: m.color }}>━</span> MM {m.days}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+                {chart.loading && <Loader2 className="h-4 w-4 animate-spin text-zinc-400" aria-label="Chargement" />}
+              </div>
+
+              {/* Comparaison */}
+              <div className="mb-3 flex flex-wrap items-center gap-2 text-xs">
+                {compare.map((c, n) => (
+                  <span key={c.symbol} className="inline-flex items-center gap-1.5 rounded-full border border-zinc-200 py-1 pl-2.5 pr-1 dark:border-zinc-700">
+                    <span style={{ color: COMPARE_COLORS[n] }}>━</span>
+                    <span className="text-zinc-700 dark:text-zinc-300">{c.label}</span>
+                    <button type="button" onClick={() => setCompare((prev) => prev.filter((x) => x.symbol !== c.symbol))} aria-label={`Retirer ${c.label} de la comparaison`} className="rounded-full p-0.5 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800">
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </span>
                 ))}
-              </dl>
-
-              <dl className="mt-4 grid gap-4 sm:grid-cols-2">
-                <div>
-                  <dt className="text-sm font-medium text-zinc-900 dark:text-zinc-100">Volatilité sur 1 an : <span className="tabular-nums">{fmtPct(data.volatility1Y, 1).replace('+', '')}</span></dt>
-                  <dd className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">Amplitude habituelle des variations, ramenée à une année. Plus elle est élevée, plus le cours bouge.</dd>
-                </div>
-                <div>
-                  <dt className="text-sm font-medium text-zinc-900 dark:text-zinc-100">Pire baisse sur 1 an : <span className="tabular-nums">{fmtPct(data.maxDrawdown1Y, 1)}</span></dt>
-                  <dd className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">Plus forte chute depuis un plus haut au cours de l’année écoulée.</dd>
-                </div>
-                <div className="sm:col-span-2">
-                  <dt className="text-sm font-medium text-zinc-900 dark:text-zinc-100">Fourchette sur 52 semaines</dt>
-                  <dd className="mt-2">
-                    <div className="relative h-1.5 rounded-full bg-zinc-200 dark:bg-zinc-700">
-                      {position52 !== null && (
-                        <span className="absolute top-1/2 h-3.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[color:var(--ink)]" style={{ left: `${position52 * 100}%` }} />
-                      )}
+                {chart.data?.intraday ? (
+                  compare.length > 0 && <span className="text-zinc-500 dark:text-zinc-400">Comparaison disponible à partir de 1M.</span>
+                ) : compare.length < 3 && (
+                  picking ? (
+                    <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+                      {QUICK_COMPARE.filter((q) => !compareSymbols.includes(q.symbol) && q.symbol !== symbolUpper).map((q) => (
+                        <button key={q.symbol} type="button" onClick={() => addCompare({ symbol: q.symbol, name: q.label })} className="rounded-full border border-zinc-200 px-2.5 py-1 text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800">
+                          {q.label}
+                        </button>
+                      ))}
+                      <div className="w-full sm:w-56"><MarketSearch size="sm" autoFocus onSelect={addCompare} placeholder="Autre titre ou indice…" /></div>
+                      <button type="button" onClick={() => setPicking(false)} className="text-zinc-500 underline underline-offset-4">Annuler</button>
                     </div>
-                    <div className="mt-1.5 flex justify-between text-xs tabular-nums text-zinc-500 dark:text-zinc-400">
-                      <span>{fmtPrice(data.fiftyTwoWeekLow, currency)}</span>
-                      <span>
-                        {data.fiftyTwoWeekHigh ? `${fmtPct(data.price / data.fiftyTwoWeekHigh - 1, 1)} du plus haut` : ''}
-                      </span>
-                      <span>{fmtPrice(data.fiftyTwoWeekHigh, currency)}</span>
-                    </div>
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-sm font-medium text-zinc-900 dark:text-zinc-100">Volume moyen sur 3 mois : <span className="tabular-nums">{fmtCompact(data.averageVolume3M)}</span></dt>
-                  <dd className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">Titres échangés par séance, en moyenne.</dd>
-                </div>
-              </dl>
-            </section>
+                  ) : (
+                    <button type="button" onClick={() => setPicking(true)} className="inline-flex items-center gap-1 rounded-full border border-dashed border-zinc-300 px-2.5 py-1 text-zinc-600 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800">
+                      <Plus className="h-3.5 w-3.5" /> Comparer
+                    </button>
+                  )
+                )}
+              </div>
 
-            {/* Dividendes */}
-            <section className={`${card} p-4 sm:p-5`} aria-labelledby="div-title">
-              <h2 id="div-title" className="text-base font-semibold text-zinc-900 dark:text-zinc-100">Dividendes</h2>
-              {data.dividends.length === 0 ? (
-                <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">Aucun dividende versé ces cinq dernières années.</p>
+              {chart.error ? (
+                <div className="flex h-[320px] flex-col items-center justify-center gap-3 text-sm text-zinc-500 dark:text-zinc-400">
+                  {chart.error === 'not_found' ? 'Aucune cotation sur cette période.' : chart.error}
+                  <button type="button" onClick={chart.reload} className="inline-flex items-center gap-1.5 underline underline-offset-4"><RefreshCw className="h-4 w-4" /> Réessayer</button>
+                </div>
+              ) : chart.data ? (
+                <div className={chart.loading ? 'opacity-50 transition-opacity' : 'transition-opacity'}>
+                  <MarketChart
+                    points={chart.data.points}
+                    displayFrom={chart.data.displayFrom}
+                    period={chart.data.period}
+                    interval={chart.data.interval}
+                    intraday={chart.data.intraday}
+                    timezone={chart.data.timezone || 'UTC'}
+                    currency={currency}
+                    mode={mode}
+                    movingAverages={movingAverages}
+                    compare={comparing ? compareSeries : []}
+                    transactions={symbolTransactions}
+                    previousClose={data?.previousClose ?? null}
+                    symbolLabel={data?.name ?? symbolUpper}
+                  />
+                </div>
               ) : (
-                <>
-                  <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
-                    Rendement sur 12 mois : <span className="font-medium tabular-nums text-zinc-900 dark:text-zinc-100">{fmtPct(data.trailingYield).replace('+', '')}</span> (dividendes des 12 derniers mois / cours actuel)
-                  </p>
-                  <ul className="mt-3 space-y-1.5">
-                    {(() => {
-                      const max = Math.max(...data.dividendsByYear.map((y) => y.total), 0);
-                      return data.dividendsByYear.map((y) => (
-                        <li key={y.year} className="grid grid-cols-[3rem_minmax(0,1fr)_auto] items-center gap-2 text-xs">
-                          <span className="tabular-nums text-zinc-500 dark:text-zinc-400">{y.year}</span>
-                          <span className="h-2 rounded-full bg-zinc-100 dark:bg-zinc-800">
-                            <span className="block h-2 rounded-full bg-[color:var(--chart-3)]" style={{ width: max > 0 ? `${(y.total / max) * 100}%` : 0 }} />
-                          </span>
-                          <span className="tabular-nums text-zinc-900 dark:text-zinc-100">{y.total > 0 ? fmtPrice(y.total, currency) : '—'}</span>
-                        </li>
-                      ));
-                    })()}
-                  </ul>
-                  <h3 className="mt-4 text-xs font-medium text-zinc-500 dark:text-zinc-400">Derniers versements (par titre)</h3>
-                  <ul className="mt-1 divide-y divide-zinc-100 text-sm dark:divide-zinc-800">
-                    {data.dividends.slice(0, 5).map((d) => (
-                      <li key={d.date} className="flex justify-between py-1.5 tabular-nums">
-                        <span className="text-zinc-600 dark:text-zinc-300">{new Date(`${d.date}T00:00:00Z`).toLocaleDateString('fr-FR', { timeZone: 'UTC' })}</span>
-                        <span className="text-zinc-900 dark:text-zinc-100">{fmtPrice(d.amount, currency)}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </>
-              )}
-              {data.splits.length > 0 && (
-                <p className="mt-3 text-xs text-zinc-500 dark:text-zinc-400">
-                  Divisions d’action : {data.splits.map((s) => `${s.ratio} le ${new Date(`${s.date}T00:00:00Z`).toLocaleDateString('fr-FR', { timeZone: 'UTC' })}`).join(' · ')}
-                </p>
+                <div className="h-[320px] animate-pulse rounded-lg bg-zinc-100 dark:bg-zinc-800 sm:h-[400px]" />
               )}
             </section>
-          </div>
-        )}
 
-        {/* Fondamentaux (actions seulement) puis actualités */}
-        {data?.instrumentType === 'EQUITY' && (
-          <MarketFundamentals symbol={data.symbol} price={data.price} priceCurrency={currency} />
+            {data && (
+              <div className={`grid gap-4 sm:gap-6 ${showDividends ? 'lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]' : ''}`}>
+                {/* Statistiques */}
+                <section className={`${card} p-4 sm:p-5`} aria-labelledby="stats-title">
+                  <h2 id="stats-title" className="text-base font-semibold text-zinc-900 dark:text-zinc-100">Statistiques</h2>
+                  <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">Performance du cours, hors dividendes.</p>
+                  <dl className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    {PERFORMANCE_KEYS.map((key) => (
+                      <div key={key} className="rounded-lg bg-zinc-50 px-3 py-2 dark:bg-zinc-800/60">
+                        <dt className="text-xs text-zinc-500 dark:text-zinc-400">{PERF_LABELS[key]}</dt>
+                        <dd className={`text-sm font-medium tabular-nums ${changeClass(data.performance[key])}`}>{fmtPct(data.performance[key])}</dd>
+                      </div>
+                    ))}
+                  </dl>
+
+                  <dl className="mt-4 grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <dt className="text-sm font-medium text-zinc-900 dark:text-zinc-100">Volatilité sur 1 an : <span className="tabular-nums">{fmtPct(data.volatility1Y, 1).replace('+', '')}</span></dt>
+                      <dd className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">Amplitude habituelle des variations, ramenée à une année. Plus elle est élevée, plus le cours bouge.</dd>
+                    </div>
+                    <div>
+                      <dt className="text-sm font-medium text-zinc-900 dark:text-zinc-100">Pire baisse sur 1 an : <span className="tabular-nums">{fmtPct(data.maxDrawdown1Y, 1)}</span></dt>
+                      <dd className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">Plus forte chute depuis un plus haut au cours de l’année écoulée.</dd>
+                    </div>
+                    <div className="sm:col-span-2">
+                      <dt className="text-sm font-medium text-zinc-900 dark:text-zinc-100">Fourchette sur 52 semaines</dt>
+                      <dd className="mt-2">
+                        <div className="relative h-1.5 rounded-full bg-zinc-200 dark:bg-zinc-700">
+                          {position52 !== null && (
+                            <span className="absolute top-1/2 h-3.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[color:var(--ink)]" style={{ left: `${position52 * 100}%` }} />
+                          )}
+                        </div>
+                        <div className="mt-1.5 flex justify-between text-xs tabular-nums text-zinc-500 dark:text-zinc-400">
+                          <span>{fmtPrice(data.fiftyTwoWeekLow, currency)}</span>
+                          <span>
+                            {data.fiftyTwoWeekHigh ? `${fmtPct(data.price / data.fiftyTwoWeekHigh - 1, 1)} du plus haut` : ''}
+                          </span>
+                          <span>{fmtPrice(data.fiftyTwoWeekHigh, currency)}</span>
+                        </div>
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-sm font-medium text-zinc-900 dark:text-zinc-100">Volume moyen sur 3 mois : <span className="tabular-nums">{fmtCompact(data.averageVolume3M)}</span></dt>
+                      <dd className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">Titres échangés par séance, en moyenne.</dd>
+                    </div>
+                  </dl>
+                </section>
+
+                {/* Dividendes */}
+                {showDividends && (
+                  <section className={`${card} p-4 sm:p-5`} aria-labelledby="div-title">
+                    <h2 id="div-title" className="text-base font-semibold text-zinc-900 dark:text-zinc-100">Dividendes</h2>
+                    {data.dividends.length === 0 ? (
+                      <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">Aucun dividende versé ces cinq dernières années.</p>
+                    ) : (
+                      <>
+                        <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+                          Rendement sur 12 mois : <span className="font-medium tabular-nums text-zinc-900 dark:text-zinc-100">{fmtPct(data.trailingYield).replace('+', '')}</span> (dividendes des 12 derniers mois / cours actuel)
+                        </p>
+                        <ul className="mt-3 space-y-1.5">
+                          {(() => {
+                            const max = Math.max(...data.dividendsByYear.map((y) => y.total), 0);
+                            return data.dividendsByYear.map((y) => (
+                              <li key={y.year} className="grid grid-cols-[3rem_minmax(0,1fr)_auto] items-center gap-2 text-xs">
+                                <span className="tabular-nums text-zinc-500 dark:text-zinc-400">{y.year}</span>
+                                <span className="h-2 rounded-full bg-zinc-100 dark:bg-zinc-800">
+                                  <span className="block h-2 rounded-full bg-[color:var(--chart-3)]" style={{ width: max > 0 ? `${(y.total / max) * 100}%` : 0 }} />
+                                </span>
+                                <span className="tabular-nums text-zinc-900 dark:text-zinc-100">{y.total > 0 ? fmtPrice(y.total, currency) : '—'}</span>
+                              </li>
+                            ));
+                          })()}
+                        </ul>
+                        <h3 className="mt-4 text-xs font-medium text-zinc-500 dark:text-zinc-400">Derniers versements (par titre)</h3>
+                        <ul className="mt-1 divide-y divide-zinc-100 text-sm dark:divide-zinc-800">
+                          {data.dividends.slice(0, 5).map((d) => (
+                            <li key={d.date} className="flex justify-between py-1.5 tabular-nums">
+                              <span className="text-zinc-600 dark:text-zinc-300">{new Date(`${d.date}T00:00:00Z`).toLocaleDateString('fr-FR', { timeZone: 'UTC' })}</span>
+                              <span className="text-zinc-900 dark:text-zinc-100">{fmtPrice(d.amount, currency)}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </>
+                    )}
+                    {data.splits.length > 0 && (
+                      <p className="mt-3 text-xs text-zinc-500 dark:text-zinc-400">
+                        Divisions d’action : {data.splits.map((s) => `${s.ratio} le ${new Date(`${s.date}T00:00:00Z`).toLocaleDateString('fr-FR', { timeZone: 'UTC' })}`).join(' · ')}
+                      </p>
+                    )}
+                  </section>
+                )}
+              </div>
+            )}
+
+            {data && <MarketNews symbol={data.symbol} name={data.name} />}
+          </>
         )}
-        {data && <MarketNews symbol={data.symbol} name={data.name} />}
 
         <p className="text-xs text-zinc-500 dark:text-zinc-400">
           Données de marché fournies à titre informatif, parfois différées selon la place de cotation. Fi-Hub ne donne pas de conseil en investissement.

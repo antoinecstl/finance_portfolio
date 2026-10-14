@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/server';
 import { rateLimit, clientKey } from '@/lib/rate-limit';
 import { stockLookupSymbolSchema } from '@/lib/schemas';
 import { getMarketChart, getStockQuote } from '@/lib/stock-api';
+import { assetClassOf } from '@/lib/market/asset-class';
 import {
   annualizedVolatility,
   averageVolume,
@@ -51,6 +52,7 @@ export async function GET(request: NextRequest) {
     exchange: meta.exchange,
     currency: meta.currency || quote?.currency || '',
     instrumentType: meta.instrumentType,
+    assetClass: assetClassOf(meta.instrumentType),
     timezone: meta.timezone,
     price,
     change: quote?.change ?? null,

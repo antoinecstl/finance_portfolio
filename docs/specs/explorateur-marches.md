@@ -1,6 +1,6 @@
 # Spec — Explorateur de marchés
 
-Statut : **v1 implémentée** (branche `claude/explorateur-marches`). Octobre 2026.
+Statut : **v1 implémentée** (branche `claude/explorateur-marches`). Octobre 2026. Suite : [v2, fiche adaptée au type d’actif](explorateur-marches-v2.md).
 Contexte concurrentiel : [analyse de Baggr](../analyses/baggr.md).
 
 ## 1. Objectif

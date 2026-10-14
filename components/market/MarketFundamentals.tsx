@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { ExternalLink, Loader2, RefreshCw } from 'lucide-react';
+import { ExternalLink } from 'lucide-react';
 import {
   RECOMMENDATION_LABELS,
   dcfValuePerShare,
@@ -10,10 +10,11 @@ import {
   type StatementItem,
   type StatementRow,
 } from '@/lib/market/fundamentals';
+import type { HistoryRow } from '@/lib/market/history';
 import { changeClass, fmtMoneyCompact, fmtMultiple, fmtPct, fmtPrice, fmtShare } from './format';
 import { useJson } from './useJson';
 
-interface FundamentalsResponse {
+export interface FundamentalsResponse {
   available: boolean;
   currency: string;
   priceCurrency: string;
@@ -24,9 +25,11 @@ interface FundamentalsResponse {
   ratios: FundamentalRatios;
   summary: QuoteSummaryData | null;
   dcfDefaults: { growth: number; discountRate: number; terminalGrowth: number };
+  history: HistoryRow[];
+  sources: { official: boolean; officialYears: number; years: number };
+  asOf: string;
+  stale: boolean;
 }
-
-const card = 'rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900';
 
 type MetricDef = { key: keyof FundamentalRatios; label: string; hint: string; kind: 'multiple' | 'share' | 'growth' | 'money' | 'price' };
 
@@ -112,157 +115,98 @@ function formatMetric(def: MetricDef, value: number | null, currency: string): s
 const fmtDate = (iso: string | null) =>
   iso ? new Date(`${iso}T00:00:00Z`).toLocaleDateString('fr-FR', { timeZone: 'UTC', day: 'numeric', month: 'short', year: 'numeric' }) : '—';
 
-export function MarketFundamentals({ symbol, price, priceCurrency }: { symbol: string; price: number; priceCurrency: string }) {
-  const { data, error, loading, reload } = useJson<FundamentalsResponse>(`/api/market/fundamentals?symbol=${encodeURIComponent(symbol)}`);
+/** Réponse de /api/market/fundamentals, partagée par les onglets Finances, Valorisation et Profil. */
+export function useFundamentals(symbol: string) {
+  return useJson<FundamentalsResponse>(`/api/market/fundamentals?symbol=${encodeURIComponent(symbol)}`);
+}
 
-  if (loading && !data) {
-    return (
-      <section className={`${card} p-4 sm:p-5`} aria-busy="true">
-        <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">Analyse fondamentale</h2>
-        <div className="mt-3 h-40 animate-pulse rounded-lg bg-zinc-100 dark:bg-zinc-800" />
-      </section>
-    );
-  }
-  if (error || !data) {
-    return (
-      <section className={`${card} p-4 sm:p-5`}>
-        <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">Analyse fondamentale</h2>
-        <p className="mt-2 flex flex-wrap items-center gap-3 text-sm text-zinc-500 dark:text-zinc-400">
-          Données financières momentanément indisponibles.
-          <button type="button" onClick={reload} className="inline-flex items-center gap-1.5 underline underline-offset-4"><RefreshCw className="h-4 w-4" /> Réessayer</button>
-        </p>
-      </section>
-    );
-  }
-  if (!data.available) {
-    return (
-      <section className={`${card} p-4 sm:p-5`}>
-        <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">Analyse fondamentale</h2>
-        <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">Pas de comptes publiés disponibles pour ce titre.</p>
-      </section>
-    );
-  }
-
-  const { ratios, currency, summary } = data;
-  const years = data.annual;
-  const showTtm = data.ttm && (years.length === 0 || data.ttm.date > years[years.length - 1].date);
-
+/** Ratios du jour, par famille. */
+export function RatioGroups({ ratios, currency }: { ratios: FundamentalRatios; currency: string }) {
   return (
-    <section className={`${card} p-4 sm:p-5`} aria-labelledby="fundamentals-title">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 id="fundamentals-title" className="text-base font-semibold text-zinc-900 dark:text-zinc-100">Analyse fondamentale</h2>
-        {loading && <Loader2 className="h-4 w-4 animate-spin text-zinc-400" aria-label="Chargement" />}
-      </div>
-      <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
-        Comptes publiés en {currency}{data.ttm ? `, 12 derniers mois au ${fmtDate(data.ttm.date)}` : ''}. Ratios calculés par Fi-Hub au cours actuel
-        {data.fxRate ? ` converti en ${currency} (1 ${priceCurrency.toUpperCase()} = ${data.fxRate.toFixed(4)} ${currency})` : ''}. Survolez un ratio pour sa définition.
-      </p>
-
-      <div className="mt-4 grid gap-5 lg:grid-cols-2">
-        {GROUPS.map((group) => (
-          <div key={group.title}>
-            <h3 className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">{group.title}</h3>
-            <dl className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
-              {group.metrics.map((m) => {
-                const value = ratios[m.key];
-                return (
-                  <div key={m.key} title={m.hint} className="rounded-lg bg-zinc-50 px-3 py-2 dark:bg-zinc-800/60">
-                    <dt className="text-xs text-zinc-500 dark:text-zinc-400">{m.label}</dt>
-                    <dd className={`text-sm font-medium tabular-nums ${m.kind === 'growth' ? changeClass(value) : 'text-zinc-900 dark:text-zinc-100'}`}>
-                      {formatMetric(m, value, currency)}
-                    </dd>
-                  </div>
-                );
-              })}
-            </dl>
-          </div>
-        ))}
-      </div>
-
-      {(years.length > 0 || showTtm) && (
-        <div className="mt-6">
-          <h3 className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Comptes annuels ({currency})</h3>
-          <div className="mt-2 overflow-x-auto">
-            <table className="w-full min-w-[560px] text-sm">
-              <thead>
-                <tr className="border-b border-zinc-200 text-xs text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
-                  <th scope="col" className="sticky left-0 z-10 min-w-[8.5rem] bg-white py-2 pr-3 text-left font-medium shadow-[1px_0_0_var(--rule)] dark:bg-zinc-900">Exercice</th>
-                  {years.map((y) => <th key={y.date} scope="col" className="whitespace-nowrap px-2 py-2 text-right font-medium tabular-nums">{y.date.slice(0, 4)}</th>)}
-                  {showTtm && <th scope="col" className="py-2 pl-2 text-right font-medium">12 mois</th>}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-                {ROWS.filter((r) => years.some((y) => y[r.key] !== null) || (showTtm && data.ttm?.[r.key] != null)).map((r) => (
-                  <tr key={r.key}>
-                    <th scope="row" className="sticky left-0 z-10 min-w-[8.5rem] bg-white py-1.5 pr-3 text-left font-normal leading-tight text-zinc-600 shadow-[1px_0_0_var(--rule)] dark:bg-zinc-900 dark:text-zinc-300">{r.label}</th>
-                    {years.map((y) => (
-                      <td key={y.date} className="whitespace-nowrap px-2 py-1.5 text-right tabular-nums text-zinc-900 dark:text-zinc-100">
-                        {r.perShare ? fmtPrice(y[r.key], currency) : fmtMoneyCompact(y[r.key], currency)}
-                      </td>
-                    ))}
-                    {showTtm && (
-                      <td className="whitespace-nowrap py-1.5 pl-2 text-right tabular-nums text-zinc-900 dark:text-zinc-100">
-                        {r.perShare ? fmtPrice(data.ttm?.[r.key], currency) : fmtMoneyCompact(data.ttm?.[r.key], currency)}
-                      </td>
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+    <div className="grid gap-5 lg:grid-cols-2">
+      {GROUPS.map((group) => (
+        <div key={group.title}>
+          <h3 className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">{group.title}</h3>
+          <dl className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {group.metrics.map((m) => {
+              const value = ratios[m.key];
+              return (
+                <div key={m.key} title={m.hint} className="rounded-lg bg-zinc-50 px-3 py-2 dark:bg-zinc-800/60">
+                  <dt className="text-xs text-zinc-500 dark:text-zinc-400">{m.label}</dt>
+                  <dd className={`text-sm font-medium tabular-nums ${m.kind === 'growth' ? changeClass(value) : 'text-zinc-900 dark:text-zinc-100'}`}>
+                    {formatMetric(m, value, currency)}
+                  </dd>
+                </div>
+              );
+            })}
+          </dl>
         </div>
-      )}
-
-      <div className="mt-6 grid gap-5 lg:grid-cols-2">
-        <div className="space-y-5">
-          {summary && <Consensus summary={summary} price={price} priceCurrency={priceCurrency} />}
-          {summary && <Profile summary={summary} />}
-        </div>
-        <DcfSimulator
-          key={symbol}
-          defaults={data.dcfDefaults}
-          fcfPerShare={ratios.fcfPerShare}
-          grahamNumber={ratios.grahamNumber}
-          price={data.priceInStatementCurrency}
-          currency={currency}
-        />
-      </div>
-
-      <details className="mt-6 text-xs text-zinc-500 dark:text-zinc-400">
-        <summary className="cursor-pointer select-none font-medium text-zinc-700 dark:text-zinc-300">Comment lire ces ratios</summary>
-        <dl className="mt-2 grid gap-x-6 gap-y-1.5 sm:grid-cols-2">
-          {GROUPS.flatMap((g) => g.metrics).map((m) => (
-            <div key={m.key}>
-              <dt className="inline font-medium text-zinc-700 dark:text-zinc-300">{m.label} : </dt>
-              <dd className="inline">{m.hint}</dd>
-            </div>
-          ))}
-        </dl>
-        <p className="mt-2">
-          Les ratios d’une entreprise se comparent à ceux de son secteur et à leur propre historique ; aucun seuil n’est bon dans l’absolu.
-          Banques et assurances se lisent autrement (pas d’EBITDA ni de dette nette au sens industriel).
-        </p>
-      </details>
-    </section>
+      ))}
+    </div>
   );
 }
 
-function Consensus({ summary, price, priceCurrency }: { summary: QuoteSummaryData; price: number; priceCurrency: string }) {
+export function RatiosGuide() {
+  return (
+    <details className="text-xs text-zinc-500 dark:text-zinc-400">
+      <summary className="cursor-pointer select-none font-medium text-zinc-700 dark:text-zinc-300">Comment lire ces ratios</summary>
+      <dl className="mt-2 grid gap-x-6 gap-y-1.5 sm:grid-cols-2">
+        {GROUPS.flatMap((g) => g.metrics).map((m) => (
+          <div key={m.key}>
+            <dt className="inline font-medium text-zinc-700 dark:text-zinc-300">{m.label} : </dt>
+            <dd className="inline">{m.hint}</dd>
+          </div>
+        ))}
+      </dl>
+      <p className="mt-2">
+        Les ratios d’une entreprise se comparent à ceux de son secteur et à leur propre historique ; aucun seuil n’est bon dans l’absolu.
+        Banques et assurances se lisent autrement (pas d’EBITDA ni de dette nette au sens industriel).
+      </p>
+    </details>
+  );
+}
+
+/** Tableau des comptes : la vue tableau des graphiques de l'onglet Finances. */
+export function AccountsTable({ rows, ttm, currency }: { rows: StatementRow[]; ttm: StatementRow | null; currency: string }) {
+  const showTtm = Boolean(ttm && (rows.length === 0 || ttm.date > rows[rows.length - 1].date));
+  if (rows.length === 0 && !showTtm) return null;
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[560px] text-sm">
+        <thead>
+          <tr className="border-b border-zinc-200 text-xs text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
+            <th scope="col" className="sticky left-0 z-10 min-w-[8.5rem] bg-white py-2 pr-3 text-left font-medium shadow-[1px_0_0_var(--rule)] dark:bg-zinc-900">Exercice</th>
+            {rows.map((y) => <th key={y.date} scope="col" className="whitespace-nowrap px-2 py-2 text-right font-medium tabular-nums">{y.date.slice(0, 4)}</th>)}
+            {showTtm && <th scope="col" className="py-2 pl-2 text-right font-medium">12 mois</th>}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+          {ROWS.filter((r) => rows.some((y) => y[r.key] !== null) || (showTtm && ttm?.[r.key] != null)).map((r) => (
+            <tr key={r.key}>
+              <th scope="row" className="sticky left-0 z-10 min-w-[8.5rem] bg-white py-1.5 pr-3 text-left font-normal leading-tight text-zinc-600 shadow-[1px_0_0_var(--rule)] dark:bg-zinc-900 dark:text-zinc-300">{r.label}</th>
+              {rows.map((y) => (
+                <td key={y.date} className="whitespace-nowrap px-2 py-1.5 text-right tabular-nums text-zinc-900 dark:text-zinc-100">
+                  {r.perShare ? fmtPrice(y[r.key], currency) : fmtMoneyCompact(y[r.key], currency)}
+                </td>
+              ))}
+              {showTtm && (
+                <td className="whitespace-nowrap py-1.5 pl-2 text-right tabular-nums text-zinc-900 dark:text-zinc-100">
+                  {r.perShare ? fmtPrice(ttm?.[r.key], currency) : fmtMoneyCompact(ttm?.[r.key], currency)}
+                </td>
+              )}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+export function Consensus({ summary, price, priceCurrency }: { summary: QuoteSummaryData; price: number; priceCurrency: string }) {
   const a = summary.analysts;
-  const s = summary.stats;
   const upside = a.targetMean && price > 0 ? a.targetMean / price - 1 : null;
   const span = a.targetHigh !== null && a.targetLow !== null ? a.targetHigh - a.targetLow : null;
   const pos = (v: number) => (span && span > 0 && a.targetLow !== null ? Math.min(Math.max((v - a.targetLow) / span, 0), 1) * 100 : 50);
-  const facts: Array<[string, string]> = [
-    ['Prochains résultats', fmtDate(s.nextEarningsDate)],
-    ['Prochain détachement', fmtDate(s.exDividendDate)],
-    ['Bêta', s.beta !== null ? s.beta.toFixed(2).replace('.', ',') : '—'],
-    ['BPA attendu (12 mois)', s.forwardEps !== null ? fmtPrice(s.forwardEps, priceCurrency) : '—'],
-    ['Croissance BPA attendue', fmtPct(s.earningsGrowthNextYear, 1)],
-    ['Détenu par les institutionnels', fmtShare(s.heldByInstitutions)],
-    ['Détenu par les dirigeants', fmtShare(s.heldByInsiders)],
-    ['Vendu à découvert', fmtShare(s.shortPercentOfFloat)],
-  ];
 
   return (
     <div>
@@ -295,7 +239,27 @@ function Consensus({ summary, price, priceCurrency }: { summary: QuoteSummaryDat
       ) : (
         <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">Pas de consensus publié pour ce titre.</p>
       )}
-      <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
+    </div>
+  );
+}
+
+/** Dates à venir, risque et actionnariat. */
+export function CompanyFacts({ summary, priceCurrency }: { summary: QuoteSummaryData; priceCurrency: string }) {
+  const s = summary.stats;
+  const facts: Array<[string, string]> = [
+    ['Prochains résultats', fmtDate(s.nextEarningsDate)],
+    ['Prochain détachement', fmtDate(s.exDividendDate)],
+    ['Bêta', s.beta !== null ? s.beta.toFixed(2).replace('.', ',') : '—'],
+    ['BPA attendu (12 mois)', s.forwardEps !== null ? fmtPrice(s.forwardEps, priceCurrency) : '—'],
+    ['Croissance BPA attendue', fmtPct(s.earningsGrowthNextYear, 1)],
+    ['Détenu par les institutionnels', fmtShare(s.heldByInstitutions)],
+    ['Détenu par les dirigeants', fmtShare(s.heldByInsiders)],
+    ['Vendu à découvert', fmtShare(s.shortPercentOfFloat)],
+  ];
+
+  return (
+    <div>
+      <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-4">
         {facts.map(([label, value]) => (
           <div key={label} className="flex flex-col">
             <dt className="text-xs text-zinc-500 dark:text-zinc-400">{label}</dt>
@@ -307,13 +271,12 @@ function Consensus({ summary, price, priceCurrency }: { summary: QuoteSummaryDat
   );
 }
 
-function Profile({ summary }: { summary: QuoteSummaryData }) {
+export function Profile({ summary }: { summary: QuoteSummaryData }) {
   const p = summary.profile;
   if (!p.sector && !p.industry && !p.description) return null;
   return (
     <div>
-      <h3 className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Profil</h3>
-      <p className="mt-2 text-sm text-zinc-900 dark:text-zinc-100">
+      <p className="text-sm text-zinc-900 dark:text-zinc-100">
         {[p.sector, p.industry, p.country].filter(Boolean).join(' · ')}
         {p.employees ? ` · ${new Intl.NumberFormat('fr-FR').format(p.employees)} salariés` : ''}
       </p>
@@ -362,7 +325,7 @@ function PercentInput({ id, label, value, onChange, hint }: { id: string; label:
   );
 }
 
-function DcfSimulator({
+export function DcfSimulator({
   defaults, fcfPerShare, grahamNumber, price, currency,
 }: {
   defaults: FundamentalsResponse['dcfDefaults'];
