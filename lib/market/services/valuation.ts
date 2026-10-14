@@ -6,7 +6,7 @@ import { downsample } from '../performance';
 import { alignToTimeline } from '../analytics';
 import { buildSnapshots, valuationHistory, valuationReferences, type MultipleKey, type MultipleSeries, type ValuationReference } from '../valuation';
 import { cached, DAY, HOUR } from '../sources/cache';
-import { dcfDefaultsFor, getFundamentalsBundle } from './fundamentals';
+import { dcfPlanFor, getFundamentalsBundle } from './fundamentals';
 
 export type ValuationPayload =
   | { available: false }
@@ -22,11 +22,12 @@ export type ValuationPayload =
 const fmt = (v: number) => `${new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 1 }).format(v)} ×`;
 
 /**
- * Multiples hebdomadaires sur 10 ans (mensuels avant), dans la devise des
- * comptes, et repères de valorisation en devise de cotation.
+ * Multiples hebdomadaires sur 10 ans (mensuels avant, jusqu'aux plus anciens
+ * comptes disponibles), dans la devise des comptes, et repères de valorisation
+ * en devise de cotation.
  */
 export async function getValuation(symbol: string) {
-  return cached<ValuationPayload>(`val:v1:${symbol}`, { freshMs: 6 * HOUR, staleMs: 7 * DAY }, async () => {
+  return cached<ValuationPayload>(`val:v2:${symbol}`, { freshMs: 6 * HOUR, staleMs: 7 * DAY }, async () => {
     const bundle = await getFundamentalsBundle(symbol);
     if (!bundle) throw new Error('fundamentals unavailable');
     if (!bundle.available || bundle.annualRows.length === 0) return { available: false };
@@ -54,10 +55,10 @@ export async function getValuation(symbol: string) {
     const dividends = bundle.dividends.map((d) => ({ ...d, amount: d.amount / major.divisor }));
 
     const snapshots = buildSnapshots(bundle.annualRows, bundle.statements.ttm);
-    const multiples = valuationHistory(prices, snapshots, { dividends, quotePrices: dividendQuotes, maxYears: 15 });
-    // ~300 points suffisent à l'écran ; valeurs arrondies pour alléger la réponse.
+    const multiples = valuationHistory(prices, snapshots, { dividends, quotePrices: dividendQuotes, maxYears: 30 });
+    // ~360 points suffisent à l'écran (≈ 130 sur 5 ans) ; valeurs arrondies pour alléger la réponse.
     for (const series of Object.values(multiples)) {
-      series.points = downsample(series.points, 300).map((p) => ({ t: p.t, v: Number(p.v.toPrecision(4)) }));
+      series.points = downsample(series.points, 360).map((p) => ({ t: p.t, v: Number(p.v.toPrecision(4)) }));
     }
 
     // Repères : médianes sur 10 ans au plus.
@@ -65,7 +66,7 @@ export async function getValuation(symbol: string) {
     const r = bundle.ratios;
     const quotePrice = bundle.priceInStatementCurrency;
     const quoteFactor = quotePrice && bundle.fxRate ? 1 / bundle.fxRate : 1;
-    const dcf = dcfDefaultsFor(r);
+    const dcf = dcfPlanFor(r, bundle.summary).scenarios.central;
     const references = valuationReferences({
       multiples: tenYears,
       ttm: {

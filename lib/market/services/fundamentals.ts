@@ -4,7 +4,6 @@ import type { MarketDividend, MarketPoint } from '../chart-data';
 import {
   buildStatements,
   computeRatios,
-  defaultDcfGrowth,
   majorCurrency,
   type FundamentalRatios,
   type QuoteSummaryData,
@@ -12,7 +11,8 @@ import {
   type StatementRow,
   type Statements,
 } from '../fundamentals';
-import { buildHistory, dividendsPerYear, mergeAnnualRows, type HistoryRow } from '../history';
+import { dcfPlan, type DcfPlan } from '../dcf';
+import { buildHistory, DISPLAYED_ANNUAL_YEARS, dividendsPerYear, MAX_ANNUAL_YEARS, mergeAnnualRows, type HistoryRow } from '../history';
 import { isSecEligible } from '../sources/sec';
 import { cached, DAY, HOUR, type CacheEntry } from '../sources/cache';
 import { getSecAnnual } from './sec';
@@ -26,7 +26,7 @@ export interface FundamentalsBundle {
   /** Divise un montant coté (centimes, ex. GBp) pour l'exprimer en unités. */
   priceDivisor: number;
   statements: Statements;
-  /** Exercices fusionnés (officiel + fournisseur), 15 au plus. */
+  /** Exercices fusionnés (officiel + fournisseur), 20 au plus (valorisation historique). */
   annualRows: StatementRow[];
   history: HistoryRow[];
   ratios: FundamentalRatios;
@@ -41,7 +41,7 @@ export interface FundamentalsBundle {
 
 /** Séries comptables du fournisseur, avec copie de secours (30 jours). */
 function providerSeries(symbol: string) {
-  return cached<SeriesMap>(`prov:series:v1:${symbol}`, { freshMs: 6 * HOUR, staleMs: 30 * DAY }, async () => {
+  return cached<SeriesMap>(`prov:series:v2:${symbol}`, { freshMs: 6 * HOUR, staleMs: 30 * DAY }, async () => {
     const series = await getFundamentalsSeries(symbol);
     if (series === null) throw new Error('fundamentals series unavailable');
     return series;
@@ -50,7 +50,7 @@ function providerSeries(symbol: string) {
 
 /** Profil et consensus (module « résumé », fragile), avec copie de secours. */
 function providerSummary(symbol: string) {
-  return cached<QuoteSummaryData>(`prov:summary:v1:${symbol}`, { freshMs: 6 * HOUR, staleMs: 30 * DAY }, async () => {
+  return cached<QuoteSummaryData>(`prov:summary:v2:${symbol}`, { freshMs: 6 * HOUR, staleMs: 30 * DAY }, async () => {
     const summary = await getQuoteSummary(symbol);
     if (summary === null) throw new Error('summary unavailable');
     return summary;
@@ -72,8 +72,9 @@ export async function getFundamentalsBundle(symbol: string): Promise<Fundamental
   const sec = isSecEligible(symbol, quote?.currency) ? await getSecAnnual(symbol) : { status: 'not_covered' as const };
   if (!seriesEntry && !summaryEntry && sec.status !== 'ok') return null;
 
-  const statements = buildStatements(seriesEntry?.data ?? {}, 15);
-  const merged = mergeAnnualRows(sec.status === 'ok' ? sec.facts.rows : [], statements.annual);
+  const statements = buildStatements(seriesEntry?.data ?? {}, MAX_ANNUAL_YEARS);
+  const merged = mergeAnnualRows(sec.status === 'ok' ? sec.facts.rows : [], statements.annual, MAX_ANNUAL_YEARS);
+  const displayed = merged.rows.slice(-DISPLAYED_ANNUAL_YEARS);
   for (const d of merged.divergences) {
     console.warn(`[fundamentals] ${symbol} ${d.date}: revenue differs between sources (official ${d.official}, provider ${d.provider})`);
   }
@@ -112,17 +113,25 @@ export async function getFundamentalsBundle(symbol: string): Promise<Fundamental
     priceDivisor: major.divisor,
     statements,
     annualRows: merged.rows,
-    history: buildHistory(merged.rows, dps),
+    history: buildHistory(displayed, dps),
     ratios,
     summary,
     dividends,
     monthlyPrices: longChart.status === 'ok' ? longChart.chart.points : [],
-    sources: { official: merged.officialYears > 0, officialYears: merged.officialYears, years: merged.rows.length },
+    sources: { official: merged.officialYears > 0, officialYears: Math.min(merged.officialYears, displayed.length), years: displayed.length },
     asOf: new Date(fetchedAt).toISOString(),
     stale: entries.some((e) => e.stale),
   };
 }
 
-export function dcfDefaultsFor(ratios: FundamentalRatios) {
-  return { growth: defaultDcfGrowth(ratios), discountRate: 0.09, terminalGrowth: 0.02 };
+/** Scénarios du simulateur de valeur, tirés des comptes, du consensus et du bêta. */
+export function dcfPlanFor(ratios: FundamentalRatios, summary: QuoteSummaryData | null): DcfPlan {
+  return dcfPlan({
+    revenueCagr: ratios.revenueCagr,
+    epsCagr: ratios.epsCagr,
+    fcfCagr: ratios.fcfCagr,
+    growthYears: ratios.growthYears,
+    analystGrowth: summary?.stats.earningsGrowth5y ?? null,
+    beta: summary?.stats.beta ?? null,
+  });
 }

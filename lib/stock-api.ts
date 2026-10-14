@@ -397,7 +397,7 @@ export async function getFundamentalsSeries(symbol: string): Promise<SeriesMap |
   const params = new URLSearchParams({
     symbol,
     type: fundamentalsSeriesTypes().join(','),
-    period1: String(now - 15 * 365 * 86_400),
+    period1: String(now - 20 * 365 * 86_400),
     period2: String(now + 86_400),
   });
   try {

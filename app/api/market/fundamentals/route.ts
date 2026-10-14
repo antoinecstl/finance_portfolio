@@ -5,7 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { guardMarketRequest } from '@/lib/market/route-guard';
-import { dcfDefaultsFor, getFundamentalsBundle } from '@/lib/market/services/fundamentals';
+import { dcfPlanFor, getFundamentalsBundle } from '@/lib/market/services/fundamentals';
 
 // Premier chargement d'une société américaine : comptes SEC (plusieurs Mo) à lire.
 export const maxDuration = 30;
@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
     ratios: bundle.ratios,
     summary: bundle.summary,
     sources: bundle.sources,
-    dcfDefaults: dcfDefaultsFor(bundle.ratios),
+    dcf: dcfPlanFor(bundle.ratios, bundle.summary),
     asOf: bundle.asOf,
     stale: bundle.stale,
   });

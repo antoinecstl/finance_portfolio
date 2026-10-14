@@ -160,7 +160,7 @@ describe('GET /api/market/fundamentals', () => {
     expect(body).toMatchObject({ available: true, currency: 'USD', priceCurrency: 'GBp', priceInStatementCurrency: 25, fxRate: 1.25 });
     expect(body.ratios.per).toBeCloseTo(12.5, 10);
     expect(body.ratios.marketCap).toBe(25e9);
-    expect(body.dcfDefaults).toEqual({ growth: 0.04, discountRate: 0.09, terminalGrowth: 0.02 });
+    expect(body.dcf.scenarios.central).toEqual({ growth: 0.04, discountRate: 0.09, terminalGrowth: 0.02 });
   });
 });
 

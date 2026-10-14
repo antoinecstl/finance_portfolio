@@ -5,6 +5,9 @@
 import { STATEMENT_ITEMS, type StatementItem, type StatementRow } from './fundamentals';
 
 const DAY_MS = 86_400_000;
+/** Exercices conservés : 20 pour la valorisation historique, 15 affichés dans l'onglet Finances. */
+export const MAX_ANNUAL_YEARS = 20;
+export const DISPLAYED_ANNUAL_YEARS = 15;
 const sameFiscalYear = (a: string, b: string) => Math.abs(Date.parse(a) - Date.parse(b)) <= 20 * DAY_MS;
 
 export interface MergeResult {

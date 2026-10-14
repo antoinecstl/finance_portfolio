@@ -4,10 +4,11 @@
 
 import { useMemo, useState } from 'react';
 import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import type { MultipleKey, MultipleSeries, ValuationReference } from '@/lib/market/valuation';
-import { Consensus, DcfSimulator, RatioGroups, RatiosGuide, useFundamentals } from './MarketFundamentals';
+import type { MultipleKey, MultipleSeries, MultipleStats, ValuationReference, ValuationWindow } from '@/lib/market/valuation';
+import { DcfPanel } from './DcfPanel';
+import { Consensus, RatioGroups, RatiosGuide, useFundamentals } from './MarketFundamentals';
 import { changeClass, fmtMultiple, fmtPct, fmtPrice, fmtShare } from './format';
-import { chartStyle, Panel, PanelError, PanelSkeleton, StaleNotice, yearTicks } from './ui';
+import { chartStyle, Panel, PanelError, PanelSkeleton, StaleNotice, Toggle, yearTicks } from './ui';
 import { useJson } from './useJson';
 
 type ValuationResponse =
@@ -61,6 +62,15 @@ export function ValuationPanel({ symbol, price, priceCurrency }: { symbol: strin
         <PanelSkeleton title="Ratios du jour" height={200} />
       ) : f.available ? (
         <>
+          <DcfPanel
+            key={symbol}
+            plan={f.dcf}
+            fcfPerShare={f.ratios.fcfPerShare}
+            price={f.priceInStatementCurrency}
+            currency={f.currency}
+            priceCurrency={priceCurrency}
+            sector={f.summary?.profile.sector ?? null}
+          />
           <Panel
             id="ratios"
             title="Ratios du jour"
@@ -68,21 +78,11 @@ export function ValuationPanel({ symbol, price, priceCurrency }: { symbol: strin
           >
             <RatioGroups ratios={f.ratios} currency={f.currency} />
           </Panel>
-          <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
-            <DcfSimulator
-              key={symbol}
-              defaults={f.dcfDefaults}
-              fcfPerShare={f.ratios.fcfPerShare}
-              grahamNumber={f.ratios.grahamNumber}
-              price={f.priceInStatementCurrency}
-              currency={f.currency}
-            />
-            {f.summary && (
-              <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700 sm:p-4">
-                <Consensus summary={f.summary} price={price} priceCurrency={priceCurrency} />
-              </div>
-            )}
-          </div>
+          {f.summary && (
+            <Panel id="consensus" title="Consensus des analystes">
+              <Consensus summary={f.summary} price={price} priceCurrency={priceCurrency} />
+            </Panel>
+          )}
           <RatiosGuide />
         </>
       ) : (
@@ -96,26 +96,40 @@ function formatMultipleValue(key: MultipleKey, v: number | null | undefined) {
   return key === 'dividendYield' ? fmtShare(v, 2) : fmtMultiple(v);
 }
 
+type Period = ValuationWindow | 'MAX';
+const PERIOD_LABELS: Record<Period, string> = { '5A': '5 ans', '10A': '10 ans', MAX: 'Max' };
+
 function MultiplesHistory({ data }: { data: Extract<ValuationResponse, { available: true }> }) {
   const keys = ORDER.filter((k) => data.multiples[k]);
   const [selected, setSelected] = useState<MultipleKey>(keys[0]);
+  const [period, setPeriod] = useState<Period>('MAX');
   const series = data.multiples[selected] ?? data.multiples[keys[0]];
-  const rows = useMemo(() => series?.points.map((p) => ({ t: p.t * 1000, v: p.v })) ?? [], [series]);
-  if (!series) return null;
+  // Fenêtres proposées selon l'historique de ce multiple ; « Max » va jusqu'aux plus anciens comptes disponibles.
+  const periods: Period[] = series ? [...(['5A', '10A'] as const).filter((w) => series.windows?.[w]), 'MAX'] : ['MAX'];
+  const active: Period = periods.includes(period) ? period : 'MAX';
+  const stats: MultipleStats | undefined = series && (active === 'MAX' ? series : series.windows[active]);
+  const since = stats?.since ?? 0;
+  const rows = useMemo(() => series?.points.filter((p) => p.t >= since).map((p) => ({ t: p.t * 1000, v: p.v })) ?? [], [series, since]);
+  if (!series || !stats) return null;
   const key = series.key;
   const f = (v: number) => formatMultipleValue(key, v);
   // Les pics (bénéfice effondré) écrasent l'échelle : on plafonne l'axe, la valeur reste dans l'info-bulle.
-  const top = Math.max(series.median * 2.5, series.current * 1.3);
-  const domainTop = niceCeil(Math.min(series.high.v, top) * 1.05);
-  const since = new Date(series.since * 1000).getUTCFullYear();
-  const higher = Math.round(series.higherShare * 100);
+  const top = Math.max(stats.median * 2.5, stats.current * 1.3);
+  const domainTop = niceCeil(Math.min(stats.high.v, top) * 1.05);
+  const sinceYear = new Date(stats.since * 1000).getUTCFullYear();
+  const higher = Math.round(stats.higherShare * 100);
   const yieldLike = key === 'dividendYield';
+  // Moins de 6 ans d'historique au total : les comptes plus anciens manquent à la source.
+  const shortHistory = series.points[series.points.length - 1].t - series.since < 6 * 365.25 * 86_400;
 
   return (
     <Panel
       id="multiples"
       title="Multiples dans le temps"
-      description={`Chaque semaine depuis ${since}, sur les comptes publiés à cette date (cours converti en ${data.currency}).`}
+      description={`Sur les comptes publiés à chaque date, chaque semaine (chaque mois au-delà de 10 ans), cours converti en ${data.currency}.`}
+      actions={periods.length > 1 ? (
+        <Toggle label="Période" value={active} onChange={setPeriod} options={periods.map((p) => ({ value: p, label: PERIOD_LABELS[p] }))} />
+      ) : undefined}
     >
       <div className="-mx-1 flex max-w-full gap-1 overflow-x-auto px-1" role="group" aria-label="Multiple affiché">
         {keys.map((k) => (
@@ -132,15 +146,15 @@ function MultiplesHistory({ data }: { data: Extract<ValuationResponse, { availab
       </div>
 
       <p className="mt-3 text-sm text-zinc-900 dark:text-zinc-100">
-        {series.label} actuel <span className="font-semibold">{f(series.current)}</span>
+        {series.label} actuel <span className="font-semibold">{f(stats.current)}</span>
         <span className="text-zinc-600 dark:text-zinc-300">
-          {' '}: {yieldLike ? `plus élevé que ${100 - higher} %` : `plus bas que ${higher} %`} des semaines depuis {since}.
+          {' '}: {yieldLike ? `plus élevé que ${100 - higher} %` : `plus bas que ${higher} %`} du temps depuis {sinceYear}.
         </span>
       </p>
       <dl className="mt-2 grid grid-cols-3 gap-2 text-xs">
-        <div><dt className="text-zinc-500 dark:text-zinc-400">Médiane</dt><dd className="font-medium text-zinc-900 dark:text-zinc-100">{f(series.median)}</dd></div>
-        <div><dt className="text-zinc-500 dark:text-zinc-400">Plus haut</dt><dd className="font-medium text-zinc-900 dark:text-zinc-100">{f(series.high.v)} <span className="font-normal text-zinc-500">({fmtMonth(series.high.t)})</span></dd></div>
-        <div><dt className="text-zinc-500 dark:text-zinc-400">Plus bas</dt><dd className="font-medium text-zinc-900 dark:text-zinc-100">{f(series.low.v)} <span className="font-normal text-zinc-500">({fmtMonth(series.low.t)})</span></dd></div>
+        <div><dt className="text-zinc-500 dark:text-zinc-400">Médiane</dt><dd className="font-medium text-zinc-900 dark:text-zinc-100">{f(stats.median)}</dd></div>
+        <div><dt className="text-zinc-500 dark:text-zinc-400">Plus haut</dt><dd className="font-medium text-zinc-900 dark:text-zinc-100">{f(stats.high.v)} <span className="font-normal text-zinc-500">({fmtMonth(stats.high.t)})</span></dd></div>
+        <div><dt className="text-zinc-500 dark:text-zinc-400">Plus bas</dt><dd className="font-medium text-zinc-900 dark:text-zinc-100">{f(stats.low.v)} <span className="font-normal text-zinc-500">({fmtMonth(stats.low.t)})</span></dd></div>
       </dl>
 
       <div className="mt-3 h-[240px] sm:h-[280px]">
@@ -169,9 +183,9 @@ function MultiplesHistory({ data }: { data: Extract<ValuationResponse, { availab
               tickLine={false}
               width={44}
             />
-            <ReferenceLine y={series.median} stroke="var(--chart-3)" strokeWidth={1.5} strokeDasharray="6 4" />
-            {series.high.v <= domainTop && <ReferenceLine y={series.high.v} stroke="var(--ink-soft)" strokeDasharray="2 4" />}
-            <ReferenceLine y={series.low.v} stroke="var(--ink-soft)" strokeDasharray="2 4" />
+            <ReferenceLine y={stats.median} stroke="var(--chart-3)" strokeWidth={1.5} strokeDasharray="6 4" />
+            {stats.high.v <= domainTop && <ReferenceLine y={stats.high.v} stroke="var(--ink-soft)" strokeDasharray="2 4" />}
+            <ReferenceLine y={stats.low.v} stroke="var(--ink-soft)" strokeDasharray="2 4" />
             <Tooltip
               contentStyle={chartStyle.tooltip}
               labelFormatter={(t) => new Date(Number(t)).toLocaleDateString('fr-FR', { timeZone: 'UTC' })}
@@ -186,6 +200,11 @@ function MultiplesHistory({ data }: { data: Extract<ValuationResponse, { availab
         <span className="inline-flex items-center gap-1.5"><span className="inline-block w-4 border-t-2 border-dashed border-[color:var(--chart-3)]" /> Médiane</span>
         <span className="inline-flex items-center gap-1.5"><span className="inline-block w-4 border-t-2 border-dotted border-[color:var(--ink-soft)]" /> Plus haut et plus bas</span>
       </p>
+      {shortHistory && (
+        <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+          Historique depuis {new Date(series.since * 1000).getUTCFullYear()} : les comptes plus anciens de cette société ne sont pas disponibles.
+        </p>
+      )}
       <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
         {yieldLike
           ? 'Dividendes des 12 derniers mois / cours. Un rendement haut par rapport à l’historique accompagne souvent un cours bas, ou un dividende en hausse.'

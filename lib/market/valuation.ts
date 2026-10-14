@@ -71,10 +71,8 @@ function multiplesAt(price: number, s: Snapshot): Record<Exclude<MultipleKey, 'd
   };
 }
 
-export interface MultipleSeries {
-  key: MultipleKey;
-  label: string;
-  points: Array<{ t: number; v: number }>;
+/** Statistiques d'un multiple sur une fenêtre de temps. */
+export interface MultipleStats {
   median: number;
   low: { v: number; t: number };
   high: { v: number; t: number };
@@ -84,14 +82,26 @@ export interface MultipleSeries {
   since: number;
 }
 
+/** Fenêtres proposées en plus de l'historique complet, quand il est plus long. */
+export const VALUATION_WINDOWS = [5, 10] as const;
+export type ValuationWindow = `${(typeof VALUATION_WINDOWS)[number]}A`;
+
+export interface MultipleSeries extends MultipleStats {
+  key: MultipleKey;
+  label: string;
+  /** Historique complet ; les statistiques de premier niveau portent dessus. */
+  points: Array<{ t: number; v: number }>;
+  /** Statistiques sur 5 et 10 ans, présentes seulement si l'historique est nettement plus long. */
+  windows: Partial<Record<ValuationWindow, MultipleStats>>;
+}
+
 export function median(values: readonly number[]): number {
   const sorted = [...values].sort((a, b) => a - b);
   const mid = Math.floor(sorted.length / 2);
   return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
 }
 
-function summarize(key: MultipleKey, points: Array<{ t: number; v: number }>): MultipleSeries | null {
-  if (points.length < 26) return null; // moins de six mois d'historique : pas de statistique
+function statsOf(points: ReadonlyArray<{ t: number; v: number }>): MultipleStats {
   let low = points[0];
   let high = points[0];
   for (const p of points) {
@@ -100,9 +110,6 @@ function summarize(key: MultipleKey, points: Array<{ t: number; v: number }>): M
   }
   const current = points[points.length - 1].v;
   return {
-    key,
-    label: MULTIPLE_LABELS[key],
-    points,
     median: median(points.map((p) => p.v)),
     low,
     high,
@@ -110,6 +117,18 @@ function summarize(key: MultipleKey, points: Array<{ t: number; v: number }>): M
     higherShare: points.filter((p) => p.v > current).length / points.length,
     since: points[0].t,
   };
+}
+
+function summarize(key: MultipleKey, points: Array<{ t: number; v: number }>): MultipleSeries | null {
+  if (points.length < 26) return null; // moins de six mois d'historique : pas de statistique
+  const last = points[points.length - 1].t;
+  const windows: MultipleSeries['windows'] = {};
+  for (const years of VALUATION_WINDOWS) {
+    // Une fenêtre n'a d'intérêt que si l'historique la dépasse d'au moins un an.
+    if (last - points[0].t < (years + 1) * 365.25 * DAY_S) continue;
+    windows[`${years}A`] = statsOf(points.filter((p) => p.t >= last - years * 365.25 * DAY_S));
+  }
+  return { key, label: MULTIPLE_LABELS[key], points, ...statsOf(points), windows };
 }
 
 /**
@@ -199,10 +218,10 @@ export function valuationReferences(input: {
   fromMedian('pfcfMedian', 'priceToFcf', ttm.fcfPerShare, 'free cash flow par action');
   fromMedian('psMedian', 'priceToSales', ttm.salesPerShare, 'chiffre d’affaires par action');
   if (positive(input.dcfValue)) {
-    refs.push({ method: 'dcf', label: 'DCF (hypothèses par défaut)', value: toQuote(input.dcfValue), detail: 'Flux de trésorerie futurs actualisés, avec les hypothèses par défaut du simulateur.' });
+    refs.push({ method: 'dcf', label: 'DCF, scénario central', value: toQuote(input.dcfValue), detail: 'Flux de trésorerie futurs ramenés à aujourd’hui ; hypothèses et autres scénarios dans le bloc DCF ci-dessous.' });
   }
   if (positive(input.grahamNumber)) {
-    refs.push({ method: 'graham', label: 'Nombre de Graham', value: toQuote(input.grahamNumber), detail: '√(22,5 × BPA × actif net par action) : prix plafond d’un investisseur prudent selon Benjamin Graham.' });
+    refs.push({ method: 'graham', label: 'Nombre de Graham', value: toQuote(input.grahamNumber), detail: 'Prix maximal d’un investisseur prudent selon Benjamin Graham : PER de 15 et cours / actif net de 1,5 au plus (√(22,5 × BPA × actif net par action)). Pensé pour des industriels stables, peu adapté aux sociétés de croissance.' });
   }
   if (positive(input.analystTarget)) {
     refs.push({ method: 'analysts', label: 'Objectif des analystes', value: input.analystTarget, detail: 'Moyenne des objectifs de cours publiés à 12 mois.' });

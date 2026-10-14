@@ -62,6 +62,25 @@ describe('valuation history', () => {
     expect(yieldSeries?.current).toBeCloseTo(0.04, 10);
   });
 
+  it('adds 5- and 10-year windows only when the history is clearly longer', () => {
+    const snapshots = buildSnapshots([row('2007-12-31', { eps: 1, shares: 1 })], null);
+    // PER de 30 jusqu'en 2020, puis 10 : la médiane sur 5 ans ne voit que la seconde période.
+    const long = weekly('2008-04-07', '2026-03-30', (i) => (i < 52 * 12 ? 30 : 10));
+    const per = valuationHistory(long, snapshots, { maxYears: 30 }).per;
+    expect(per?.since).toBe(long[0].t);
+    expect(per?.median).toBe(30);
+    expect(per?.windows['5A']?.median).toBe(10);
+    expect(per?.windows['5A']?.since).toBeGreaterThanOrEqual(t('2021-03-29'));
+    expect(per?.windows['10A']?.high.v).toBe(30);
+    expect(per?.windows['10A']?.higherShare).toBeGreaterThan(0);
+
+    const short = valuationHistory(weekly('2020-01-06', '2026-03-30', () => 10), snapshots, { maxYears: 30 }).per;
+    expect(short?.windows['5A']).toBeDefined(); // 6 ans d'historique : la fenêtre de 5 ans a un sens
+    expect(short?.windows['10A']).toBeUndefined();
+    const shorter = valuationHistory(weekly('2022-04-04', '2026-03-30', () => 10), snapshots).per;
+    expect(shorter?.windows).toEqual({});
+  });
+
   it('needs six months of history before giving statistics', () => {
     const snapshots = buildSnapshots([row('2015-12-31', { eps: 1, shares: 1 })], null);
     expect(valuationHistory(weekly('2016-04-04', '2016-06-27', () => 10), snapshots).per).toBeUndefined();

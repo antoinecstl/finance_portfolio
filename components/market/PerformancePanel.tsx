@@ -215,7 +215,7 @@ const cellPct = (v: number | null) =>
 
 // Colonne « Année » figée : fond de la carte, et un liseré de même couleur qui masque
 // les cases défilant dans l'espacement entre cellules.
-const STICKY = 'sticky left-0 z-10 bg-white shadow-[0_0_0_2px_var(--ui-white)] dark:bg-zinc-900 dark:shadow-[0_0_0_2px_var(--ui-neutral-900)]';
+const STICKY = 'sticky left-0 z-10 w-px whitespace-nowrap bg-white shadow-[0_0_0_2px_var(--ui-white)] dark:bg-zinc-900 dark:shadow-[0_0_0_2px_var(--ui-neutral-900)]';
 
 function Seasonality({ data }: { data: PerformanceResponse }) {
   const { monthly } = data;
@@ -251,7 +251,7 @@ function Seasonality({ data }: { data: PerformanceResponse }) {
               <td />
             </tr>
             <tr>
-              <th scope="row" className={`${STICKY} px-1.5 py-1 text-left font-normal text-zinc-500 dark:text-zinc-400`}>Mois positifs</th>
+              <th scope="row" className={`${STICKY} px-1.5 py-1 text-left font-normal leading-tight text-zinc-500 dark:text-zinc-400`}>Mois<br />positifs</th>
               {monthly.positiveShare.map((v, i) => (
                 <td key={i} className="px-1 py-1 text-center text-zinc-600 dark:text-zinc-300">{v === null ? '' : `${Math.round(v * 100)} %`}</td>
               ))}

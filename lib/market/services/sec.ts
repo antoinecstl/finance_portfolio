@@ -1,6 +1,7 @@
 import 'server-only';
 import { parseCompanyFacts, parseCompanyTickers, type SecFacts } from '../sources/sec';
 import { fetchJson } from '../sources/resilient-fetch';
+import { MAX_ANNUAL_YEARS } from '../history';
 import { cached, DAY, HOUR } from '../sources/cache';
 
 const TICKERS_URL = 'https://www.sec.gov/files/company_tickers.json';
@@ -34,16 +35,16 @@ export type SecAnnual =
   | { status: 'not_covered' }
   | { status: 'unavailable' };
 
-/** Comptes annuels officiels d'une société américaine (15 exercices au plus). */
+/** Comptes annuels officiels d'une société américaine (20 exercices au plus). */
 export async function getSecAnnual(symbol: string): Promise<SecAnnual> {
   const map = await tickerMap();
   if (!map) return { status: 'unavailable' };
   const cik = map.data[symbol.toUpperCase()];
   if (!cik) return { status: 'not_covered' };
 
-  const entry = await cached<SecFacts>(`sec:facts:v1:${cik}`, { freshMs: 24 * HOUR, staleMs: 90 * DAY }, async () => {
+  const entry = await cached<SecFacts>(`sec:facts:v2:${cik}`, { freshMs: 24 * HOUR, staleMs: 90 * DAY }, async () => {
     const res = await fetchJson(factsUrl(cik), { source: 'sec', headers: secHeaders(), timeoutMs: 15_000 });
-    if (res.ok) return parseCompanyFacts(res.json);
+    if (res.ok) return parseCompanyFacts(res.json, MAX_ANNUAL_YEARS);
     if (res.reason === 'not_found') return { name: null, rows: [] };
     throw new Error(`companyfacts ${res.reason} ${res.status ?? ''}`);
   });

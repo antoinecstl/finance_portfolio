@@ -4,7 +4,6 @@ import {
   cagr,
   computeRatios,
   dcfValuePerShare,
-  defaultDcfGrowth,
   fundamentalsSeriesTypes,
   majorCurrency,
   parseQuoteSummary,
@@ -118,6 +117,7 @@ describe('computeRatios', () => {
     expect(r.peg).toBeCloseTo(20 / 10, 4);
     expect(r.revenueCagr).toBeCloseTo(0.1, 6);
     expect(r.revenueGrowth).toBeCloseTo(0.1, 10);
+    expect(r.growthYears).toBe(4);
   });
 
   it('computes margins, returns, leverage and payout', () => {
@@ -161,12 +161,6 @@ describe('growth and valuation helpers', () => {
     expect(dcfValuePerShare({ fcfPerShare: 1, growth: 0.1, discountRate: 0.09, terminalGrowth: 0.02 })!).toBeGreaterThan(base);
     expect(dcfValuePerShare({ fcfPerShare: -1, growth: 0.05, discountRate: 0.09, terminalGrowth: 0.02 })).toBeNull();
     expect(dcfValuePerShare({ fcfPerShare: 1, growth: 0.05, discountRate: 0.02, terminalGrowth: 0.03 })).toBeNull();
-  });
-
-  it('proposes a bounded default growth', () => {
-    expect(defaultDcfGrowth({ fcfCagr: 0.3, revenueCagr: null })).toBe(0.12);
-    expect(defaultDcfGrowth({ fcfCagr: -0.1, revenueCagr: null })).toBe(0);
-    expect(defaultDcfGrowth({ fcfCagr: null, revenueCagr: 0.061 })).toBe(0.06);
   });
 
   it('handles quotes in pence or cents', () => {

@@ -69,16 +69,20 @@ Le tableau des comptes annuels reste en dessous (vue tableau des graphiques).
 ### 4.3 Valorisation (actions)
 
 - **Ratios du jour** (v1.1, inchangés).
-- **Multiples dans le temps :** PER, cours / FCF, cours / CA, VE / EBITDA, cours / actif net et rendement du dividende, chaque semaine sur l'historique disponible, avec **médiane, plus haut et plus bas** de la période et le rang du multiple actuel (« plus bas que 80 % des semaines depuis 2016 »). Le multiple d'une semaine utilise les comptes du dernier exercice publié (clôture + 2 mois), puis les 12 derniers mois pour la dernière valeur.
+- **Multiples dans le temps :** PER, cours / FCF, cours / CA, VE / EBITDA, cours / actif net et rendement du dividende, chaque semaine (chaque mois au-delà de 10 ans) sur tout l'historique disponible (20 exercices au plus), avec **médiane, plus haut et plus bas** de la période et le rang du multiple actuel (« plus bas que 80 % du temps depuis 2016 »). Période au choix **5 ans, 10 ans ou Max**, proposée seulement quand l'historique la dépasse d'un an ; statistiques recalculées côté serveur pour chaque fenêtre. Le multiple d'une semaine utilise les comptes du dernier exercice publié (clôture + 2 mois), puis les 12 derniers mois pour la dernière valeur. Limite connue : hors États-Unis, la source ne publie souvent que 4 à 5 exercices ; l'écran l'indique.
 - **Repères de valorisation :** ce que vaudrait l'action selon plusieurs méthodes, sur un axe avec le cours actuel :
   - PER médian historique × BPA 12 mois ;
   - cours / FCF médian × FCF par action ;
   - cours / CA médian × CA par action ;
-  - simulateur DCF (valeurs par défaut) ;
-  - nombre de Graham ;
+  - DCF, scénario central ;
+  - nombre de Graham (avec ses limites : pensé pour des industriels stables) ;
   - objectif moyen des analystes.
   Méthodes sans objet (bénéfice négatif…) masquées. Présenté comme des repères pédagogiques, jamais comme une recommandation.
-- **Simulateur DCF** et **consensus des analystes** (v1.1).
+- **DCF** (`lib/market/dcf.ts`), lu en trois temps :
+  1. **Ce que le cours anticipe** (DCF inversé) : croissance annuelle du free cash flow sur 5 ans qui justifie le cours, comparée au scénario central et aux croissances passées (CA, BPA, FCF) et attendues (analystes, 5 ans).
+  2. **Trois scénarios** pré-remplis : central = médiane des croissances passées et attendues, bornée à 0-15 % ; prudent et optimiste à ±40 % (3 points au moins). Rendement exigé 4 % + 5 % × bêta, borné à 7-12 % (9 % sans bêta) ; croissance à long terme 2 %.
+  3. **Ajuster les hypothèses** (replié), chaque champ expliqué, puis « Comment ça marche » en quatre étapes. Avertissement banques et assurances.
+- **Consensus des analystes** (v1.1).
 
 ### 4.4 Profil (actions)
 

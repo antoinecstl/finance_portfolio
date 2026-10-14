@@ -1,15 +1,14 @@
 'use client';
 
-import { useMemo, useState } from 'react';
 import { ExternalLink } from 'lucide-react';
 import {
   RECOMMENDATION_LABELS,
-  dcfValuePerShare,
   type FundamentalRatios,
   type QuoteSummaryData,
   type StatementItem,
   type StatementRow,
 } from '@/lib/market/fundamentals';
+import type { DcfPlan } from '@/lib/market/dcf';
 import type { HistoryRow } from '@/lib/market/history';
 import { changeClass, fmtMoneyCompact, fmtMultiple, fmtPct, fmtPrice, fmtShare } from './format';
 import { useJson } from './useJson';
@@ -24,14 +23,24 @@ export interface FundamentalsResponse {
   ttm: StatementRow | null;
   ratios: FundamentalRatios;
   summary: QuoteSummaryData | null;
-  dcfDefaults: { growth: number; discountRate: number; terminalGrowth: number };
+  dcf: DcfPlan;
   history: HistoryRow[];
   sources: { official: boolean; officialYears: number; years: number };
   asOf: string;
   stale: boolean;
 }
 
-type MetricDef = { key: keyof FundamentalRatios; label: string; hint: string; kind: 'multiple' | 'share' | 'growth' | 'money' | 'price' };
+type MetricDef = {
+  key: keyof FundamentalRatios;
+  label: string;
+  hint: string;
+  kind: 'multiple' | 'share' | 'growth' | 'money' | 'price';
+  /** Croissance moyenne : le libellé précise la durée (« par an sur 4 ans »). */
+  perYear?: boolean;
+};
+
+const metricLabel = (m: MetricDef, growthYears: number | null) =>
+  m.perYear ? `${m.label}, par an${growthYears ? ` sur ${growthYears} ans` : ''}` : m.label;
 
 const GROUPS: Array<{ title: string; metrics: MetricDef[] }> = [
   {
@@ -73,14 +82,19 @@ const GROUPS: Array<{ title: string; metrics: MetricDef[] }> = [
     ],
   },
   {
-    title: 'Croissance et par action',
+    title: 'Croissance',
     metrics: [
-      { key: 'revenueGrowth', label: 'CA, dernier exercice', hint: 'Évolution du chiffre d’affaires sur le dernier exercice publié.', kind: 'growth' },
-      { key: 'revenueCagr', label: 'CA, par an', hint: 'Croissance annuelle moyenne du chiffre d’affaires sur les exercices affichés.', kind: 'growth' },
-      { key: 'epsCagr', label: 'BPA, par an', hint: 'Croissance annuelle moyenne du bénéfice par action.', kind: 'growth' },
-      { key: 'fcfCagr', label: 'Free cash flow, par an', hint: 'Croissance annuelle moyenne du flux de trésorerie disponible.', kind: 'growth' },
-      { key: 'eps', label: 'BPA (12 mois)', hint: 'Bénéfice net par action dilué.', kind: 'price' },
-      { key: 'fcfPerShare', label: 'FCF par action', hint: 'Free cash flow / nombre d’actions.', kind: 'price' },
+      { key: 'revenueGrowth', label: 'Chiffre d’affaires, sur 1 an', hint: 'Évolution du chiffre d’affaires entre les deux derniers exercices publiés.', kind: 'growth' },
+      { key: 'revenueCagr', label: 'Chiffre d’affaires', hint: 'Croissance annuelle moyenne du chiffre d’affaires sur les derniers exercices publiés (5 au plus).', kind: 'growth', perYear: true },
+      { key: 'epsCagr', label: 'Bénéfice par action', hint: 'Croissance annuelle moyenne du bénéfice par action sur les mêmes exercices.', kind: 'growth', perYear: true },
+      { key: 'fcfCagr', label: 'Free cash flow', hint: 'Croissance annuelle moyenne du flux de trésorerie disponible sur les mêmes exercices.', kind: 'growth', perYear: true },
+    ],
+  },
+  {
+    title: 'Par action (12 derniers mois)',
+    metrics: [
+      { key: 'eps', label: 'Bénéfice par action', hint: 'Bénéfice net par action dilué des 12 derniers mois.', kind: 'price' },
+      { key: 'fcfPerShare', label: 'Free cash flow par action', hint: 'Flux de trésorerie disponible des 12 derniers mois / nombre d’actions.', kind: 'price' },
       { key: 'bookValuePerShare', label: 'Actif net par action', hint: 'Capitaux propres / nombre d’actions.', kind: 'price' },
     ],
   },
@@ -132,7 +146,7 @@ export function RatioGroups({ ratios, currency }: { ratios: FundamentalRatios; c
               const value = ratios[m.key];
               return (
                 <div key={m.key} title={m.hint} className="rounded-lg bg-zinc-50 px-3 py-2 dark:bg-zinc-800/60">
-                  <dt className="text-xs text-zinc-500 dark:text-zinc-400">{m.label}</dt>
+                  <dt className="text-xs text-zinc-500 dark:text-zinc-400">{metricLabel(m, ratios.growthYears)}</dt>
                   <dd className={`text-sm font-medium tabular-nums ${m.kind === 'growth' ? changeClass(value) : 'text-zinc-900 dark:text-zinc-100'}`}>
                     {formatMetric(m, value, currency)}
                   </dd>
@@ -153,7 +167,7 @@ export function RatiosGuide() {
       <dl className="mt-2 grid gap-x-6 gap-y-1.5 sm:grid-cols-2">
         {GROUPS.flatMap((g) => g.metrics).map((m) => (
           <div key={m.key}>
-            <dt className="inline font-medium text-zinc-700 dark:text-zinc-300">{m.label} : </dt>
+            <dt className="inline font-medium text-zinc-700 dark:text-zinc-300">{metricLabel(m, null)} : </dt>
             <dd className="inline">{m.hint}</dd>
           </div>
         ))}
@@ -210,9 +224,8 @@ export function Consensus({ summary, price, priceCurrency }: { summary: QuoteSum
 
   return (
     <div>
-      <h3 className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Consensus des analystes</h3>
       {a.targetMean !== null ? (
-        <div className="mt-2">
+        <div>
           <p className="text-sm text-zinc-900 dark:text-zinc-100">
             Objectif moyen <span className="font-semibold tabular-nums">{fmtPrice(a.targetMean, priceCurrency)}</span>
             {upside !== null && <span className={`ml-1 tabular-nums ${changeClass(upside)}`}>({fmtPct(upside, 1)} vs cours)</span>}
@@ -237,7 +250,7 @@ export function Consensus({ summary, price, priceCurrency }: { summary: QuoteSum
           {a.count !== null && <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{a.count} analyste{a.count > 1 ? 's' : ''} · trait noir : cours actuel, rond : objectif moyen.</p>}
         </div>
       ) : (
-        <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">Pas de consensus publié pour ce titre.</p>
+        <p className="text-sm text-zinc-500 dark:text-zinc-400">Pas de consensus publié pour ce titre.</p>
       )}
     </div>
   );
@@ -291,96 +304,6 @@ export function Profile({ summary }: { summary: QuoteSummaryData }) {
           <p className="mt-1 leading-relaxed" lang="en">{p.description}</p>
         </details>
       )}
-    </div>
-  );
-}
-
-// Champ en pourcentage saisi comme du texte : on peut effacer le champ, taper
-// « 7,5 » avec une virgule, et la valeur n'est transmise que si elle est lisible.
-function PercentInput({ id, label, value, onChange, hint }: { id: string; label: string; value: number; onChange: (v: number) => void; hint: string }) {
-  const [text, setText] = useState(() => (Number.isFinite(value) ? String(Math.round(value * 1000) / 10).replace('.', ',') : ''));
-  return (
-    <div className="min-w-0">
-      <label htmlFor={id} className="block min-h-[2rem] text-xs leading-tight text-zinc-500 dark:text-zinc-400">{label}</label>
-      <div className="mt-1 flex items-center gap-1">
-        <input
-          id={id}
-          type="text"
-          inputMode="decimal"
-          autoComplete="off"
-          value={text}
-          onChange={(e) => {
-            const next = e.target.value.replace(/[^\d,.-]/g, '').slice(0, 6);
-            setText(next);
-            const n = Number(next.replace(',', '.'));
-            if (next.trim() !== '' && Number.isFinite(n) && n >= -50 && n <= 100) onChange(n / 100);
-          }}
-          aria-describedby={`${id}-hint`}
-          className="w-full min-w-0 rounded-md border border-zinc-300 bg-white px-2 py-1 text-sm tabular-nums text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
-        />
-        <span className="shrink-0 text-sm text-zinc-500">%</span>
-      </div>
-      <p id={`${id}-hint`} className="mt-0.5 text-[11px] leading-tight text-zinc-500 dark:text-zinc-400">{hint}</p>
-    </div>
-  );
-}
-
-export function DcfSimulator({
-  defaults, fcfPerShare, grahamNumber, price, currency,
-}: {
-  defaults: FundamentalsResponse['dcfDefaults'];
-  fcfPerShare: number | null;
-  grahamNumber: number | null;
-  price: number | null;
-  currency: string;
-}) {
-  const [growth, setGrowth] = useState(defaults.growth);
-  const [discount, setDiscount] = useState(defaults.discountRate);
-  const [terminal, setTerminal] = useState(defaults.terminalGrowth);
-  const value = useMemo(
-    () => (fcfPerShare !== null ? dcfValuePerShare({ fcfPerShare, growth, discountRate: discount, terminalGrowth: terminal }) : null),
-    [fcfPerShare, growth, discount, terminal]
-  );
-  const margin = value !== null && price ? value / price - 1 : null;
-  const grahamMargin = grahamNumber !== null && price ? grahamNumber / price - 1 : null;
-
-  return (
-    <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700 sm:p-4">
-      <h3 className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Simulateur de valeur (DCF)</h3>
-      {fcfPerShare === null || fcfPerShare <= 0 ? (
-        <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
-          Free cash flow négatif ou inconnu sur 12 mois : un modèle par actualisation des flux n’a pas de sens ici.
-        </p>
-      ) : (
-        <>
-          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-            Part du free cash flow par action ({fmtPrice(fcfPerShare, currency)}), le fait croître 5 ans, puis ralentir jusqu’au taux perpétuel en 10 ans, et actualise le tout.
-          </p>
-          <div className="mt-3 grid grid-cols-3 gap-3">
-            <PercentInput id="dcf-growth" label="Croissance 5 ans" value={growth} onChange={setGrowth} hint="Par an" />
-            <PercentInput id="dcf-discount" label="Taux d’actualisation" value={discount} onChange={setDiscount} hint="Rendement exigé" />
-            <PercentInput id="dcf-terminal" label="Croissance perpétuelle" value={terminal} onChange={setTerminal} hint="Après 10 ans" />
-          </div>
-          <div className="mt-4 rounded-lg bg-zinc-50 px-3 py-2 dark:bg-zinc-800/60" aria-live="polite">
-            <p className="text-xs text-zinc-500 dark:text-zinc-400">Valeur estimée par action</p>
-            <p className="text-xl font-semibold tabular-nums text-zinc-900 dark:text-zinc-100">
-              {value !== null ? fmtPrice(value, currency) : '—'}
-              {margin !== null && <span className={`ml-2 text-sm font-medium ${changeClass(margin)}`}>{fmtPct(margin, 0)} vs cours</span>}
-            </p>
-            {value === null && <p className="text-xs text-zinc-500">Le taux d’actualisation doit dépasser la croissance perpétuelle.</p>}
-          </div>
-        </>
-      )}
-      {grahamNumber !== null && (
-        <p className="mt-3 text-xs text-zinc-500 dark:text-zinc-400">
-          Nombre de Graham (√(22,5 × BPA × actif net par action)) :{' '}
-          <span className="font-medium tabular-nums text-zinc-900 dark:text-zinc-100">{fmtPrice(grahamNumber, currency)}</span>
-          {grahamMargin !== null && <span className={`ml-1 tabular-nums ${changeClass(grahamMargin)}`}>({fmtPct(grahamMargin, 0)} vs cours)</span>}
-        </p>
-      )}
-      <p className="mt-3 text-[11px] text-zinc-500 dark:text-zinc-400">
-        Simulation pédagogique, très sensible aux hypothèses. Ce n’est ni une estimation de Fi-Hub ni un conseil.
-      </p>
     </div>
   );
 }
