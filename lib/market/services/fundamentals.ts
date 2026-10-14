@@ -12,6 +12,7 @@ import {
   type Statements,
 } from '../fundamentals';
 import { dcfPlan, type DcfPlan } from '../dcf';
+import { buildRecentPeriods, type RecentPeriods } from '../quarters';
 import { buildHistory, DISPLAYED_ANNUAL_YEARS, dividendsPerYear, MAX_ANNUAL_YEARS, mergeAnnualRows, type HistoryRow } from '../history';
 import { isSecEligible } from '../sources/sec';
 import { cached, DAY, HOUR, type CacheEntry } from '../sources/cache';
@@ -32,6 +33,8 @@ export interface FundamentalsBundle {
   ratios: FundamentalRatios;
   summary: QuoteSummaryData | null;
   dividends: MarketDividend[];
+  /** Derniers trimestres ou semestres publiés, poste par poste. */
+  periods: RecentPeriods;
   /** Cours mensuels depuis l'origine (valorisation sur longue période). */
   monthlyPrices: MarketPoint[];
   sources: { official: boolean; officialYears: number; years: number };
@@ -41,7 +44,7 @@ export interface FundamentalsBundle {
 
 /** Séries comptables du fournisseur, avec copie de secours (30 jours). */
 function providerSeries(symbol: string) {
-  return cached<SeriesMap>(`prov:series:v2:${symbol}`, { freshMs: 6 * HOUR, staleMs: 30 * DAY }, async () => {
+  return cached<SeriesMap>(`prov:series:v3:${symbol}`, { freshMs: 6 * HOUR, staleMs: 30 * DAY }, async () => {
     const series = await getFundamentalsSeries(symbol);
     if (series === null) throw new Error('fundamentals series unavailable');
     return series;
@@ -50,7 +53,7 @@ function providerSeries(symbol: string) {
 
 /** Profil et consensus (module « résumé », fragile), avec copie de secours. */
 function providerSummary(symbol: string) {
-  return cached<QuoteSummaryData>(`prov:summary:v2:${symbol}`, { freshMs: 6 * HOUR, staleMs: 30 * DAY }, async () => {
+  return cached<QuoteSummaryData>(`prov:summary:v3:${symbol}`, { freshMs: 6 * HOUR, staleMs: 30 * DAY }, async () => {
     const summary = await getQuoteSummary(symbol);
     if (summary === null) throw new Error('summary unavailable');
     return summary;
@@ -117,6 +120,7 @@ export async function getFundamentalsBundle(symbol: string): Promise<Fundamental
     ratios,
     summary,
     dividends,
+    periods: buildRecentPeriods(seriesEntry?.data ?? {}),
     monthlyPrices: longChart.status === 'ok' ? longChart.chart.points : [],
     sources: { official: merged.officialYears > 0, officialYears: Math.min(merged.officialYears, displayed.length), years: displayed.length },
     asOf: new Date(fetchedAt).toISOString(),

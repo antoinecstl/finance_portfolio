@@ -20,7 +20,7 @@ export function ProfilePanel({ symbol, priceCurrency }: { symbol: string; priceC
         <Profile summary={summary} />
       </Panel>
       <Panel id="facts" title="Calendrier, risque et actionnariat" description="Bêta : sensibilité du cours aux mouvements du marché (1 = comme le marché).">
-        <CompanyFacts summary={summary} priceCurrency={priceCurrency} />
+        <CompanyFacts summary={summary} priceCurrency={priceCurrency} asOf={fundamentals.data.asOf} />
       </Panel>
     </div>
   );

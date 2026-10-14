@@ -10,6 +10,7 @@ import {
 } from '@/lib/market/fundamentals';
 import type { DcfPlan } from '@/lib/market/dcf';
 import type { HistoryRow } from '@/lib/market/history';
+import type { RecentPeriods } from '@/lib/market/quarters';
 import { changeClass, fmtMoneyCompact, fmtMultiple, fmtPct, fmtPrice, fmtShare } from './format';
 import { useJson } from './useJson';
 
@@ -25,6 +26,7 @@ export interface FundamentalsResponse {
   summary: QuoteSummaryData | null;
   dcf: DcfPlan;
   history: HistoryRow[];
+  periods?: RecentPeriods;
   sources: { official: boolean; officialYears: number; years: number };
   asOf: string;
   stale: boolean;
@@ -257,14 +259,22 @@ export function Consensus({ summary, price, priceCurrency }: { summary: QuoteSum
 }
 
 /** Dates à venir, risque et actionnariat. */
-export function CompanyFacts({ summary, priceCurrency }: { summary: QuoteSummaryData; priceCurrency: string }) {
+/**
+ * Date d'un événement relue par rapport au jour des données (`asOf`) : le
+ * fournisseur laisse parfois une date déjà passée en « prochains résultats ».
+ */
+export function eventLabel(date: string | null, asOf: string, upcoming: string, past: string): string {
+  return date && date < asOf.slice(0, 10) ? past : upcoming;
+}
+
+export function CompanyFacts({ summary, priceCurrency, asOf }: { summary: QuoteSummaryData; priceCurrency: string; asOf: string }) {
   const s = summary.stats;
   const facts: Array<[string, string]> = [
-    ['Prochains résultats', fmtDate(s.nextEarningsDate)],
-    ['Prochain détachement', fmtDate(s.exDividendDate)],
+    [eventLabel(s.nextEarningsDate, asOf, 'Prochains résultats', 'Derniers résultats connus'), fmtDate(s.nextEarningsDate)],
+    [eventLabel(s.exDividendDate, asOf, 'Prochain détachement', 'Dernier détachement'), fmtDate(s.exDividendDate)],
     ['Bêta', s.beta !== null ? s.beta.toFixed(2).replace('.', ',') : '—'],
     ['BPA attendu (12 mois)', s.forwardEps !== null ? fmtPrice(s.forwardEps, priceCurrency) : '—'],
-    ['Croissance BPA attendue', fmtPct(s.earningsGrowthNextYear, 1)],
+    ['Croissance du BPA attendue (1 an)', fmtPct(s.earningsGrowthNextYear, 1)],
     ['Détenu par les institutionnels', fmtShare(s.heldByInstitutions)],
     ['Détenu par les dirigeants', fmtShare(s.heldByInsiders)],
     ['Vendu à découvert', fmtShare(s.shortPercentOfFloat)],
