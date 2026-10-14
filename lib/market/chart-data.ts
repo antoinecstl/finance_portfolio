@@ -38,6 +38,8 @@ export interface MarketMeta {
   fiftyTwoWeekLow: number | null;
   regularMarketStart: number | null;
   regularMarketEnd: number | null;
+  /** Première séance cotée (YYYY-MM-DD), si publiée. */
+  firstTradeDate?: string | null;
 }
 
 export interface ParsedChart {
@@ -87,6 +89,7 @@ export function parseChartResponse(json: unknown, requestedSymbol: string): Pars
     fiftyTwoWeekLow: num(meta.fiftyTwoWeekLow),
     regularMarketStart: num(regular?.start),
     regularMarketEnd: num(regular?.end),
+    firstTradeDate: num(meta.firstTradeDate) !== null && (meta.firstTradeDate as number) > 0 ? isoDate(meta.firstTradeDate as number) : null,
   };
 
   const timestamps = Array.isArray(result.timestamp) ? result.timestamp : [];

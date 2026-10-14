@@ -1,7 +1,7 @@
 import 'server-only';
 import { getMarketChart, getQuoteSummaryRaw } from '@/lib/stock-api';
 import { assetClassOf, type AssetClass } from '../asset-class';
-import { parseCryptoDetails, parseEtfDetails, supplyMetrics, type CryptoDetails, type EtfDetails } from '../details';
+import { earliestDate, parseCryptoDetails, parseEtfDetails, supplyMetrics, type CryptoDetails, type EtfDetails } from '../details';
 import { allTimeHigh, returnsCorrelation } from '../performance';
 import { cached, DAY, HOUR } from '../sources/cache';
 
@@ -26,7 +26,7 @@ const CRYPTO_MODULES = ['summaryDetail', 'summaryProfile', 'price'];
 
 /** Onglets Composition (ETF) et Marché (crypto). */
 export async function getDetails(symbol: string) {
-  return cached<DetailsPayload>(`details:v1:${symbol}`, { freshMs: 6 * HOUR, staleMs: 30 * DAY }, async () => {
+  return cached<DetailsPayload>(`details:v2:${symbol}`, { freshMs: 6 * HOUR, staleMs: 30 * DAY }, async () => {
     const year = await getMarketChart(symbol, { range: '1y', interval: '1d', revalidate: 3600 });
     if (year.status === 'not_found') return { found: false };
     if (year.status !== 'ok') throw new Error(`chart ${year.status}`);
@@ -37,7 +37,10 @@ export async function getDetails(symbol: string) {
     if (assetClass === 'etf') {
       const raw = await getQuoteSummaryRaw(symbol, ETF_MODULES);
       if (raw === null) throw new Error('summary unavailable');
-      return { ...base, etf: parseEtfDetails(raw) };
+      const etf = parseEtfDetails(raw);
+      // La date de création publiée peut être postérieure à la première cotation (changement de fonds, fusion).
+      if (etf) etf.profile.inceptionDate = earliestDate(etf.profile.inceptionDate, meta.firstTradeDate);
+      return { ...base, etf };
     }
 
     if (assetClass === 'crypto') {

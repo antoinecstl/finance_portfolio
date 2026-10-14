@@ -66,6 +66,32 @@ export interface EtfDetails {
   risk: Array<{ period: string; beta: number | null; sharpe: number | null; volatility: number | null }>;
 }
 
+/** « 3y » → 3 ; durée inconnue en dernier. */
+function periodYears(period: string): number {
+  const n = Number.parseInt(period, 10);
+  return Number.isFinite(n) ? n : Number.POSITIVE_INFINITY;
+}
+
+type Multiples = EtfDetails['portfolioMultiples'];
+
+/**
+ * Multiples moyens des titres détenus. Le fournisseur les publie souvent inversés
+ * (rendement bénéficiaire 0,042 au lieu d'un PER de 23,7) : un PER inférieur à 1
+ * n'a pas de sens, on inverse alors toute la série. Zéro ou négatif : non publié.
+ */
+export function portfolioMultiples(raw: Multiples): Multiples {
+  const values = Object.values(raw).filter((v): v is number => v !== null && v > 0);
+  const inverted = raw.per !== null && raw.per > 0 ? raw.per < 1 : values.length > 0 && values.every((v) => v < 1);
+  const fix = (v: number | null) => (v === null || v <= 0 ? null : inverted ? 1 / v : v);
+  return { per: fix(raw.per), priceToBook: fix(raw.priceToBook), priceToSales: fix(raw.priceToSales), priceToCashflow: fix(raw.priceToCashflow) };
+}
+
+/** Date de création retenue : la plus ancienne entre celle du fonds et la première cotation. */
+export function earliestDate(...dates: Array<string | null | undefined>): string | null {
+  const valid = dates.filter((d): d is string => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d)).sort();
+  return valid[0] ?? null;
+}
+
 export function parseEtfDetails(json: unknown): EtfDetails | null {
   const result = summaryResult(json);
   if (!result) return null;
@@ -107,7 +133,10 @@ export function parseEtfDetails(json: unknown): EtfDetails | null {
       // Écart-type annualisé, publié en pourcentage (ex. 17,5).
       volatility: rawNumber(r.stdDev) !== null ? (rawNumber(r.stdDev) as number) / 100 : null,
     }))
-    .filter((r) => r.period && (r.beta !== null || r.sharpe !== null || r.volatility !== null));
+    // Le fournisseur publie parfois des lignes entièrement à zéro : sans valeur, pas de ligne.
+    .map((r) => ({ ...r, beta: r.beta || null, sharpe: r.sharpe || null, volatility: r.volatility || null }))
+    .filter((r) => r.period && (r.beta !== null || r.sharpe !== null || r.volatility !== null))
+    .sort((a, b) => periodYears(a.period) - periodYears(b.period));
 
   const details: EtfDetails = {
     profile: {
@@ -123,12 +152,12 @@ export function parseEtfDetails(json: unknown): EtfDetails | null {
     holdings,
     sectors,
     allocation,
-    portfolioMultiples: {
+    portfolioMultiples: portfolioMultiples({
       per: rawNumber(equity.priceToEarnings),
       priceToBook: rawNumber(equity.priceToBook),
       priceToSales: rawNumber(equity.priceToSales),
       priceToCashflow: rawNumber(equity.priceToCashflow),
-    },
+    }),
     risk,
   };
   const empty = !details.profile.category && !details.profile.expenseRatio && !details.profile.totalAssets

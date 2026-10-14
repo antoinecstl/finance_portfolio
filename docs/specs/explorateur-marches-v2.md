@@ -86,11 +86,12 @@ Description, secteur, pays, effectifs, site, actionnariat (initiés, institution
 
 ### 4.5 Composition (ETF et fonds)
 
-- **Identité :** catégorie, émetteur, frais courants (TER), encours, date de création, rendement distribué.
+- **Identité :** catégorie, émetteur, frais courants (TER), encours, date de création, rendement distribué. Date de création : la plus ancienne entre celle publiée pour le fonds et la première cotation (la date publiée peut être postérieure, ex. WPEA).
 - **Principales lignes** (10 au plus, avec poids ; lien vers la fiche si la ligne est cotée).
 - **Secteurs** et **répartition** (actions, obligations, liquidités, autres).
-- **Multiples du portefeuille** (PER, P/B… publiés pour l'ETF).
-- **Risque publié** sur 3, 5 et 10 ans (volatilité, bêta, ratio de Sharpe) quand il existe.
+- **Multiples du portefeuille** (PER, P/B… publiés pour l'ETF). Souvent publiés inversés (0,042 pour un PER de 23,7) : un PER inférieur à 1 fait inverser toute la série ; 0 = non publié.
+- **Risque publié** sur 3, 5 et 10 ans (volatilité, bêta, ratio de Sharpe) quand il existe ; une ligne entièrement à zéro est ignorée.
+- Les chiffres « sur 3 / 10 ans » de l'onglet Performance deviennent « depuis 2024 » quand la cotation est plus récente.
 
 ### 4.6 Marché (cryptos)
 

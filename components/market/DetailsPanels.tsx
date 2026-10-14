@@ -32,6 +32,19 @@ function ShareBars({ rows }: { rows: Array<{ key: string; label: React.ReactNode
   );
 }
 
+/** Ancienneté en années révolues, en mois la première année : « 2 ans », « 7 mois ». */
+function historyLength(iso: string | null): string | null {
+  if (!iso) return null;
+  const start = new Date(`${iso.slice(0, 10)}T00:00:00Z`);
+  const now = new Date();
+  let months = (now.getUTCFullYear() - start.getUTCFullYear()) * 12 + now.getUTCMonth() - start.getUTCMonth();
+  if (now.getUTCDate() < start.getUTCDate()) months -= 1;
+  if (!Number.isFinite(months) || months < 1) return null;
+  if (months < 12) return `${months} mois`;
+  const years = Math.floor(months / 12);
+  return `${years} an${years > 1 ? 's' : ''}`;
+}
+
 export function EtfCompositionPanel({ symbol }: { symbol: string }) {
   const details = useDetails(symbol);
   if (details.error) return <PanelError title="Composition" message={details.error === 'not_found' ? 'Fonds introuvable.' : 'Composition momentanément indisponible.'} onRetry={details.reload} />;
@@ -46,7 +59,7 @@ export function EtfCompositionPanel({ symbol }: { symbol: string }) {
   const etf = details.data.etf;
   if (!etf) return <PanelError title="Composition" message="Composition non publiée pour ce fonds. Les onglets Aperçu et Performance restent disponibles." />;
   const { profile, portfolioMultiples: pm } = etf;
-  const age = profile.inceptionDate ? new Date().getUTCFullYear() - Number(profile.inceptionDate.slice(0, 4)) : null;
+  const history = historyLength(profile.inceptionDate);
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -59,7 +72,7 @@ export function EtfCompositionPanel({ symbol }: { symbol: string }) {
             <Figure label="Frais courants (par an)" value={fmtShare(profile.expenseRatio, 2)} hint="Prélevés chaque année sur l’encours, déjà déduits du cours." />
           )}
           {profile.totalAssets !== null && <Figure label="Encours" value={fmtMoneyCompact(profile.totalAssets, details.data.currency)} />}
-          {profile.inceptionDate && <Figure label="Création" value={fmtDate(profile.inceptionDate)} detail={age !== null && age > 0 ? `${age} an${age > 1 ? 's' : ''} d’historique` : undefined} />}
+          {profile.inceptionDate && <Figure label="Création" value={fmtDate(profile.inceptionDate)} detail={history ? `${history} d’historique` : undefined} />}
           {profile.distributionYield !== null && profile.distributionYield > 0 && (
             <Figure label="Rendement distribué" value={fmtShare(profile.distributionYield, 2)} hint="Distributions des 12 derniers mois / cours. 0 pour un ETF capitalisant." />
           )}

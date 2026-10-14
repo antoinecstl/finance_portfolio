@@ -60,6 +60,7 @@ describe('parseChartResponse', () => {
           instrumentType: 'ETF', exchangeTimezoneName: 'Europe/Paris', regularMarketPrice: 596.4,
           chartPreviousClose: 590, regularMarketDayHigh: 597, regularMarketDayLow: 591, regularMarketVolume: 1200,
           fiftyTwoWeekHigh: 610, fiftyTwoWeekLow: 480, currentTradingPeriod: { regular: { start: 1, end: 2 } },
+          firstTradeDate: 1_239_580_800,
         },
         timestamp: [300, 100, 200],
         indicators: { quote: [{ open: [3, 1, null], high: [3.5, 1.5, 2.5], low: [2.5, 0.5, 1.5], close: [3, 1, 2], volume: [30, null, 20] }] },
@@ -73,7 +74,7 @@ describe('parseChartResponse', () => {
 
   it('normalises meta, sorts points and fills missing OHLC values', () => {
     const parsed = parseChartResponse(json, 'CW8.PA');
-    expect(parsed?.meta).toMatchObject({ symbol: 'CW8.PA', name: 'Amundi MSCI World', exchange: 'Paris', instrumentType: 'ETF', previousClose: 590, regularMarketStart: 1 });
+    expect(parsed?.meta).toMatchObject({ symbol: 'CW8.PA', name: 'Amundi MSCI World', exchange: 'Paris', instrumentType: 'ETF', previousClose: 590, regularMarketStart: 1, firstTradeDate: '2009-04-13' });
     expect(parsed?.points.map((p) => p.t)).toEqual([100, 200, 300]);
     expect(parsed?.points[1]).toEqual({ t: 200, o: 2, h: 2.5, l: 1.5, c: 2, v: 20 });
     expect(parsed?.points[0].v).toBe(0);

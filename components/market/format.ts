@@ -12,6 +12,14 @@ export function fmtPct(value: number | null | undefined, digits = 2): string {
 export function fmtPrice(value: number | null | undefined, currency: string): string {
   if (value === null || value === undefined || !Number.isFinite(value)) return '—';
   if (!currency) return new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 2 }).format(value);
+  // Moins d'un centime (variation d'un ETF à 5 €, crypto à 0,00001 $) : deux chiffres significatifs plutôt que « 0,00 ».
+  if (value !== 0 && Math.abs(value) < 0.01 && /^[A-Z]{3}$/.test(currency.toUpperCase())) {
+    try {
+      return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: currency.toUpperCase(), maximumSignificantDigits: 2 }).format(value);
+    } catch {
+      // devise inconnue d'Intl : format générique ci-dessous
+    }
+  }
   return formatCurrency(value, currency);
 }
 

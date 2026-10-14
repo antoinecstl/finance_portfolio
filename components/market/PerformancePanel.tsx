@@ -24,6 +24,20 @@ const MONTHS = ['Janv.', 'Févr.', 'Mars', 'Avr.', 'Mai', 'Juin', 'Juil.', 'Aoû
 // Espace fine insécable : « −20 % » ne passe jamais à la ligne sur l'axe.
 const pctAxis = (v: number) => `${Math.round(v * 100)}\u202f%`;
 
+/** Largeur d'axe suffisante pour « 2000 % » (crypto) sans gaspiller la place ailleurs. */
+const axisWidth = (ticks: number[]) => Math.max(44, ...ticks.map((t) => pctAxis(t).length * 7 + 4));
+
+/** Graduations régulières incluant 0 : pas de 1, 2, 5, 10, 20, 25, 50 ou 100 %, cinq intervalles au plus. */
+function pctTicks(min: number, max: number): number[] {
+  const lo = Math.min(min, 0);
+  const hi = Math.max(max, 0);
+  const span = Math.max(hi - lo, 0.01);
+  const step = [0.01, 0.02, 0.05, 0.1, 0.2, 0.25, 0.5, 1].find((s) => span / s <= 5) ?? Math.ceil(span / 5);
+  const ticks: number[] = [];
+  for (let k = Math.floor(lo / step + 1e-9); k <= Math.ceil(hi / step - 1e-9); k += 1) ticks.push(Math.round(k * step * 1e6) / 1e6 || 0);
+  return ticks;
+}
+
 export function PerformancePanel({ symbol }: { symbol: string }) {
   const perf = useJson<PerformanceResponse>(`/api/market/performance?symbol=${encodeURIComponent(symbol)}`);
 
@@ -56,6 +70,13 @@ function KeyFigures({ data }: { data: PerformanceResponse }) {
     key === '5A' ? 'Sur 5 ans' : key === '10A' ? 'Sur 10 ans' : `Depuis ${since ? since.slice(0, 4) : 'l’origine'}`;
   const growth = stats.growth.filter((g) => g.price !== null);
   const dd = stats.maxDrawdown;
+  // Fenêtres de 3 et 10 ans : « depuis 2024 » quand l'historique coté est plus court.
+  const first = data.drawdown[0]?.t;
+  const last = data.drawdown[data.drawdown.length - 1]?.t;
+  const coverage = (years: number) =>
+    first !== undefined && last !== undefined && last - first < (years - 0.1) * 365.25 * 86_400
+      ? `depuis ${new Date(first * 1000).getUTCFullYear()}`
+      : `sur ${years} ans`;
   return (
     <Panel
       id="perf-key"
@@ -84,7 +105,7 @@ function KeyFigures({ data }: { data: PerformanceResponse }) {
         )}
         {dd && (
           <Figure
-            label="Pire baisse sur 10 ans"
+            label={`Pire baisse ${coverage(10)}`}
             value={<span className={changeClass(dd.value)}>{fmtPct(dd.value, 1)}</span>}
             detail={`du ${fmtDate(dd.peakDate)} au ${fmtDate(dd.troughDate)}`}
             hint={dd.value < 0 ? (dd.recoveryDate ? `Plus haut retrouvé le ${fmtDate(dd.recoveryDate)}.` : 'Ce plus haut n’a pas encore été retrouvé.') : undefined}
@@ -92,14 +113,14 @@ function KeyFigures({ data }: { data: PerformanceResponse }) {
         )}
         {stats.linearity !== null && (
           <Figure
-            label="Régularité de la tendance (10 ans)"
+            label={`Régularité de la tendance (${coverage(10).replace('sur ', '')})`}
             value={`${Math.round(stats.linearity * 100)} / 100`}
             hint="Proximité du cours avec une progression régulière. 100 : croissance sans à-coups ; près de 0 : pas de tendance."
           />
         )}
         {stats.volatility3y !== null && (
           <Figure
-            label="Volatilité sur 3 ans"
+            label={`Volatilité ${coverage(3)}`}
             value={fmtPct(stats.volatility3y, 1).replace('+', '')}
             hint="Amplitude habituelle des variations sur un an. Plus elle est élevée, plus le cours bouge."
           />
@@ -118,7 +139,7 @@ function KeyFigures({ data }: { data: PerformanceResponse }) {
           <Figure
             label="Plus longue attente d’un nouveau plus haut"
             value={dd.longestUnderwaterDays >= 365 ? `${(dd.longestUnderwaterDays / 365).toFixed(1).replace('.', ',')} ans` : `${Math.round(dd.longestUnderwaterDays / 30)} mois`}
-            hint="Durée la plus longue passée sous un ancien plus haut, sur 10 ans."
+            hint={`Durée la plus longue passée sous un ancien plus haut, ${coverage(10)}.`}
           />
         )}
       </dl>
@@ -136,12 +157,13 @@ function AnnualReturnsChart({ data }: { data: PerformanceResponse }) {
       .slice(-20),
     [data.annualReturns, useTotal]
   );
+  const yTicks = useMemo(() => pctTicks(Math.min(...rows.map((r) => r.value)), Math.max(...rows.map((r) => r.value))), [rows]);
   if (rows.length < 2) return null;
   return (
     <Panel
       id="perf-years"
       title="Performance par année civile"
-      description="Barres claires : année incomplète (première cotation ou année en cours)."
+      description="Barres en pointillés : année incomplète (première cotation ou année en cours)."
       actions={data.totalReturnAvailable ? (
         <Toggle label="Base de calcul" value={basis} onChange={setBasis} options={[{ value: 'price', label: 'Cours seul' }, { value: 'total', label: 'Dividendes réinvestis' }]} />
       ) : undefined}
@@ -151,7 +173,7 @@ function AnnualReturnsChart({ data }: { data: PerformanceResponse }) {
           <BarChart data={rows} margin={{ top: 8, right: 4, bottom: 0, left: 0 }}>
             <CartesianGrid vertical={false} {...chartStyle.grid} />
             <XAxis dataKey="year" tick={chartStyle.tick} stroke="var(--rule)" tickLine={false} interval="preserveStartEnd" minTickGap={8} />
-            <YAxis tickFormatter={pctAxis} tick={chartStyle.tick} axisLine={false} tickLine={false} width={44} />
+            <YAxis tickFormatter={pctAxis} tick={chartStyle.tick} axisLine={false} tickLine={false} domain={[yTicks[0], yTicks[yTicks.length - 1]]} ticks={yTicks} interval={0} width={axisWidth(yTicks)} />
             <ReferenceLine y={0} stroke="var(--rule-strong)" />
             <Tooltip
               cursor={chartStyle.cursor}
@@ -163,7 +185,14 @@ function AnnualReturnsChart({ data }: { data: PerformanceResponse }) {
             />
             <Bar dataKey="value" radius={[4, 4, 4, 4]} maxBarSize={24} isAnimationActive={false}>
               {rows.map((r) => (
-                <Cell key={r.year} fill={r.value >= 0 ? 'var(--gain)' : 'var(--loss)'} fillOpacity={r.partial ? 0.4 : 1} />
+                <Cell
+                  key={r.year}
+                  fill={r.value >= 0 ? 'var(--gain)' : 'var(--loss)'}
+                  fillOpacity={r.partial ? 0.15 : 1}
+                  stroke={r.partial ? (r.value >= 0 ? 'var(--gain)' : 'var(--loss)') : undefined}
+                  strokeWidth={r.partial ? 1.5 : 0}
+                  strokeDasharray={r.partial ? '3 2' : undefined}
+                />
               ))}
             </Bar>
           </BarChart>
@@ -184,16 +213,20 @@ function heatStyle(value: number | null): React.CSSProperties {
 const cellPct = (v: number | null) =>
   v === null ? '' : `${v > 0 ? '+' : v < 0 ? '−' : ''}${new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(Math.abs(v * 100))}`;
 
+// Colonne « Année » figée : fond de la carte, et un liseré de même couleur qui masque
+// les cases défilant dans l'espacement entre cellules.
+const STICKY = 'sticky left-0 z-10 bg-white shadow-[0_0_0_2px_var(--ui-white)] dark:bg-zinc-900 dark:shadow-[0_0_0_2px_var(--ui-neutral-900)]';
+
 function Seasonality({ data }: { data: PerformanceResponse }) {
   const { monthly } = data;
   if (monthly.years.length < 2) return null;
   return (
     <Panel id="perf-season" title="Saisonnalité" description="Variation du cours chaque mois, en %. Les deux dernières lignes résument les années affichées.">
-      <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+      <div className="overflow-x-auto">
         <table className="w-full min-w-[640px] border-separate border-spacing-[2px] text-[11px] tabular-nums sm:text-xs">
           <thead>
             <tr className="text-zinc-500 dark:text-zinc-400">
-              <th scope="col" className="sticky left-0 z-10 bg-white px-1.5 py-1 text-left font-normal dark:bg-zinc-900">Année</th>
+              <th scope="col" className={`${STICKY} px-1.5 py-1 text-left font-normal`}>Année</th>
               {MONTHS.map((m) => <th key={m} scope="col" className="px-1 py-1 text-center font-normal">{m}</th>)}
               <th scope="col" className="px-1.5 py-1 text-right font-medium text-zinc-700 dark:text-zinc-300">Année</th>
             </tr>
@@ -201,7 +234,7 @@ function Seasonality({ data }: { data: PerformanceResponse }) {
           <tbody>
             {monthly.years.map((y) => (
               <tr key={y.year}>
-                <th scope="row" className="sticky left-0 z-10 bg-white px-1.5 py-1 text-left font-normal text-zinc-600 dark:bg-zinc-900 dark:text-zinc-300">{y.year}</th>
+                <th scope="row" className={`${STICKY} px-1.5 py-1 text-left font-normal text-zinc-600 dark:text-zinc-300`}>{y.year}</th>
                 {y.months.map((v, i) => (
                   <td key={i} className="rounded px-1 py-1 text-center text-zinc-900 dark:text-zinc-100" style={heatStyle(v)} title={v === null ? undefined : `${MONTHS[i]} ${y.year} : ${fmtPct(v, 1)}`}>
                     {cellPct(v)}
@@ -211,14 +244,14 @@ function Seasonality({ data }: { data: PerformanceResponse }) {
               </tr>
             ))}
             <tr className="border-t border-zinc-200 dark:border-zinc-700">
-              <th scope="row" className="sticky left-0 z-10 bg-white px-1.5 pb-1 pt-2 text-left font-medium text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">Moyenne</th>
+              <th scope="row" className={`${STICKY} px-1.5 pb-1 pt-2 text-left font-medium text-zinc-700 dark:text-zinc-300`}>Moyenne</th>
               {monthly.average.map((v, i) => (
                 <td key={i} className="rounded px-1 py-1 text-center font-medium text-zinc-900 dark:text-zinc-100" style={heatStyle(v)}>{cellPct(v)}</td>
               ))}
               <td />
             </tr>
             <tr>
-              <th scope="row" className="sticky left-0 z-10 bg-white px-1.5 py-1 text-left font-normal text-zinc-500 dark:bg-zinc-900 dark:text-zinc-400">Mois positifs</th>
+              <th scope="row" className={`${STICKY} px-1.5 py-1 text-left font-normal text-zinc-500 dark:text-zinc-400`}>Mois positifs</th>
               {monthly.positiveShare.map((v, i) => (
                 <td key={i} className="px-1 py-1 text-center text-zinc-600 dark:text-zinc-300">{v === null ? '' : `${Math.round(v * 100)} %`}</td>
               ))}
@@ -235,6 +268,7 @@ function DrawdownChart({ data }: { data: PerformanceResponse }) {
   const rows = useMemo(() => data.drawdown.map((p) => ({ t: p.t * 1000, dd: p.dd })), [data.drawdown]);
   if (rows.length < 10) return null;
   const dd = data.stats.maxDrawdown;
+  const yTicks = pctTicks(Math.min(...rows.map((r) => r.dd)), 0);
   return (
     <Panel
       id="perf-drawdown"
@@ -257,7 +291,7 @@ function DrawdownChart({ data }: { data: PerformanceResponse }) {
               tickLine={false}
               minTickGap={16}
             />
-            <YAxis tickFormatter={pctAxis} tick={chartStyle.tick} axisLine={false} tickLine={false} width={44} domain={['dataMin', 0]} />
+            <YAxis tickFormatter={pctAxis} tick={chartStyle.tick} axisLine={false} tickLine={false} width={44} domain={[yTicks[0], 0]} ticks={yTicks} interval={0} />
             <Tooltip
               contentStyle={chartStyle.tooltip}
               labelFormatter={(t) => new Date(Number(t)).toLocaleDateString('fr-FR', { timeZone: 'UTC' })}
