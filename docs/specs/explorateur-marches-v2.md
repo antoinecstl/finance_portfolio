@@ -52,7 +52,7 @@ Crypto : volatilité annualisée sur 365 jours (cotation continue).
 
 ### 4.2 Finances (actions) — l'histoire des comptes
 
-**Derniers trimestres** (en tête d'onglet, `lib/market/quarters.ts`) : séries trimestrielles du fournisseur, poste par poste (CA, résultat opérationnel, résultat net, BPA, FCF). Rythme détecté par poste (trimestre ou semestre : beaucoup de sociétés européennes publient leurs résultats par semestre). Chaque période de l'année en cours face à la même période de l'année précédente, variation sur un an au-dessus des barres, cumul de l'année (« Cumul 2026 (T1 à T3) »). Libellés civils de la date de fin (T1 = janvier-mars).
+**Derniers trimestres** (en tête d'onglet, `lib/market/quarters.ts`) : séries trimestrielles du fournisseur, poste par poste (CA, résultat opérationnel, résultat net, BPA, FCF). Rythme détecté (trimestre ou semestre : beaucoup de sociétés européennes publient leurs résultats par semestre). Garde-fous, car le fournisseur reconstitue des trimestres pour des sociétés semestrielles (cas LVMH : +28 % sur un trimestre d'une année en baisse) : une période n'est montrée que si un BPA est publié au même rythme et à la même date, et si la somme des périodes retrouve à 3 % près chaque exercice annuel et chaque total sur 12 mois publiés ; sinon le poste (ou le bloc) est masqué. Chaque période de l'année en cours face à la même période de l'année précédente, variation sur un an au-dessus des barres, cumul de l'année (« Cumul 2026 (T1 à T3) »). Libellés civils de la date de fin (T1 = janvier-mars).
 
 Petits graphiques à une seule échelle, chacun avec sa croissance annuelle moyenne. Une couleur par famille de postes (`--series-1..4` dans l'ordre validé) : activité (CA), résultats (résultat net, BPA, ROE), trésorerie (FCF, trésorerie), actionnaires (dividende, distribution, nombre d'actions) ; la dette reste à l'encre. Le dernier exercice ressort, les précédents sont atténués ; variation sur un an au-dessus des barres des montants (toutes jusqu'à 8 exercices, sinon la dernière) :
 
@@ -85,6 +85,14 @@ Le tableau des comptes annuels reste en dessous (vue tableau des graphiques).
   2. **Trois scénarios** pré-remplis : central = médiane des croissances passées et attendues, bornée à 0-15 % ; prudent et optimiste à ±40 % (3 points au moins). Rendement exigé 4 % + 5 % × bêta, borné à 7-12 % (9 % sans bêta) ; croissance à long terme 2 %.
   3. **Ajuster les hypothèses** (replié), chaque champ expliqué, puis « Comment ça marche » en quatre étapes. Avertissement banques et assurances.
 - **Consensus des analystes** (v1.1).
+
+### 4.3 bis Cohérence des chiffres affichés
+
+- Fourchette sur 52 semaines et plus haut historique contiennent toujours le cours du jour (la valeur publiée peut dater de la veille).
+- Performances sur 3 ou 5 ans masquées quand l'historique est plus court (pas de « — ») ; libellés « depuis 2024 » au lieu de « sur 10 ans ».
+- Indices en points, pas dans la devise de la place de cotation.
+- Pas de dividende : une ligne dans les statistiques, sur la période réellement couverte (« depuis sa cotation (2024) ») ; pour un ETF, fonds capitalisant.
+- Mise en page : pas de case vide (grilles en une seule coulée, dernier bloc impair en pleine largeur, identité du fonds en colonnes automatiques) ; anneau de focus intérieur sur les onglets et boutons segmentés.
 
 ### 4.4 Profil (actions)
 

@@ -2,8 +2,14 @@
 // (docs/specs/explorateur-marches-v2.md §4.2). Chaque poste est lu à part :
 // une société peut publier son chiffre d'affaires chaque trimestre et ses
 // résultats chaque semestre. Fonctions pures.
+//
+// Garde-fous : le fournisseur reconstitue parfois des trimestres pour des
+// sociétés qui ne publient que des semestres (ex. LVMH : +28 % sur un trimestre
+// d'une année en baisse). Une période n'est montrée que si la société publie un
+// BPA au même rythme, et si les trimestres se recoupent avec l'exercice annuel
+// et les 12 mois glissants publiés.
 
-import { itemSeries, type SeriesMap, type SeriesPoint } from './fundamentals';
+import { itemSeries, type SeriesMap, type SeriesPoint, type StatementItem } from './fundamentals';
 
 export type PeriodKind = 'quarter' | 'half';
 export type QuarterMetric = 'revenue' | 'operatingIncome' | 'netIncome' | 'eps' | 'freeCashFlow';
@@ -72,17 +78,53 @@ function freeCashFlowPoints(series: SeriesMap): SeriesPoint[] {
     .map((p) => ({ ...p, value: p.value + (capex.get(p.date) as number) }));
 }
 
+/** Écart relatif toléré entre la somme des périodes et le total publié. */
+export const RECONCILE_TOLERANCE = 0.03;
+
+const close = (a: number, b: number) => Math.abs(a - b) <= RECONCILE_TOLERANCE * Math.max(Math.abs(a), Math.abs(b), 1);
+
+/**
+ * Les périodes se recoupent-elles avec les totaux publiés ? Pour chaque exercice
+ * annuel (ou 12 mois glissants) dont toutes les périodes sont présentes, leur
+ * somme doit retrouver le total à 3 % près. Le BPA n'est pas additif à
+ * nombre d'actions variable : il n'est pas contrôlé ainsi.
+ */
+function reconciles(run: SeriesPoint[], kind: PeriodKind, totals: SeriesPoint[]): boolean {
+  const perYear = kind === 'quarter' ? 4 : 2;
+  for (const total of totals) {
+    const end = run.findIndex((p) => Math.abs(daysBetween(p.date, total.date)) <= 20);
+    if (end < perYear - 1) continue;
+    const window = run.slice(end - perYear + 1, end + 1);
+    if (daysBetween(window[0].date, total.date) > 365 - NOMINAL_DAYS[kind] + 30) continue; // périodes non consécutives
+    if (!close(window.reduce((a, p) => a + p.value, 0), total.value)) return false;
+  }
+  return true;
+}
+
+/** Totaux publiés d'un poste : exercices annuels et 12 mois glissants. */
+function totalsOf(series: SeriesMap, key: StatementItem): SeriesPoint[] {
+  return [...(itemSeries(series, 'annual', key) ?? []), ...(itemSeries(series, 'trailing', key) ?? [])];
+}
+
 /** Derniers trimestres ou semestres de chaque poste (8 au plus), avec la variation sur un an. */
 export function buildRecentPeriods(series: SeriesMap, max = 8): RecentPeriods {
   const out: RecentPeriods = {};
+  // Rythme de publication des résultats : sans BPA au même rythme, les périodes
+  // du fournisseur sont des reconstitutions, pas des comptes publiés.
+  const epsPoints = (itemSeries(series, 'quarterly', 'eps') ?? []).filter((p) => Number.isFinite(p.value)).sort((a, b) => a.date.localeCompare(b.date));
+  const epsKind = kindOf(epsPoints);
+  if (!epsKind) return out;
+  const epsDates = new Set(epsPoints.map((p) => p.date));
   for (const { key } of QUARTER_METRICS) {
     const raw = (key === 'freeCashFlow' ? freeCashFlowPoints(series) : itemSeries(series, 'quarterly', key) ?? [])
       .filter((p) => Number.isFinite(p.value))
       .sort((a, b) => a.date.localeCompare(b.date));
     const kind = kindOf(raw);
-    if (!kind) continue;
-    const run = lastRegularRun(raw, kind);
+    if (!kind || kind !== epsKind) continue;
+    // Seules les périodes pour lesquelles un BPA est publié.
+    const run = lastRegularRun(raw.filter((p) => epsDates.has(p.date)), kind);
     if (run.length < 2) continue;
+    if (key !== 'eps' && !reconciles(run, kind, key === 'freeCashFlow' ? totalsOf(series, 'freeCashFlow') : totalsOf(series, key))) continue;
     const points = run.map((p) => {
       const previous = run.find((q) => Math.abs(daysBetween(q.date, p.date) - 365) <= 25);
       return {

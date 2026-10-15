@@ -54,7 +54,11 @@ export async function getDetails(symbol: string) {
       const parsed = raw ? parseCryptoDetails(raw) : null;
       const details: CryptoDetails = parsed ?? { marketCap: null, volume24h: null, circulatingSupply: null, maxSupply: null, startDate: null, algorithm: null, description: null };
       const price = meta.regularMarketPrice ?? points[points.length - 1]?.c ?? null;
-      const ath = allTimeHigh(points, monthly.status === 'ok' ? monthly.chart.points : []);
+      const closedHigh = allTimeHigh(points, monthly.status === 'ok' ? monthly.chart.points : []);
+      // Le cours du jour peut dépasser le plus haut des séances closes.
+      const ath = closedHigh && price !== null && price > closedHigh.value
+        ? { value: price, date: new Date().toISOString().slice(0, 10) }
+        : closedHigh;
       const correlation = ref.status === 'ok' ? returnsCorrelation(points, ref.chart.points) : null;
       return {
         ...base,

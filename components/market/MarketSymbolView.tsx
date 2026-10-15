@@ -42,6 +42,7 @@ interface Overview {
   regularMarketEnd: number | null;
   fiftyTwoWeekHigh: number | null;
   fiftyTwoWeekLow: number | null;
+  historyStart?: string | null;
   averageVolume3M: number | null;
   performance: Record<PerformanceKey, number | null>;
   volatility1Y: number | null;
@@ -95,8 +96,18 @@ const PERF_LABELS: Record<PerformanceKey, string> = {
   '1S': '1 sem.', '1M': '1 mois', '3M': '3 mois', '6M': '6 mois', YTD: 'Depuis le 1er janv.', '1A': '1 an', '3A': '3 ans', '5A': '5 ans',
 };
 
+/** Absence de dividende, sur la période réellement couverte (cotation récente ou cinq ans). */
+function noDividendText(assetClass: AssetClass, historyStart: string | null | undefined, asOfMs: number): string {
+  // L'aperçu charge cinq ans de cours : un historique qui commence plus tard signale une cotation récente.
+  const recent = Boolean(historyStart) && Date.parse(`${historyStart}T00:00:00Z`) > asOfMs - 4.9 * 365.25 * 86_400_000;
+  const since = recent ? `depuis sa cotation (${historyStart?.slice(0, 4)})` : 'ces cinq dernières années';
+  return assetClass === 'etf'
+    ? `Aucune distribution ${since} : fonds capitalisant, ses revenus sont réinvestis dans le cours.`
+    : `Aucun dividende versé ${since}.`;
+}
+
 const segmentClass = (active: boolean) =>
-  `px-2.5 py-1.5 text-xs sm:text-sm rounded-md transition-colors whitespace-nowrap ${
+  `focus-inset px-2.5 py-1.5 text-xs sm:text-sm rounded-md transition-colors whitespace-nowrap ${
     active ? 'btn-ink' : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
   }`;
 
@@ -178,6 +189,8 @@ export function MarketSymbolView({ symbol }: { symbol: string }) {
   }
 
   const currency = data?.currency ?? chart.data?.currency ?? '';
+  // Un indice se compte en points, pas dans la devise de sa place de cotation.
+  const priceUnit = assetClass === 'index' ? 'pts' : currency;
   const isCrypto = data?.instrumentType === 'CRYPTOCURRENCY';
   const marketOpen = isCrypto || (data?.regularMarketStart && data.regularMarketEnd
     ? overview.fetchedAt / 1000 >= data.regularMarketStart && overview.fetchedAt / 1000 < data.regularMarketEnd
@@ -185,15 +198,18 @@ export function MarketSymbolView({ symbol }: { symbol: string }) {
   const comparing = compare.length > 0 && !chart.data?.intraday;
   const compareSeries: CompareSeries[] = compare.map((c) => ({ ...c, points: comparePoints[c.symbol] ?? [] }));
   const position52 = data ? rangePosition(data.price, data.fiftyTwoWeekLow, data.fiftyTwoWeekHigh) : null;
-  // Dividendes : actions et ETF (y compris « aucun versement »), autres actifs seulement s'il y en a.
-  const showDividends = Boolean(data && (assetClass === 'equity' || assetClass === 'etf' || data.dividends.length > 0));
+  // Dividendes : un bloc seulement s'il y a eu des versements ; sinon une ligne dans les statistiques (actions, ETF).
+  const showDividends = Boolean(data && data.dividends.length > 0);
+  const noDividendNote = data && !showDividends && (assetClass === 'equity' || assetClass === 'etf') ? noDividendText(assetClass, data.historyStart, overview.fetchedAt) : null;
+  // Performances sur une durée plus longue que l'historique : non affichées plutôt que « — ».
+  const performanceKeys = data ? PERFORMANCE_KEYS.filter((key) => data.performance[key] !== null && data.performance[key] !== undefined) : [];
 
   return (
     <>
       <PageHeader
         title={data?.name ?? symbolUpper}
         description={
-          data ? [data.symbol, data.exchange, data.currency, instrumentLabel(data.instrumentType)].filter(Boolean).join(' · ') : 'Chargement…'
+          data ? [data.symbol, data.exchange, assetClass === 'index' ? null : data.currency, instrumentLabel(data.instrumentType)].filter(Boolean).join(' · ') : 'Chargement…'
         }
         wideActions
         actions={<div className="w-full sm:w-72"><MarketSearch size="sm" placeholder="Autre titre…" /></div>}
@@ -214,9 +230,9 @@ export function MarketSymbolView({ symbol }: { symbol: string }) {
           {data ? (
             <div className="flex flex-wrap items-end justify-between gap-4">
               <div>
-                <p className="text-3xl font-semibold tabular-nums text-zinc-900 dark:text-zinc-100 sm:text-4xl">{fmtPrice(data.price, currency)}</p>
+                <p className="text-3xl font-semibold tabular-nums text-zinc-900 dark:text-zinc-100 sm:text-4xl">{fmtPrice(data.price, priceUnit)}</p>
                 <p className={`mt-1 text-sm tabular-nums ${changeClass(data.change)}`}>
-                  {data.change !== null ? `${data.change > 0 ? '+' : ''}${fmtPrice(data.change, currency)} (${fmtPct((data.changePercent ?? 0) / 100)})` : '—'}
+                  {data.change !== null ? `${data.change > 0 ? '+' : ''}${fmtPrice(data.change, priceUnit)} (${fmtPct((data.changePercent ?? 0) / 100)})` : '—'}
                   <span className="ml-2 text-zinc-500 dark:text-zinc-400">
                     {isCrypto ? 'Marché ouvert 24 h/24' : marketOpen ? 'Séance en cours' : 'Fermé · dernière séance'}
                   </span>
@@ -226,8 +242,8 @@ export function MarketSymbolView({ symbol }: { symbol: string }) {
                 <dt className="text-xs text-zinc-500 dark:text-zinc-400">Plus haut du jour</dt>
                 <dt className="text-xs text-zinc-500 dark:text-zinc-400">Plus bas du jour</dt>
                 <dt className="text-xs text-zinc-500 dark:text-zinc-400">Volume</dt>
-                <dd className="tabular-nums text-zinc-900 dark:text-zinc-100">{fmtPrice(data.dayHigh, currency)}</dd>
-                <dd className="tabular-nums text-zinc-900 dark:text-zinc-100">{fmtPrice(data.dayLow, currency)}</dd>
+                <dd className="tabular-nums text-zinc-900 dark:text-zinc-100">{fmtPrice(data.dayHigh, priceUnit)}</dd>
+                <dd className="tabular-nums text-zinc-900 dark:text-zinc-100">{fmtPrice(data.dayLow, priceUnit)}</dd>
                 <dd className="tabular-nums text-zinc-900 dark:text-zinc-100">{fmtCompact(data.volume)}</dd>
               </dl>
             </div>
@@ -362,7 +378,7 @@ export function MarketSymbolView({ symbol }: { symbol: string }) {
                     interval={chart.data.interval}
                     intraday={chart.data.intraday}
                     timezone={chart.data.timezone || 'UTC'}
-                    currency={currency}
+                    currency={priceUnit}
                     mode={mode}
                     movingAverages={movingAverages}
                     compare={comparing ? compareSeries : []}
@@ -383,7 +399,7 @@ export function MarketSymbolView({ symbol }: { symbol: string }) {
                   <h2 id="stats-title" className="text-base font-semibold text-zinc-900 dark:text-zinc-100">Statistiques</h2>
                   <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">Performance du cours, hors dividendes.</p>
                   <dl className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                    {PERFORMANCE_KEYS.map((key) => (
+                    {performanceKeys.map((key) => (
                       <div key={key} className="rounded-lg bg-zinc-50 px-3 py-2 dark:bg-zinc-800/60">
                         <dt className="text-xs text-zinc-500 dark:text-zinc-400">{PERF_LABELS[key]}</dt>
                         <dd className={`text-sm font-medium tabular-nums ${changeClass(data.performance[key])}`}>{fmtPct(data.performance[key])}</dd>
@@ -409,11 +425,11 @@ export function MarketSymbolView({ symbol }: { symbol: string }) {
                           )}
                         </div>
                         <div className="mt-1.5 flex justify-between text-xs tabular-nums text-zinc-500 dark:text-zinc-400">
-                          <span>{fmtPrice(data.fiftyTwoWeekLow, currency)}</span>
+                          <span>{fmtPrice(data.fiftyTwoWeekLow, priceUnit)}</span>
                           <span>
                             {data.fiftyTwoWeekHigh ? `${fmtPct(data.price / data.fiftyTwoWeekHigh - 1, 1)} du plus haut` : ''}
                           </span>
-                          <span>{fmtPrice(data.fiftyTwoWeekHigh, currency)}</span>
+                          <span>{fmtPrice(data.fiftyTwoWeekHigh, priceUnit)}</span>
                         </div>
                       </dd>
                     </div>
@@ -421,6 +437,20 @@ export function MarketSymbolView({ symbol }: { symbol: string }) {
                       <dt className="text-sm font-medium text-zinc-900 dark:text-zinc-100">Volume moyen sur 3 mois : <span className="tabular-nums">{fmtCompact(data.averageVolume3M)}</span></dt>
                       <dd className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">Titres échangés par séance, en moyenne.</dd>
                     </div>
+                    {noDividendNote && (
+                      <div>
+                        <dt className="text-sm font-medium text-zinc-900 dark:text-zinc-100">Dividendes : aucun versement</dt>
+                        <dd className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">{noDividendNote}</dd>
+                      </div>
+                    )}
+                    {!showDividends && data.splits.length > 0 && (
+                      <div className="sm:col-span-2">
+                        <dt className="text-sm font-medium text-zinc-900 dark:text-zinc-100">Divisions d’action</dt>
+                        <dd className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+                          {data.splits.map((s) => `${s.ratio} le ${new Date(`${s.date}T00:00:00Z`).toLocaleDateString('fr-FR', { timeZone: 'UTC' })}`).join(' · ')}
+                        </dd>
+                      </div>
+                    )}
                   </dl>
                 </section>
 
@@ -428,10 +458,7 @@ export function MarketSymbolView({ symbol }: { symbol: string }) {
                 {showDividends && (
                   <section className={`${card} p-4 sm:p-5`} aria-labelledby="div-title">
                     <h2 id="div-title" className="text-base font-semibold text-zinc-900 dark:text-zinc-100">Dividendes</h2>
-                    {data.dividends.length === 0 ? (
-                      <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">Aucun dividende versé ces cinq dernières années.</p>
-                    ) : (
-                      <>
+                    <>
                         <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
                           Rendement sur 12 mois : <span className="font-medium tabular-nums text-zinc-900 dark:text-zinc-100">{fmtPct(data.trailingYield).replace('+', '')}</span> (dividendes des 12 derniers mois / cours actuel)
                         </p>
@@ -459,7 +486,6 @@ export function MarketSymbolView({ symbol }: { symbol: string }) {
                           ))}
                         </ul>
                       </>
-                    )}
                     {data.splits.length > 0 && (
                       <p className="mt-3 text-xs text-zinc-500 dark:text-zinc-400">
                         Divisions d’action : {data.splits.map((s) => `${s.ratio} le ${new Date(`${s.date}T00:00:00Z`).toLocaleDateString('fr-FR', { timeZone: 'UTC' })}`).join(' · ')}

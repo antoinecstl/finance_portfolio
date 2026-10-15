@@ -713,6 +713,12 @@ button:focus-visible {
   outline-offset: 2px;
 }
 
+/* Onglets et boutons segmentés dans un conteneur qui défile : anneau intérieur,
+   sinon le conteneur le rogne en deux traits verticaux. */
+.focus-inset:focus-visible {
+  outline-offset: -2px;
+}
+
 /* Native form controls accent — calendar, checkbox, radio, range */
 :root, html, body { accent-color: var(--accent); }
 

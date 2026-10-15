@@ -72,6 +72,25 @@ const FAMILY = {
   shareholders: 'var(--series-4)',
   debt: 'var(--chart-1)',
 } as const;
+/** Famille de chaque indicateur : la même couleur dans les petits graphiques et le graphique personnalisé. */
+const FAMILY_OF: Partial<Record<HistoryMetric, keyof typeof FAMILY>> = {
+  revenue: 'activity', grossProfit: 'activity', ebitda: 'activity', operatingIncome: 'activity',
+  grossMargin: 'activity', operatingMargin: 'activity',
+  netIncome: 'results', eps: 'results', netMargin: 'results', roe: 'results',
+  operatingCashFlow: 'cash', freeCashFlow: 'cash', fcfPerShare: 'cash', fcfMargin: 'cash', cash: 'cash',
+  dividendPerShare: 'shareholders', payoutRatio: 'shareholders', shares: 'shareholders', equity: 'shareholders',
+  totalDebt: 'debt', netDebt: 'debt', netDebtToEbitda: 'debt',
+};
+const PICK_COLORS = [...SERIES_COLORS, FAMILY.debt];
+
+/** Couleur d'un indicateur ajouté : celle de sa famille, sinon la première couleur libre. */
+function colorFor(key: HistoryMetric, taken: string[]): string {
+  const family = FAMILY_OF[key];
+  const preferred = family ? FAMILY[family] : null;
+  if (preferred && !taken.includes(preferred)) return preferred;
+  return PICK_COLORS.find((c) => !taken.includes(c)) ?? SERIES_COLORS[0];
+}
+
 /** Exercices antérieurs au dernier : même couleur, atténuée. */
 const PAST_OPACITY = 0.55;
 /** Au-delà, la variation n'est écrite que sur le dernier exercice. */
@@ -182,8 +201,11 @@ function FinancesContent({ data, priceCurrency }: { data: FundamentalsResponse; 
         {data.sources?.official ? ' Comptes annuels officiels déposés auprès du régulateur boursier américain, complétés si besoin.' : ''}
       </p>
       <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
-        {cards.map((card) => (
-          <MetricCard key={card.id} card={card} history={history} currency={card.quoteCurrency ? priceCurrency : data.currency} />
+        {cards.map((card, i) => (
+          // Nombre impair de graphiques : le dernier prend toute la largeur (pas de trou dans la grille).
+          <div key={card.id} className={`[&>section]:h-full ${cards.length % 2 === 1 && i === cards.length - 1 ? 'lg:col-span-2' : ''}`}>
+            <MetricCard card={card} history={history} currency={card.quoteCurrency ? priceCurrency : data.currency} />
+          </div>
         ))}
       </div>
       <CustomChart history={history} currency={data.currency} />
@@ -314,7 +336,7 @@ function CustomChart({ history, currency }: { history: HistoryRow[]; currency: s
   const [picked, setPicked] = useState<Array<{ key: HistoryMetric; color: string }>>(() =>
     (['revenue', 'netIncome', 'freeCashFlow'] as HistoryMetric[])
       .filter((k) => available.some((m) => m.key === k))
-      .map((key, i) => ({ key, color: SERIES_COLORS[i] }))
+      .reduce<Array<{ key: HistoryMetric; color: string }>>((acc, key) => [...acc, { key, color: colorFor(key, acc.map((p) => p.color)) }], [])
   );
   const [mode, setMode] = useState<'values' | 'index'>('values');
   const [adding, setAdding] = useState(false);
@@ -325,8 +347,7 @@ function CustomChart({ history, currency }: { history: HistoryRow[]; currency: s
     setAdding(false);
     setPicked((prev) => {
       if (prev.length >= 4 || prev.some((p) => p.key === key)) return prev;
-      const color = SERIES_COLORS.find((c) => !prev.some((p) => p.color === c)) as string;
-      return [...prev, { key, color }];
+      return [...prev, { key, color: colorFor(key, prev.map((p) => p.color)) }];
     });
   };
   const remove = (key: HistoryMetric) => setPicked((prev) => prev.filter((p) => p.key !== key));

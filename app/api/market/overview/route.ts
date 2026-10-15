@@ -63,8 +63,11 @@ export async function GET(request: NextRequest) {
     volume: quote?.volume || meta.volume,
     regularMarketStart: quote?.regularMarketStart ?? meta.regularMarketStart,
     regularMarketEnd: quote?.regularMarketEnd ?? meta.regularMarketEnd,
-    fiftyTwoWeekHigh: meta.fiftyTwoWeekHigh,
-    fiftyTwoWeekLow: meta.fiftyTwoWeekLow,
+    // La fourchette publiée peut dater de la veille : elle doit contenir le cours du jour.
+    fiftyTwoWeekHigh: meta.fiftyTwoWeekHigh !== null && price > 0 ? Math.max(meta.fiftyTwoWeekHigh, price) : meta.fiftyTwoWeekHigh,
+    fiftyTwoWeekLow: meta.fiftyTwoWeekLow !== null && price > 0 ? Math.min(meta.fiftyTwoWeekLow, price) : meta.fiftyTwoWeekLow,
+    /** Première séance des cinq ans chargés : la cotation est plus récente si elle date de moins de 5 ans. */
+    historyStart: points[0] ? new Date(points[0].t * 1000).toISOString().slice(0, 10) : null,
     averageVolume3M: averageVolume(points, now),
     performance: performanceByPeriod(points, price, now),
     volatility1Y: annualizedVolatility(points, now, isCrypto ? 365 : 252),

@@ -111,6 +111,15 @@ describe('GET /api/market/overview', () => {
     expect(body.trailingYield).toBeCloseTo(1.8 / 180, 6);
     expect(body.dividendsByYear).toHaveLength(5);
     expect(body.maxDrawdown1Y).toBe(0);
+    expect(body.historyStart).toBe(new Date(points[0].t * 1000).toISOString().slice(0, 10));
+  });
+
+  it('keeps the live price inside the 52-week range', async () => {
+    getMarketChart.mockResolvedValue({ status: 'ok', chart: chart() });
+    getStockQuote.mockResolvedValue({ symbol: 'CW8.PA', name: 'Amundi', price: 190, change: 9, changePercent: 5, previousClose: 181, open: 181, high: 190, low: 181, volume: 1200, currency: 'EUR', regularMarketStart: 10, regularMarketEnd: 20 });
+    const body = await (await overviewGET(req('/api/market/overview?symbol=CW8.PA'))).json();
+    expect(body.fiftyTwoWeekHigh).toBe(190);
+    expect(body.fiftyTwoWeekLow).toBe(140);
   });
 
   it('returns 404 for an unknown symbol and 502 when the provider fails', async () => {
