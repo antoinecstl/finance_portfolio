@@ -30,7 +30,7 @@ const FALLBACK_ITEMS: Partial<Record<StatementItem, string>> = {
   cash: 'CashCashEquivalentsAndShortTermInvestments',
 };
 
-const itemSeries = (series: SeriesMap, prefix: string, key: StatementItem): SeriesPoint[] | undefined => {
+export const itemSeries = (series: SeriesMap, prefix: string, key: StatementItem): SeriesPoint[] | undefined => {
   const main = series[`${prefix}${STATEMENT_ITEMS[key]}`];
   if (main && main.length > 0) return main;
   const fallback = FALLBACK_ITEMS[key];
@@ -45,6 +45,11 @@ const FLOW_ITEMS: StatementItem[] = [
   'operatingCashFlow', 'capitalExpenditure', 'freeCashFlow', 'dividendsPaid',
 ];
 
+/** Postes de flux demandés trimestre par trimestre (derniers trimestres publiés). */
+export const QUARTER_FLOW_ITEMS: StatementItem[] = [
+  'revenue', 'operatingIncome', 'netIncome', 'eps', 'operatingCashFlow', 'capitalExpenditure', 'freeCashFlow',
+];
+
 /** Ratios de valorisation publiés par le fournisseur (estimations d'analystes incluses). */
 export const PROVIDER_VALUATION_TYPES = [
   'trailingForwardPeRatio',
@@ -57,7 +62,7 @@ export function fundamentalsSeriesTypes(): string[] {
   return [
     ...names(Object.keys(STATEMENT_ITEMS) as StatementItem[]).map((n) => `annual${n}`),
     ...names(FLOW_ITEMS).map((n) => `trailing${n}`),
-    ...names(BALANCE_ITEMS).map((n) => `quarterly${n}`),
+    ...names([...BALANCE_ITEMS, ...QUARTER_FLOW_ITEMS]).map((n) => `quarterly${n}`),
     ...PROVIDER_VALUATION_TYPES,
   ];
 }
@@ -461,7 +466,8 @@ export function parseQuoteSummary(json: unknown): QuoteSummaryData | null {
       heldByInsiders: rawNumber(keyStats.heldPercentInsiders),
       heldByInstitutions: rawNumber(keyStats.heldPercentInstitutions),
       shortPercentOfFloat: rawNumber(keyStats.shortPercentOfFloat),
-      nextEarningsDate: isoDate(earningsDates[0]),
+      // Le fournisseur donne parfois une plage [début, fin] : on garde la date la plus tardive.
+      nextEarningsDate: earningsDates.map(isoDate).filter((d): d is string => d !== null).sort().at(-1) ?? null,
       exDividendDate: isoDate(detail.exDividendDate) ?? isoDate(calendar.exDividendDate),
     },
   };

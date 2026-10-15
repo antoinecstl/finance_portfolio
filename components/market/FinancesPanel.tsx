@@ -5,7 +5,7 @@
 // personnalisé et le tableau des comptes.
 
 import { useMemo, useState } from 'react';
-import { Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { Bar, BarChart, CartesianGrid, Cell, LabelList, Legend, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Plus, X } from 'lucide-react';
 import {
   availableMetrics,
@@ -20,6 +20,7 @@ import {
 import type { StatementRow } from '@/lib/market/fundamentals';
 import { AccountsTable, useFundamentals, type FundamentalsResponse } from './MarketFundamentals';
 import { changeClass, fmtCompact, fmtMoneyCompact, fmtMultiple, fmtPct, fmtPrice, fmtShare } from './format';
+import { RecentPeriodsPanel } from './RecentPeriodsPanel';
 import { chartStyle, Panel, PanelError, PanelSkeleton, StaleNotice, Toggle } from './ui';
 
 const SERIES_COLORS = ['var(--series-1)', 'var(--series-2)', 'var(--series-3)', 'var(--series-4)'];
@@ -58,12 +59,26 @@ interface CardDef {
   /** Montant exprimé dans la devise de cotation (dividendes). */
   quoteCurrency?: boolean;
   note?: (history: HistoryRow[]) => string | null;
+  /** Variation sur un an affichée au-dessus des barres (montants seulement). */
+  yoyLabels?: boolean;
 }
 
-const ink = 'var(--chart-1)';
+// Une couleur par famille de postes, dans l'ordre validé des séries :
+// activité, résultats, trésorerie, actionnaires ; la dette reste à l'encre.
+const FAMILY = {
+  activity: 'var(--series-2)',
+  results: 'var(--series-1)',
+  cash: 'var(--series-3)',
+  shareholders: 'var(--series-4)',
+  debt: 'var(--chart-1)',
+} as const;
+/** Exercices antérieurs au dernier : même couleur, atténuée. */
+const PAST_OPACITY = 0.55;
+/** Au-delà, la variation n'est écrite que sur le dernier exercice. */
+const MAX_YOY_LABELS = 8;
 
 const CARDS: CardDef[] = [
-  { id: 'revenue', title: 'Chiffre d’affaires', unit: 'money', kind: 'bar', series: [{ key: 'revenue', label: 'Chiffre d’affaires', color: ink }], growth: 'revenue' },
+  { id: 'revenue', title: 'Chiffre d’affaires', unit: 'money', kind: 'bar', series: [{ key: 'revenue', label: 'Chiffre d’affaires', color: FAMILY.activity }], growth: 'revenue', yoyLabels: true },
   {
     id: 'margins',
     title: 'Marges',
@@ -75,16 +90,17 @@ const CARDS: CardDef[] = [
       { key: 'netMargin', label: 'Nette', color: SERIES_COLORS[2] },
     ],
   },
-  { id: 'net', title: 'Résultat net', unit: 'money', kind: 'bar', signed: true, series: [{ key: 'netIncome', label: 'Résultat net', color: ink }], growth: 'netIncome' },
-  { id: 'eps', title: 'Bénéfice par action (dilué)', unit: 'perShare', kind: 'bar', signed: true, series: [{ key: 'eps', label: 'BPA', color: ink }], growth: 'eps' },
+  { id: 'net', title: 'Résultat net', unit: 'money', kind: 'bar', signed: true, series: [{ key: 'netIncome', label: 'Résultat net', color: FAMILY.results }], growth: 'netIncome', yoyLabels: true },
+  { id: 'eps', title: 'Bénéfice par action (dilué)', unit: 'perShare', kind: 'bar', signed: true, series: [{ key: 'eps', label: 'BPA', color: FAMILY.results }], growth: 'eps', yoyLabels: true },
   {
     id: 'fcf',
     title: 'Free cash flow',
     unit: 'money',
     kind: 'bar',
     signed: true,
-    series: [{ key: 'freeCashFlow', label: 'Free cash flow', color: ink }],
+    series: [{ key: 'freeCashFlow', label: 'Free cash flow', color: FAMILY.cash }],
     growth: 'freeCashFlow',
+    yoyLabels: true,
     note: (h) => {
       const last = [...h].reverse().find((r) => r.values.fcfMargin !== null);
       return last ? `Marge FCF ${last.year} : ${fmtShare(last.values.fcfMargin, 1)} du chiffre d’affaires.` : null;
@@ -96,8 +112,8 @@ const CARDS: CardDef[] = [
     unit: 'money',
     kind: 'bar',
     series: [
-      { key: 'cash', label: 'Trésorerie', color: 'var(--gain)' },
-      { key: 'totalDebt', label: 'Dette financière', color: 'var(--loss)' },
+      { key: 'cash', label: 'Trésorerie', color: FAMILY.cash },
+      { key: 'totalDebt', label: 'Dette financière', color: FAMILY.debt },
     ],
   },
   {
@@ -105,17 +121,17 @@ const CARDS: CardDef[] = [
     title: 'Dette nette / EBITDA',
     unit: 'multiple',
     kind: 'bar',
-    series: [{ key: 'netDebtToEbitda', label: 'Dette nette / EBITDA', color: ink }],
+    series: [{ key: 'netDebtToEbitda', label: 'Dette nette / EBITDA', color: FAMILY.debt }],
     note: () => 'Années d’EBITDA pour rembourser la dette nette. Négatif : plus de trésorerie que de dette.',
   },
-  { id: 'dps', title: 'Dividende par action', unit: 'perShare', kind: 'bar', quoteCurrency: true, series: [{ key: 'dividendPerShare', label: 'Dividende', color: 'var(--chart-3)' }], growth: 'dividendPerShare', note: () => 'Versements de l’année civile.' },
-  { id: 'payout', title: 'Taux de distribution', unit: 'percent', kind: 'bar', series: [{ key: 'payoutRatio', label: 'Distribution / bénéfice', color: ink }], note: () => 'Dividendes versés / résultat net.' },
+  { id: 'dps', title: 'Dividende par action', unit: 'perShare', kind: 'bar', quoteCurrency: true, series: [{ key: 'dividendPerShare', label: 'Dividende', color: FAMILY.shareholders }], growth: 'dividendPerShare', yoyLabels: true, note: () => 'Versements de l’année civile.' },
+  { id: 'payout', title: 'Taux de distribution', unit: 'percent', kind: 'bar', series: [{ key: 'payoutRatio', label: 'Distribution / bénéfice', color: FAMILY.shareholders }], note: () => 'Dividendes versés / résultat net.' },
   {
     id: 'shares',
     title: 'Nombre d’actions',
     unit: 'count',
     kind: 'bar',
-    series: [{ key: 'shares', label: 'Actions', color: ink }],
+    series: [{ key: 'shares', label: 'Actions', color: FAMILY.shareholders }],
     note: (h) => {
       const values = h.map((r) => r.values.shares ?? r.values.dilutedShares).filter((v): v is number => v !== null && v > 0);
       if (values.length < 2) return null;
@@ -124,7 +140,7 @@ const CARDS: CardDef[] = [
       return change < 0 ? `${fmtPct(change, 1)} sur la période : rachats d’actions.` : `${fmtPct(change, 1)} sur la période : dilution.`;
     },
   },
-  { id: 'roe', title: 'Rentabilité des capitaux propres (ROE)', unit: 'percent', kind: 'bar', signed: true, series: [{ key: 'roe', label: 'ROE', color: ink }], note: () => 'Résultat net / capitaux propres.' },
+  { id: 'roe', title: 'Rentabilité des capitaux propres (ROE)', unit: 'percent', kind: 'bar', signed: true, series: [{ key: 'roe', label: 'ROE', color: FAMILY.results }], note: () => 'Résultat net / capitaux propres.' },
 ];
 
 export function FinancesPanel({ symbol, priceCurrency }: { symbol: string; priceCurrency: string }) {
@@ -160,6 +176,7 @@ function FinancesContent({ data, priceCurrency }: { data: FundamentalsResponse; 
   return (
     <div className="space-y-4 sm:space-y-6">
       <StaleNotice asOf={data.asOf} stale={data.stale} />
+      {data.periods && Object.keys(data.periods).length > 0 && <RecentPeriodsPanel periods={data.periods} currency={data.currency} />}
       <p className="text-xs text-zinc-500 dark:text-zinc-400">
         {history.length} exercice{history.length > 1 ? 's' : ''} publié{history.length > 1 ? 's' : ''} ({first}–{last}), en {data.currency}.
         {data.sources?.official ? ' Comptes annuels officiels déposés auprès du régulateur boursier américain, complétés si besoin.' : ''}
@@ -177,13 +194,26 @@ function FinancesContent({ data, priceCurrency }: { data: FundamentalsResponse; 
   );
 }
 
+/** Variation d'un exercice au précédent, si la base est positive. */
+function yearOverYear(values: Array<number | null>): Array<number | null> {
+  return values.map((v, i) => {
+    const prev = i > 0 ? values[i - 1] : null;
+    return v !== null && prev !== null && prev > 0 ? v / prev - 1 : null;
+  });
+}
+
 function MetricCard({ card, history, currency }: { card: CardDef; history: HistoryRow[]; currency: string }) {
-  const rows = history.map((h) => {
+  const main = card.series[0];
+  const single = card.series.length === 1;
+  const yoy = yearOverYear(metricValues(history, main.key));
+  const lastIndex = history.reduce((acc, h, i) => (h.values[main.key] !== null ? i : acc), -1);
+  const rows = history.map((h, i) => {
     const row: Record<string, number | string | null> = { year: String(h.year) };
     for (const s of card.series) row[s.key] = h.values[s.key];
+    // Variation écrite au-dessus des barres : toutes si elles sont peu nombreuses, sinon la dernière.
+    row.__yoy = card.yoyLabels && (history.length <= MAX_YOY_LABELS || i === lastIndex) ? yoy[i] : null;
     return row;
   });
-  const main = card.series[0];
   const latest = [...history].reverse().find((h) => h.values[main.key] !== null);
   const growth = card.growth ? metricGrowth(history, card.growth) : null;
   const note = card.note?.(history) ?? null;
@@ -204,19 +234,47 @@ function MetricCard({ card, history, currency }: { card: CardDef; history: Histo
       <div className="h-[170px] sm:h-[190px]">
         <ResponsiveContainer width="100%" height="100%">
           {card.kind === 'bar' ? (
-            <BarChart data={rows} margin={{ top: 4, right: 4, bottom: 0, left: 0 }} barGap={2}>
+            <BarChart data={rows} margin={{ top: card.yoyLabels ? 16 : 4, right: 4, bottom: 0, left: 0 }} barGap={2}>
               <CartesianGrid vertical={false} {...chartStyle.grid} />
               <XAxis dataKey="year" tick={chartStyle.tick} stroke="var(--rule)" tickLine={false} interval="preserveStartEnd" minTickGap={6} />
               <YAxis tickFormatter={axisFormatter(card.unit)} tick={chartStyle.tick} axisLine={false} tickLine={false} width={48} />
               <ReferenceLine y={0} stroke="var(--rule-strong)" />
-              <Tooltip cursor={chartStyle.cursor} contentStyle={chartStyle.tooltip} formatter={(v, name) => [format(Number(v)), String(name)]} />
-              {card.series.length > 1 && <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12 }} />}
+              <Tooltip
+                cursor={chartStyle.cursor}
+                contentStyle={chartStyle.tooltip}
+                formatter={(v, name, item) => {
+                  const change = single ? yoy[history.findIndex((h) => String(h.year) === (item?.payload as { year?: string })?.year)] : null;
+                  return [`${format(Number(v))}${card.yoyLabels && change != null ? ` (${fmtPct(change, 1)} sur un an)` : ''}`, String(name)];
+                }}
+              />
+              {!single && <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12 }} />}
               {card.series.map((s) => (
                 <Bar key={s.key} dataKey={s.key} name={s.label} fill={s.color} radius={[4, 4, 0, 0]} maxBarSize={24} isAnimationActive={false}>
-                  {card.signed && rows.map((r) => {
+                  {rows.map((r, i) => {
                     const v = r[s.key] as number | null;
-                    return <Cell key={String(r.year)} fill={v !== null && v < 0 ? 'var(--loss)' : s.color} />;
+                    return (
+                      <Cell
+                        key={String(r.year)}
+                        fill={card.signed && v !== null && v < 0 ? 'var(--loss)' : s.color}
+                        // Le dernier exercice ressort ; les précédents gardent la couleur, atténuée.
+                        fillOpacity={single && i !== lastIndex ? PAST_OPACITY : 1}
+                      />
+                    );
                   })}
+                  {single && card.yoyLabels && (
+                    <LabelList
+                      dataKey="__yoy"
+                      position="top"
+                      content={({ x, y, width, value }) => {
+                        if (typeof value !== 'number' || x === undefined || y === undefined || width === undefined) return null;
+                        return (
+                          <text x={Number(x) + Number(width) / 2} y={Number(y) - 5} textAnchor="middle" fontSize={10} fill={value >= 0 ? 'var(--gain)' : 'var(--loss)'}>
+                            {fmtPct(value, 0)}
+                          </text>
+                        );
+                      }}
+                    />
+                  )}
                 </Bar>
               ))}
             </BarChart>

@@ -60,7 +60,10 @@ describe('series types', () => {
     expect(types).toContain('quarterlyTotalDebt');
     expect(types).toContain('trailingNetIncome');
     expect(types).toContain('trailingPegRatio');
-    expect(types).not.toContain('quarterlyTotalRevenue');
+    // Trimestres : flux utiles aux derniers trimestres publiés, pas les dividendes.
+    expect(types).toContain('quarterlyTotalRevenue');
+    expect(types).toContain('quarterlyNetIncome');
+    expect(types).not.toContain('quarterlyCashDividendsPaid');
   });
 });
 
@@ -178,7 +181,8 @@ describe('parseQuoteSummary', () => {
           summaryDetail: { beta: { raw: 1.1, fmt: '1.10' }, forwardPE: { raw: 22.4 }, exDividendDate: { raw: Date.parse('2026-05-18T00:00:00Z') / 1000 } },
           defaultKeyStatistics: { forwardEps: { raw: 10.8 }, pegRatio: { raw: 2.1 }, floatShares: { raw: 5.6e8 }, heldPercentInsiders: { raw: 0.03 }, heldPercentInstitutions: { raw: 0.6 } },
           financialData: { targetMeanPrice: { raw: 270 }, targetHighPrice: { raw: 310 }, targetLowPrice: { raw: 200 }, recommendationKey: 'buy', recommendationMean: { raw: 2.1 }, numberOfAnalystOpinions: { raw: 22 }, financialCurrency: 'EUR' },
-          calendarEvents: { earnings: { earningsDate: [{ raw: Date.parse('2026-07-31T00:00:00Z') / 1000 }] } },
+          // Plage publiée dans le désordre : la date retenue est la plus tardive.
+          calendarEvents: { earnings: { earningsDate: [{ raw: Date.parse('2026-07-31T00:00:00Z') / 1000 }, { raw: Date.parse('2026-07-28T00:00:00Z') / 1000 }] } },
           earningsTrend: { trend: [{ period: '0y', growth: { raw: 0.05 } }, { period: '+1y', growth: { raw: 0.11 } }] },
         }],
         error: null,

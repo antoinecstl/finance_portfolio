@@ -52,7 +52,9 @@ Crypto : volatilité annualisée sur 365 jours (cotation continue).
 
 ### 4.2 Finances (actions) — l'histoire des comptes
 
-Petits graphiques à une seule échelle, chacun avec sa croissance annuelle moyenne :
+**Derniers trimestres** (en tête d'onglet, `lib/market/quarters.ts`) : séries trimestrielles du fournisseur, poste par poste (CA, résultat opérationnel, résultat net, BPA, FCF). Rythme détecté par poste (trimestre ou semestre : beaucoup de sociétés européennes publient leurs résultats par semestre). Chaque période de l'année en cours face à la même période de l'année précédente, variation sur un an au-dessus des barres, cumul de l'année (« Cumul 2026 (T1 à T3) »). Libellés civils de la date de fin (T1 = janvier-mars).
+
+Petits graphiques à une seule échelle, chacun avec sa croissance annuelle moyenne. Une couleur par famille de postes (`--series-1..4` dans l'ordre validé) : activité (CA), résultats (résultat net, BPA, ROE), trésorerie (FCF, trésorerie), actionnaires (dividende, distribution, nombre d'actions) ; la dette reste à l'encre. Le dernier exercice ressort, les précédents sont atténués ; variation sur un an au-dessus des barres des montants (toutes jusqu'à 8 exercices, sinon la dernière) :
 
 1. Chiffre d'affaires ; marges brute, opérationnelle et nette (graphique séparé en %).
 2. Résultat net et BPA dilué.
@@ -86,7 +88,7 @@ Le tableau des comptes annuels reste en dessous (vue tableau des graphiques).
 
 ### 4.4 Profil (actions)
 
-Description, secteur, pays, effectifs, site, actionnariat (initiés, institutions, vente à découvert), prochaines dates (résultats, détachement).
+Description, secteur, pays, effectifs, site, actionnariat (initiés, institutions, vente à découvert), prochaines dates (résultats, détachement). Le fournisseur laisse parfois une date passée en « prochains résultats » : comparée au jour des données, elle devient « Derniers résultats connus » (« Dernier détachement » pour le dividende).
 
 ### 4.5 Composition (ETF et fonds)
 

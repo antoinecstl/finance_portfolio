@@ -27,6 +27,7 @@ export async function GET(request: NextRequest) {
     annual: bundle.annualRows.slice(-5),
     ttm: bundle.statements.ttm,
     history: bundle.history,
+    periods: bundle.periods,
     ratios: bundle.ratios,
     summary: bundle.summary,
     sources: bundle.sources,
