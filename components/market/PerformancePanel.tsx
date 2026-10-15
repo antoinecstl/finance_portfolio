@@ -3,7 +3,7 @@
 // Onglet Performance (docs/specs/explorateur-marches-v2.md §4.1) : tout actif.
 
 import { useMemo, useState } from 'react';
-import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, LabelList, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import type { AssetClass } from '@/lib/market/asset-class';
 import type { PerformanceReport } from '@/lib/market/performance';
 import { changeClass, fmtPct, fmtPrice } from './format';
@@ -83,19 +83,16 @@ function KeyFigures({ data }: { data: PerformanceResponse }) {
       title="Chiffres clés"
       description={data.totalReturnAvailable ? 'Croissance du cours ; entre parenthèses, avec les dividendes réinvestis.' : 'Croissance annuelle moyenne du cours.'}
     >
-      {growth.length > 0 && (
-        <dl className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-          {growth.map((g) => (
-            <Figure
-              key={g.key}
-              label={`${growthLabel(g.key, g.since)}, par an`}
-              value={<span className={changeClass(g.price)}>{fmtPct(g.price, 1)}</span>}
-              detail={g.total !== null ? `(${fmtPct(g.total, 1)} dividendes réinvestis)` : undefined}
-            />
-          ))}
-        </dl>
-      )}
-      <dl className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+      {/* Une seule grille : les croissances en tête, puis les autres chiffres, sans case vide quand l'historique est court. */}
+      <dl className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        {growth.map((g) => (
+          <Figure
+            key={g.key}
+            label={`${growthLabel(g.key, g.since)}, par an`}
+            value={<span className={changeClass(g.price)}>{fmtPct(g.price, 1)}</span>}
+            detail={g.total !== null ? `(${fmtPct(g.total, 1)} dividendes réinvestis)` : undefined}
+          />
+        ))}
         {stats.allTimeHigh && (
           <Figure
             label="Plus haut historique"
@@ -170,7 +167,7 @@ function AnnualReturnsChart({ data }: { data: PerformanceResponse }) {
     >
       <div className="h-[240px] sm:h-[280px]">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={rows} margin={{ top: 8, right: 4, bottom: 0, left: 0 }}>
+          <BarChart data={rows} margin={{ top: rows.length <= 8 ? 18 : 8, right: 4, bottom: rows.length <= 8 ? 10 : 0, left: 0 }}>
             <CartesianGrid vertical={false} {...chartStyle.grid} />
             <XAxis dataKey="year" tick={chartStyle.tick} stroke="var(--rule)" tickLine={false} interval="preserveStartEnd" minTickGap={8} />
             <YAxis tickFormatter={pctAxis} tick={chartStyle.tick} axisLine={false} tickLine={false} domain={[yTicks[0], yTicks[yTicks.length - 1]]} ticks={yTicks} interval={0} width={axisWidth(yTicks)} />
@@ -194,6 +191,21 @@ function AnnualReturnsChart({ data }: { data: PerformanceResponse }) {
                   strokeDasharray={r.partial ? '3 2' : undefined}
                 />
               ))}
+              {rows.length <= 8 && (
+                // Peu d'années : la valeur s'écrit au bout de chaque barre.
+                <LabelList
+                  dataKey="value"
+                  content={({ x, y, width, height, value }) => {
+                    if (typeof value !== 'number' || x === undefined || y === undefined || width === undefined || height === undefined) return null;
+                    const top = Number(y) + (value < 0 ? Number(height) + 12 : -5);
+                    return (
+                      <text x={Number(x) + Number(width) / 2} y={top} textAnchor="middle" fontSize={11} fill="var(--ink-soft)">
+                        {fmtPct(value, 1)}
+                      </text>
+                    );
+                  }}
+                />
+              )}
             </Bar>
           </BarChart>
         </ResponsiveContainer>

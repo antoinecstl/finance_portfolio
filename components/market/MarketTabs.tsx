@@ -16,7 +16,7 @@ export function MarketTabs({ tabs, active, onChange }: { tabs: MarketTab[]; acti
               type="button"
               onClick={() => onChange(tab)}
               aria-current={on ? 'page' : undefined}
-              className={`-mb-px whitespace-nowrap border-b-2 px-2 py-2 text-sm transition-colors sm:px-3 ${
+              className={`focus-inset -mb-px whitespace-nowrap border-b-2 px-2 py-2 text-sm transition-colors sm:px-3 ${
                 on
                   ? 'border-[color:var(--ink)] font-medium text-zinc-900 dark:text-zinc-100'
                   : 'border-transparent text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100'

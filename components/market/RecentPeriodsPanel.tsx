@@ -82,7 +82,7 @@ export function RecentPeriodsPanel({ periods, currency }: { periods: RecentPerio
               type="button"
               aria-pressed={m.key === active.key}
               onClick={() => setSelected(m.key)}
-              className={`whitespace-nowrap rounded-md px-2.5 py-1.5 text-xs transition-colors sm:text-sm ${m.key === active.key ? 'btn-ink' : 'text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800'}`}
+              className={`focus-inset whitespace-nowrap rounded-md px-2.5 py-1.5 text-xs transition-colors sm:text-sm ${m.key === active.key ? 'btn-ink' : 'text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800'}`}
             >
               {m.label}
             </button>
@@ -113,9 +113,9 @@ export function RecentPeriodsPanel({ periods, currency }: { periods: RecentPerio
             />
             {hasPrevious && <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12 }} />}
             {hasPrevious && (
-              <Bar dataKey="previous" name={String(year - 1)} fill={PREVIOUS_COLOR} fillOpacity={0.4} radius={[4, 4, 0, 0]} maxBarSize={28} isAnimationActive={false} />
+              <Bar dataKey="previous" name={String(year - 1)} fill={PREVIOUS_COLOR} fillOpacity={0.4} radius={[4, 4, 0, 0]} maxBarSize={44} isAnimationActive={false} />
             )}
-            <Bar dataKey="current" name={String(year)} fill={color} radius={[4, 4, 0, 0]} maxBarSize={28} isAnimationActive={false}>
+            <Bar dataKey="current" name={String(year)} fill={color} radius={[4, 4, 0, 0]} maxBarSize={44} isAnimationActive={false}>
               {rows.map((r) => <Cell key={r.slot} fill={r.current !== null && r.current < 0 ? 'var(--loss)' : color} />)}
               <LabelList
                 dataKey="yoy"

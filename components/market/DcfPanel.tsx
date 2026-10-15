@@ -142,7 +142,7 @@ export function DcfPanel({
 
           <div>
             <h3 className={subtitle}>Trois scénarios</h3>
-            <table className="mt-2 w-full text-sm">
+            <table className="mt-2 w-full max-w-2xl text-sm">
               <thead>
                 <tr className="border-b border-zinc-200 text-xs text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
                   <th scope="col" className="py-1.5 pr-2 text-left font-medium">Scénario</th>

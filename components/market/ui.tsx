@@ -128,7 +128,7 @@ export function Toggle<T extends string>({
           type="button"
           aria-pressed={o.value === value}
           onClick={() => onChange(o.value)}
-          className={`whitespace-nowrap rounded-md px-2.5 py-1 text-xs transition-colors sm:text-sm ${
+          className={`focus-inset whitespace-nowrap rounded-md px-2.5 py-1 text-xs transition-colors sm:text-sm ${
             o.value === value ? 'btn-ink' : 'text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800'
           }`}
         >

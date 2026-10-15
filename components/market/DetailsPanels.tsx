@@ -15,10 +15,11 @@ function useDetails(symbol: string) {
 }
 
 /** Barres horizontales de parts (lignes, secteurs, répartition) : une couleur, le libellé dans le texte. */
-function ShareBars({ rows }: { rows: Array<{ key: string; label: React.ReactNode; weight: number }> }) {
+function ShareBars({ rows, wide = false }: { rows: Array<{ key: string; label: React.ReactNode; weight: number }>; wide?: boolean }) {
   const max = Math.max(...rows.map((r) => r.weight), 0.0001);
   return (
-    <ul className="space-y-2">
+    // Bloc pleine largeur sur ordinateur : deux colonnes de barres plutôt que des barres de 1 000 px.
+    <ul className={wide ? 'space-y-2 lg:grid lg:grid-cols-2 lg:gap-x-8 lg:gap-y-2 lg:space-y-0' : 'space-y-2'}>
       {rows.map((r) => (
         <li key={r.key} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 text-sm">
           <span className="truncate text-zinc-800 dark:text-zinc-200">{r.label}</span>
@@ -60,12 +61,25 @@ export function EtfCompositionPanel({ symbol }: { symbol: string }) {
   if (!etf) return <PanelError title="Composition" message="Composition non publiée pour ce fonds. Les onglets Aperçu et Performance restent disponibles." />;
   const { profile, portfolioMultiples: pm } = etf;
   const history = historyLength(profile.inceptionDate);
+  // Une seule classe d'actifs (100 % actions) : une ligne dans l'identité plutôt qu'un bloc presque vide.
+  const singleClass = etf.allocation.length === 1 ? etf.allocation[0] : null;
+  const showMultiples = pm.per !== null || pm.priceToBook !== null;
+  const blocks = [
+    etf.holdings.length > 0 ? 'holdings' : null,
+    etf.sectors.length > 0 ? 'sectors' : null,
+    etf.allocation.length > 1 ? 'allocation' : null,
+    showMultiples ? 'multiples' : null,
+  ].filter(Boolean) as string[];
+  // Nombre impair de blocs : le dernier prend toute la largeur (pas de trou dans la grille).
+  const span = (id: string) => (blocks.length % 2 === 1 && blocks[blocks.length - 1] === id ? 'lg:col-span-2' : '');
+  // Enveloppe d'un bloc : même hauteur que son voisin de rangée.
+  const cell = (id: string) => `${span(id)} [&>section]:h-full`;
 
   return (
     <div className="space-y-4 sm:space-y-6">
       <StaleNotice asOf={details.data.asOf} stale={details.data.stale} />
       <Panel id="etf-profile" title="Identité du fonds">
-        <dl className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+        <dl className="grid grid-cols-2 gap-2 sm:grid-cols-[repeat(auto-fit,minmax(11rem,1fr))]">
           {profile.category && <Figure label="Catégorie" value={<span className="text-sm">{profile.category}</span>} />}
           {profile.family && <Figure label="Société de gestion" value={<span className="text-sm">{profile.family}</span>} />}
           {profile.expenseRatio !== null && (
@@ -73,6 +87,7 @@ export function EtfCompositionPanel({ symbol }: { symbol: string }) {
           )}
           {profile.totalAssets !== null && <Figure label="Encours" value={fmtMoneyCompact(profile.totalAssets, details.data.currency)} />}
           {profile.inceptionDate && <Figure label="Création" value={fmtDate(profile.inceptionDate)} detail={history ? `${history} d’historique` : undefined} />}
+          {singleClass && <Figure label="Exposition" value={`${fmtShare(singleClass.weight, 0)} ${singleClass.label.toLowerCase()}`} />}
           {profile.distributionYield !== null && profile.distributionYield > 0 && (
             <Figure label="Rendement distribué" value={fmtShare(profile.distributionYield, 2)} hint="Distributions des 12 derniers mois / cours. 0 pour un ETF capitalisant." />
           )}
@@ -81,8 +96,10 @@ export function EtfCompositionPanel({ symbol }: { symbol: string }) {
 
       <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
         {etf.holdings.length > 0 && (
+          <div className={cell('holdings')}>
           <Panel id="etf-holdings" title="Principales lignes" description={`Les ${etf.holdings.length} premières lignes pèsent ${fmtShare(etf.holdings.reduce((a, h) => a + h.weight, 0), 0)} du fonds.`}>
             <ShareBars
+              wide={span('holdings') !== ''}
               rows={etf.holdings.map((h) => ({
                 key: `${h.symbol ?? ''}${h.name}`,
                 weight: h.weight,
@@ -90,26 +107,33 @@ export function EtfCompositionPanel({ symbol }: { symbol: string }) {
               }))}
             />
           </Panel>
+          </div>
         )}
         {etf.sectors.length > 0 && (
-          <Panel id="etf-sectors" title="Secteurs">
-            <ShareBars rows={etf.sectors.map((s) => ({ key: s.key, label: s.label, weight: s.weight }))} />
-          </Panel>
+          <div className={cell('sectors')}>
+            <Panel id="etf-sectors" title="Secteurs">
+              <ShareBars wide={span('sectors') !== ''} rows={etf.sectors.map((s) => ({ key: s.key, label: s.label, weight: s.weight }))} />
+            </Panel>
+          </div>
         )}
-        {etf.allocation.length > 0 && (
-          <Panel id="etf-allocation" title="Répartition par classe d’actifs">
-            <ShareBars rows={etf.allocation.map((a) => ({ key: a.key, label: a.label, weight: a.weight }))} />
-          </Panel>
+        {etf.allocation.length > 1 && (
+          <div className={cell('allocation')}>
+            <Panel id="etf-allocation" title="Répartition par classe d’actifs">
+              <ShareBars wide={span('allocation') !== ''} rows={etf.allocation.map((a) => ({ key: a.key, label: a.label, weight: a.weight }))} />
+            </Panel>
+          </div>
         )}
-        {(pm.per !== null || pm.priceToBook !== null) && (
+        {showMultiples && (
+          <div className={cell('multiples')}>
           <Panel id="etf-multiples" title="Valorisation des titres détenus" description="Moyennes publiées pour le portefeuille du fonds.">
-            <dl className="grid grid-cols-2 gap-2">
+            <dl className={`grid grid-cols-2 gap-2 ${span('multiples') ? 'lg:grid-cols-4' : ''}`}>
               {pm.per !== null && <Figure label="PER" value={fmtMultiple(pm.per)} />}
               {pm.priceToBook !== null && <Figure label="Cours / actif net" value={fmtMultiple(pm.priceToBook)} />}
               {pm.priceToSales !== null && <Figure label="Cours / CA" value={fmtMultiple(pm.priceToSales)} />}
               {pm.priceToCashflow !== null && <Figure label="Cours / flux de trésorerie" value={fmtMultiple(pm.priceToCashflow)} />}
             </dl>
           </Panel>
+          </div>
         )}
       </div>
 

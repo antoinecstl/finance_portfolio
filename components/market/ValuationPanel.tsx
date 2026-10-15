@@ -138,7 +138,7 @@ function MultiplesHistory({ data }: { data: Extract<ValuationResponse, { availab
             type="button"
             aria-pressed={k === key}
             onClick={() => setSelected(k)}
-            className={`whitespace-nowrap rounded-md px-2.5 py-1.5 text-xs transition-colors sm:text-sm ${k === key ? 'btn-ink' : 'text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800'}`}
+            className={`focus-inset whitespace-nowrap rounded-md px-2.5 py-1.5 text-xs transition-colors sm:text-sm ${k === key ? 'btn-ink' : 'text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800'}`}
           >
             {data.multiples[k]?.label}
           </button>

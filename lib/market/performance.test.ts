@@ -133,6 +133,10 @@ describe('full report', () => {
     expect(report.totalReturnAvailable).toBe(true);
     expect(report.stats.maxDrawdown?.value).toBe(0);
     expect(report.stats.positiveYears).toEqual({ count: 9, of: 9 });
+    expect(report.stats.allTimeHigh?.distance).toBeLessThanOrEqual(0);
+    // Séance en cours au-dessus de tous les plus hauts clos : le cours devient le plus haut historique.
+    const live = buildPerformanceReport(d, [], { timeZone: 'UTC', price: 1_000, periodsPerYear: 252, now: new Date('2026-10-14T00:00:00Z') });
+    expect(live.stats.allTimeHigh).toEqual({ value: 1_000, date: '2026-10-14', distance: 0 });
     expect(report.drawdown.length).toBeLessThanOrEqual(522);
     expect(report.monthly.years[0].year).toBe(2026);
   });

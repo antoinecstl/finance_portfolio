@@ -340,8 +340,12 @@ export function buildPerformanceReport(
   const complete = merged.filter((a) => !a.partial && a.price !== null) as Array<AnnualReturn & { price: number }>;
   const best = complete.reduce<AnnualReturn & { price: number } | null>((acc, a) => (!acc || a.price > acc.price ? a : acc), null);
   const worst = complete.reduce<AnnualReturn & { price: number } | null>((acc, a) => (!acc || a.price < acc.price ? a : acc), null);
-  const ath = allTimeHigh(daily, monthly);
   const price = options.price ?? latest?.c ?? null;
+  // Le cours du jour peut dépasser le plus haut des séances closes : il devient le plus haut historique.
+  const closedHigh = allTimeHigh(daily, monthly);
+  const ath = closedHigh && price !== null && price > closedHigh.value && latest
+    ? { value: price, date: isoDate(Math.max(latest.t, options.now ? Math.floor(options.now.getTime() / 1000) : latest.t)) }
+    : closedHigh;
 
   return {
     stats: {
