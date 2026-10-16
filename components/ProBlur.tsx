@@ -18,9 +18,9 @@ type ProBlurProps = {
 // What each locked feature unlocks, stated plainly (free features never reach here).
 const FEATURE_DESCRIPTIONS: Partial<Record<Feature, string>> = {
   dividends_module: 'Module dividendes : rendement sur coût et historique par année.',
-  import_transactions: 'Import de relevés CSV, Excel, PDF ou captures.',
+  import_transactions: 'Import illimité de relevés CSV, Excel, PDF ou captures.',
 };
-const DEFAULT_DESCRIPTION = 'Comptes illimités, module dividendes et import de relevés.';
+const DEFAULT_DESCRIPTION = 'Comptes illimités, module dividendes et import illimité de relevés.';
 
 // Fake placeholder rendered in place of real content for Free users.
 // Real children are never sent to the client so DevTools can't bypass the blur.

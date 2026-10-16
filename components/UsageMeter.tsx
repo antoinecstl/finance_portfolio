@@ -3,6 +3,14 @@
 import Link from 'next/link';
 import { useSubscription } from '@/lib/subscription-client';
 
+/** Part d'une limite à partir de laquelle la jauge s'affiche et propose l'offre Pro. */
+export const USAGE_WARN_RATIO = 0.8;
+
+/** La limite est-elle assez entamée pour être montrée ? */
+export function isNearLimit(current: number, max: number): boolean {
+  return Number.isFinite(max) && max > 0 && current / max >= USAGE_WARN_RATIO;
+}
+
 type UsageMeterProps = {
   label: string;
   current: number;
@@ -18,7 +26,7 @@ export function UsageMeter({ label, current, max, className = '' }: UsageMeterPr
   }
 
   const pct = Math.min(100, Math.round((current / max) * 100));
-  const warn = pct >= 80;
+  const warn = isNearLimit(current, max);
   const full = current >= max;
 
   return (

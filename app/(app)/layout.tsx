@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { getUserSubscription } from '@/lib/subscription';
+import { getImportAccess, getUserSubscription } from '@/lib/subscription';
 import { SubscriptionProvider } from '@/lib/subscription-client';
 import { ToastProvider } from '@/components/Toast';
 import { LimitReachedProvider } from '@/components/LimitReachedModal';
@@ -36,6 +36,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   }
 
   const sub = await getUserSubscription(user.id);
+  const importAccess = await getImportAccess(user.id, sub);
 
   // Tunnel d'onboarding tant qu'il n'est pas terminé. Il reprend à la bonne
   // étape selon ce que l'utilisateur a déjà créé (profil, compte, opération).
@@ -61,7 +62,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         }}
         initialAccounts={accounts ?? []}
         initialTransactionCount={transactionCount ?? 0}
-        hasImportAccess={sub.plan.features.includes('import_transactions')}
+        importAccess={importAccess}
       />
     );
   }
@@ -74,6 +75,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         currentPeriodEnd: sub.currentPeriodEnd,
         cancelAtPeriodEnd: sub.cancelAtPeriodEnd,
         isFounder: sub.isFounder,
+        importAccess,
       }}
     >
       <ToastProvider>

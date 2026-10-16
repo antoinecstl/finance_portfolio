@@ -6,11 +6,11 @@ const { maxAccounts, maxTransactions, maxPositions } = PLANS.free;
 export const FAQ_ITEMS = [
   {
     q: 'L’import de relevés est-il gratuit ?',
-    a: `Non. L’import (CSV, Excel, PDF, capture d’écran ou texte collé) fait partie de l’offre Pro, avec le ${MONTHLY_TRIAL_LABEL.toLowerCase()} en mensuel. Avec le plan Free, vous saisissez vos transactions vous-même.`,
+    a: `Le premier est offert. Avec le plan Free, vous pouvez importer un lot de relevés (jusqu’à 5 documents : CSV, Excel, PDF, capture d’écran ou texte collé), dans la limite de ${PLANS.free.maxTransactions} transactions. Les imports suivants font partie de l’offre Pro, avec le ${MONTHLY_TRIAL_LABEL.toLowerCase()} en mensuel. Vous pouvez aussi saisir vos transactions vous-même.`,
   },
   {
     q: 'Est-ce que Fi-Hub se connecte à ma banque ?',
-    a: 'Non. Fi-Hub ne se connecte à aucune banque ni à aucun courtier. Vous saisissez vos opérations, ou vous importez un relevé avec l’offre Pro. Chaque ligne importée est vérifiée par vous avant d’être enregistrée.',
+    a: 'Non. Fi-Hub ne se connecte à aucune banque ni à aucun courtier. Vous saisissez vos opérations, ou vous importez un relevé (le premier import est offert, les suivants avec l’offre Pro). Chaque ligne importée est vérifiée par vous avant d’être enregistrée.',
   },
   {
     q: 'À quels indices puis-je comparer mon portefeuille ?',

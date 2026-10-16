@@ -1,5 +1,6 @@
 // Tunnel d'onboarding des nouveaux utilisateurs : profil, premier compte,
-// première opération, puis présentation de l'import (offre Pro, facultatif).
+// première opération, puis présentation de l'import (facultatif ; le premier
+// est offert en Free).
 // Logique pure partagée par le composant (components/onboarding) et les tests.
 
 import { accountSupportsPositions, accountTypeAllowsAsset, assetAccountMismatchMessage } from './utils';

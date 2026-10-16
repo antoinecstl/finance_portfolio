@@ -37,7 +37,7 @@ const ROWS: { label: string; free: Cell; pro: Cell }[] = [
   { label: 'Cours actualisés automatiquement', free: true, pro: true },
   { label: 'Export JSON et PDF', free: true, pro: true },
   { label: 'Module dividendes', ...pair(feature('dividends_module')) },
-  { label: 'Import de relevés (CSV, Excel, PDF, captures)', ...pair(feature('import_transactions')) },
+  { label: 'Import de relevés (CSV, Excel, PDF, captures)', free: `${PLANS.free.includedImports} offert`, pro: 'Illimité' },
   { label: 'Connexion à ChatGPT, Claude et API', ...pair(feature('api_access')) },
 ];
 
@@ -112,8 +112,9 @@ export function PricingSection() {
               Free pour suivre. Pro pour importer, analyser vos dividendes et connecter votre assistant.
             </h2>
             <p className="mt-4 text-base leading-relaxed text-[color:var(--text-2)]">
-              Le plan Free couvre le suivi complet de quelques comptes. Pro lève les limites et
-              ajoute l’import de relevés, le module dividendes et la connexion à Claude ou ChatGPT.
+              Le plan Free couvre le suivi complet de quelques comptes, avec un premier import de
+              relevé offert. Pro lève les limites et ajoute l’import illimité, le module dividendes et
+              la connexion à Claude ou ChatGPT.
             </p>
           </div>
 

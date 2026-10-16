@@ -89,6 +89,7 @@ Never commit secrets. Important environment variables include:
 - Current Pro messaging:
   - Monthly: `Premier mois gratuit`.
   - Yearly: `-17%` and `2 mois offerts`.
+- Free includes one offered statement import (one validated batch, up to 5 documents, still capped by `maxTransactions`): `includedImports` / `importAccess` in `lib/plans.ts`, `getImportAccess` in `lib/subscription.ts`, enforced in `app/api/import/{parse,commit}` (Free parses also capped per day with `sharedRateLimit`) and in Postgres (migration `20261016_free_first_import.sql`). Unlimited import stays Pro.
 - Paddle price IDs come from env vars, not from `lib/plans.ts`.
 - Paddle webhook route: `app/api/webhooks/paddle/route.ts`.
 - Paddle server helper: `lib/paddle.ts`.

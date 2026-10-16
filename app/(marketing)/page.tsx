@@ -23,7 +23,7 @@ export const metadata: Metadata = {
     siteName: SEARCH_SITE_NAME,
     title: 'Fi-Hub — Vos placements réunis. Votre performance en clair.',
     description:
-      'Positions et PRU recalculés depuis vos transactions, performance hors apports face au CAC 40, au S&P 500 ou à un autre indice, projection du patrimoine. Dividendes, import de relevés et connexion à Claude ou ChatGPT avec Pro.',
+      'Positions et PRU recalculés depuis vos transactions, performance hors apports face au CAC 40, au S&P 500 ou à un autre indice, projection du patrimoine. Premier import de relevé offert ; dividendes, imports illimités et connexion à Claude ou ChatGPT avec Pro.',
   },
 };
 
@@ -91,7 +91,7 @@ function buildJsonLd() {
       'Projection du patrimoine selon trois scénarios',
       'Carte de partage d’une position',
       'Module dividendes (Pro)',
-      'Import de relevés CSV, Excel, PDF ou captures (Pro)',
+      'Import de relevés CSV, Excel, PDF ou captures (premier import offert, illimité en Pro)',
       'Connexion à ChatGPT et Claude via API et MCP (Pro)',
       'Export JSON et PDF',
     ],
@@ -291,7 +291,7 @@ export default function LandingPage() {
         />
       </div>
 
-      {/* ───────── Import (Pro) ───────── */}
+      {/* ───────── Import (premier offert, puis Pro) ───────── */}
       <section
         id="import"
         aria-labelledby="import-title"
@@ -300,7 +300,7 @@ export default function LandingPage() {
         <div className="mx-auto max-w-6xl px-5 py-16 lg:px-8 lg:py-24">
           <div className="grid gap-10 lg:grid-cols-12 lg:gap-8">
             <div className="lg:col-span-4">
-              <PlanLabel plan="pro" />
+              <PlanLabel plan="offered" />
               <h2
                 id="import-title"
                 className="mt-3 text-[28px] font-semibold leading-[1.15] tracking-[-0.02em] text-[color:var(--text)] lg:text-4xl"
@@ -308,8 +308,8 @@ export default function LandingPage() {
                 Importez un relevé, vérifiez chaque ligne, puis validez.
               </h2>
               <p className="mt-4 text-base leading-relaxed text-[color:var(--text-2)]">
-                Pour reprendre un historique sans tout ressaisir. {MONTHLY_TRIAL_LABEL} avec l’offre
-                Pro mensuelle.
+                Pour reprendre un historique sans tout ressaisir. Le premier import est offert avec le
+                plan Free ; l’offre Pro les rend illimités ({MONTHLY_TRIAL_LABEL.toLowerCase()} en mensuel).
               </p>
               <div className="mt-6 flex flex-col items-start gap-3 text-[15px]">
                 <Link href="/fonctionnalites/import-transactions" className="link font-medium">
@@ -420,10 +420,10 @@ export default function LandingPage() {
 
 /* ────────────────────────────────────────────────────────── */
 
-function PlanLabel({ plan }: { plan: 'free' | 'pro' }) {
+function PlanLabel({ plan }: { plan: 'free' | 'pro' | 'offered' }) {
   return (
     <p className="text-[13px] font-medium text-[color:var(--text-muted)]">
-      {plan === 'free' ? 'Inclus dans l’offre Free' : 'Offre Pro'}
+      {plan === 'free' ? 'Inclus dans l’offre Free' : plan === 'offered' ? 'Premier import offert, illimité en Pro' : 'Offre Pro'}
     </p>
   );
 }

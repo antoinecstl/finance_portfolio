@@ -18,6 +18,8 @@ export type Plan = {
   maxAccounts: number;
   maxTransactions: number;
   maxPositions: number;
+  /** Imports de relevés offerts sans la fonctionnalité d'import (un lot validé = un import). */
+  includedImports: number;
   features: readonly Feature[];
   tagline: string;
   highlights: readonly string[];
@@ -26,6 +28,7 @@ export type Plan = {
 const INF = Number.POSITIVE_INFINITY;
 export const MONTHLY_TRIAL_LABEL = 'Premier mois gratuit';
 export const YEARLY_VALUE_LABEL = '2 mois offerts';
+export const FREE_IMPORT_LABEL = 'Premier import de relevé offert';
 
 export const PLANS: Record<PlanId, Plan> = {
   free: {
@@ -38,6 +41,7 @@ export const PLANS: Record<PlanId, Plan> = {
     maxAccounts: 3,
     maxTransactions: 100,
     maxPositions: 10,
+    includedImports: 1,
     features: ['basic_charts', 'advanced_analytics', 'full_history'],
     tagline: 'Pour suivre votre patrimoine au quotidien',
     highlights: [
@@ -46,6 +50,7 @@ export const PLANS: Record<PlanId, Plan> = {
       '10 positions boursières',
       'Analyses avancées & performance annuelle',
       'Historique complet du portefeuille',
+      FREE_IMPORT_LABEL,
       'Cours actualisés automatiquement',
     ],
   },
@@ -59,6 +64,7 @@ export const PLANS: Record<PlanId, Plan> = {
     maxAccounts: INF,
     maxTransactions: INF,
     maxPositions: INF,
+    includedImports: INF,
     features: [
       'basic_charts',
       'advanced_analytics',
@@ -72,7 +78,7 @@ export const PLANS: Record<PlanId, Plan> = {
       'Comptes illimités (PEA, CTO, livrets, AV)',
       'Transactions et positions illimitées',
       'Module dividendes',
-      'Import de relevés (CSV, Excel, PDF, captures)',
+      'Import de relevés illimité (CSV, Excel, PDF, captures)',
       'Connexion à ChatGPT et Claude (API)',
     ],
   },
@@ -108,4 +114,21 @@ export function getYearlySavingsPercent(plan: Plan): number | null {
 
 export function hasFeature(plan: Plan, feature: Feature): boolean {
   return plan.features.includes(feature);
+}
+
+export type ImportAccess = {
+  /** L'utilisateur peut analyser et valider un import maintenant. */
+  allowed: boolean;
+  /** L'import est l'import offert du plan (pas la fonctionnalité Pro). */
+  offered: boolean;
+};
+
+/**
+ * Accès à l'import de relevés : illimité avec la fonctionnalité, sinon les
+ * imports offerts du plan. `importsUsed` compte les lots déjà validés.
+ */
+export function importAccess(plan: Plan, importsUsed: number): ImportAccess {
+  if (plan.features.includes('import_transactions')) return { allowed: true, offered: false };
+  const allowed = importsUsed < plan.includedImports;
+  return { allowed, offered: allowed };
 }
