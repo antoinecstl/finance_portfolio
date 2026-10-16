@@ -9,6 +9,8 @@ import type { ProposedTransaction, ImportNote } from '@/lib/import/types';
 import type { Transaction, TransactionType } from '@/lib/types';
 import { accountSupportsPositions, accountTypeAllowsAsset, assetAccountMismatchMessage, formatCurrency, formatDate, isCryptoSymbol } from '@/lib/utils';
 import { getApiErrorMessage } from '@/lib/api-errors';
+import { PLANS } from '@/lib/plans';
+import { useSubscription } from '@/lib/subscription-client';
 import { findDuplicateTransaction } from '@/lib/transaction-duplicates';
 import { buildImportCashPreview } from '@/lib/import/cash-preview';
 import {
@@ -57,7 +59,7 @@ function parseErrorMessage(status: number, data: { error?: string; message?: str
   if (status === 429) {
     return data.error === 'ocr_rate_limited'
       ? { message: data.message ?? 'Le service d\'analyse est momentanément saturé. Réessayez dans quelques instants.', stop: true }
-      : { message: 'Trop d\'imports récents. Réessayez dans une heure.', stop: true };
+      : { message: data.message ?? 'Trop d\'imports récents. Réessayez dans une heure.', stop: true };
   }
   if (status === 413) return { message: 'Fichier trop volumineux (max 10 MB).', stop: false };
   if (status === 415) return { message: 'Format non supporté. Formats acceptés : CSV, XLSX, PDF, JPG, PNG, WebP ou texte collé.', stop: false };
@@ -194,7 +196,9 @@ function ImportSymbolCell({
 
 // Le wizard tient en local (pas de persist Zustand/Redux) : la state vit le temps
 // de la session UI. Recharger la page = repartir de zéro, c'est volontaire.
-export function ImportWizard() {
+// `offered` : import offert du plan Free (un seul lot validé, multi-documents possible).
+export function ImportWizard({ offered = false }: { offered?: boolean }) {
+  const { consumeOfferedImport } = useSubscription();
   const { accounts, loading: accountsLoading } = useAccounts();
   const [step, setStep] = useState<Step>('upload');
   const [accountId, setAccountId] = useState('');
@@ -581,6 +585,9 @@ export function ImportWizard() {
       const data = await res.json();
       setCommittedSummary({ inserted: data.inserted ?? 0, total: data.total ?? rows.length });
       setStep('done');
+      // L'import offert est consommé : menus et boutons d'import se ferment
+      // (sans recharger la page, qui afficherait alors l'écran « déjà utilisé »).
+      if (offered) consumeOfferedImport();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur réseau');
     } finally {
@@ -597,6 +604,18 @@ export function ImportWizard() {
             title="Importer des transactions"
             description="Jusqu’à 5 documents à la fois : CSV, Excel, PDF, photos ou captures d’écran de relevés, ou texte collé. Une IA extrait les transactions ; vous validez avant import."
           />
+
+          {offered && step !== 'done' && (
+            <div className="mb-4 flex items-start gap-2 rounded-xl border border-[color:var(--rule)] bg-[color:var(--paper-2)] px-4 py-3 text-sm text-[color:var(--ink)]">
+              <Info className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--accent)]" aria-hidden="true" />
+              <p>
+                <span className="font-medium">Votre premier import est offert.</span>{' '}
+                <span className="text-[color:var(--ink-soft)]">
+                  Réunissez vos relevés dans ce lot (jusqu’à 5 documents) : il compte pour un seul import, dans la limite de {PLANS.free.maxTransactions} transactions au total de l’offre Free.
+                </span>
+              </p>
+            </div>
+          )}
 
           {step === 'upload' && (
             <div className="bg-white dark:bg-zinc-900 rounded-xl sm:rounded-2xl border border-zinc-200 dark:border-zinc-800 p-4 sm:p-6 lg:p-8 space-y-5 sm:space-y-6">
@@ -1113,6 +1132,7 @@ export function ImportWizard() {
                   {invalidRows.length > 0
                     ? `${invalidRows.length} ligne(s) à corriger avant import.`
                     : `${rows.length} transaction(s) prêtes à importer.`}
+                  {offered && invalidRows.length === 0 && ' Cette validation utilise votre import offert.'}
                 </p>
                 <div className="flex gap-2">
                   <button
@@ -1150,16 +1170,18 @@ export function ImportWizard() {
                 >
                   Voir le tableau de bord
                 </Link>
-                <button
-                  onClick={() => {
-                    resetImport();
-                    setFiles([]); setFileNotice(null); setPastedText('');
-                    setCommittedSummary(null);
-                  }}
-                  className="px-4 sm:px-5 py-2 sm:py-2.5 text-sm sm:text-base border border-zinc-300 dark:border-zinc-700 rounded-lg text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800"
-                >
-                  Importer d’autres documents
-                </button>
+                {!offered && (
+                  <button
+                    onClick={() => {
+                      resetImport();
+                      setFiles([]); setFileNotice(null); setPastedText('');
+                      setCommittedSummary(null);
+                    }}
+                    className="px-4 sm:px-5 py-2 sm:py-2.5 text-sm sm:text-base border border-zinc-300 dark:border-zinc-700 rounded-lg text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800"
+                  >
+                    Importer d’autres documents
+                  </button>
+                )}
               </div>
             </div>
           )}

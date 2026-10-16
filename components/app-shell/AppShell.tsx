@@ -122,11 +122,14 @@ const sidebarItemClass = (active: boolean) =>
       : 'text-[color:var(--ink-soft)] hover:bg-[color:var(--paper-2)] hover:text-[color:var(--ink)]'
   }`;
 
-function SidebarLink({ href, icon: Icon, label, active }: { href: string; icon: LucideIcon; label: string; active: boolean }) {
+function SidebarLink({ href, icon: Icon, label, active, badge }: { href: string; icon: LucideIcon; label: string; active: boolean; badge?: string }) {
   return (
     <Link href={href} className={sidebarItemClass(active)} aria-current={active ? 'page' : undefined}>
       <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
       <span className="truncate">{label}</span>
+      {badge && (
+        <span className="ml-auto rounded-full bg-[color:var(--accent-soft)] px-1.5 py-0.5 text-[10px] font-medium leading-none text-[color:var(--accent)]">{badge}</span>
+      )}
     </Link>
   );
 }
@@ -140,7 +143,7 @@ function SectionLabel({ children }: { children: ReactNode }) {
 function Sidebar({ email, isAdmin }: { email: string; isAdmin: boolean }) {
   const pathname = usePathname();
   const activeTab = useActiveDashboardTab();
-  const { isFree } = useSubscription();
+  const { isFree, importAccess } = useSubscription();
   const signOut = useSignOut();
 
   return (
@@ -176,7 +179,13 @@ function Sidebar({ email, isAdmin }: { email: string; isAdmin: boolean }) {
 
         <SectionLabel>Outils</SectionLabel>
         <div className="space-y-0.5">
-          <SidebarLink href="/dashboard/import" icon={Upload} label="Importer un relevé" active={pathname === '/dashboard/import'} />
+          <SidebarLink
+            href="/dashboard/import"
+            icon={Upload}
+            label={importAccess.offered ? 'Importer' : 'Importer un relevé'}
+            active={pathname === '/dashboard/import'}
+            badge={importAccess.offered ? 'offert' : undefined}
+          />
           <SidebarLink href="/settings" icon={Settings} label="Paramètres" active={pathname.startsWith('/settings')} />
           {isAdmin && <SidebarLink href="/admin" icon={ShieldCheck} label="Administration" active={pathname.startsWith('/admin')} />}
         </div>
@@ -191,7 +200,7 @@ function Sidebar({ email, isAdmin }: { email: string; isAdmin: boolean }) {
             <Sparkles className="h-4 w-4 shrink-0 text-[color:var(--accent)]" aria-hidden="true" />
             <span>
               <span className="block font-medium">Passer Pro</span>
-              <span className="block text-xs text-[color:var(--ink-soft)]">Comptes illimités, import, API</span>
+              <span className="block text-xs text-[color:var(--ink-soft)]">Comptes et imports illimités, API</span>
             </span>
           </Link>
         )}
@@ -227,12 +236,12 @@ function Avatar({ email }: { email: string }) {
 }
 
 /**
- * Barre du haut (mobile et tablette) : le logo, l'accès Pro, et les
- * sous-onglets de la rubrique en cours (Positions | Comptes, Transactions | Dividendes).
+ * Barre du haut (mobile et tablette) : le logo et les sous-onglets de la
+ * rubrique en cours (Positions | Comptes, Transactions | Dividendes). L'offre
+ * Pro reste dans le menu « Plus », sans bouton permanent en haut de l'écran.
  */
 function MobileHeader() {
   const activeTab = useActiveDashboardTab();
-  const { isFree } = useSubscription();
   const group = activeTab ? dashboardGroupOf(activeTab) : null;
 
   return (
@@ -241,12 +250,6 @@ function MobileHeader() {
         <Link href="/dashboard" className="display text-[1.4rem] leading-none text-[color:var(--ink)] sm:text-2xl">
           Fi&#8209;Hub
         </Link>
-        {isFree && (
-          <Link href="/settings/billing" className="btn-ink inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium">
-            <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
-            Passer Pro
-          </Link>
-        )}
       </div>
       {group && group.tabs.length > 1 && (
         <nav className="px-4 pb-2.5 sm:px-6" aria-label={group.label}>
@@ -346,10 +349,9 @@ function MobileTabBar({ email, isAdmin }: { email: string; isAdmin: boolean }) {
 /** Menu « Plus » : import, compte et paramètres, administration, déconnexion. */
 function MoreSheet({ email, isAdmin, onClose }: { email: string; isAdmin: boolean; onClose: () => void }) {
   const pathname = usePathname();
-  const { isFree, hasFeature } = useSubscription();
+  const { isFree, importAccess } = useSubscription();
   const signOut = useSignOut();
   const panelRef = useRef<HTMLDivElement>(null);
-  const canImport = hasFeature('import_transactions');
 
   // Fermeture à Échap, défilement de la page bloqué, focus placé dans le menu.
   useEffect(() => {
@@ -404,17 +406,20 @@ function MoreSheet({ email, isAdmin, onClose }: { email: string; isAdmin: boolea
               <Sparkles className="h-5 w-5 shrink-0 text-[color:var(--accent)]" aria-hidden="true" />
               <span className="flex-1">
                 <span className="block text-[15px] font-medium">Passer Pro</span>
-                <span className="block text-xs text-[color:var(--ink-soft)]">Comptes illimités, import de relevés, API</span>
+                <span className="block text-xs text-[color:var(--ink-soft)]">Comptes et imports illimités, API</span>
               </span>
               <ChevronRight className="h-4 w-4 text-[color:var(--ink-soft)]" aria-hidden="true" />
             </Link>
           )}
 
           <p className="mono px-3 pb-1 pt-4 text-[10px] uppercase tracking-[0.14em] text-[color:var(--ink-soft)]">Outils</p>
-          <Link href={canImport ? '/dashboard/import' : '/settings/billing'} onClick={onClose} className={row(pathname === '/dashboard/import')}>
+          <Link href="/dashboard/import" onClick={onClose} className={row(pathname === '/dashboard/import')}>
             <Upload className="h-5 w-5 shrink-0 text-[color:var(--ink-soft)]" aria-hidden="true" />
             <span className="flex-1">Importer un relevé</span>
-            {!canImport && <Lock className="h-4 w-4 text-[color:var(--ink-soft)]" aria-label="Offre Pro" />}
+            {importAccess.offered && (
+              <span className="rounded-full bg-[color:var(--accent-soft)] px-2 py-0.5 text-xs font-medium text-[color:var(--accent)]">offert</span>
+            )}
+            {!importAccess.allowed && <Lock className="h-4 w-4 text-[color:var(--ink-soft)]" aria-label="Offre Pro" />}
           </Link>
           {isAdmin && (
             <Link href="/admin" onClick={onClose} className={row(pathname.startsWith('/admin'))}>

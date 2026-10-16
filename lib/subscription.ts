@@ -1,6 +1,6 @@
 import 'server-only';
 import { createAdminClient } from '@/lib/supabase/server';
-import { PLANS, type Plan, type PlanId, type Feature } from '@/lib/plans';
+import { PLANS, importAccess, type ImportAccess, type Plan, type PlanId, type Feature } from '@/lib/plans';
 
 type UserSubscriptionContext = {
   plan: Plan;
@@ -12,6 +12,10 @@ type UserSubscriptionContext = {
 };
 
 const ACTIVE_STATUSES = new Set(['active', 'trialing', 'past_due']);
+
+/** Réponse des routes d'import quand l'import offert du plan Free est déjà utilisé. */
+export const IMPORT_USED_MESSAGE =
+  'Votre import offert a déjà été utilisé. L’offre Pro permet d’importer autant de relevés que vous voulez.';
 
 export async function getUserSubscription(userId: string): Promise<UserSubscriptionContext> {
   const admin = await createAdminClient();
@@ -60,4 +64,29 @@ export async function getLimits(userId: string) {
     maxPositions: ctx.plan.maxPositions,
     planId: ctx.planId,
   };
+}
+
+/**
+ * Accès à l'import de relevés : illimité en Pro, premier lot offert en Free.
+ * En cas d'erreur de lecture, l'accès offert est refusé (l'analyse coûte un
+ * appel OCR/LLM).
+ */
+export async function getImportAccess(
+  userId: string,
+  subscription?: Pick<UserSubscriptionContext, 'plan'>
+): Promise<ImportAccess> {
+  const { plan } = subscription ?? (await getUserSubscription(userId));
+  if (plan.features.includes('import_transactions')) return importAccess(plan, 0);
+
+  const admin = await createAdminClient();
+  const { count, error } = await admin
+    .from('import_jobs')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .eq('status', 'committed');
+  if (error) {
+    console.error('[subscription] import count failed', error);
+    return { allowed: false, offered: false };
+  }
+  return importAccess(plan, count ?? 0);
 }

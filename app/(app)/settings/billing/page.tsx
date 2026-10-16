@@ -22,6 +22,7 @@ export default async function BillingPage() {
 
   const ctx = await getUserSubscription(user!.id);
   const pro = PLANS.pro;
+  const free = PLANS.free;
   const yearlySavings = getYearlySavingsPercent(pro);
   const paddleConfig = {
     clientToken: process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN ?? '',
@@ -127,12 +128,12 @@ export default async function BillingPage() {
               </span>
             </div>
             <h3 className="display text-3xl leading-tight text-[color:var(--ink)]">
-              Passez d&apos;un suivi de test à un vrai pilotage de patrimoine.
+              Passez Pro quand votre patrimoine dépasse les limites du Free.
             </h3>
             <p className="mt-3 max-w-2xl text-sm leading-relaxed text-[color:var(--ink-soft)]">
-              Votre plan Free est parfait pour démarrer. Pro enlève les limites qui bloquent
-              un portefeuille réel : comptes multiples, historique complet, import de transactions,
-              dividendes et analyses avancées.
+              L&apos;offre Free reste gratuite, sans limite de durée, avec les analyses et l&apos;historique
+              complet. Pro retire les limites de comptes, de transactions et de positions, et ajoute
+              l&apos;import illimité de relevés, le module dividendes et la connexion à Claude ou ChatGPT.
             </p>
           </div>
 
@@ -142,7 +143,8 @@ export default async function BillingPage() {
                 Aujourd&apos;hui
               </p>
               <p className="mt-2 text-sm text-[color:var(--ink)]">
-                Free : 3 comptes, 100 transactions et 10 positions.
+                Free : {free.maxAccounts} comptes, {free.maxTransactions} transactions, {free.maxPositions} positions
+                et un premier import de relevé offert.
               </p>
             </div>
             <div className="bg-[color:var(--paper)] p-5">
@@ -166,7 +168,7 @@ export default async function BillingPage() {
 
           <div className="p-6">
             <h4 className="font-semibold text-[color:var(--ink)] mb-4">
-              Ce que Pro débloque concrètement
+              Ce que Pro ajoute
             </h4>
             <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
               {pro.highlights.map((h) => (

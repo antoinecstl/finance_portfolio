@@ -8,7 +8,7 @@ import { enforceAuthenticatedJsonMutation } from '@/lib/api-security';
 import { createClient } from '@/lib/supabase/server';
 import { createTransactionSchema, formatZodError } from '@/lib/schemas';
 import { commitRequestSchema } from '@/lib/import/types';
-import { getLimits, hasUserFeature } from '@/lib/subscription';
+import { getImportAccess, getLimits, IMPORT_USED_MESSAGE } from '@/lib/subscription';
 import { getStockQuotes } from '@/lib/stock-api';
 import { accountSupportsPositions, accountTypeAllowsAsset, assetAccountMismatchMessage } from '@/lib/utils';
 import { formatInvalidAccountSequenceMessage } from '@/lib/sequence-errors';
@@ -23,14 +23,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 
-  if (!(await hasUserFeature(user.id, 'import_transactions'))) {
-    return NextResponse.json(
-      {
-        error: 'pro_required',
-        message: 'L\'import de transactions est reserve aux utilisateurs Pro.',
-      },
-      { status: 402 }
-    );
+  // Import illimité en Pro ; en Free, le premier lot validé est offert.
+  const access = await getImportAccess(user.id);
+  if (!access.allowed) {
+    return NextResponse.json({ error: 'pro_required', message: IMPORT_USED_MESSAGE }, { status: 402 });
   }
 
   const raw = await request.json().catch(() => null);
@@ -245,19 +241,13 @@ export async function POST(request: Request) {
         {
           error: 'limit_reached',
           scope: 'transactions',
-          message: msg,
+          message: `Cet import dépasserait la limite de ${limits.maxTransactions} transactions de l’offre Free.`,
         },
         { status: 402 }
       );
     }
-    if (msg.includes('PRO_REQUIRED')) {
-      return NextResponse.json(
-        {
-          error: 'pro_required',
-          message: 'L\'import de transactions est reserve aux utilisateurs Pro.',
-        },
-        { status: 402 }
-      );
+    if (msg.includes('PRO_REQUIRED') || msg.includes('FREE_IMPORT_USED')) {
+      return NextResponse.json({ error: 'pro_required', message: IMPORT_USED_MESSAGE }, { status: 402 });
     }
     if (msg.includes('invalid_account')) {
       return NextResponse.json({ error: 'invalid_account' }, { status: 403 });

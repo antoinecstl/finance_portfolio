@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'reac
 import { ArrowRight, Check, Loader2, Search, Upload } from 'lucide-react';
 import { getApiErrorMessage } from '@/lib/api-errors';
 import { useStockSearch } from '@/lib/hooks';
-import { MONTHLY_TRIAL_LABEL, PLANS, formatPriceFor } from '@/lib/plans';
+import { PLANS, type ImportAccess } from '@/lib/plans';
 import {
   ONBOARDING_ACCOUNT_TYPES,
   ONBOARDING_STEPS,
@@ -24,7 +24,8 @@ interface OnboardingProps {
   initialProfile: { fullName: string; marketingOptIn: boolean; saved: boolean };
   initialAccounts: OnboardingAccount[];
   initialTransactionCount: number;
-  hasImportAccess: boolean;
+  /** Import de relevés : illimité en Pro, premier lot offert en Free. */
+  importAccess: ImportAccess;
 }
 
 const INPUT =
@@ -52,15 +53,15 @@ async function postJson(url: string, body: unknown): Promise<{ ok: boolean; stat
 }
 
 // Tunnel affiché à la première connexion, tant que l'onboarding n'est pas
-// terminé : profil → premier compte → première opération → import (Pro,
-// facultatif). Chaque étape agit pour de vrai ; on reprend à la bonne étape
+// terminé : profil → premier compte → première opération → import
+// (facultatif ; le premier est offert en Free). Chaque étape agit pour de vrai ; on reprend à la bonne étape
 // après un rechargement.
 export function Onboarding({
   email,
   initialProfile,
   initialAccounts,
   initialTransactionCount,
-  hasImportAccess,
+  importAccess,
 }: OnboardingProps) {
   const [step, setStep] = useState<OnboardingStep>(() =>
     resolveOnboardingStep({
@@ -149,7 +150,7 @@ export function Onboarding({
             />
           )}
           {step === 'import' && (
-            <ImportStep done={done} hasImportAccess={hasImportAccess} headingRef={headingRef} />
+            <ImportStep done={done} importAccess={importAccess} headingRef={headingRef} />
           )}
         </div>
       </div>
@@ -219,7 +220,7 @@ function ProfileStep({
       <ol className="mb-6 space-y-2 text-sm text-[color:var(--ink-soft)]">
         <li><span className="font-medium text-[color:var(--ink)]">1.</span> Créer votre premier compte : un PEA, un livret, une assurance-vie…</li>
         <li><span className="font-medium text-[color:var(--ink)]">2.</span> Ajouter une première opération.</li>
-        <li><span className="font-medium text-[color:var(--ink)]">3.</span> Découvrir l’import de relevés, si vous voulez aller plus vite.</li>
+        <li><span className="font-medium text-[color:var(--ink)]">3.</span> Importer vos relevés, si vous voulez aller plus vite.</li>
       </ol>
 
       <div className="space-y-3">
@@ -673,15 +674,15 @@ function TransactionStep({
   );
 }
 
-/* ───────── 4. Import (Pro, facultatif) ───────── */
+/* ───────── 4. Import (facultatif, le premier est offert en Free) ───────── */
 
 function ImportStep({
   done,
-  hasImportAccess,
+  importAccess,
   headingRef,
 }: {
   done: string[];
-  hasImportAccess: boolean;
+  importAccess: ImportAccess;
   headingRef: HeadingRef;
 }) {
   const [leaving, setLeaving] = useState<string | null>(null);
@@ -715,13 +716,14 @@ function ImportStep({
       )}
 
       <p className="mono mb-2 text-[11px] uppercase tracking-[0.14em] text-[color:var(--ink-soft)]">
-        {hasImportAccess ? 'Inclus dans votre offre' : 'Offre Pro · facultatif'}
+        {importAccess.offered ? 'Offert · facultatif' : importAccess.allowed ? 'Inclus dans votre offre' : 'Facultatif'}
       </p>
       <StepHeading headingRef={headingRef}>Pour aller plus vite : l’import de relevés</StepHeading>
       <p className="text-[color:var(--ink-soft)] mb-5">
         Vous avez déjà des années d’historique ? Déposez jusqu’à 5 relevés à la fois (CSV, Excel, PDF ou captures
         d’écran) : Fi-Hub propose les transactions, vous vérifiez chaque ligne, puis vous validez. Rien n’est
         enregistré sans votre accord.
+        {importAccess.offered && ' Votre premier import est offert : réunissez vos relevés dans un même lot.'}
       </p>
 
       <div className="rounded-lg border border-[color:var(--rule)] bg-[color:var(--paper-2)] p-4">
@@ -729,16 +731,9 @@ function ImportStep({
         <p className="mt-1 text-sm text-[color:var(--ink-soft)]">
           Fi-Hub fonctionne pleinement sans import : vous saisissez vos opérations vous-même, et positions, PRU,
           performance et comparaison à un indice se calculent exactement de la même façon.
-          {!hasImportAccess && ` L’offre Free reste gratuite jusqu’à ${maxAccounts} comptes, ${maxTransactions} transactions et ${maxPositions} positions.`}
+          {importAccess.offered && ` L’offre Free reste gratuite jusqu’à ${maxAccounts} comptes, ${maxTransactions} transactions et ${maxPositions} positions.`}
         </p>
       </div>
-
-      {!hasImportAccess && (
-        <p className="mt-4 text-sm text-[color:var(--ink-soft)]">
-          L’offre Pro ajoute aussi le module dividendes, des comptes et transactions illimités et la connexion à
-          Claude ou ChatGPT : {formatPriceFor(PLANS.pro, 'month')}, {MONTHLY_TRIAL_LABEL.toLowerCase()}.
-        </p>
-      )}
 
       <ErrorMessage message={error} />
 
@@ -752,15 +747,17 @@ function ImportStep({
           {leaving === '/dashboard' ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
           Accéder à mon tableau de bord
         </button>
-        <button
-          type="button"
-          onClick={() => finish(hasImportAccess ? '/dashboard/import' : '/settings/billing')}
-          disabled={leaving !== null}
-          className="btn-outline inline-flex items-center justify-center gap-2 py-2.5 px-5 rounded-lg disabled:opacity-50"
-        >
-          {leaving && leaving !== '/dashboard' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-          {hasImportAccess ? 'Importer un relevé' : 'Découvrir l’offre Pro'}
-        </button>
+        {importAccess.allowed && (
+          <button
+            type="button"
+            onClick={() => finish('/dashboard/import')}
+            disabled={leaving !== null}
+            className="btn-outline inline-flex items-center justify-center gap-2 py-2.5 px-5 rounded-lg disabled:opacity-50"
+          >
+            {leaving === '/dashboard/import' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+            {importAccess.offered ? 'Importer mon premier relevé' : 'Importer un relevé'}
+          </button>
+        )}
       </div>
     </div>
   );

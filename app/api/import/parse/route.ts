@@ -13,13 +13,14 @@ import { sharedRateLimit } from '@/lib/shared-rate-limit';
 import { runImportPipeline, buildIdempotencyKey } from '@/lib/import/orchestrator';
 import type { ImportSourceType } from '@/lib/import/types';
 import { detectImportSourceType } from '@/lib/import/file-types';
-import { hasUserFeature } from '@/lib/subscription';
+import { getImportAccess, IMPORT_USED_MESSAGE } from '@/lib/subscription';
 import { enforceAuthenticatedMutation } from '@/lib/api-security';
 
 export const runtime = 'nodejs';
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024;       // 10 MB hard cap
 const MAX_TEXT_CHARS = 200_000;
+const FREE_PARSES_PER_DAY = 10;          // analyses / 24 h pour l'import offert (un lot de 5 + reprises)
 
 export async function POST(request: NextRequest) {
   const securityError = enforceAuthenticatedMutation(request);
@@ -31,14 +32,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 
-  if (!(await hasUserFeature(user.id, 'import_transactions'))) {
-    return NextResponse.json(
-      {
-        error: 'pro_required',
-        message: 'L\'import de transactions est reserve aux utilisateurs Pro.',
-      },
-      { status: 402 }
-    );
+  // Import illimité en Pro ; en Free, le premier lot validé est offert.
+  const access = await getImportAccess(user.id);
+  if (!access.allowed) {
+    return NextResponse.json({ error: 'pro_required', message: IMPORT_USED_MESSAGE }, { status: 402 });
   }
 
   // Rate limit : 20 analyses / heure / user, une par document (chaque analyse peut
@@ -50,6 +47,21 @@ export async function POST(request: NextRequest) {
       { error: 'rate_limited', retryAfterMs: rl.retryAfterMs },
       { status: 429, headers: { 'Retry-After': String(Math.max(1, Math.ceil(rl.retryAfterMs / 1000))) } }
     );
+  }
+  // Import offert : quelques analyses par jour suffisent pour réussir son
+  // premier relevé, sans ouvrir l'OCR/LLM payant à volonté aux comptes Free.
+  if (access.offered) {
+    const daily = await sharedRateLimit(`import-parse-free:u:${user.id}`, FREE_PARSES_PER_DAY, 24 * 60 * 60);
+    if (!daily.ok) {
+      return NextResponse.json(
+        {
+          error: 'rate_limited',
+          message: 'Vous avez analysé plusieurs documents aujourd’hui. Réessayez demain pour terminer votre import offert.',
+          retryAfterMs: daily.retryAfterMs,
+        },
+        { status: 429, headers: { 'Retry-After': String(Math.max(1, Math.ceil(daily.retryAfterMs / 1000))) } }
+      );
+    }
   }
 
   const contentType = request.headers.get('content-type') ?? '';

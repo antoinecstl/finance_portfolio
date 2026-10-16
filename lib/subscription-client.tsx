@@ -1,7 +1,7 @@
 'use client';
 
-import { createContext, useContext, useMemo, type ReactNode } from 'react';
-import { PLANS, type Feature, type Plan, type PlanId } from '@/lib/plans';
+import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
+import { PLANS, type Feature, type ImportAccess, type Plan, type PlanId } from '@/lib/plans';
 
 export type SubscriptionSnapshot = {
   planId: PlanId;
@@ -9,6 +9,8 @@ export type SubscriptionSnapshot = {
   currentPeriodEnd: string | null;
   cancelAtPeriodEnd: boolean;
   isFounder: boolean;
+  /** Import de relevés : illimité en Pro, premier lot offert en Free. */
+  importAccess: ImportAccess;
 };
 
 type SubscriptionContextValue = SubscriptionSnapshot & {
@@ -16,6 +18,8 @@ type SubscriptionContextValue = SubscriptionSnapshot & {
   isPro: boolean;
   isFree: boolean;
   hasFeature: (feature: Feature) => boolean;
+  /** À appeler après la validation de l'import offert : boutons et menus se ferment sans recharger. */
+  consumeOfferedImport: () => void;
   limits: {
     maxAccounts: number;
     maxTransactions: number;
@@ -32,10 +36,13 @@ export function SubscriptionProvider({
   initial: SubscriptionSnapshot;
   children: ReactNode;
 }) {
+  const [offeredImportUsed, setOfferedImportUsed] = useState(false);
   const value = useMemo<SubscriptionContextValue>(() => {
     const plan = PLANS[initial.planId];
     return {
       ...initial,
+      importAccess: offeredImportUsed && initial.importAccess.offered ? { allowed: false, offered: false } : initial.importAccess,
+      consumeOfferedImport: () => setOfferedImportUsed(true),
       plan,
       isPro: initial.planId === 'pro',
       isFree: initial.planId === 'free',
@@ -46,7 +53,7 @@ export function SubscriptionProvider({
         maxPositions: plan.maxPositions,
       },
     };
-  }, [initial]);
+  }, [initial, offeredImportUsed]);
 
   return (
     <SubscriptionContext.Provider value={value}>{children}</SubscriptionContext.Provider>

@@ -3,7 +3,7 @@ import { ArrowRight } from 'lucide-react';
 import { Breadcrumbs } from '@/components/marketing/Breadcrumbs';
 import { FeatureMockup } from '@/components/marketing/FeatureMockups';
 import { JsonLd, buildBreadcrumbJsonLd } from '@/components/marketing/JsonLd';
-import { PRO_FEATURE_SLUGS, freePlanSummary } from '@/components/marketing/product-facts';
+import { OFFERED_ONCE_SLUGS, PRO_FEATURE_SLUGS, freePlanSummary } from '@/components/marketing/product-facts';
 import { MONTHLY_TRIAL_LABEL } from '@/lib/plans';
 import {
   collectionHrefs,
@@ -17,8 +17,14 @@ type SeoArticlePageProps = {
   siteUrl: string;
 };
 
-function closingCopy(page: SeoPage, isPro: boolean) {
+function closingCopy(page: SeoPage, isPro: boolean, offeredOnce: boolean) {
   if (page.collection === 'fonctionnalites') {
+    if (offeredOnce) {
+      return {
+        title: 'Votre premier import est offert',
+        body: `Créez votre compte gratuit et importez un premier relevé. Les imports suivants font partie de l’offre Pro : ${MONTHLY_TRIAL_LABEL.toLowerCase()} en mensuel.`,
+      };
+    }
     return isPro
       ? {
           title: 'Une fonctionnalité de l’offre Pro',
@@ -65,8 +71,10 @@ export function SeoArticlePage({ page, relatedPages, siteUrl }: SeoArticlePagePr
 
   const isFeature = page.collection === 'fonctionnalites';
   const isPro = isFeature && PRO_FEATURE_SLUGS.has(page.slug);
-  const closing = closingCopy(page, isPro);
-  const label = isFeature ? `${page.eyebrow} · ${isPro ? 'Offre Pro' : 'Inclus dans l’offre Free'}` : page.eyebrow;
+  const offeredOnce = isPro && OFFERED_ONCE_SLUGS.has(page.slug);
+  const closing = closingCopy(page, isPro, offeredOnce);
+  const planLabel = offeredOnce ? 'Premier import offert' : isPro ? 'Offre Pro' : 'Inclus dans l’offre Free';
+  const label = isFeature ? `${page.eyebrow} · ${planLabel}` : page.eyebrow;
 
   return (
     <main className="mx-auto max-w-6xl px-5 py-12 sm:py-16 lg:px-8">

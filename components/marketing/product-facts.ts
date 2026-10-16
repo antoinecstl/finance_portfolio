@@ -12,3 +12,6 @@ export function freePlanSummary(): string {
 
 // Feature pages whose feature requires the Pro plan (see lib/plans.ts features).
 export const PRO_FEATURE_SLUGS: ReadonlySet<string> = new Set(['dividendes', 'import-transactions']);
+
+// Pro feature pages the Free plan can still try once (PLANS.free.includedImports).
+export const OFFERED_ONCE_SLUGS: ReadonlySet<string> = new Set(PLANS.free.includedImports > 0 ? ['import-transactions'] : []);

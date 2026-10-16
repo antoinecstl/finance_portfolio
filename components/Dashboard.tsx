@@ -17,7 +17,7 @@ import { DividendsTable } from './DividendsTable';
 import { AccountAllocationChart, PositionPerformanceChart, PortfolioPerformanceChart, PortfolioValueChart } from './Charts';
 import { PortfolioHistoryChart } from './PortfolioHistoryChart';
 import { ProBlur } from './ProBlur';
-import { UsageMeter } from './UsageMeter';
+import { UsageMeter, isNearLimit } from './UsageMeter';
 import { ErrorBoundary } from './ErrorBoundary';
 import { PanelSkeleton } from './Skeleton';
 import { BenchmarkComparisonChart } from './BenchmarkComparisonChart';
@@ -46,6 +46,17 @@ import { PageContainer, PageHeader } from './app-shell/PageLayout';
 // Passe à true une fois pour toutes : après le premier affichage, les
 // rafraîchissements (cours, ajout d'opération) gardent les chiffres à l'écran
 // au lieu de remontrer la silhouette de chargement.
+const USAGE_GRID: Record<number, string> = { 1: '', 2: 'sm:grid-cols-2', 3: 'sm:grid-cols-3' };
+
+/** Pastille des boutons d'import tant que l'import offert du plan Free reste disponible. */
+function OfferedBadge() {
+  return (
+    <span className="rounded-full bg-[color:var(--accent-soft)] px-1.5 py-0.5 text-[10px] font-medium leading-none text-[color:var(--accent)]">
+      offert
+    </span>
+  );
+}
+
 function useReadyOnce(ready: boolean): boolean {
   const [latched, setLatched] = useState(ready);
   if (ready && !latched) setLatched(true);
@@ -69,8 +80,8 @@ export function Dashboard() {
   // Filtre de compte sur l'onglet Positions. null = "Tous les comptes" (vue groupée).
   const [positionsAccountFilter, setPositionsAccountFilter] = useState<string | null>(null);
 
-  const { isFree, hasFeature, limits } = useSubscription();
-  const canImportTransactions = hasFeature('import_transactions');
+  const { isFree, limits, importAccess } = useSubscription();
+  const canImportTransactions = importAccess.allowed;
 
   const { accounts, loading: loadingAccounts, refetch: refetchAccounts } = useAccounts();
   const { transactions, loading: loadingTransactions, refetch: refetchTransactions } = useTransactions();
@@ -244,6 +255,11 @@ export function Dashboard() {
 
   const isLoading = loadingAccounts || loadingTransactions;
   const isEmpty = !isLoading && accounts.length === 0;
+  const nearLimits = [
+    { label: 'Comptes', current: accounts.length, max: limits.maxAccounts },
+    { label: 'Transactions', current: transactions.length, max: limits.maxTransactions },
+    { label: 'Positions', current: enrichedPositions.length, max: limits.maxPositions },
+  ].filter((usage) => isNearLimit(usage.current, usage.max));
   // Les montants ne s'affichent qu'une fois définitifs (comptes, opérations,
   // cours et taux du jour chargés) : sinon ils passent par 0 €, puis le PRU,
   // puis des devises non converties avant la vraie valeur.
@@ -281,12 +297,13 @@ export function Dashboard() {
     >
       <Upload className="h-4 w-4" />
       <span>Importer</span>
+      {importAccess.offered && <OfferedBadge />}
     </Link>
   ) : (
     <Link
-      href="/settings/billing"
+      href="/dashboard/import"
       className="btn-outline inline-flex items-center justify-center gap-2 rounded-lg px-3.5 py-2 text-sm"
-      title="Import réservé à l’offre Pro"
+      title="Import offert déjà utilisé : imports illimités avec l’offre Pro"
     >
       <Lock className="h-4 w-4" />
       <span>Importer</span>
@@ -329,7 +346,9 @@ export function Dashboard() {
           {importButton}
           <button type="button" onClick={() => openAddTransaction()} className={primaryButtonClass}>
             <Plus className="h-4 w-4" />
-            <span>Ajouter une transaction</span>
+            {/* Libellé court sur téléphone : Importer, Ajouter et Rafraîchir tiennent sur une ligne. */}
+            <span className="sm:hidden">Ajouter</span>
+            <span className="hidden sm:inline">Ajouter une transaction</span>
           </button>
         </>
       ),
@@ -359,17 +378,19 @@ export function Dashboard() {
         {activeTab === 'dashboard' && isEmpty && (
           <GettingStarted
             canImport={canImportTransactions}
+            importOffered={importAccess.offered}
             onAddAccount={() => setShowAddAccount(true)}
           />
         )}
 
         {activeTab === 'dashboard' && !isEmpty && (
           <div className="space-y-4 sm:space-y-6 lg:space-y-8">
-            {isFree && (
-              <div className="grid gap-2 sm:grid-cols-3">
-                <UsageMeter label="Comptes" current={accounts.length} max={limits.maxAccounts} />
-                <UsageMeter label="Transactions" current={transactions.length} max={limits.maxTransactions} />
-                <UsageMeter label="Positions" current={enrichedPositions.length} max={limits.maxPositions} />
+            {/* Limites de l'offre Free : seulement celles qui approchent (80 %). */}
+            {isFree && nearLimits.length > 0 && (
+              <div className={`grid gap-2 ${USAGE_GRID[nearLimits.length]}`}>
+                {nearLimits.map((usage) => (
+                  <UsageMeter key={usage.label} label={usage.label} current={usage.current} max={usage.max} />
+                ))}
               </div>
             )}
             {/* Stats */}
@@ -663,9 +684,11 @@ export function Dashboard() {
 
 function GettingStarted({
   canImport,
+  importOffered,
   onAddAccount,
 }: {
   canImport: boolean;
+  importOffered: boolean;
   onAddAccount: () => void;
 }) {
   const steps = [
@@ -723,12 +746,13 @@ function GettingStarted({
           >
             <Upload className="h-4 w-4" />
             <span>Importer un relevé</span>
+            {importOffered && <OfferedBadge />}
           </Link>
         ) : (
           <Link
-            href="/settings/billing"
+            href="/dashboard/import"
             className="inline-flex items-center justify-center gap-2 px-4 py-2 btn-outline rounded-lg text-sm sm:text-base"
-            title="Import réservé à l’offre Pro"
+            title="Import offert déjà utilisé : imports illimités avec l’offre Pro"
           >
             <Lock className="h-4 w-4" />
             <span>Importer un relevé (Pro)</span>
