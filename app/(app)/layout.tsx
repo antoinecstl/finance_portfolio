@@ -80,7 +80,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     >
       <ToastProvider>
         <LimitReachedProvider>
-          <AppShell email={user.email ?? ''} isAdmin={isAdminEmail(user.email)}>
+          <AppShell email={user.email ?? ''} fullName={profile?.full_name ?? null} isAdmin={isAdminEmail(user.email)}>
             {children}
           </AppShell>
         </LimitReachedProvider>

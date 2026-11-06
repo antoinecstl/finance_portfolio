@@ -3,7 +3,7 @@ import { createPositionShareData, DEFAULT_SHARE_CARD_SETTINGS, type ShareCardSet
 import type { PositionMetrics } from './position-metrics';
 
 const metric: PositionMetrics = {
-  key: 'a:AIR.PA:EUR', symbol: 'AIR.PA', displayLabel: 'AIR.PA', name: 'Airbus', accountId: 'a', accountName: 'Mon PEA', accountType: 'PEA',
+  key: 'a:AIR.PA:EUR', symbol: 'AIR.PA', displayLabel: 'AIR.PA', chartLabel: 'Airbus', name: 'Airbus', accountId: 'a', accountName: 'Mon PEA', accountType: 'PEA',
   currentValue: 1200, investedValue: 1000, gainValue: 200, gainPercent: 20, dayChange: -10, dayChangePercent: -0.8,
   nativeCurrentValue: 1200, nativeInvestedValue: 1000, nativeDayChange: -10, totalReturnValue: 225, totalReturnPercent: 22.5,
   weight: 40, quantity: 8, avgPrice: 125, currentPrice: 150, costCurrency: 'EUR', quoteCurrency: 'EUR', color: '#000', isCrypto: false,

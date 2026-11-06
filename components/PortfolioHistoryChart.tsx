@@ -17,6 +17,7 @@ import { buildAccountHistorySeries, type AccountHistorySeries } from '@/lib/acco
 import { buildNiceYAxisScale } from '@/lib/chart-axis';
 import { useEvenXTicks } from '@/lib/use-even-x-ticks';
 import { formatAxisCurrency, formatCurrency, formatPercent } from '@/lib/utils';
+import { ChartUnavailable } from './ChartUnavailable';
 
 const MS_PER_DAY = 86_400_000;
 
@@ -41,6 +42,9 @@ interface PortfolioHistoryChartProps {
   history: PortfolioHistoryPoint[];
   accounts: Account[];
   loading?: boolean;
+  /** Échec du chargement des cours : à distinguer de l'absence de transactions. */
+  error?: string | null;
+  onRetry?: () => void;
   onPeriodChange?: (days: number) => void;
   selectedPeriod?: number;
 }
@@ -153,6 +157,8 @@ export function PortfolioHistoryChart({
   history,
   accounts,
   loading = false,
+  error = null,
+  onRetry,
   onPeriodChange,
   selectedPeriod = 30,
 }: PortfolioHistoryChartProps) {
@@ -187,12 +193,16 @@ export function PortfolioHistoryChart({
     return (
       <ChartCard>
         <ChartTitle />
-        <div className="text-center py-8 sm:py-12">
-          <TrendingUp className="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-zinc-400" />
-          <p className="mt-3 sm:mt-4 text-sm text-zinc-500 dark:text-zinc-400">
-            Ajoutez des transactions pour voir l&apos;évolution
-          </p>
-        </div>
+        {error ? (
+          <ChartUnavailable onRetry={onRetry} />
+        ) : (
+          <div className="text-center py-8 sm:py-12">
+            <TrendingUp className="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-zinc-400" />
+            <p className="mt-3 sm:mt-4 text-sm text-zinc-500 dark:text-zinc-400">
+              Ajoutez des transactions pour voir l&apos;évolution
+            </p>
+          </div>
+        )}
       </ChartCard>
     );
   }

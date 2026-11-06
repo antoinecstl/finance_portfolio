@@ -22,29 +22,15 @@ import {
 } from '@/lib/account-stats';
 import { accountSupportsPositions } from '@/lib/utils';
 import { convertToBase, uniqueForeignFiats, type FxRateMap } from '@/lib/fx';
+import { fetchFxRates } from '@/lib/fx-client';
+import { fetchJsonShared, useRefreshEpoch } from '@/lib/shared-fetch';
+import { rememberInstrumentNames, useInstrumentNames } from '@/lib/instrument-names-client';
 
-async function fetchFxRates(
-  fiats: string[],
-  startDate: string,
-  endDate: string
-): Promise<FxRateMap> {
-  if (fiats.length === 0) return {};
-  try {
-    const params = new URLSearchParams({
-      currencies: fiats.join(','),
-      startDate,
-      endDate,
-    });
-    const res = await fetch(`/api/fx/history?${params.toString()}`);
-    if (!res.ok) {
-      console.warn('[fx] history fetch failed:', res.status);
-      return {};
-    }
-    return (await res.json()) as FxRateMap;
-  } catch (e) {
-    console.warn('[fx] history fetch error:', e);
-    return {};
-  }
+// Historique des cours, partagé entre les composants qui demandent la même période.
+function fetchHistoricalQuotes(symbols: string[], startDate: string, endDate: string) {
+  return fetchJsonShared<Record<string, HistoricalQuote[]>>(
+    `/api/stocks/history?symbols=${symbols.map(encodeURIComponent).join(',')}&startDate=${startDate}&endDate=${endDate}&interval=1d`
+  );
 }
 
 function mergeFiats(...groups: string[][]): string[] {
@@ -239,6 +225,7 @@ export function useStockQuotes(symbols: string[], options: StockQuotesOptions = 
       data.quotes.forEach((quote: StockQuote) => {
         quotesMap[quote.symbol] = quote;
       });
+      rememberInstrumentNames(data.quotes);
 
       setQuotes(quotesMap);
     } catch (err) {
@@ -337,6 +324,7 @@ export function useStockSearch(options: { includeIndices?: boolean } = {}) {
 
       const data = await response.json();
       setResults(data.results || []);
+      rememberInstrumentNames(data.results || []);
     } catch (err) {
       console.error('Search error:', err);
       setResults([]);
@@ -355,6 +343,7 @@ export function usePortfolioHistory(
   periodDays: number = 30,
   options: { enabled?: boolean; quotes?: Record<string, StockQuote> } = {}
 ) {
+  const epoch = useRefreshEpoch();
   const { enabled = true } = options;
   const [history, setHistory] = useState<PortfolioHistoryPoint[]>([]);
   const [fxRates, setFxRates] = useState<FxRateMap>({});
@@ -437,15 +426,7 @@ export function usePortfolioHistory(
 
       // Cours actions + taux FX en parallèle (deux requêtes de marché distinctes).
       if (symbols.length > 0) {
-        const response = await fetch(
-          `/api/stocks/history?symbols=${symbols.join(',')}&startDate=${startDate}&endDate=${endDate}&interval=1d`
-        );
-
-        if (!response.ok) {
-          throw new Error('Erreur lors de la récupération des cours historiques');
-        }
-
-        historicalQuotes = await response.json();
+        historicalQuotes = await fetchHistoricalQuotes(symbols, startDate, endDate);
       }
 
       const fetchedFxRates = await fetchFxRates(
@@ -483,7 +464,8 @@ export function usePortfolioHistory(
       setLoading(false);
       setSettledKey(key);
     }
-  }, [enabled, transactions, accounts, symbols, startDate, endDate, periodDays, foreignFiatsKey, inputKey]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- epoch : rechargement demandé par l'utilisateur
+  }, [enabled, transactions, accounts, symbols, startDate, endDate, periodDays, foreignFiatsKey, inputKey, epoch]);
 
   useEffect(() => {
     fetchHistory();
@@ -503,6 +485,7 @@ export function useFullPortfolioHistory(
   accounts: Account[],
   options: { enabled?: boolean; quotes?: Record<string, StockQuote> } = {}
 ) {
+  const epoch = useRefreshEpoch();
   const { enabled = true } = options;
   const [history, setHistory] = useState<PortfolioHistoryPoint[]>([]);
   const [fxRates, setFxRates] = useState<FxRateMap>({});
@@ -568,15 +551,7 @@ export function useFullPortfolioHistory(
       let historicalQuotes: Record<string, HistoricalQuote[]> = {};
 
       if (symbols.length > 0) {
-        const response = await fetch(
-          `/api/stocks/history?symbols=${symbols.join(',')}&startDate=${startDate}&endDate=${endDate}&interval=1d`
-        );
-
-        if (!response.ok) {
-          throw new Error('Erreur lors de la récupération des cours historiques');
-        }
-
-        historicalQuotes = await response.json();
+        historicalQuotes = await fetchHistoricalQuotes(symbols, startDate, endDate);
       }
 
       const knownFxRates = await knownFxPromise;
@@ -605,7 +580,8 @@ export function useFullPortfolioHistory(
     } finally {
       setLoading(false);
     }
-  }, [enabled, transactions, accounts, symbols, startDate, endDate, foreignFiatsKey, fxKey]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- epoch : rechargement demandé par l'utilisateur
+  }, [enabled, transactions, accounts, symbols, startDate, endDate, foreignFiatsKey, fxKey, epoch]);
 
   useEffect(() => {
     fetchHistory();
@@ -737,6 +713,8 @@ export interface EnrichedPosition extends StockPosition {
 export function usePositionsWithCalculatedValues(
   transactions: Transaction[]
 ): EnrichedPosition[] {
+  const symbols = useMemo(() => getUniqueSymbolsFromTransactions(transactions), [transactions]);
+  const names = useInstrumentNames(symbols);
   return useMemo(() => {
     const today = formatLocalDate(new Date());
 
@@ -751,7 +729,7 @@ export function usePositionsWithCalculatedValues(
         id: `derived-${calculated.accountId}-${calculated.symbol}-${calculated.currency}`,
         account_id: calculated.accountId,
         symbol: calculated.symbol,
-        name: calculated.symbol,
+        name: names[calculated.symbol.toUpperCase()] ?? calculated.symbol,
         quantity: calculated.quantity,
         average_price: calculated.averagePrice,
         currency: calculated.currency,
@@ -764,7 +742,7 @@ export function usePositionsWithCalculatedValues(
     });
 
     return derivedFromTransactions;
-  }, [transactions]);
+  }, [transactions, names]);
 }
 
 /**
@@ -783,6 +761,7 @@ export function useAccountsYearToDateStats(
   loading: boolean;
   ready: boolean;
 } {
+  const epoch = useRefreshEpoch();
   const { enabled = true } = options;
   const [startValues, setStartValues] = useState<Record<string, number> | null>(null);
   const [fxRates, setFxRates] = useState<FxRateMap>({});
@@ -820,13 +799,7 @@ export function useAccountsYearToDateStats(
 
       let historicalQuotes: Record<string, HistoricalQuote[]> = {};
       if (symbols.length > 0) {
-        const response = await fetch(
-          `/api/stocks/history?symbols=${symbols.join(',')}&startDate=${quotesStartDate}&endDate=${referenceDate}&interval=1d`
-        );
-        if (!response.ok) {
-          throw new Error('Erreur lors de la récupération des cours historiques');
-        }
-        historicalQuotes = await response.json();
+        historicalQuotes = await fetchHistoricalQuotes(symbols, quotesStartDate, referenceDate);
       }
 
       // Taux FX du 31/12 jusqu'à aujourd'hui : valorisation de départ et flux de l'année.
@@ -848,7 +821,7 @@ export function useAccountsYearToDateStats(
       setSettledKey(key);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled, transactions, accountsKey, referenceDate, today, year, inputKey]);
+  }, [enabled, transactions, accountsKey, referenceDate, today, year, inputKey, epoch]);
 
   useEffect(() => {
     fetchStartValues();
@@ -900,6 +873,7 @@ export function useFxRates(
   currencies: string[],
   startDate: string | null
 ): { rates: FxRateMap; ready: boolean } {
+  const epoch = useRefreshEpoch();
   const [state, setState] = useState<{ key: string; rates: FxRateMap } | null>(null);
   const fiats = useMemo(() => mergeFiats(uniqueForeignFiats(currencies.map((currency) => ({ currency })))), [currencies]);
   const fiatsKey = fiats.join(',');
@@ -916,7 +890,7 @@ export function useFxRates(
     return () => {
       cancelled = true;
     };
-  }, [enabled, fiatsKey, startDate, key]);
+  }, [enabled, fiatsKey, startDate, key, epoch]);
 
   // Tout en EUR : aucune conversion nécessaire.
   if (!enabled) return { rates: EMPTY_FX_RATES, ready: true };
@@ -936,6 +910,7 @@ export function useCurrentFxRates(
   accounts: Account[],
   quotes: Record<string, StockQuote>
 ): { rates: FxRateMap; ready: boolean } {
+  const epoch = useRefreshEpoch();
   const fiatsKey = useMemo(
     () => mergeFiats(
       uniqueForeignFiats(transactions),
@@ -960,7 +935,7 @@ export function useCurrentFxRates(
     return () => {
       cancelled = true;
     };
-  }, [fiatsKey]);
+  }, [fiatsKey, epoch]);
 
   if (fiatsKey === '') return { rates: EMPTY_FX_RATES, ready: true };
   return { rates: state?.rates ?? EMPTY_FX_RATES, ready: state?.key === fiatsKey };

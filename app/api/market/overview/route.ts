@@ -16,6 +16,7 @@ import {
   performanceByPeriod,
   trailingDividendYield,
 } from '@/lib/market/analytics';
+import { prettifyInstrumentName } from '@/lib/instrument-names';
 
 export async function GET(request: NextRequest) {
   const supabase = await createClient();
@@ -48,7 +49,8 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json({
     symbol: meta.symbol,
-    name: meta.name || quote?.name || meta.symbol,
+    // Noms fournis en majuscules (« BNP PARIBAS EASY… ») remis en casse normale.
+    name: prettifyInstrumentName(meta.name || quote?.name || meta.symbol),
     exchange: meta.exchange,
     currency: meta.currency || quote?.currency || '',
     instrumentType: meta.instrumentType,

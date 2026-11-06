@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { createClient } from '@/lib/supabase/server';
 import { getUserSubscription } from '@/lib/subscription';
@@ -11,6 +12,8 @@ import {
 } from '@/lib/plans';
 import { BillingActions } from './BillingActions';
 import { Check, Sparkles } from 'lucide-react';
+
+export const metadata: Metadata = { title: 'Abonnement' };
 
 export const dynamic = 'force-dynamic';
 

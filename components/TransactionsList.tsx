@@ -5,10 +5,12 @@ import { Transaction, Account } from '@/lib/types';
 import {
   formatCurrency,
   formatDate,
+  formatNumber,
   formatTime,
   getAccountTypeLabel,
   getTransactionTypeLabel,
 } from '@/lib/utils';
+import { useInstrumentNames } from '@/lib/instrument-names-client';
 import {
   ArrowDownLeft,
   ArrowUpRight,
@@ -26,6 +28,7 @@ import {
   Wallet,
   ArrowLeftRight,
   ArrowRight,
+  MoreHorizontal,
 } from 'lucide-react';
 import { useToast } from './Toast';
 import { EditTransactionModal } from './EditTransactionModal';
@@ -37,11 +40,13 @@ type TxStyle = {
   sign: '+' | '-';
 };
 
+// Le rouge est réservé aux frais : un achat, une vente ou un retrait déplace
+// de l'argent, ce n'est pas une perte.
 const TX_STYLE: Record<string, TxStyle> = {
   DEPOSIT:    { Icon: ArrowDownLeft,  tone: 'emerald', sign: '+' },
-  WITHDRAWAL: { Icon: ArrowUpRight,   tone: 'red',     sign: '-' },
-  BUY:        { Icon: ShoppingCart,   tone: 'blue',    sign: '-' },
-  SELL:       { Icon: Banknote,       tone: 'violet',  sign: '+' },
+  WITHDRAWAL: { Icon: ArrowUpRight,   tone: 'neutral', sign: '-' },
+  BUY:        { Icon: ShoppingCart,   tone: 'neutral', sign: '-' },
+  SELL:       { Icon: Banknote,       tone: 'neutral', sign: '+' },
   DIVIDEND:   { Icon: Coins,          tone: 'emerald', sign: '+' },
   INTEREST:   { Icon: Percent,        tone: 'emerald', sign: '+' },
   FEE:        { Icon: Receipt,        tone: 'red',     sign: '-' },
@@ -67,8 +72,12 @@ const TONE_CLASSES: Record<string, { chip: string; amount: string }> = {
     amount: 'text-violet-600',
   },
   amber: {
-    chip: 'bg-amber-100 dark:bg-amber-900/30 text-amber-600',
-    amount: 'text-amber-600',
+    chip: 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300',
+    amount: 'text-amber-800 dark:text-amber-300',
+  },
+  neutral: {
+    chip: 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200',
+    amount: 'text-zinc-900 dark:text-zinc-100',
   },
 };
 
@@ -90,6 +99,8 @@ const transactionTypes = [
 interface TransactionRowProps {
   transaction: Transaction;
   account?: Account;
+  /** Nom du titre (« L'Oréal ») quand il est connu. */
+  instrumentName?: string;
   feesAmount?: number;
   isSelected: boolean;
   canMutate: boolean;
@@ -102,6 +113,7 @@ interface TransactionRowProps {
 function TransactionRow({
   transaction,
   account,
+  instrumentName,
   feesAmount = 0,
   isSelected,
   canMutate,
@@ -117,6 +129,8 @@ function TransactionRow({
     <div
       role={canMutate ? 'button' : undefined}
       tabIndex={canMutate ? 0 : undefined}
+      aria-expanded={canMutate ? isSelected : undefined}
+      aria-label={canMutate ? `${getTransactionTypeLabel(transaction.type)} du ${formatDate(transaction.date)} : afficher les actions` : undefined}
       onClick={canMutate ? () => onToggleSelect(transaction.id) : undefined}
       onKeyDown={
         canMutate
@@ -141,8 +155,11 @@ function TransactionRow({
             {getTransactionTypeLabel(transaction.type)}
           </span>
           {transaction.stock_symbol && (
-            <span className="text-[10px] sm:text-xs font-medium text-zinc-700 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-800 px-1.5 sm:px-2 py-0.5 rounded-full">
-              {transaction.stock_symbol}
+            <span
+              className="max-w-[11rem] truncate text-[10px] sm:text-xs font-medium text-zinc-700 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-800 px-1.5 sm:px-2 py-0.5 rounded-full"
+              title={transaction.stock_symbol}
+            >
+              {instrumentName ?? transaction.stock_symbol}
             </span>
           )}
           {account && (
@@ -152,9 +169,12 @@ function TransactionRow({
             >
               <Wallet className="h-2.5 w-2.5 flex-shrink-0" />
               <span className="truncate">{account.name}</span>
-              <span className="hidden sm:inline text-zinc-400 dark:text-zinc-500 flex-shrink-0">
-                {getAccountTypeLabel(account.type)}
-              </span>
+              {/* Type rappelé seulement s'il n'est pas déjà dans le nom (« Livret A Livret A »). */}
+              {!account.name.toLowerCase().includes(getAccountTypeLabel(account.type).toLowerCase()) && (
+                <span className="hidden sm:inline text-zinc-400 dark:text-zinc-500 flex-shrink-0">
+                  {getAccountTypeLabel(account.type)}
+                </span>
+              )}
             </span>
           )}
           {feesAmount > 0 && (
@@ -173,8 +193,8 @@ function TransactionRow({
           </p>
         )}
         {transaction.type === 'CONVERSION' && transaction.target_amount && transaction.target_currency && (
-          <p className="text-[10px] sm:text-xs text-amber-600 dark:text-amber-400">
-            Taux : 1 {transaction.currency} = {(Number(transaction.target_amount) / transaction.amount).toFixed(4)} {transaction.target_currency}
+          <p className="text-[10px] sm:text-xs text-amber-800 dark:text-amber-300">
+            Taux : 1 {transaction.currency} = {formatNumber(Number(transaction.target_amount) / transaction.amount, 4)} {transaction.target_currency}
           </p>
         )}
       </div>
@@ -202,6 +222,10 @@ function TransactionRow({
           )}
         </p>
       </div>
+      {/* Indice : un appui sur la ligne affiche Modifier et Supprimer. */}
+      {canMutate && !isSelected && (
+        <MoreHorizontal className="h-4 w-4 flex-shrink-0 text-zinc-400" aria-hidden="true" />
+      )}
       {canMutate && isSelected && (
         <div className="flex-shrink-0 flex items-center gap-1.5">
           {canEdit && (
@@ -427,6 +451,7 @@ export function TransactionsList({
     });
     return Array.from(symbols).sort();
   }, [transactions]);
+  const instrumentNames = useInstrumentNames(uniqueSymbols);
 
   // Filtrer les transactions — on masque les lignes FEE rattachées à une autre
   // transaction (affichées à la place comme chip "Frais X €" sur la principale).
@@ -534,7 +559,7 @@ export function TransactionsList({
               {/* Filtre par action */}
               {uniqueSymbols.length > 0 && (
                 <div>
-                  <label className="block text-[10px] sm:text-xs font-medium text-zinc-500 mb-1">Action</label>
+                  <label className="block text-[10px] sm:text-xs font-medium text-zinc-500 mb-1">Titre</label>
                   <select
                     value={filterSymbol}
                     onChange={(e) => setFilterSymbol(e.target.value)}
@@ -542,7 +567,7 @@ export function TransactionsList({
                   >
                     <option value="">Toutes</option>
                     {uniqueSymbols.map(s => (
-                      <option key={s} value={s}>{s}</option>
+                      <option key={s} value={s}>{instrumentNames[s] ? `${instrumentNames[s]} (${s})` : s}</option>
                     ))}
                   </select>
                 </div>
@@ -637,6 +662,7 @@ export function TransactionsList({
                 key={transaction.id}
                 transaction={transaction}
                 account={accountsById.get(transaction.account_id)}
+                instrumentName={transaction.stock_symbol ? instrumentNames[transaction.stock_symbol.toUpperCase()] : undefined}
                 feesAmount={feesByParentId.get(transaction.id) ?? 0}
                 isSelected={selectedId === transaction.id}
                 canMutate={Boolean(onDeleted) || canEdit}

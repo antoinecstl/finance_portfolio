@@ -218,9 +218,10 @@ function ProfileStep({
       </p>
 
       <ol className="mb-6 space-y-2 text-sm text-[color:var(--ink-soft)]">
-        <li><span className="font-medium text-[color:var(--ink)]">1.</span> Créer votre premier compte : un PEA, un livret, une assurance-vie…</li>
-        <li><span className="font-medium text-[color:var(--ink)]">2.</span> Ajouter une première opération.</li>
-        <li><span className="font-medium text-[color:var(--ink)]">3.</span> Importer vos relevés, si vous voulez aller plus vite.</li>
+        <li><span className="font-medium text-[color:var(--ink)]">1.</span> Votre profil, sur cette page.</li>
+        <li><span className="font-medium text-[color:var(--ink)]">2.</span> Votre premier compte : un PEA, un livret, une assurance-vie…</li>
+        <li><span className="font-medium text-[color:var(--ink)]">3.</span> Une première opération.</li>
+        <li><span className="font-medium text-[color:var(--ink)]">4.</span> L’import de vos relevés, si vous voulez aller plus vite.</li>
       </ol>
 
       <div className="space-y-3">

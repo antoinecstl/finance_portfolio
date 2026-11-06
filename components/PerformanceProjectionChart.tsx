@@ -10,11 +10,15 @@ import { balanceProjectionTimeline, buildPerformanceProjection } from '@/lib/per
 import { buildNiceYAxisScale } from '@/lib/chart-axis';
 import { useEvenXTicks } from '@/lib/use-even-x-ticks';
 import { formatAxisCurrency, formatCurrency, formatPercent } from '@/lib/utils';
+import { ChartUnavailable } from './ChartUnavailable';
 
 interface PerformanceProjectionChartProps {
   history: PortfolioHistoryPoint[];
   transactions: Transaction[];
   loading?: boolean;
+  /** Échec du chargement des cours : à distinguer d'un historique trop court. */
+  error?: string | null;
+  onRetry?: () => void;
   fxRates?: FxRateMap;
 }
 
@@ -25,6 +29,8 @@ export function PerformanceProjectionChart({
   history,
   transactions,
   loading = false,
+  error = null,
+  onRetry,
   fxRates = {},
 }: PerformanceProjectionChartProps) {
   const [horizon, setHorizon] = useState<(typeof HORIZONS)[number]>(3);
@@ -64,6 +70,9 @@ export function PerformanceProjectionChart({
     return <ChartShell><div className="flex items-center justify-center py-20 text-sm text-zinc-500"><Loader2 className="mr-2 h-6 w-6 animate-spin text-violet-600" />Calcul de la projection…</div></ChartShell>;
   }
 
+  if (!projection && error) {
+    return <ChartShell><ChartUnavailable onRetry={onRetry} className="py-12" /></ChartShell>;
+  }
   if (!projection) {
     return <ChartShell><div className="py-16 text-center"><TrendingUp className="mx-auto h-10 w-10 text-zinc-400" /><p className="mt-3 text-sm text-zinc-500">Deux points d’historique sont nécessaires pour établir une projection.</p></div></ChartShell>;
   }
@@ -76,7 +85,7 @@ export function PerformanceProjectionChart({
             <TrendingUp className="h-5 w-5 text-violet-600" />
             <h3 className="font-semibold text-zinc-900 dark:text-zinc-100">Projection du patrimoine</h3>
           </div>
-          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Estimation fondée sur la performance historique du compte, hors futurs apports.</p>
+          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Estimation fondée sur la performance passée du portefeuille affiché, hors futurs apports.</p>
         </div>
         <div className="space-y-2">
           <Selector label="Historique analysé" value={effectiveLookback} options={availableLookbacks} onChange={setLookback} format={value => value === 'MAX' ? 'Max' : `${value}A`} />
@@ -121,14 +130,20 @@ export function PerformanceProjectionChart({
         <span className="flex items-center gap-2 text-zinc-500"><span className="w-5 border-t-2 border-dotted border-rose-500" />Pessimiste</span>
         <span className="flex items-center gap-2 text-zinc-500"><span className="w-5 border-t-2 border-dashed border-violet-500" />Moyen</span>
         <span className="flex items-center gap-2 text-zinc-500"><span className="w-5 border-t-2 border-dotted border-emerald-500" />Optimiste</span>
-        <span className="basis-full text-zinc-400">{projection.isAnnualized ? `Historique de ${projection.observedDays} jours annualisé` : `Calcul fondé sur ${Math.floor(projection.observedDays / 365)} an(s)`} · fourchette fondée sur la volatilité observée · sans futurs apports · estimation non garantie</span>
+        <span className="basis-full text-zinc-400">{projection.isAnnualized ? `Historique de ${projection.observedDays} jours annualisé` : `Calcul fondé sur ${Math.floor(projection.observedDays / 365)} an${Math.floor(projection.observedDays / 365) > 1 ? 's' : ''} d’historique`} · fourchette fondée sur la volatilité observée · sans futurs apports · estimation non garantie</span>
       </div>
     </ChartShell>
   );
 }
 
+// Carte des états d'attente, d'erreur et d'historique trop court : le titre reste visible.
 function ChartShell({ children }: { children: ReactNode }) {
-  return <div className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900 sm:p-6">{children}</div>;
+  return (
+    <div className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900 sm:p-6">
+      <h3 className="font-semibold text-zinc-900 dark:text-zinc-100">Projection du patrimoine</h3>
+      {children}
+    </div>
+  );
 }
 
 function Metric({ label, value, accent = false, tone }: { label: string; value: string; accent?: boolean; tone?: 'pessimistic' | 'optimistic' }) {

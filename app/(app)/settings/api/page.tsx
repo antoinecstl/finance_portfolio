@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { Lock } from 'lucide-react';
@@ -6,6 +7,8 @@ import { getUserSubscription } from '@/lib/subscription';
 import { appOrigin } from '@/lib/public-api/oauth-metadata';
 import { ApiTokensManager } from './ApiTokensManager';
 import { ConnectGuides } from './ConnectGuides';
+
+export const metadata: Metadata = { title: 'Accès API' };
 
 export default async function ApiAccessPage() {
   const supabase = await createClient();

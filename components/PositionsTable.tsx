@@ -3,7 +3,8 @@
 import React, { useState, useMemo } from 'react';
 import { StockPosition, StockQuote, Transaction } from '@/lib/types';
 import { EnrichedAccount } from '@/lib/hooks';
-import { accountSupportsPositions, formatCurrency, formatCurrencyBreakdown, formatNumber, formatPercent } from '@/lib/utils';
+import { accountSupportsPositions, formatCurrency, formatCurrencyBreakdown, formatNumber, formatPercent, getAccountTypeLabel } from '@/lib/utils';
+import { useInstrumentNames } from '@/lib/instrument-names-client';
 import { convertToBase, type FxRateMap } from '@/lib/fx';
 import { compareTransactionSequence } from '@/lib/transaction-ordering';
 import { Wallet, History, ChevronDown, ChevronUp, BarChart2 } from 'lucide-react';
@@ -49,6 +50,12 @@ export function PositionsTable({
   fxRates = {},
 }: PositionsTableProps) {
   const [showClosedPositions, setShowClosedPositions] = useState(false);
+  const closedSymbols = useMemo(
+    () => Array.from(new Set(transactions.filter((t) => t.type === 'SELL' && t.stock_symbol).map((t) => (t.stock_symbol as string).toUpperCase()))),
+    [transactions]
+  );
+  const closedNames = useInstrumentNames(closedSymbols);
+  const closedName = (symbol: string) => closedNames[symbol.toUpperCase()] ?? symbol;
 
   // Comptes du scope pouvant détenir des positions.
   const stockAccounts = useMemo(() => {
@@ -249,7 +256,7 @@ export function PositionsTable({
               return (
                 <div key={acc.id} className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-3 sm:p-4">
                   <p className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 uppercase tracking-wide mb-2">
-                    {acc.name} <span className="text-[10px] opacity-70">({acc.type})</span>
+                    {acc.name} <span className="text-[10px] opacity-70 normal-case">({getAccountTypeLabel(acc.type)})</span>
                   </p>
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-0">
                     <div className="flex items-center gap-2 sm:gap-3">
@@ -353,7 +360,7 @@ export function PositionsTable({
                       {group.accountId && (
                         <div className="px-3 py-2 bg-zinc-50 dark:bg-zinc-800/50 border-b border-zinc-200 dark:border-zinc-800">
                           <p className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 uppercase tracking-wide">
-                            {group.accountName} <span className="text-[10px] opacity-70">({group.accountType})</span>
+                            {group.accountName} <span className="text-[10px] opacity-70 normal-case">({getAccountTypeLabel(group.accountType)})</span>
                           </p>
                         </div>
                       )}
@@ -361,11 +368,11 @@ export function PositionsTable({
                         <div key={pos.key} className="border-b border-zinc-100 dark:border-zinc-800 p-3 space-y-2">
                           <div className="flex items-start justify-between">
                             <div>
-                              <p className="font-semibold text-zinc-900 dark:text-zinc-100">{pos.symbol}</p>
-                              <p className="text-xs text-zinc-500">{formatNumber(pos.totalSold, 0)} vendus</p>
+                              <p className="font-semibold text-zinc-900 dark:text-zinc-100">{closedName(pos.symbol)}</p>
+                              <p className="text-xs text-zinc-500">{closedName(pos.symbol) !== pos.symbol ? `${pos.symbol} · ` : ''}{formatNumber(pos.totalSold, 0)} vendus</p>
                               {showAccountCol && (
                                 <p className="text-[10px] text-zinc-500 mt-0.5">
-                                  {pos.accountName} <span className="opacity-70">({pos.accountType})</span>
+                                  {pos.accountName} <span className="opacity-70">({getAccountTypeLabel(pos.accountType)})</span>
                                 </p>
                               )}
                             </div>
@@ -425,7 +432,7 @@ export function PositionsTable({
                             <tr className="bg-zinc-100 dark:bg-zinc-800/70">
                               <td colSpan={colSpan} className="py-2 px-3 sm:px-4">
                                 <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 uppercase tracking-wide">
-                                  {group.accountName} <span className="text-[10px] opacity-70">({group.accountType})</span>
+                                  {group.accountName} <span className="text-[10px] opacity-70 normal-case">({getAccountTypeLabel(group.accountType)})</span>
                                 </span>
                               </td>
                             </tr>
@@ -433,13 +440,14 @@ export function PositionsTable({
                           {group.items.map((pos) => (
                             <tr key={pos.key} className="border-b border-zinc-100 dark:border-zinc-800">
                               <td className="py-2 sm:py-3 px-3 sm:px-4">
-                                <p className="font-medium text-sm text-zinc-900 dark:text-zinc-100">{pos.symbol}</p>
+                                <p className="font-medium text-sm text-zinc-900 dark:text-zinc-100">{closedName(pos.symbol)}</p>
+                                {closedName(pos.symbol) !== pos.symbol && <p className="text-xs text-zinc-500">{pos.symbol}</p>}
                               </td>
                               {showAccountCol && (
                                 <td className="py-2 sm:py-3 px-3 sm:px-4">
                                   <div className="text-xs">
                                     <p className="font-medium text-zinc-700 dark:text-zinc-300">{pos.accountName}</p>
-                                    <p className="text-[10px] text-zinc-500">{pos.accountType}</p>
+                                    <p className="text-[10px] text-zinc-500">{getAccountTypeLabel(pos.accountType)}</p>
                                   </div>
                                 </td>
                               )}

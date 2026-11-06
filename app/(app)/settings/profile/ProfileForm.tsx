@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase/client';
 import { Loader2, Check, User as UserIcon } from 'lucide-react';
+import { initialsOf } from '@/lib/initials';
 
 type Profile = {
   full_name: string | null;
@@ -11,9 +12,8 @@ type Profile = {
   marketing_opt_in: boolean;
 };
 
-export function ProfileForm({ initial }: { initial: Profile }) {
+export function ProfileForm({ initial, email }: { initial: Profile; email?: string | null }) {
   const [fullName, setFullName] = useState(initial.full_name ?? '');
-  const [avatarUrl, setAvatarUrl] = useState(initial.avatar_url ?? '');
   const [marketing, setMarketing] = useState(initial.marketing_opt_in);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
@@ -34,7 +34,6 @@ export function ProfileForm({ initial }: { initial: Profile }) {
       .from('profiles')
       .update({
         full_name: fullName || null,
-        avatar_url: avatarUrl || null,
         marketing_opt_in: marketing,
       })
       .eq('id', user.id);
@@ -46,37 +45,19 @@ export function ProfileForm({ initial }: { initial: Profile }) {
     );
   };
 
-  const initials =
-    (fullName || 'U')
-      .split(' ')
-      .map((w) => w[0])
-      .join('')
-      .slice(0, 2)
-      .toUpperCase() || 'U';
+  const initials = initialsOf(fullName, email);
 
   return (
     <form onSubmit={handleSave} className="space-y-6">
       <div className="flex items-center gap-4">
-        {avatarUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={avatarUrl}
-            alt=""
-            className="w-14 h-14 rounded-full object-cover border border-[color:var(--rule)]"
-            onError={(e) => {
-              (e.currentTarget as HTMLImageElement).style.display = 'none';
-            }}
-          />
-        ) : (
-          <div className="w-14 h-14 rounded-full bg-[color:var(--ink)] text-[color:var(--paper)] flex items-center justify-center font-semibold text-lg">
-            {initials}
-          </div>
-        )}
+        <div className="w-14 h-14 rounded-full bg-[color:var(--ink)] text-[color:var(--paper)] flex items-center justify-center font-semibold text-lg" aria-hidden="true">
+          {initials}
+        </div>
         <div>
           <p className="text-sm font-medium text-[color:var(--ink)]">
             {fullName || 'Sans nom'}
           </p>
-          <p className="text-xs text-[color:var(--ink-soft)]">Votre avatar apparaît dans le dashboard.</p>
+          <p className="text-xs text-[color:var(--ink-soft)]">Vos initiales apparaissent dans le menu de l’application.</p>
         </div>
       </div>
 
@@ -97,19 +78,6 @@ export function ProfileForm({ initial }: { initial: Profile }) {
           </div>
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-[color:var(--ink)] mb-1.5">
-            URL de l&apos;avatar{' '}
-            <span className="text-[color:var(--ink-soft)] font-normal">(optionnel)</span>
-          </label>
-          <input
-            type="url"
-            value={avatarUrl}
-            onChange={(e) => setAvatarUrl(e.target.value)}
-            placeholder="https://..."
-            className="w-full px-3 py-2.5 border border-[color:var(--rule)] rounded-lg bg-[color:var(--paper)] text-[color:var(--ink)] focus:ring-2 focus:ring-[color:var(--accent)] focus:border-transparent transition"
-          />
-        </div>
       </div>
 
       <div className="rounded-lg border border-[color:var(--rule)] bg-[color:var(--paper-2)] p-4">

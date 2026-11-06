@@ -1,6 +1,9 @@
+import type { Metadata } from 'next';
 import { createClient } from '@/lib/supabase/server';
 import { ProfileForm } from './ProfileForm';
 import { Mail } from 'lucide-react';
+
+export const metadata: Metadata = { title: 'Profil' };
 
 export default async function ProfilePage() {
   const supabase = await createClient();
@@ -34,6 +37,7 @@ export default async function ProfilePage() {
       </div>
 
       <ProfileForm
+        email={user!.email}
         initial={
           profile ?? { full_name: null, avatar_url: null, locale: 'fr', marketing_opt_in: false }
         }

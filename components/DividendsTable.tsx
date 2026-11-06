@@ -15,6 +15,8 @@ import {
   type DividendYearFilter,
 } from '@/lib/dividends';
 import { useFxRates } from '@/lib/hooks';
+import { useInstrumentNames } from '@/lib/instrument-names-client';
+import { instrumentName } from '@/lib/instrument-names';
 import { useSubscription } from '@/lib/subscription-client';
 import { ProBlur } from './ProBlur';
 import { PanelSkeleton } from './Skeleton';
@@ -80,6 +82,11 @@ export function DividendsTable({ transactions, quotes, accounts = [] }: Dividend
   const hasForeignCurrency = currencies.some((currency) => currency !== 'EUR');
 
   const events = useMemo(() => buildDividendEvents(transactions, fxRates), [transactions, fxRates]);
+  const dividendSymbols = useMemo(
+    () => Array.from(new Set(dividendTransactions.map((tx) => tx.stock_symbol).filter((symbol): symbol is string => Boolean(symbol)))),
+    [dividendTransactions]
+  );
+  const knownNames = useInstrumentNames(dividendSymbols);
   const years = useMemo(() => dividendYears(events), [events]);
   const selectedYear: DividendYearFilter = year !== 'all' && !years.includes(year) ? 'all' : year;
   const today = todayIso();
@@ -90,7 +97,11 @@ export function DividendsTable({ transactions, quotes, accounts = [] }: Dividend
   const series = useMemo(() => dividendSeries(events, selectedYear), [events, selectedYear]);
 
   const accountName = (id: string) => accounts.find((account) => account.id === id)?.name;
-  const positionName = (symbol: string | null) => (symbol ? quotes[symbol]?.name || symbol : 'Non attribué');
+  // Nom du titre (« L'Oréal ») : cotation du jour, sinon annuaire des noms, sinon code.
+  const positionName = (symbol: string | null) => {
+    if (!symbol) return 'Non attribué';
+    return instrumentName(symbol, quotes[symbol]?.name) ?? knownNames[symbol.toUpperCase()] ?? symbol;
+  };
 
   // Montants en devises : on attend les taux plutôt que d'afficher des sommes
   // non converties qui changeraient une seconde plus tard.
@@ -147,7 +158,7 @@ export function DividendsTable({ transactions, quotes, accounts = [] }: Dividend
           label={`Reçus ${periodLabel}`}
           icon={<Coins className="h-4 w-4" />}
           value={`${approx}${formatCurrency(kpis.periodTotalEur)}`}
-          detail={`${kpis.periodCount} versement${kpis.periodCount > 1 ? 's' : ''} · ${kpis.payingPositions} ligne${kpis.payingPositions > 1 ? 's' : ''}`}
+          detail={`${kpis.periodCount} versement${kpis.periodCount > 1 ? 's' : ''} · ${kpis.payingPositions} titre${kpis.payingPositions > 1 ? 's' : ''}`}
         />
         <Kpi
           label="12 derniers mois"
@@ -173,9 +184,9 @@ export function DividendsTable({ transactions, quotes, accounts = [] }: Dividend
           }
         />
         <Kpi
-          label={`Meilleure ligne ${periodLabel}`}
+          label={`Premier contributeur ${periodLabel}`}
           icon={<Trophy className="h-4 w-4" />}
-          value={best ? best.symbol ?? 'Non attribué' : '—'}
+          value={best ? positionName(best.symbol) : '—'}
           detail={
             best
               ? `${formatCurrency(best.total, best.currency)} · ${formatNumber(best.sharePercent, 0)} % du total`
@@ -244,8 +255,8 @@ export function DividendsTable({ transactions, quotes, accounts = [] }: Dividend
                 <th className="px-2 py-2 text-right font-medium">Reçu</th>
                 <th className="px-2 py-2 text-left font-medium">Part</th>
                 <th className="px-2 py-2 text-right font-medium">Versements</th>
-                <th className="px-2 py-2 text-right font-medium">Moy. / action</th>
-                <th className="px-2 py-2 text-right font-medium">Rdt / coût</th>
+                <th className="px-2 py-2 text-right font-medium">Moyenne par action</th>
+                <th className="px-2 py-2 text-right font-medium">Rendement sur coût</th>
                 <th className="py-2 pl-2 text-right font-medium">Dernier</th>
               </tr>
             </thead>
@@ -253,9 +264,9 @@ export function DividendsTable({ transactions, quotes, accounts = [] }: Dividend
               {byPosition.map((position) => (
                 <tr key={position.key}>
                   <td className="max-w-[14rem] py-2.5 pr-2">
-                    <p className="font-medium text-zinc-900 dark:text-zinc-100">{position.symbol ?? 'Non attribué'}</p>
-                    {positionName(position.symbol) !== position.symbol && (
-                      <p className="truncate text-xs text-zinc-500">{positionName(position.symbol)}</p>
+                    <p className="truncate font-medium text-zinc-900 dark:text-zinc-100" title={positionName(position.symbol)}>{positionName(position.symbol)}</p>
+                    {position.symbol && positionName(position.symbol) !== position.symbol && (
+                      <p className="truncate text-xs text-zinc-500">{position.symbol}</p>
                     )}
                   </td>
                   <td className="px-2 py-2.5 text-right font-semibold text-emerald-600 dark:text-emerald-400">
@@ -292,7 +303,7 @@ export function DividendsTable({ transactions, quotes, accounts = [] }: Dividend
               <li key={position.key} className="py-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="font-medium text-zinc-900 dark:text-zinc-100">{position.symbol ?? 'Non attribué'}</p>
+                    <p className="font-medium text-zinc-900 dark:text-zinc-100">{positionName(position.symbol)}</p>
                     <p className="truncate text-xs text-zinc-500">
                       {position.count} versement{position.count > 1 ? 's' : ''} · dernier le {formatDate(position.lastDate)}
                     </p>
@@ -306,11 +317,11 @@ export function DividendsTable({ transactions, quotes, accounts = [] }: Dividend
                 </div>
                 {(position.avgPerShare !== null || position.avgYieldOnCost !== null) && (
                   <p className="mt-1 text-xs text-zinc-500">
-                    Moy. / action{' '}
+                    Moyenne par action{' '}
                     <ProValue locked={!isPro}>
                       {position.avgPerShare === null ? '—' : formatCurrency(position.avgPerShare, position.currency)}
                     </ProValue>
-                    {' · '}Rdt / coût{' '}
+                    {' · '}Rendement sur coût{' '}
                     <ProValue locked={!isPro}>
                       {position.avgYieldOnCost === null ? '—' : `${formatNumber(position.avgYieldOnCost, 2)} %`}
                     </ProValue>
@@ -333,7 +344,7 @@ export function DividendsTable({ transactions, quotes, accounts = [] }: Dividend
                 <li key={event.id} className="flex items-start justify-between gap-3 py-2.5">
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                      {event.symbol ?? 'Non attribué'}
+                      {positionName(event.symbol)}
                       {account && <span className="ml-1.5 text-xs font-normal text-zinc-500">· {account}</span>}
                     </p>
                     <p className="text-xs text-zinc-500">

@@ -211,7 +211,7 @@ export function MarketChart({
       <p className="sr-only">{summary}</p>
       <div className="h-[320px] sm:h-[400px]" aria-hidden="true">
         <ResponsiveContainer width="100%" height="100%" onResize={ticks.onResize}>
-          <ComposedChart data={rows} margin={{ top: 8, right: 4, left: 4, bottom: 0 }} barCategoryGap={rows.length > 150 ? 0 : '15%'}>
+          <ComposedChart accessibilityLayer={false} data={rows} margin={{ top: 8, right: 4, left: 4, bottom: 0 }} barCategoryGap={rows.length > 150 ? 0 : '15%'}>
             <defs>
               <linearGradient id="marketAreaFill" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="var(--chart-primary)" stopOpacity={0.14} />
@@ -349,8 +349,11 @@ export function MarketChart({
         </ResponsiveContainer>
       </div>
 
-      {(markersCount > 0 || comparing || (!intraday && movingAverages.length > 0)) && (
+      {(markersCount > 0 || comparing || (!intraday && movingAverages.length > 0) || (!comparing && maxVolume > 0)) && (
         <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-zinc-500 dark:text-zinc-400">
+          {!comparing && maxVolume > 0 && (
+            <span><span className="inline-block h-2.5 w-2.5 rounded-sm align-[-1px]" style={{ background: 'var(--chart-axis)', opacity: 0.35 }} aria-hidden="true" /> Volume échangé</span>
+          )}
           {comparing && (
             <>
               <span><span style={{ color: 'var(--chart-primary)' }}>━</span> {symbolLabel}</span>
