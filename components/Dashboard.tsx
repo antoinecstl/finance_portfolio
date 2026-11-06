@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import {
   RefreshCw,
   Plus,
@@ -37,7 +37,10 @@ import {
   useCurrentFxRates,
   usePositionsWithCalculatedValues
 } from '@/lib/hooks';
-import { accountSupportsPositions, formatDateTime } from '@/lib/utils';
+import { accountSupportsPositions, formatDateTime, getAccountTypeLabel } from '@/lib/utils';
+import { refreshSharedData } from '@/lib/shared-fetch';
+import { useMediaQuery } from '@/lib/use-media-query';
+import { FxNotice } from './FxNotice';
 import { useSearchParams } from 'next/navigation';
 import type { Transaction } from '@/lib/types';
 import { DASHBOARD_TABS, navigateToDashboardTab, parseDashboardTab } from './app-shell/navigation';
@@ -124,7 +127,7 @@ export function Dashboard() {
   const { rates: currentFxRates, ready: currentFxReady } = useCurrentFxRates(transactions, accounts, quotes);
 
   // Historique du portefeuille (calculé dynamiquement)
-  const { history: portfolioHistory, loading: loadingHistory, ready: historyReady } = usePortfolioHistory(
+  const { history: portfolioHistory, loading: loadingHistory, ready: historyReady, error: historyError } = usePortfolioHistory(
     transactions,
     accounts,
     historyPeriod,
@@ -191,6 +194,7 @@ export function Dashboard() {
     fxRates: positionsFxRates,
     fxReady: positionsFxReady,
     loading: loadingPositionsFullHistory,
+    error: positionsHistoryError,
   } = useFullPortfolioHistory(
     positionsScoped.transactions,
     positionsScoped.accounts,
@@ -231,12 +235,15 @@ export function Dashboard() {
 
   const handleRefresh = async () => {
     setRefreshing(true);
+    // Vide les historiques et taux partagés : les graphiques les rechargent.
+    refreshSharedData();
     try {
       await refreshAllData();
     } finally {
       setRefreshing(false);
     }
   };
+  const retryLoad = () => { void handleRefresh(); };
 
   const openAddTransaction = useCallback((
     defaults: { accountId?: string; type?: Transaction['type'] } = {}
@@ -252,6 +259,11 @@ export function Dashboard() {
     setTxVersion(v => v + 1);
     await refreshAllData();
   }, [refreshAllData]);
+
+  // Positions sur téléphone : analyses repliées par défaut (page plus courte).
+  const isWideScreen = useMediaQuery('(min-width: 640px)');
+  const [showPositionAnalyses, setShowPositionAnalyses] = useState(false);
+  const analysesVisible = isWideScreen || showPositionAnalyses;
 
   const isLoading = loadingAccounts || loadingTransactions;
   const isEmpty = !isLoading && accounts.length === 0;
@@ -275,6 +287,10 @@ export function Dashboard() {
   const historyShown = useReadyOnce(historyComputed);
 
   const currentTab = DASHBOARD_TABS.find((tab) => tab.id === activeTab) ?? DASHBOARD_TABS[0];
+  // Onglet du navigateur : la section affichée (« Positions · Fi-Hub »).
+  useEffect(() => {
+    document.title = `${currentTab.title} · Fi-Hub`;
+  }, [currentTab.title]);
   const busy = isLoading || refreshing;
 
   const refreshButton = (
@@ -375,6 +391,8 @@ export function Dashboard() {
           }
         />
 
+        <FxNotice onRetry={retryLoad} />
+
         {activeTab === 'dashboard' && isEmpty && (
           <GettingStarted
             canImport={canImportTransactions}
@@ -421,6 +439,8 @@ export function Dashboard() {
                     history={historyShown ? portfolioHistory : []}
                     accounts={accounts}
                     loading={loadingHistory || !historyComputed}
+                    error={historyError}
+                    onRetry={retryLoad}
                     onPeriodChange={setHistoryPeriod}
                     selectedPeriod={historyPeriod}
                   />
@@ -538,7 +558,7 @@ export function Dashboard() {
                       }`}
                     >
                       {account.name}
-                      <span className="ml-1.5 text-[10px] opacity-70">{account.type}</span>
+                      <span className="ml-1.5 text-[10px] opacity-70">{getAccountTypeLabel(account.type)}</span>
                     </button>
                   ))}
                 </div>
@@ -566,56 +586,6 @@ export function Dashboard() {
               )}
             </ErrorBoundary>
 
-            {/* Très grand écran : graphiques temporels deux par deux. */}
-            <div className="grid gap-4 sm:gap-6 2xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-              <ErrorBoundary label="Valeur vs investissement">
-                <PortfolioValueChart
-                  history={positionsFullPortfolioHistory}
-                  transactions={positionsScoped.transactions}
-                  loading={loadingPositionsFullHistory || !positionsReady}
-                  currentTotalValue={scopedPortfolioSummary.totalValue}
-                  currentTotalInvested={scopedPortfolioSummary.totalInvested}
-                  fxRates={positionsFxRates}
-                />
-              </ErrorBoundary>
-
-              <ErrorBoundary label="Performance annuelle">
-                <ProBlur feature="advanced_analytics" partial label="Performance annuelle — Pro">
-                  <PortfolioPerformanceChart
-                    transactions={positionsScoped.transactions}
-                    portfolioHistory={positionsFullPortfolioHistory}
-                    accounts={positionsScoped.accounts}
-                    loading={loadingPositionsFullHistory || !positionsReady}
-                    currentPortfolioValue={scopedStockPortfolioValue}
-                    fxRates={positionsFxRates}
-                  />
-                </ProBlur>
-              </ErrorBoundary>
-            </div>
-
-            <div className="grid gap-4 sm:gap-6 2xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-              <ErrorBoundary label="Comparaison benchmark">
-                <ProBlur feature="advanced_analytics" partial label="Comparaison benchmark — Pro">
-                  <BenchmarkComparisonChart
-                    portfolioHistory={positionsFullPortfolioHistory}
-                    transactions={positionsScoped.transactions}
-                    loading={loadingPositionsFullHistory || !positionsReady}
-                    currentPortfolioValue={scopedStockPortfolioValue}
-                    fxRates={positionsFxRates}
-                  />
-                </ProBlur>
-              </ErrorBoundary>
-
-              <ErrorBoundary label="Projection du patrimoine">
-                <PerformanceProjectionChart
-                  history={positionsFullPortfolioHistory}
-                  transactions={positionsScoped.transactions}
-                  loading={loadingPositionsFullHistory || !positionsReady}
-                  fxRates={positionsFxRates}
-                />
-              </ErrorBoundary>
-            </div>
-
             <ErrorBoundary label="Tableau des positions">
               {!positionsReady ? (
                 <PanelSkeleton title="Positions" rows={6} />
@@ -630,6 +600,83 @@ export function Dashboard() {
                 />
               )}
             </ErrorBoundary>
+
+            {/* Analyses : repliées par défaut sur téléphone pour garder la page courte. */}
+            <section aria-labelledby="positions-analyses-title" className="space-y-4 sm:space-y-6">
+              <div className="flex items-center justify-between gap-3 sm:hidden">
+                <h2 id="positions-analyses-title" className="text-base font-semibold text-[color:var(--ink)]">Analyses du portefeuille</h2>
+                <button
+                  type="button"
+                  onClick={() => setShowPositionAnalyses((value) => !value)}
+                  aria-expanded={analysesVisible}
+                  aria-controls="positions-analyses"
+                  className="btn-outline rounded-lg px-3 py-1.5 text-sm"
+                >
+                  {analysesVisible ? 'Masquer' : 'Afficher'}
+                </button>
+              </div>
+              {analysesVisible && (
+                <div id="positions-analyses" className="space-y-4 sm:space-y-6">
+                {/* Très grand écran : graphiques temporels deux par deux. */}
+                <div className="grid gap-4 sm:gap-6 2xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+                  <ErrorBoundary label="Valeur vs investissement">
+                    <PortfolioValueChart
+                      history={positionsFullPortfolioHistory}
+                      transactions={positionsScoped.transactions}
+                      loading={loadingPositionsFullHistory || !positionsReady}
+                      error={positionsHistoryError}
+                      onRetry={retryLoad}
+                      currentTotalValue={scopedPortfolioSummary.totalValue}
+                      currentTotalInvested={scopedPortfolioSummary.totalInvested}
+                      fxRates={positionsFxRates}
+                    />
+                  </ErrorBoundary>
+
+                  <ErrorBoundary label="Performance annuelle">
+                    <ProBlur feature="advanced_analytics" partial label="Performance annuelle — Pro">
+                      <PortfolioPerformanceChart
+                        transactions={positionsScoped.transactions}
+                        portfolioHistory={positionsFullPortfolioHistory}
+                        accounts={positionsScoped.accounts}
+                        loading={loadingPositionsFullHistory || !positionsReady}
+                        error={positionsHistoryError}
+                        onRetry={retryLoad}
+                        currentPortfolioValue={scopedStockPortfolioValue}
+                        fxRates={positionsFxRates}
+                      />
+                    </ProBlur>
+                  </ErrorBoundary>
+                </div>
+
+                <div className="grid gap-4 sm:gap-6 2xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+                  <ErrorBoundary label="Comparaison benchmark">
+                    <ProBlur feature="advanced_analytics" partial label="Comparaison benchmark — Pro">
+                      <BenchmarkComparisonChart
+                        portfolioHistory={positionsFullPortfolioHistory}
+                        transactions={positionsScoped.transactions}
+                        loading={loadingPositionsFullHistory || !positionsReady}
+                        error={positionsHistoryError}
+                        onRetry={retryLoad}
+                        currentPortfolioValue={scopedStockPortfolioValue}
+                        fxRates={positionsFxRates}
+                      />
+                    </ProBlur>
+                  </ErrorBoundary>
+
+                  <ErrorBoundary label="Projection du patrimoine">
+                    <PerformanceProjectionChart
+                      history={positionsFullPortfolioHistory}
+                      transactions={positionsScoped.transactions}
+                      loading={loadingPositionsFullHistory || !positionsReady}
+                      error={positionsHistoryError}
+                      onRetry={retryLoad}
+                      fxRates={positionsFxRates}
+                    />
+                  </ErrorBoundary>
+                </div>
+                </div>
+              )}
+            </section>
           </div>
         )}
 

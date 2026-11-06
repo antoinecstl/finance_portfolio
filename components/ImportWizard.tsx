@@ -765,7 +765,7 @@ export function ImportWizard({ offered = false }: { offered?: boolean }) {
               <button
                 onClick={handleParse}
                 disabled={submitting || accounts.length === 0}
-                className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 sm:py-3 text-sm sm:text-base font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 sm:py-3 text-sm sm:text-base font-medium btn-ink rounded-lg disabled:opacity-50 transition-colors"
               >
                 {submitting ? <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" /> : <Upload className="h-4 w-4 sm:h-5 sm:w-5" />}
                 {submitting
@@ -1144,7 +1144,7 @@ export function ImportWizard({ offered = false }: { offered?: boolean }) {
                   <button
                     onClick={handleCommit}
                     disabled={submitting || rows.length === 0 || invalidRows.length > 0}
-                    className="inline-flex items-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 text-sm sm:text-base font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                    className="inline-flex items-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 text-sm sm:text-base font-medium btn-ink rounded-lg disabled:opacity-50"
                   >
                     {submitting ? <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" /> : <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5" />}
                     Importer {rows.length} transaction(s)
@@ -1166,7 +1166,7 @@ export function ImportWizard({ offered = false }: { offered?: boolean }) {
               <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row gap-2 sm:gap-3 justify-center">
                 <Link
                   href="/dashboard"
-                  className="px-4 sm:px-5 py-2 sm:py-2.5 text-sm sm:text-base bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  className="px-4 sm:px-5 py-2 sm:py-2.5 text-sm sm:text-base btn-ink rounded-lg"
                 >
                   Voir le tableau de bord
                 </Link>

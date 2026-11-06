@@ -15,7 +15,9 @@ export async function GET(request: NextRequest) {
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
-  const rl = rateLimit(`stocks-history:${clientKey(request, user.id)}`, 20, 60_000);
+  // Une page peut demander plusieurs historiques (périodes, positions dépliées,
+  // indice) ; les réponses du fournisseur sont en cache côté serveur.
+  const rl = rateLimit(`stocks-history:${clientKey(request, user.id)}`, 120, 60_000);
   if (!rl.ok) {
     return NextResponse.json(
       { error: 'Too many requests' },

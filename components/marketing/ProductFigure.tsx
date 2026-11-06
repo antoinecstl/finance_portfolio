@@ -99,7 +99,8 @@ export function ProductFigure({
       : [{ media: '(prefers-color-scheme: dark)', source: figure.dark.mobile }];
 
   return (
-    <figure className={variant === 'narrow' ? 'mx-auto w-full max-w-[380px]' : undefined}>
+    // Sur téléphone, captures limitées à 300 px de large : l'accueil reste lisible sans défiler sans fin.
+    <figure className={variant === 'narrow' ? 'mx-auto w-full max-w-[300px] sm:max-w-[380px]' : 'mx-auto w-full max-w-[300px] sm:max-w-none'}>
       <div className="figure-frame">
         <picture>
           {sources.map(({ media, source }) => (

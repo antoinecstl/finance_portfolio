@@ -10,6 +10,7 @@ import { MarketSearch } from './MarketSearch';
 import { Sparkline } from './Sparkline';
 import { useRecents } from './useRecents';
 import { changeClass, fmtPct, fmtPrice, marketHref } from './format';
+import { instrumentLabel } from '@/lib/instrument-names';
 
 const isoDay = (d: Date) => d.toISOString().slice(0, 10);
 
@@ -40,7 +41,7 @@ function useMonthSparklines(symbols: string[]): Record<string, number[]> {
   return state.key === key ? state.data : {};
 }
 
-function MarketRow({ symbol, name, quote, spark }: { symbol: string; name: string; quote?: StockQuote; spark?: number[] }) {
+function MarketRow({ symbol, name, quote, spark, settled }: { symbol: string; name: string; quote?: StockQuote; spark?: number[]; settled: boolean }) {
   const pct = quote ? quote.changePercent / 100 : null;
   return (
     <li>
@@ -57,7 +58,14 @@ function MarketRow({ symbol, name, quote, spark }: { symbol: string; name: strin
         </span>
         <span className="w-28 shrink-0 text-right">
           <span className="block text-sm tabular-nums text-zinc-900 dark:text-zinc-100">
-            {quote ? fmtPrice(quote.price, quote.currency) : <span className="inline-block h-4 w-16 animate-pulse rounded bg-zinc-100 dark:bg-zinc-800" />}
+            {quote ? (
+              fmtPrice(quote.price, quote.currency)
+            ) : settled ? (
+              // Cours non revenu : on le dit plutôt que de laisser un chargement sans fin.
+              <span className="text-xs text-zinc-500 dark:text-zinc-400">Indisponible</span>
+            ) : (
+              <span className="inline-block h-4 w-16 animate-pulse rounded bg-zinc-100 dark:bg-zinc-800" />
+            )}
           </span>
           <span className={`block text-xs tabular-nums ${changeClass(pct)}`}>{quote ? fmtPct(pct) : ' '}</span>
         </span>
@@ -101,7 +109,7 @@ export function MarketHome() {
     () => Array.from(new Set([...holdings, ...benchmarks.map((b) => b.symbol)])).slice(0, 50),
     [holdings, benchmarks]
   );
-  const { quotes } = useStockQuotes(allSymbols);
+  const { quotes, ready: quotesSettled } = useStockQuotes(allSymbols);
   const sparks = useMonthSparklines(allSymbols);
 
   return (
@@ -137,7 +145,7 @@ export function MarketHome() {
             ) : (
               <ul className="divide-y divide-zinc-100 dark:divide-zinc-800">
                 {holdings.map((symbol) => (
-                  <MarketRow key={symbol} symbol={symbol} name={quotes[symbol]?.name ?? symbol} quote={quotes[symbol]} spark={sparks[symbol]} />
+                  <MarketRow key={symbol} symbol={symbol} name={instrumentLabel(symbol, quotes[symbol]?.name)} quote={quotes[symbol]} spark={sparks[symbol]} settled={quotesSettled} />
                 ))}
               </ul>
             )}
@@ -147,7 +155,7 @@ export function MarketHome() {
         <Panel title="Indices et références" description="Les références du comparateur de performance.">
           <ul className="divide-y divide-zinc-100 dark:divide-zinc-800">
             {benchmarks.map((b) => (
-              <MarketRow key={b.symbol} symbol={b.symbol} name={b.label} quote={quotes[b.symbol]} spark={sparks[b.symbol]} />
+              <MarketRow key={b.symbol} symbol={b.symbol} name={b.label} quote={quotes[b.symbol]} spark={sparks[b.symbol]} settled={quotesSettled} />
             ))}
           </ul>
         </Panel>

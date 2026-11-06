@@ -11,8 +11,10 @@ import {
   accountSupportsPositions,
   accountTypeAllowsAsset,
   assetAccountMismatchMessage,
+  formatNumber,
   isCryptoSymbol,
 } from '@/lib/utils';
+import { formatDecimalInput, parseDecimal } from '@/lib/decimal';
 
 interface EditTransactionModalProps {
   isOpen: boolean;
@@ -112,8 +114,8 @@ export function EditTransactionModal({
   useEffect(() => {
     if (!isStockTransaction) return;
     if (quantity && pricePerUnit) {
-      const total = parseFloat(quantity) * parseFloat(pricePerUnit);
-      if (Number.isFinite(total)) setAmount(total.toFixed(2));
+      const total = parseDecimal(quantity) * parseDecimal(pricePerUnit);
+      if (Number.isFinite(total)) setAmount(formatDecimalInput(total));
     }
   }, [quantity, pricePerUnit, isStockTransaction]);
 
@@ -193,11 +195,11 @@ export function EditTransactionModal({
         throw new Error(assetAccountMismatchMessage(selectedAccount.type));
       }
 
-      const qty = parseFloat(quantity) || 0;
-      const price = parseFloat(pricePerUnit) || 0;
-      const totalAmount = parseFloat(amount) || 0;
-      const feesAmount = Math.max(0, parseFloat(fees) || 0);
-      const targetAmt = parseFloat(targetAmount) || 0;
+      const qty = parseDecimal(quantity) || 0;
+      const price = parseDecimal(pricePerUnit) || 0;
+      const totalAmount = parseDecimal(amount) || 0;
+      const feesAmount = Math.max(0, parseDecimal(fees) || 0);
+      const targetAmt = parseDecimal(targetAmount) || 0;
       const normalizedCurrency = currency.trim().toUpperCase();
       const normalizedTargetCurrency = targetCurrency.trim().toUpperCase();
 
@@ -270,9 +272,9 @@ export function EditTransactionModal({
         description:
           description ||
           (isStockTransaction
-            ? `${type === 'BUY' ? 'Achat' : 'Vente'} ${qty} x ${stockSymbol}`
+            ? `${type === 'BUY' ? 'Achat' : 'Vente'} ${qty} × ${stockName || stockSymbol}`
             : isDividendTransaction && stockSymbol
-              ? `Dividende ${stockSymbol}`
+              ? `Dividende ${stockName || stockSymbol}`
               : isConversion
                 ? `Conversion ${normalizedCurrency} -> ${normalizedTargetCurrency}`
                 : ''),
@@ -456,7 +458,7 @@ export function EditTransactionModal({
               {!searchQuery && !stockSymbol && (
                 <div className="mt-2">
                   <div className="text-xs text-zinc-500 mb-1">
-                    {selectedAccount?.type === 'CRYPTO' ? 'Cryptos populaires :' : 'Actions populaires :'}
+                    {selectedAccount?.type === 'CRYPTO' ? 'Cryptos populaires :' : 'Titres populaires :'}
                   </div>
                   <div className="flex flex-wrap gap-1">
                     {(selectedAccount?.type === 'CRYPTO' ? POPULAR_CRYPTOS : POPULAR_FRENCH_STOCKS).slice(0, 6).map((stock) => (
@@ -466,7 +468,7 @@ export function EditTransactionModal({
                         onClick={() => handleSelectStock(stock.symbol, stock.name)}
                         className="text-xs px-2 py-1 bg-zinc-100 dark:bg-zinc-800 rounded hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300"
                       >
-                        {selectedAccount?.type === 'CRYPTO' ? stock.symbol.replace('-USD', '') : stock.symbol.replace('.PA', '')}
+                        {stock.name}
                       </button>
                     ))}
                   </div>
@@ -474,8 +476,8 @@ export function EditTransactionModal({
               )}
               {stockSymbol && stockName && (
                 <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-900/30 rounded-lg border border-blue-200 dark:border-blue-800">
-                  <div className="font-medium text-sm text-blue-900 dark:text-blue-100">{stockSymbol}</div>
-                  <div className="text-xs text-blue-700 dark:text-blue-300 truncate">{stockName}</div>
+                  <div className="font-medium text-sm text-blue-900 dark:text-blue-100 truncate">{stockName || stockSymbol}</div>
+                  {stockName && <div className="text-xs text-blue-700 dark:text-blue-300 truncate">{stockSymbol}</div>}
                 </div>
               )}
             </div>
@@ -488,8 +490,8 @@ export function EditTransactionModal({
                   Quantité
                 </label>
                 <input
-                  type="number"
-                  step="0.0001"
+                  type="text"
+                  inputMode="decimal"
                   value={quantity}
                   onChange={(e) => setQuantity(e.target.value)}
                   required
@@ -501,8 +503,8 @@ export function EditTransactionModal({
                   Prix unitaire ({currency})
                 </label>
                 <input
-                  type="number"
-                  step="0.01"
+                  type="text"
+                  inputMode="decimal"
                   value={pricePerUnit}
                   onChange={(e) => setPricePerUnit(e.target.value)}
                   required
@@ -519,11 +521,11 @@ export function EditTransactionModal({
                 {isStockTransaction && <span className="text-zinc-400 text-xs">(auto)</span>}
               </label>
               <input
-                type="number"
-                step="0.01"
+                type="text"
+                inputMode="decimal"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
-                placeholder="0.00"
+                placeholder="0,00"
                 required
                 readOnly={isStockTransaction}
                 className={`w-full min-w-0 px-3 py-2 text-sm sm:text-base border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent ${isStockTransaction ? 'bg-zinc-50 dark:bg-zinc-900' : ''}`}
@@ -554,11 +556,11 @@ export function EditTransactionModal({
                   Montant crédité ({targetCurrency})
                 </label>
                 <input
-                  type="number"
-                  step="0.01"
+                  type="text"
+                  inputMode="decimal"
                   value={targetAmount}
                   onChange={(e) => setTargetAmount(e.target.value)}
-                  placeholder="0.00"
+                  placeholder="0,00"
                   required
                   className="w-full min-w-0 px-3 py-2 text-sm sm:text-base border border-amber-300 dark:border-amber-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-amber-500"
                 />
@@ -579,9 +581,9 @@ export function EditTransactionModal({
                   {COMMON_CURRENCIES.map((c) => <option key={c} value={c} />)}
                 </datalist>
               </div>
-              {parseFloat(amount) > 0 && parseFloat(targetAmount) > 0 && (
+              {parseDecimal(amount) > 0 && parseDecimal(targetAmount) > 0 && (
                 <div className="sm:col-span-3 text-xs text-amber-700 dark:text-amber-300">
-                  Taux implicite : 1 {currency} = {(parseFloat(targetAmount) / parseFloat(amount)).toFixed(4)} {targetCurrency}
+                  Taux implicite : 1 {currency} = {formatNumber(parseDecimal(targetAmount) / parseDecimal(amount), 4)} {targetCurrency}
                 </div>
               )}
             </div>
@@ -593,12 +595,12 @@ export function EditTransactionModal({
                 Frais ({currency}) <span className="text-zinc-400 text-xs">optionnel</span>
               </label>
               <input
-                type="number"
-                step="0.01"
+                type="text"
+                inputMode="decimal"
                 min="0"
                 value={fees}
                 onChange={(e) => setFees(e.target.value)}
-                placeholder="0.00"
+                placeholder="0,00"
                 className="w-full px-3 py-2 text-sm sm:text-base border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
               <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
@@ -642,7 +644,7 @@ export function EditTransactionModal({
             type="submit"
             form="edit-tx-form"
             disabled={loading}
-            className="flex-1 px-3 sm:px-4 py-2.5 text-sm sm:text-base font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            className="flex-1 px-3 sm:px-4 py-2.5 text-sm sm:text-base font-medium btn-ink rounded-lg disabled:opacity-50 transition-colors"
           >
             {loading ? 'Enregistrement…' : 'Enregistrer'}
           </button>

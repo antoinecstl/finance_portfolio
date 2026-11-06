@@ -13,6 +13,8 @@ import { useEvenXTicks } from '@/lib/use-even-x-ticks';
 import { formatNumber } from '@/lib/utils';
 import { BENCHMARKS, DEFAULT_BENCHMARK, isPresetBenchmark, type BenchmarkKey } from '@/lib/benchmarks';
 import { useStockSearch } from '@/lib/hooks';
+import { ChartUnavailable } from './ChartUnavailable';
+import { fetchJsonShared } from '@/lib/shared-fetch';
 
 type PeriodOption = '1S' | '1M' | '3M' | '6M' | '1A' | 'YTD' | 'Max';
 
@@ -92,12 +94,17 @@ export function BenchmarkComparisonChart({
   portfolioHistory,
   transactions,
   loading,
+  error = null,
+  onRetry,
   currentPortfolioValue,
   fxRates = {},
 }: {
   portfolioHistory: PortfolioHistoryPoint[];
   transactions: Transaction[];
   loading?: boolean;
+  /** Échec du chargement de l'historique du portefeuille. */
+  error?: string | null;
+  onRetry?: () => void;
   currentPortfolioValue?: number;
   fxRates?: FxRateMap;
 }) {
@@ -182,11 +189,9 @@ export function BenchmarkComparisonChart({
       setBenchmarkLoading(true);
       setBenchmarkError(null);
       try {
-        const res = await fetch(
+        const data = await fetchJsonShared<Record<string, HistoricalQuote[]>>(
           `/api/stocks/history?symbols=${encodeURIComponent(selectedBenchmark)}&startDate=${startDate}&endDate=${endDate}&interval=1d`
         );
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
         if (!cancelled) setBenchmarkQuotes(data);
       } catch (e) {
         if (!cancelled) setBenchmarkError(e instanceof Error ? e.message : 'Erreur');
@@ -277,7 +282,7 @@ export function BenchmarkComparisonChart({
               onClick={() => setSelectedPeriod(period)}
               className={`px-2 py-1 text-[10px] sm:text-xs rounded transition-colors ${
                 selectedPeriod === period
-                  ? 'bg-blue-600 text-white'
+                  ? 'bg-[color:var(--ink)] text-[color:var(--paper)]'
                   : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'
               }`}
             >
@@ -343,9 +348,9 @@ export function BenchmarkComparisonChart({
         </div>
       </div>
 
-      {benchmarkError && (
+      {benchmarkError && chartData.length > 0 && (
         <div className="mb-3 p-2 rounded-lg bg-red-50 dark:bg-red-900/30 text-xs text-red-700 dark:text-red-300">
-          Erreur benchmark : {benchmarkError}
+          Le cours de la référence n’a pas pu être mis à jour.
         </div>
       )}
 
@@ -364,7 +369,7 @@ export function BenchmarkComparisonChart({
             </p>
           </div>
           <div>
-            <p className="text-[10px] sm:text-xs text-zinc-500 dark:text-zinc-400">Écart (α)</p>
+            <p className="text-[10px] sm:text-xs text-zinc-500 dark:text-zinc-400">Écart avec la référence</p>
             <p className={`text-sm sm:text-base font-semibold ${finalPerf.delta >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
               {fmtPct(finalPerf.delta)}
             </p>
@@ -379,6 +384,10 @@ export function BenchmarkComparisonChart({
           {!mounted || isLoading ? (
             <div className="flex h-full items-center justify-center text-xs sm:text-sm text-zinc-500 dark:text-zinc-400">
               Chargement…
+            </div>
+          ) : chartData.length === 0 && (error || benchmarkError) ? (
+            <div className="flex h-full items-center justify-center">
+              <ChartUnavailable onRetry={onRetry} className="py-4" />
             </div>
           ) : chartData.length === 0 ? (
             <div className="flex h-full items-center justify-center text-xs sm:text-sm text-zinc-500 dark:text-zinc-400">

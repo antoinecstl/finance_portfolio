@@ -297,7 +297,7 @@ export default function LandingPage() {
         aria-labelledby="import-title"
         className="border-t border-[color:var(--border)]"
       >
-        <div className="mx-auto max-w-6xl px-5 py-16 lg:px-8 lg:py-24">
+        <div className="mx-auto max-w-6xl px-5 py-12 sm:py-16 lg:px-8 lg:py-24">
           <div className="grid gap-10 lg:grid-cols-12 lg:gap-8">
             <div className="lg:col-span-4">
               <PlanLabel plan="offered" />
@@ -352,7 +352,7 @@ export default function LandingPage() {
 
       {/* ───────── Ce que Fi-Hub fait, et ne fait pas ───────── */}
       <section aria-labelledby="scope-title" className="border-t border-[color:var(--border)]">
-        <div className="mx-auto max-w-6xl px-5 py-16 lg:px-8 lg:py-24">
+        <div className="mx-auto max-w-6xl px-5 py-12 sm:py-16 lg:px-8 lg:py-24">
           <h2
             id="scope-title"
             className="max-w-2xl text-[28px] font-semibold leading-[1.15] tracking-[-0.02em] text-[color:var(--text)] lg:text-4xl"
@@ -395,7 +395,7 @@ export default function LandingPage() {
 
       {/* ───────── Conclusion ───────── */}
       <section aria-labelledby="cta-title" className="border-t border-[color:var(--border)]">
-        <div className="mx-auto max-w-6xl px-5 py-16 lg:px-8 lg:py-24">
+        <div className="mx-auto max-w-6xl px-5 py-12 sm:py-16 lg:px-8 lg:py-24">
           <h2
             id="cta-title"
             className="max-w-2xl text-[28px] font-semibold leading-[1.15] tracking-[-0.02em] text-[color:var(--text)] lg:text-4xl"
@@ -485,7 +485,7 @@ function FeatureSection({
   if (layout === 'stacked') {
     return (
       <section id={id} aria-labelledby={titleId} className="scroll-mt-20 border-t border-[color:var(--border)]">
-        <div className="mx-auto max-w-6xl px-5 py-16 lg:px-8 lg:py-24">
+        <div className="mx-auto max-w-6xl px-5 py-12 sm:py-16 lg:px-8 lg:py-24">
           <div className="grid gap-8 lg:grid-cols-12 lg:gap-8">
             <div className="lg:col-span-5">{heading}</div>
             <div className="lg:col-span-6 lg:col-start-7">{details}</div>
@@ -499,7 +499,7 @@ function FeatureSection({
   const figureLeft = layout === 'side-left';
   return (
     <section id={id} aria-labelledby={titleId} className="scroll-mt-20 border-t border-[color:var(--border)]">
-      <div className="mx-auto grid max-w-6xl items-center gap-12 px-5 py-16 lg:grid-cols-12 lg:gap-8 lg:px-8 lg:py-24">
+      <div className="mx-auto grid max-w-6xl items-center gap-10 px-5 py-12 sm:gap-12 sm:py-16 lg:grid-cols-12 lg:gap-8 lg:px-8 lg:py-24">
         <div className={`lg:col-span-6 ${figureLeft ? 'lg:col-start-7 lg:row-start-1' : ''}`}>
           {heading}
           <div className="mt-6">{details}</div>

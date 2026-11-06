@@ -1,6 +1,7 @@
 import type { StockPosition, StockQuote, Transaction } from './types';
 import { BASE_CURRENCY, convertToBase, type FxRateMap } from './fx';
 import { getCryptoBaseSymbol, isCryptoSymbol } from './utils';
+import { instrumentName } from './instrument-names';
 
 export interface PositionDisplayGroup {
   key: string;
@@ -38,11 +39,18 @@ function uniqueSorted(values: string[]): string[] {
   return Array.from(new Set(values.map((value) => value.toUpperCase()))).sort();
 }
 
-function displayNameForGroup(symbol: string, positions: StockPosition[], isCrypto: boolean): string {
-  if (isCrypto) return symbol;
-
-  const firstName = positions.find((position) => position.name)?.name;
-  return firstName ?? symbol;
+// Nom lisible du groupe : celui de la cotation, sinon celui déjà connu de la
+// position, sinon le code (« L'Oréal » plutôt que « OR.PA »).
+function displayNameForGroup(symbol: string, positions: StockPosition[], quotes: Record<string, StockQuote>): string {
+  for (const position of positions) {
+    const fromQuote = instrumentName(position.symbol, quotes[position.symbol]?.name);
+    if (fromQuote) return fromQuote;
+  }
+  for (const position of positions) {
+    const stored = instrumentName(position.symbol, position.name);
+    if (stored) return stored;
+  }
+  return symbol;
 }
 
 export function positionDisplaySymbol(symbol: string): string {
@@ -134,7 +142,7 @@ export function buildPositionDisplayGroups(
     return {
       key,
       symbol,
-      name: displayNameForGroup(symbol, items, isCrypto),
+      name: displayNameForGroup(symbol, items, quotes),
       accountId: first.account_id,
       quantity,
       avgPrice,

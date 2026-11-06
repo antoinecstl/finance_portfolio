@@ -12,7 +12,8 @@ const tabs: {
   { href: '/settings/billing', label: 'Abonnement', description: 'Plan, facturation', icon: 'billing' },
   { href: '/settings/security', label: 'Sécurité', description: 'Mot de passe', icon: 'shield' },
   { href: '/settings/api', label: 'Accès API', description: 'ChatGPT, Claude, jetons', icon: 'api' },
-  { href: '/settings/danger', label: 'Zone danger', description: 'Export, suppression', icon: 'danger', danger: true },
+  { href: '/settings/exports', label: 'Exports et rapports', description: 'JSON, rapport PDF', icon: 'exports' },
+  { href: '/settings/danger', label: 'Zone danger', description: 'Supprimer le compte', icon: 'danger', danger: true },
 ];
 
 export default function SettingsLayout({ children }: { children: React.ReactNode }) {

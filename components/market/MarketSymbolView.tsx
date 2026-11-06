@@ -145,6 +145,10 @@ export function MarketSymbolView({ symbol }: { symbol: string }) {
   useEffect(() => {
     if (data?.symbol) pushRecent({ symbol: data.symbol, name: data.name });
   }, [data?.symbol, data?.name]);
+  // Onglet du navigateur : le nom du titre (« L'Oréal (OR.PA) »), pas seulement son code.
+  useEffect(() => {
+    if (data?.name && data.symbol) document.title = `${data.name} (${data.symbol}) · Marchés · Fi-Hub`;
+  }, [data?.name, data?.symbol]);
 
   const assetClass: AssetClass = data?.assetClass ?? assetClassOf(data?.instrumentType);
   const tab: MarketTab = resolveTab(assetClass, searchParams.get('vue'));
@@ -268,14 +272,26 @@ export function MarketSymbolView({ symbol }: { symbol: string }) {
                 const gain = value !== null ? value - p.quantity * p.average_price : null;
                 const accountName = accounts.find((a) => a.id === p.account_id)?.name ?? 'Compte';
                 return (
-                  <li key={p.id} className="grid grid-cols-2 gap-2 py-2 text-sm sm:grid-cols-4">
-                    <span className="font-medium text-zinc-900 dark:text-zinc-100">{accountName}</span>
-                    <span className="tabular-nums text-zinc-600 dark:text-zinc-300">
-                      {new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 6 }).format(p.quantity)} × PRU {fmtPrice(p.average_price, p.currency)}
+                  <li key={p.id} className="grid grid-cols-2 gap-x-2 gap-y-3 py-2.5 text-sm sm:grid-cols-4">
+                    <span>
+                      <span className="block text-xs text-zinc-500 dark:text-zinc-400">Compte</span>
+                      <span className="font-medium text-zinc-900 dark:text-zinc-100">{accountName}</span>
                     </span>
-                    <span className="tabular-nums text-zinc-900 dark:text-zinc-100">{value !== null ? fmtPrice(value, currency) : '—'}</span>
-                    <span className={`tabular-nums ${changeClass(gain)}`}>
-                      {gain !== null ? `${gain > 0 ? '+' : ''}${fmtPrice(gain, currency)} (${fmtPct(data.price / p.average_price - 1)})` : '—'}
+                    <span>
+                      <span className="block text-xs text-zinc-500 dark:text-zinc-400">Quantité × PRU</span>
+                      <span className="tabular-nums text-zinc-700 dark:text-zinc-300">
+                        {new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 6 }).format(p.quantity)} × {fmtPrice(p.average_price, p.currency)}
+                      </span>
+                    </span>
+                    <span>
+                      <span className="block text-xs text-zinc-500 dark:text-zinc-400">Valeur</span>
+                      <span className="tabular-nums text-zinc-900 dark:text-zinc-100">{value !== null ? fmtPrice(value, currency) : '—'}</span>
+                    </span>
+                    <span>
+                      <span className="block text-xs text-zinc-500 dark:text-zinc-400">+/- value latente</span>
+                      <span className={`tabular-nums ${changeClass(gain)}`}>
+                        {gain !== null ? `${gain > 0 ? '+' : ''}${fmtPrice(gain, currency)} (${fmtPct(data.price / p.average_price - 1)})` : '—'}
+                      </span>
                     </span>
                   </li>
                 );

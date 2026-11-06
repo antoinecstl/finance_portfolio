@@ -6,6 +6,7 @@ import { AccountType } from '@/lib/types';
 import { useAuth } from '@/lib/auth';
 import { getApiErrorMessage } from '@/lib/api-errors';
 import { useLimitReached } from './LimitReachedModal';
+import { parseDecimal } from '@/lib/decimal';
 
 interface AddAccountModalProps {
   isOpen: boolean;
@@ -17,8 +18,8 @@ const accountTypes: { value: AccountType; label: string }[] = [
   { value: 'PEA', label: 'PEA' },
   { value: 'LIVRET_A', label: 'Livret A' },
   { value: 'LDDS', label: 'LDDS' },
-  { value: 'CTO', label: 'Compte-Titres Ordinaire' },
-  { value: 'ASSURANCE_VIE', label: 'Assurance Vie' },
+  { value: 'CTO', label: 'Compte-titres ordinaire' },
+  { value: 'ASSURANCE_VIE', label: 'Assurance-vie' },
   { value: 'PEL', label: 'PEL' },
   { value: 'CRYPTO', label: 'Crypto' },
   { value: 'AUTRE', label: 'Autre' },
@@ -28,6 +29,8 @@ export function AddAccountModal({ isOpen, onClose, onSuccess }: AddAccountModalP
   const [name, setName] = useState('');
   const [type, setType] = useState<AccountType>('LIVRET_A');
   const [autreSupportsPositions, setAutreSupportsPositions] = useState(false);
+  // Solde de départ facultatif : enregistré comme un versement du jour.
+  const [initialBalance, setInitialBalance] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
@@ -37,6 +40,7 @@ export function AddAccountModal({ isOpen, onClose, onSuccess }: AddAccountModalP
     setName('');
     setType('LIVRET_A');
     setAutreSupportsPositions(false);
+    setInitialBalance('');
     setError(null);
   };
 
@@ -55,6 +59,13 @@ export function AddAccountModal({ isOpen, onClose, onSuccess }: AddAccountModalP
 
     if (!user) {
       setError('Vous devez être connecté');
+      setLoading(false);
+      return;
+    }
+
+    const balance = initialBalance.trim() === '' ? 0 : parseDecimal(initialBalance);
+    if (!Number.isFinite(balance) || balance < 0) {
+      setError('Indiquez un solde positif, ou laissez le champ vide.');
       setLoading(false);
       return;
     }
@@ -90,6 +101,29 @@ export function AddAccountModal({ isOpen, onClose, onSuccess }: AddAccountModalP
       }
 
       const payload = await res.json().catch(() => ({}));
+
+      // Solde de départ : un versement daté du jour sur le nouveau compte.
+      if (balance > 0 && payload.account?.id) {
+        const deposit = await fetch('/api/transactions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            account_id: payload.account.id,
+            type: 'DEPOSIT',
+            amount: Math.round(balance * 100) / 100,
+            fees: 0,
+            description: 'Solde initial',
+            date: new Date().toLocaleDateString('sv-SE'),
+            currency: 'EUR',
+          }),
+        }).catch(() => null);
+        if (!deposit || !deposit.ok) {
+          const data = deposit ? await deposit.json().catch(() => ({})) : {};
+          onSuccess();
+          setError(`Compte créé, mais le solde n’a pas pu être enregistré${data.message ? ` (${data.message})` : ''}. Ajoutez un versement depuis Transactions.`);
+          return;
+        }
+      }
 
       resetForm();
       onSuccess();
@@ -176,9 +210,23 @@ export function AddAccountModal({ isOpen, onClose, onSuccess }: AddAccountModalP
             </label>
           )}
 
-          <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 bg-zinc-50 dark:bg-zinc-800 p-2 sm:p-3 rounded-lg">
-            💡 Le solde sera calculé à partir des transactions. Ajoutez un dépôt après création.
-          </p>
+          <div>
+            <label htmlFor="account-initial-balance" className="block text-xs sm:text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+              Solde actuel <span className="font-normal text-zinc-500">(facultatif)</span>
+            </label>
+            <input
+              id="account-initial-balance"
+              type="text"
+              inputMode="decimal"
+              value={initialBalance}
+              onChange={(e) => setInitialBalance(e.target.value)}
+              placeholder="0,00"
+              className="w-full px-3 py-2 text-sm sm:text-base border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+              Enregistré comme un versement daté d’aujourd’hui. Le solde se calcule ensuite à partir de vos opérations.
+            </p>
+          </div>
 
           {error && (
             <p className="text-xs sm:text-sm text-red-600">{error}</p>
@@ -195,9 +243,9 @@ export function AddAccountModal({ isOpen, onClose, onSuccess }: AddAccountModalP
             <button
               type="submit"
               disabled={loading}
-              className="flex-1 px-3 sm:px-4 py-2 text-sm sm:text-base bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+              className="btn-ink flex-1 px-3 sm:px-4 py-2 text-sm sm:text-base rounded-lg disabled:opacity-50 transition-colors"
             >
-              {loading ? 'Ajout...' : 'Ajouter'}
+              {loading ? 'Ajout…' : 'Ajouter'}
             </button>
           </div>
         </form>

@@ -225,12 +225,22 @@ export function AccountCard({
             {loading || yearToDateLoading ? (
               <Skeleton className="mt-1 h-3 w-16 sm:w-20" />
             ) : showYearToDate ? (
+              // Gain de l'année hors versements et retraits : un retrait sur un
+              // livret n'apparaît pas comme une perte.
               <p
-                className={`text-[10px] sm:text-xs truncate ${trendClass(yearToDate.change)}`}
-                title={`Variation depuis le 1er janvier ${yearToDate.year}`}
+                className={`text-[10px] sm:text-xs truncate ${trendClass(yearToDate.performance)}`}
+                title={`Gain depuis le 1er janvier ${yearToDate.year}, hors versements et retraits`}
               >
-                {signedCurrency(yearToDate.change)}
-                <span className="text-zinc-500 dark:text-zinc-400"> en {yearToDate.year}</span>
+                {Math.abs(yearToDate.performance) < 0.005 ? (
+                  <>Aucun gain en {yearToDate.year}</>
+                ) : (
+                  <>
+                    {formatCurrency(Math.abs(yearToDate.performance))}
+                    <span className="text-zinc-500 dark:text-zinc-400">
+                      {yearToDate.performance > 0 ? ' gagnés' : ' perdus'} en {yearToDate.year}
+                    </span>
+                  </>
+                )}
               </p>
             ) : supportsPositions && (
               <p className="text-[10px] sm:text-xs text-zinc-500 dark:text-zinc-400">

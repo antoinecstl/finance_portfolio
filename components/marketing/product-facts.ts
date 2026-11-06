@@ -7,7 +7,8 @@ export const BENCHMARK_REFERENCE_COUNT = BENCHMARK_LABELS.length;
 
 export function freePlanSummary(): string {
   const { maxAccounts, maxTransactions, maxPositions } = PLANS.free;
-  return `Gratuit jusqu’à ${maxAccounts} comptes, ${maxTransactions} transactions et ${maxPositions} positions. Sans carte bancaire.`;
+  const offeredImport = PLANS.free.includedImports > 0 ? ', premier import de relevé offert' : '';
+  return `Gratuit jusqu’à ${maxAccounts} comptes, ${maxTransactions} transactions et ${maxPositions} positions${offeredImport}. Sans carte bancaire.`;
 }
 
 // Feature pages whose feature requires the Pro plan (see lib/plans.ts features).

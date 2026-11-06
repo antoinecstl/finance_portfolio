@@ -1,7 +1,8 @@
 import type { Account, StockPosition, StockQuote, Transaction } from './types';
 import { convertToBase, type FxRateMap } from './fx';
 import { buildPositionDisplayGroups, transactionMatchesPositionDisplayGroup } from './position-display';
-import { getSectorColor } from './utils';
+import { getAccountTypeLabel, getSectorColor } from './utils';
+import { shortInstrumentName } from './instrument-names';
 
 export interface PositionTransactionStats {
   buys: Transaction[];
@@ -18,6 +19,8 @@ export interface PositionTransactionStats {
 
 export interface PositionMetrics {
   key: string; symbol: string; displayLabel: string; name: string;
+  /** Nom court pour les axes des graphiques (« L'Oréal », « MSCI World ETF »). */
+  chartLabel: string;
   accountId: string; accountName: string; accountType: string;
   currentValue: number; investedValue: number; gainValue: number; gainPercent: number;
   dayChange: number; dayChangePercent: number; nativeCurrentValue: number;
@@ -28,6 +31,7 @@ export interface PositionMetrics {
 }
 
 const currencyOf = (transaction: Transaction) => (transaction.currency ?? 'EUR').toUpperCase();
+const CHART_PALETTE_SIZE = 10;
 
 export function getTransactionsForPosition(
   transactions: Transaction[],
@@ -68,17 +72,25 @@ export function buildPositionMetrics({ positions, quotes, transactions = [], acc
   for (const group of buildPositionDisplayGroups(positions, quotes, fxRates, date)) {
     const ids = symbolAccounts.get(group.symbol) ?? new Set<string>(); ids.add(group.accountId); symbolAccounts.set(group.symbol, ids);
   }
-  const metrics = buildPositionDisplayGroups(positions, quotes, fxRates, date).map((group, index): PositionMetrics => {
+  const metrics = buildPositionDisplayGroups(positions, quotes, fxRates, date).map((group): PositionMetrics => {
     const transactionStats = getTransactionStats(transactions, group, fxRates);
     const totalReturnValue = group.gainValue + transactionStats.totalDividendsInBase;
     const account = accountsById.get(group.accountId);
     const accountType = account?.type ?? '';
-    return { ...group, displayLabel: (symbolAccounts.get(group.symbol)?.size ?? 0) > 1 && accountType ? `${group.symbol} (${accountType})` : group.symbol,
+    // Même titre dans plusieurs comptes : le type de compte les distingue.
+    const accountSuffix = (symbolAccounts.get(group.symbol)?.size ?? 0) > 1 && accountType ? ` (${getAccountTypeLabel(accountType)})` : '';
+    return { ...group, displayLabel: `${group.symbol}${accountSuffix}`, chartLabel: `${shortInstrumentName(group.name)}${accountSuffix}`,
       accountName: account?.name ?? '—', accountType, totalReturnValue,
       totalReturnPercent: group.investedValue > 0 ? totalReturnValue / group.investedValue * 100 : 0,
-      weight: 0, color: getSectorColor(index), transactionStats };
+      weight: 0, color: getSectorColor(0), transactionStats };
   });
   const total = portfolioTotalValue ?? metrics.reduce((sum, metric) => sum + metric.currentValue, 0);
   metrics.forEach(metric => { metric.weight = total > 0 ? metric.currentValue / total * 100 : 0; });
+  // Couleurs par poids décroissant : les dix plus grosses lignes ont chacune la
+  // leur, les suivantes (petites) partagent un gris plutôt que de reprendre
+  // une couleur déjà utilisée.
+  [...metrics].sort((a, b) => b.currentValue - a.currentValue).forEach((metric, rank) => {
+    metric.color = rank < CHART_PALETTE_SIZE ? getSectorColor(rank) : 'var(--ink-soft)';
+  });
   return metrics;
 }

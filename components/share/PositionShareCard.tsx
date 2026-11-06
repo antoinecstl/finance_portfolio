@@ -1,6 +1,7 @@
 import { forwardRef } from 'react';
 import { formatCurrency, formatPercent } from '@/lib/utils';
 import { SHARE_CARD_DIMENSIONS, type PositionShareData, type ShareCardSettings } from '@/lib/share-card';
+import { shortInstrumentName } from '@/lib/instrument-names';
 
 const themes = {
   light: { paper: '#f7f2e8', paper2: '#efe7d4', ink: '#0e0c0a', soft: '#5b524a', rule: '#d8cdb6', gain: '#047857', loss: '#b91c1c' },
@@ -28,7 +29,11 @@ export const PositionShareCard = forwardRef<HTMLDivElement, { data: PositionShar
   const isStory = settings.format === 'story';
   const isDense = isSquare || facts.length > 6;
   const padding = isSquare ? 58 : isStory ? 104 : 80;
-  const symbolSize = isDense ? 88 : isStory ? 136 : 112;
+  // Le nom du titre en titre (« L'Oréal »), le code en dessous ; la taille suit la longueur du nom.
+  const title = data.name && data.name !== data.symbol ? shortInstrumentName(data.name, 26) : data.symbol;
+  const subtitle = title === data.symbol ? data.name : data.symbol;
+  const titleScale = title.length > 18 ? 0.6 : title.length > 11 ? 0.78 : 1;
+  const symbolSize = Math.round((isDense ? 88 : isStory ? 136 : 112) * titleScale);
   const performanceSize = isDense ? 104 : isStory ? 154 : 132;
   const factPadding = isDense ? 24 : 38;
   const factGap = isDense ? '20px 38px' : '34px 48px';
@@ -40,8 +45,8 @@ export const PositionShareCard = forwardRef<HTMLDivElement, { data: PositionShar
     </header>
     <main style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
       <p style={{ color: theme.soft, fontSize: isDense ? 24 : 30, margin: 0, textTransform: 'uppercase', letterSpacing: 5 }}>Ma position</p>
-      <h1 style={{ fontFamily: 'Georgia, serif', fontSize: symbolSize, lineHeight: 1, margin: isDense ? '12px 0 4px' : '20px 0 8px', letterSpacing: -5 }}>{data.symbol}</h1>
-      <p style={{ color: theme.soft, fontSize: isDense ? 28 : 34, margin: `0 0 ${isDense ? 28 : 60}px` }}>{data.name}</p>
+      <h1 style={{ fontFamily: 'Georgia, serif', fontSize: symbolSize, lineHeight: 1, margin: isDense ? '12px 0 4px' : '20px 0 8px', letterSpacing: titleScale < 1 ? -2 : -5 }}>{title}</h1>
+      <p style={{ color: theme.soft, fontSize: isDense ? 28 : 34, margin: `0 0 ${isDense ? 28 : 60}px` }}>{subtitle}</p>
       {data.gainPercent !== undefined && <div style={{ color: performance >= 0 ? theme.gain : theme.loss, fontFamily: 'Georgia, serif', fontSize: performanceSize, lineHeight: 1, fontWeight: 700 }}>{formatPercent(performance)}</div>}
       {facts.length > 0 && <div style={{ marginTop: isDense ? 30 : 66, padding: factPadding, background: theme.paper2, border: `2px solid ${theme.rule}`, display: 'grid', gridTemplateColumns: facts.length > 1 ? '1fr 1fr' : '1fr', gap: factGap }}>{facts.map(([label, value]) => <div key={label}><div style={{ color: theme.soft, fontSize: isDense ? 18 : 22, textTransform: 'uppercase', letterSpacing: 2 }}>{label}</div><div style={{ fontSize: isDense ? 27 : 34, lineHeight: 1.1, fontWeight: 700, marginTop: isDense ? 5 : 8 }}>{value}</div></div>)}</div>}
     </main>

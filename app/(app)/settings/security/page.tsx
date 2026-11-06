@@ -1,5 +1,8 @@
+import type { Metadata } from 'next';
 import { ChangePasswordForm } from './ChangePasswordForm';
 import { ShieldCheck } from 'lucide-react';
+
+export const metadata: Metadata = { title: 'Sécurité' };
 
 export default function SecurityPage() {
   return (

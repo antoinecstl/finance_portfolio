@@ -23,7 +23,7 @@ import {
 import { StockPosition, StockQuote, Transaction, Account } from '@/lib/types';
 import { PortfolioHistoryPoint, calculatePortfolioPerformance } from '@/lib/portfolio-calculator';
 import { convertToBase, type FxRateMap } from '@/lib/fx';
-import { formatAxisCurrency, formatCurrency, formatCurrencyRounded, formatNumber, formatPercent, getAccountColorMap, getSectorColor } from '@/lib/utils';
+import { formatAxisCurrency, formatCurrency, formatCurrencyRounded, formatNumber, formatPercent, getAccountColorMap, getAccountTypeLabel, getSectorColor } from '@/lib/utils';
 import { compareTransactionSequence } from '@/lib/transaction-ordering';
 import { positionDisplaySymbol } from '@/lib/position-display';
 import { buildPositionMetrics, type PositionMetrics } from '@/lib/position-metrics';
@@ -35,6 +35,7 @@ import { Skeleton } from './Skeleton';
 import { buildNiceYAxisScale } from '@/lib/chart-axis';
 import { useEvenXTicks } from '@/lib/use-even-x-ticks';
 import { getPortfolioMarketStatus } from '@/lib/market-status';
+import { ChartUnavailable } from './ChartUnavailable';
 
 const MS_PER_DAY = 86_400_000;
 const CHART_LEGEND_WRAPPER_STYLE = { fontSize: 12 };
@@ -262,18 +263,8 @@ export function AccountAllocationChart({ accounts, loading = false }: AccountAll
     percentage: (item.value / totalValue) * 100,
   }));
 
-  const getTypeLabel = (type: string) => {
-    const labels: Record<string, string> = {
-      'PEA': 'PEA',
-      'CTO': 'CTO',
-      'LIVRET_A': 'Livret A',
-      'LDDS': 'LDDS',
-      'ASSURANCE_VIE': 'Ass. Vie',
-      'PEL': 'PEL',
-      'AUTRE': 'Autre',
-    };
-    return labels[type] || type;
-  };
+  // Même libellé partout dans l'app (« Assurance-vie », « Compte-titres »).
+  const getTypeLabel = getAccountTypeLabel;
 
   return (
     <div className="flex flex-col bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-4 sm:p-6">
@@ -291,9 +282,11 @@ export function AccountAllocationChart({ accounts, loading = false }: AccountAll
                 <span className="font-medium text-zinc-900 dark:text-zinc-100 truncate" title={item.name}>
                   {item.name}
                 </span>
-                <span className="text-[10px] px-1.5 py-0.5 bg-zinc-100 dark:bg-zinc-800 rounded text-zinc-500 flex-shrink-0">
-                  {getTypeLabel(item.type)}
-                </span>
+                {!item.name.toLowerCase().includes(getTypeLabel(item.type).toLowerCase()) && (
+                  <span className="text-[10px] px-1.5 py-0.5 bg-zinc-100 dark:bg-zinc-800 rounded text-zinc-500 flex-shrink-0">
+                    {getTypeLabel(item.type)}
+                  </span>
+                )}
               </div>
               <span className="text-zinc-600 dark:text-zinc-400 flex-shrink-0 ml-2">
                 {formatCurrency(item.value)} ({formatNumber(item.percentage, 1)}%)
@@ -525,7 +518,7 @@ function PositionInlineHistoryChart({
               key={option.label}
               type="button"
               onClick={() => setPeriod(option)}
-              className={`px-2 py-1 text-[10px] sm:text-xs rounded transition-colors ${period.label === option.label ? 'bg-blue-600 text-white' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'}`}
+              className={`px-2 py-1 text-[10px] sm:text-xs rounded transition-colors ${period.label === option.label ? 'bg-[color:var(--ink)] text-[color:var(--paper)]' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'}`}
             >
               {option.label}
             </button>
@@ -661,19 +654,32 @@ export function PositionPerformanceChart({
 
   // Données pour le graphique de performance par position
   const perfChartData = sortedByPerf.map(m => ({
-    symbol: m.displayLabel,
+    symbol: m.chartLabel,
+    fullLabel: m.name === m.symbol ? m.displayLabel : `${m.name} · ${m.displayLabel}`,
     gainPercent: m.gainPercent,
     fill: m.gainPercent >= 0 ? 'var(--gain)' : 'var(--loss)',
   }));
 
   // Données pour le graphique de répartition par poids
   const weightChartData = sortedByValue.map(m => ({
-    symbol: m.displayLabel,
+    symbol: m.chartLabel,
+    fullLabel: m.name === m.symbol ? m.displayLabel : `${m.name} · ${m.displayLabel}`,
     weight: m.weight,
     value: m.currentValue,
     currency: 'EUR',
     color: m.color,
   }));
+
+  // Un libellé par barre : la hauteur suit le nombre de lignes.
+  const barChartHeight = Math.max(220, metrics.length * 30 + 40);
+  // Échelle du poids bornée à la plus grosse ligne (arrondie à 10 %) plutôt qu'à 100 %.
+  const maxWeight = Math.min(100, Math.max(10, Math.ceil(Math.max(0, ...weightChartData.map(d => d.weight)) / 10) * 10));
+  const weightStep = maxWeight <= 20 ? 5 : maxWeight <= 50 ? 10 : 25;
+  const weightTicks = Array.from({ length: Math.floor(maxWeight / weightStep) + 1 }, (_, i) => i * weightStep);
+  const fullLabelOf = (payload: unknown): string => {
+    const first = Array.isArray(payload) ? (payload[0] as { payload?: { fullLabel?: string } } | undefined) : undefined;
+    return first?.payload?.fullLabel ?? '';
+  };
 
   if (positions.length === 0) {
     return (
@@ -757,12 +763,12 @@ export function PositionPerformanceChart({
               Performance par position
             </h3>
           </div>
-          <div className="h-[250px] sm:h-[300px]">
+          <div style={{ height: barChartHeight }}>
             <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart 
-                data={perfChartData} 
+              <ComposedChart
+                data={perfChartData}
                 layout="vertical"
-                margin={{ top: 5, right: 30, left: 60, bottom: 5 }}
+                margin={{ top: 5, right: 16, left: 0, bottom: 5 }}
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--rule)" horizontal={true} vertical={false} />
                 <XAxis 
@@ -772,19 +778,21 @@ export function PositionPerformanceChart({
                   tick={{ fontSize: 10 }}
                   stroke="var(--ink-soft)"
                 />
-                <YAxis 
-                  type="category" 
-                  dataKey="symbol" 
+                <YAxis
+                  type="category"
+                  dataKey="symbol"
                   tick={{ fontSize: 11, fontWeight: 500 }}
                   stroke="var(--ink-soft)"
-                  width={50}
+                  width={112}
+                  interval={0}
                 />
                 <ReferenceLine x={0} stroke="var(--ink-soft)" strokeWidth={1} />
-                <Tooltip 
+                <Tooltip
                   formatter={(value) => {
                     const numValue = Number(value) || 0;
                     return [`${numValue >= 0 ? '+' : ''}${formatNumber(numValue, 2)}%`, 'Performance'];
                   }}
+                  labelFormatter={(label, payload) => fullLabelOf(payload) || label}
                   contentStyle={{
                     backgroundColor: 'var(--paper-2)',
                     border: '1px solid var(--rule)',
@@ -793,11 +801,11 @@ export function PositionPerformanceChart({
                   }}
                   labelStyle={{ color: 'var(--ink)', fontWeight: 600 }}
                 />
-                <Bar 
-                  dataKey="gainPercent" 
+                <Bar
+                  dataKey="gainPercent"
                   fill="var(--gain)"
                   radius={[0, 4, 4, 0]}
-                  barSize={20}
+                  barSize={18}
                 >
                   {perfChartData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.fill} />
@@ -817,35 +825,37 @@ export function PositionPerformanceChart({
               Répartition du portefeuille
             </h3>
           </div>
-          <div className="h-[250px] sm:h-[300px] -mx-1 sm:mx-0">
+          <div className="-mx-1 sm:mx-0" style={{ height: barChartHeight }}>
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart 
-                data={weightChartData} 
+              <BarChart
+                data={weightChartData}
                 layout="vertical"
-                margin={{ top: 5, right: 8, left: 0, bottom: 5 }}
+                margin={{ top: 5, right: 16, left: 0, bottom: 5 }}
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--rule)" horizontal={true} vertical={false} />
-                <XAxis 
-                  type="number" 
-                  domain={[0, 100]}
-                  ticks={[0, 25, 50, 75, 100]}
+                <XAxis
+                  type="number"
+                  domain={[0, maxWeight]}
+                  ticks={weightTicks}
                   tickFormatter={(value) => `${value.toFixed(0)}%`}
                   tick={{ fontSize: 10 }}
                   stroke="var(--ink-soft)"
                 />
-                <YAxis 
-                  type="category" 
-                  dataKey="symbol" 
+                <YAxis
+                  type="category"
+                  dataKey="symbol"
                   tick={{ fontSize: 11, fontWeight: 500 }}
                   stroke="var(--ink-soft)"
-                  width={64}
+                  width={112}
+                  interval={0}
                 />
-                <Tooltip 
+                <Tooltip
                   formatter={(value, name, props) => {
                     const numValue = Number(value) || 0;
                     const data = props.payload;
                     return [`${formatNumber(numValue, 1)}% (${formatCurrency(data.value, data.currency)})`, 'Poids'];
                   }}
+                  labelFormatter={(label, payload) => fullLabelOf(payload) || label}
                   contentStyle={{
                     backgroundColor: 'var(--paper-2)',
                     border: '1px solid var(--rule)',
@@ -854,10 +864,10 @@ export function PositionPerformanceChart({
                   }}
                   labelStyle={{ color: 'var(--ink)', fontWeight: 600 }}
                 />
-                <Bar 
-                  dataKey="weight" 
+                <Bar
+                  dataKey="weight"
                   radius={[0, 4, 4, 0]}
-                  barSize={20}
+                  barSize={18}
                 >
                   {weightChartData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
@@ -902,7 +912,7 @@ export function PositionPerformanceChart({
                 {group.accountId && (
                   <div className="px-3 py-2 bg-zinc-50 dark:bg-zinc-800/50 border-b border-zinc-200 dark:border-zinc-800">
                     <p className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 uppercase tracking-wide">
-                      {group.accountName} <span className="text-[10px] opacity-70">({group.accountType})</span>
+                      {group.accountName} <span className="text-[10px] opacity-70 normal-case">({getAccountTypeLabel(group.accountType)})</span>
                     </p>
                   </div>
                 )}
@@ -912,27 +922,33 @@ export function PositionPerformanceChart({
                   return (
                     <div key={m.key} className="p-3 space-y-2">
                       <div
-                        className="flex justify-between items-start cursor-pointer"
+                        className="flex justify-between items-start gap-2 cursor-pointer"
                         onClick={() => setExpandedKey(isExpanded ? null : m.key)}
                       >
-                        <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          aria-expanded={isExpanded}
+                          aria-controls={`position-detail-m-${m.key}`}
+                          onClick={(event) => { event.stopPropagation(); setExpandedKey(isExpanded ? null : m.key); }}
+                          className="focus-inset flex min-w-0 flex-1 items-center gap-2 rounded text-left"
+                        >
                           {isExpanded ? (
-                            <ChevronDown className="h-4 w-4 text-zinc-400" />
+                            <ChevronDown className="h-4 w-4 shrink-0 text-zinc-400" aria-hidden="true" />
                           ) : (
-                            <ChevronRight className="h-4 w-4 text-zinc-400" />
+                            <ChevronRight className="h-4 w-4 shrink-0 text-zinc-400" aria-hidden="true" />
                           )}
-                          <div>
-                            <p className="font-semibold text-zinc-900 dark:text-zinc-100">{m.symbol}</p>
-                            <p className="text-xs text-zinc-500 truncate max-w-[150px]">{m.name}</p>
+                          <span className="min-w-0">
+                            <span className="block font-semibold leading-snug text-zinc-900 dark:text-zinc-100 [overflow-wrap:anywhere]">{m.name}</span>
+                            {m.name !== m.symbol && <span className="block text-xs text-zinc-500">{m.symbol}</span>}
                             {!groupByAccount && uniqueAccountIdsInPositions.size > 1 && m.accountName && (
-                              <p className="text-[10px] text-zinc-500 mt-0.5">
-                                {m.accountName} <span className="opacity-70">({m.accountType})</span>
-                              </p>
+                              <span className="block text-[10px] text-zinc-500 mt-0.5">
+                                {m.accountName} <span className="opacity-70">({getAccountTypeLabel(m.accountType)})</span>
+                              </span>
                             )}
-                          </div>
-                        </div>
-                        <div className="flex items-start gap-2">
-                          <button type="button" aria-label={`Partager la position ${m.symbol}`} onClick={(event) => { event.stopPropagation(); setSharedMetric(m); }} className="rounded p-1 text-zinc-500 hover:text-red-700"><Share2 className="h-4 w-4" /></button>
+                          </span>
+                        </button>
+                        <div className="flex shrink-0 items-start gap-2">
+                          <button type="button" aria-label={`Partager la position ${m.name}`} onClick={(event) => { event.stopPropagation(); setSharedMetric(m); }} className="rounded p-1 text-zinc-500 hover:text-red-700"><Share2 className="h-4 w-4" /></button>
                           <div className="text-right">
                           <p className="font-bold text-zinc-900 dark:text-zinc-100">{formatCurrency(m.nativeCurrentValue, m.quoteCurrency)}</p>
                           <p className={`text-xs text-zinc-500 ${isProUser ? '' : 'blur-sm select-none'}`}>{formatNumber(m.weight, 1)}% du portefeuille</p>
@@ -968,7 +984,7 @@ export function PositionPerformanceChart({
                       </div>
 
                       {isExpanded && (
-                        <div className="mt-3 pt-3 border-t border-zinc-200 dark:border-zinc-700 space-y-3">
+                        <div id={`position-detail-m-${m.key}`} className="mt-3 pt-3 border-t border-zinc-200 dark:border-zinc-700 space-y-3">
                           <div className="grid grid-cols-2 gap-2 text-xs">
                             <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded p-2">
                               <p className="text-emerald-600 dark:text-emerald-400 font-medium">Achats</p>
@@ -1082,7 +1098,7 @@ export function PositionPerformanceChart({
                       <tr className="bg-zinc-100 dark:bg-zinc-800/70">
                         <td colSpan={colSpan} className="py-2 px-3">
                           <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 uppercase tracking-wide">
-                            {group.accountName} <span className="text-[10px] opacity-70">({group.accountType})</span>
+                            {group.accountName} <span className="text-[10px] opacity-70 normal-case">({getAccountTypeLabel(group.accountType)})</span>
                           </span>
                         </td>
                       </tr>
@@ -1098,22 +1114,31 @@ export function PositionPerformanceChart({
                           >
                             <td className="py-2 px-3">
                               <div className="flex items-center gap-2">
-                                {isExpanded ? (
-                                  <ChevronDown className="h-4 w-4 text-zinc-400 flex-shrink-0" />
-                                ) : (
-                                  <ChevronRight className="h-4 w-4 text-zinc-400 flex-shrink-0" />
-                                )}
-                                <div>
-                                  <div className="flex items-center gap-2"><p className="font-semibold text-zinc-900 dark:text-zinc-100">{m.symbol}</p><button type="button" aria-label={`Partager la position ${m.symbol}`} onClick={(event) => { event.stopPropagation(); setSharedMetric(m); }} className="rounded p-1 text-zinc-400 hover:text-red-700"><Share2 className="h-4 w-4" /></button></div>
-                                  <p className="text-xs text-zinc-500 truncate max-w-[120px]">{m.name}</p>
-                                </div>
+                                <button
+                                  type="button"
+                                  aria-expanded={isExpanded}
+                                  aria-controls={`position-detail-d-${m.key}`}
+                                  onClick={(event) => { event.stopPropagation(); setExpandedKey(isExpanded ? null : m.key); }}
+                                  className="focus-inset flex min-w-0 items-center gap-2 rounded text-left"
+                                >
+                                  {isExpanded ? (
+                                    <ChevronDown className="h-4 w-4 text-zinc-400 flex-shrink-0" aria-hidden="true" />
+                                  ) : (
+                                    <ChevronRight className="h-4 w-4 text-zinc-400 flex-shrink-0" aria-hidden="true" />
+                                  )}
+                                  <span className="min-w-0">
+                                    <span className="block max-w-[220px] truncate font-semibold text-zinc-900 dark:text-zinc-100" title={m.name}>{m.name}</span>
+                                    {m.name !== m.symbol && <span className="block text-xs text-zinc-500">{m.symbol}</span>}
+                                  </span>
+                                </button>
+                                <button type="button" aria-label={`Partager la position ${m.name}`} onClick={(event) => { event.stopPropagation(); setSharedMetric(m); }} className="shrink-0 rounded p-1 text-zinc-400 hover:text-red-700"><Share2 className="h-4 w-4" /></button>
                               </div>
                             </td>
                             {showAccountCol && (
                               <td className="py-2 px-3">
                                 <div className="text-xs">
                                   <p className="font-medium text-zinc-700 dark:text-zinc-300">{m.accountName}</p>
-                                  <p className="text-[10px] text-zinc-500">{m.accountType}</p>
+                                  <p className="text-[10px] text-zinc-500">{getAccountTypeLabel(m.accountType)}</p>
                                 </div>
                               </td>
                             )}
@@ -1159,7 +1184,7 @@ export function PositionPerformanceChart({
                     
                     {/* Ligne de détail extensible */}
                     {isExpanded && (
-                      <tr className="bg-zinc-50/80 dark:bg-zinc-800/30">
+                      <tr id={`position-detail-d-${m.key}`} className="bg-zinc-50/80 dark:bg-zinc-800/30">
                         <td colSpan={colSpan} className="px-4 py-4">
                           <div className="space-y-4">
                             {/* Résumé des transactions */}
@@ -1309,16 +1334,21 @@ interface PortfolioValueChartProps {
   history: PortfolioHistoryPoint[];
   transactions: Transaction[];
   loading?: boolean;
+  /** Échec du chargement des cours : à distinguer de l'absence de transactions. */
+  error?: string | null;
+  onRetry?: () => void;
   // Valeurs actuelles du portefeuille (pour cohérence avec les autres composants)
   currentTotalValue?: number;
   currentTotalInvested?: number;
   fxRates?: FxRateMap;
 }
 
-export function PortfolioValueChart({ 
-  history, 
-  transactions, 
+export function PortfolioValueChart({
+  history,
+  transactions,
   loading = false,
+  error = null,
+  onRetry,
   currentTotalValue,
   currentTotalInvested,
   fxRates = {},
@@ -1511,12 +1541,16 @@ export function PortfolioValueChart({
             Évolution valeur vs investissement
           </h3>
         </div>
-        <div className="text-center py-8 sm:py-12">
-          <TrendingUp className="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-zinc-400" />
-          <p className="mt-3 sm:mt-4 text-sm text-zinc-500 dark:text-zinc-400">
-            Ajoutez des transactions pour voir l&apos;évolution
-          </p>
-        </div>
+        {error ? (
+          <ChartUnavailable onRetry={onRetry} />
+        ) : (
+          <div className="text-center py-8 sm:py-12">
+            <TrendingUp className="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-zinc-400" />
+            <p className="mt-3 sm:mt-4 text-sm text-zinc-500 dark:text-zinc-400">
+              Ajoutez des transactions pour voir l&apos;évolution
+            </p>
+          </div>
+        )}
       </div>
     );
   }
@@ -2203,6 +2237,9 @@ interface PortfolioPerformanceChartProps {
   portfolioHistory: PortfolioHistoryPoint[];
   accounts: Account[];
   loading?: boolean;
+  /** Échec du chargement des cours : à distinguer de l'absence de transactions. */
+  error?: string | null;
+  onRetry?: () => void;
   currentPortfolioValue?: number; // Valeur actuelle en temps réel
   fxRates?: FxRateMap;
 }
@@ -2212,6 +2249,8 @@ export function PortfolioPerformanceChart({
   portfolioHistory,
   accounts,
   loading = false,
+  error = null,
+  onRetry,
   currentPortfolioValue,
   fxRates = {},
 }: PortfolioPerformanceChartProps) {
@@ -2305,12 +2344,16 @@ export function PortfolioPerformanceChart({
             Performance annuelle
           </h3>
         </div>
-        <div className="text-center py-8 sm:py-12">
-          <TrendingUp className="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-zinc-400" />
-          <p className="mt-3 sm:mt-4 text-sm text-zinc-500 dark:text-zinc-400">
-            Ajoutez des transactions pour voir votre performance
-          </p>
-        </div>
+        {error ? (
+          <ChartUnavailable onRetry={onRetry} />
+        ) : (
+          <div className="text-center py-8 sm:py-12">
+            <TrendingUp className="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-zinc-400" />
+            <p className="mt-3 sm:mt-4 text-sm text-zinc-500 dark:text-zinc-400">
+              Ajoutez des transactions pour voir votre performance
+            </p>
+          </div>
+        )}
       </div>
     );
   }
@@ -2330,6 +2373,11 @@ export function PortfolioPerformanceChart({
         <h3 className="font-semibold text-sm sm:text-base text-zinc-900 dark:text-zinc-100">
           Performance annuelle (hors apports)
         </h3>
+        <p className="basis-full text-xs text-zinc-500 dark:text-zinc-400">
+          {accounts.length === 1
+            ? `Compte ${accounts[0].name}, liquidités comprises.`
+            : 'Comptes investis (titres et liquidités), hors livrets : un pourcentage différent de celui du patrimoine total à l’accueil.'}
+        </p>
         {isMultiCurrency && (
           <span
             className="text-[10px] sm:text-xs px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300"

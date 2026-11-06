@@ -8,6 +8,7 @@ import {
   CandlestickChart,
   ChevronRight,
   CreditCard,
+  Download,
   KeyRound,
   Lock,
   LogOut,
@@ -22,6 +23,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
+import { initialsOf } from '@/lib/initials';
 import { useSubscription } from '@/lib/subscription-client';
 import {
   DASHBOARD_GROUPS,
@@ -36,6 +38,8 @@ import {
 interface AppShellProps {
   children: ReactNode;
   email: string;
+  /** Nom saisi dans le profil, pour les initiales du menu. */
+  fullName?: string | null;
   isAdmin: boolean;
 }
 
@@ -48,13 +52,14 @@ interface AppShellProps {
  *   du haut réduite au logo, sous-onglets quand une rubrique a deux pages, et
  *   un menu « Plus » pour l'import, les paramètres et la déconnexion.
  */
-export function AppShell({ children, email, isAdmin }: AppShellProps) {
+export function AppShell({ children, email, fullName, isAdmin }: AppShellProps) {
+  const initials = initialsOf(fullName, email);
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 xl:pl-60">
       <Suspense fallback={null}>
-        <Sidebar email={email} isAdmin={isAdmin} />
+        <Sidebar email={email} initials={initials} isAdmin={isAdmin} />
         <MobileHeader />
-        <MobileTabBar email={email} isAdmin={isAdmin} />
+        <MobileTabBar email={email} initials={initials} isAdmin={isAdmin} />
       </Suspense>
       {/* Sur mobile, on réserve la hauteur de la barre du bas (et de la zone d'accueil iPhone). */}
       <div className="pb-[calc(5.5rem+env(safe-area-inset-bottom))] xl:pb-10">{children}</div>
@@ -68,7 +73,8 @@ const ACCOUNT_LINKS: ReadonlyArray<{ href: string; label: string; icon: LucideIc
   { href: '/settings/billing', label: 'Abonnement', icon: CreditCard },
   { href: '/settings/security', label: 'Sécurité', icon: Shield },
   { href: '/settings/api', label: 'Accès API (ChatGPT, Claude)', icon: KeyRound },
-  { href: '/settings/danger', label: 'Export et suppression', icon: AlertTriangle, danger: true },
+  { href: '/settings/exports', label: 'Exports et rapports', icon: Download },
+  { href: '/settings/danger', label: 'Supprimer mon compte', icon: AlertTriangle, danger: true },
 ];
 
 const isToolPath = (pathname: string) =>
@@ -140,7 +146,7 @@ function SectionLabel({ children }: { children: ReactNode }) {
   );
 }
 
-function Sidebar({ email, isAdmin }: { email: string; isAdmin: boolean }) {
+function Sidebar({ email, initials, isAdmin }: { email: string; initials: string; isAdmin: boolean }) {
   const pathname = usePathname();
   const activeTab = useActiveDashboardTab();
   const { isFree, importAccess } = useSubscription();
@@ -205,7 +211,7 @@ function Sidebar({ email, isAdmin }: { email: string; isAdmin: boolean }) {
           </Link>
         )}
         <div className="flex items-center gap-2 px-1">
-          <Avatar email={email} />
+          <Avatar initials={initials} />
           <span className="min-w-0 flex-1 truncate text-xs text-[color:var(--ink-soft)]" title={email}>
             {email}
           </span>
@@ -224,13 +230,13 @@ function Sidebar({ email, isAdmin }: { email: string; isAdmin: boolean }) {
   );
 }
 
-function Avatar({ email }: { email: string }) {
+function Avatar({ initials }: { initials: string }) {
   return (
     <span
       className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[color:var(--ink)] text-xs font-medium uppercase text-[color:var(--paper)]"
       aria-hidden="true"
     >
-      {email.slice(0, 1) || '?'}
+      {initials}
     </span>
   );
 }
@@ -293,7 +299,7 @@ function ActiveDot({ active }: { active: boolean }) {
 }
 
 /** Barre d'onglets du bas (mobile et tablette). */
-function MobileTabBar({ email, isAdmin }: { email: string; isAdmin: boolean }) {
+function MobileTabBar({ email, initials, isAdmin }: { email: string; initials: string; isAdmin: boolean }) {
   const pathname = usePathname();
   const activeTab = useActiveDashboardTab();
   const activeGroup = activeTab ? dashboardGroupOf(activeTab).id : null;
@@ -341,13 +347,13 @@ function MobileTabBar({ email, isAdmin }: { email: string; isAdmin: boolean }) {
           </button>
         </div>
       </nav>
-      {menuOpen && <MoreSheet email={email} isAdmin={isAdmin} onClose={() => setMenuOpen(false)} />}
+      {menuOpen && <MoreSheet email={email} initials={initials} isAdmin={isAdmin} onClose={() => setMenuOpen(false)} />}
     </>
   );
 }
 
 /** Menu « Plus » : import, compte et paramètres, administration, déconnexion. */
-function MoreSheet({ email, isAdmin, onClose }: { email: string; isAdmin: boolean; onClose: () => void }) {
+function MoreSheet({ email, initials, isAdmin, onClose }: { email: string; initials: string; isAdmin: boolean; onClose: () => void }) {
   const pathname = usePathname();
   const { isFree, importAccess } = useSubscription();
   const signOut = useSignOut();
@@ -390,7 +396,7 @@ function MoreSheet({ email, isAdmin, onClose }: { email: string; isAdmin: boolea
         <div className="mx-auto max-w-xl">
           <div className="mx-auto mb-2 h-1 w-10 rounded-full bg-[color:var(--rule)]" aria-hidden="true" />
           <div className="flex items-center gap-3 px-3 py-2">
-            <Avatar email={email} />
+            <Avatar initials={initials} />
             <span className="min-w-0 flex-1 truncate text-sm text-[color:var(--ink-soft)]">{email}</span>
             <button type="button" onClick={onClose} className="rounded-lg p-2 text-[color:var(--ink-soft)] hover:bg-[color:var(--paper-2)]" aria-label="Fermer">
               <X className="h-5 w-5" />

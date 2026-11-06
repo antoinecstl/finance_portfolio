@@ -189,8 +189,11 @@ export function PortfolioStats({
                 <Skeleton className="h-4 w-64 max-w-full" />
               ) : yearToDate ? (
                 <>
-                  <p className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
-                    <span>Performance {currentYear} :</span>
+                  <p
+                    className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5"
+                    title="Gain de l'année hors versements et retraits, rapporté à tout le patrimoine (livrets compris). La page Positions calcule la même chose sur les seuls comptes investis."
+                  >
+                    <span>Performance {currentYear} du patrimoine :</span>
                     <span
                       className={`inline-flex items-center gap-0.5 font-semibold ${
                         ytdPositive ? 'text-emerald-600' : 'text-red-600'
@@ -207,7 +210,9 @@ export function PortfolioStats({
                   </p>
                   {Math.abs(yearToDate.netFlows) > 0.005 && (
                     <p className="mt-0.5 text-[11px] sm:text-xs">
-                      Hors apports nets de {formatCurrency(yearToDate.netFlows)} depuis le 1er janvier
+                      {yearToDate.netFlows > 0
+                        ? `Hors versements nets de ${formatCurrency(yearToDate.netFlows)} depuis le 1er janvier`
+                        : `Hors retraits nets de ${formatCurrency(Math.abs(yearToDate.netFlows))} depuis le 1er janvier`}
                     </p>
                   )}
                 </>
