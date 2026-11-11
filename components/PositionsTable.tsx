@@ -26,6 +26,18 @@ interface ClosedPosition {
   realizedGainInBase: number;
   realizedGainPercent: number;
   lastSellDate: string;
+  /** Vente partielle : il reste des titres en portefeuille sur ce compte. */
+  stillHeld: boolean;
+}
+
+// « +529,57 € » : le signe rend la plus-value lisible sans légende.
+function formatSignedCurrency(amount: number, currency = 'EUR'): string {
+  return `${amount > 0 ? '+' : ''}${formatCurrency(amount, currency)}`;
+}
+
+// Quantités entières sans décimales, fractions (crypto, ETF fractionnés) jusqu'à 6.
+function formatQuantity(quantity: number): string {
+  return new Intl.NumberFormat('fr-FR', { maximumFractionDigits: Number.isInteger(quantity) ? 0 : 6 }).format(quantity);
 }
 
 interface PositionsTableProps {
@@ -196,6 +208,7 @@ export function PositionsTable({
           realizedGainInBase,
           realizedGainPercent,
           lastSellDate,
+          stillHeld: (runningPositions.get(data.key)?.qty ?? 0) > 1e-9,
         });
       }
     });
@@ -231,7 +244,7 @@ export function PositionsTable({
           Aucune position
         </h3>
         <p className="mt-1 sm:mt-2 text-sm text-zinc-500 dark:text-zinc-400">
-          Ajoutez des actions à votre portefeuille
+          Ajoutez des titres à votre portefeuille
         </p>
       </div>
     );
@@ -308,29 +321,43 @@ export function PositionsTable({
         )
       )}
 
-      {/* Positions clôturées (historique) */}
+      {/* Titres vendus (historique des ventes) */}
       {showHistory && closedPositions.length > 0 && (
         <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden">
           <button
+            type="button"
             onClick={() => setShowClosedPositions(!showClosedPositions)}
-            className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-zinc-50 dark:bg-zinc-800/50 border-b border-zinc-200 dark:border-zinc-700 flex items-center justify-between hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+            aria-expanded={showClosedPositions}
+            className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-zinc-50 dark:bg-zinc-800/50 border-b border-zinc-200 dark:border-zinc-700 flex items-center justify-between gap-3 text-left hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
           >
-            <h3 className="font-semibold text-sm sm:text-base text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
-              <History className="h-4 w-4" />
-              <span className="hidden sm:inline">Positions clôturées</span>
-              <span className="sm:hidden">Clôturées</span>
-              <span className="text-xs sm:text-sm">({closedPositions.length})</span>
-              <span className={`text-xs sm:text-sm font-normal ${totalRealizedGain >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                ({formatCurrency(totalRealizedGain)})
-              </span>
-            </h3>
-            {showClosedPositions ? (
-              <ChevronUp className="h-4 w-4 sm:h-5 sm:w-5 text-zinc-400" />
-            ) : (
-              <ChevronDown className="h-4 w-4 sm:h-5 sm:w-5 text-zinc-400" />
-            )}
+            <div className="flex min-w-0 items-center gap-2">
+              <History className="h-4 w-4 shrink-0 text-zinc-500" aria-hidden="true" />
+              <div className="min-w-0">
+                <h3 className="font-semibold text-sm sm:text-base text-zinc-900 dark:text-zinc-100">
+                  Titres vendus <span className="font-normal text-zinc-500">({closedPositions.length})</span>
+                </h3>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                  {showClosedPositions ? 'Masquer le détail' : 'Voir le détail des ventes'}
+                </p>
+              </div>
+            </div>
+            <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+              <div className="text-right">
+                <p className="text-[11px] sm:text-xs text-zinc-500 dark:text-zinc-400">
+                  {totalRealizedGain >= 0 ? 'Plus-value réalisée' : 'Moins-value réalisée'}
+                </p>
+                <p className={`font-semibold text-sm sm:text-base tabular-nums ${totalRealizedGain >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                  {formatSignedCurrency(totalRealizedGain)}
+                </p>
+              </div>
+              {showClosedPositions ? (
+                <ChevronUp className="h-4 w-4 sm:h-5 sm:w-5 text-zinc-400" aria-hidden="true" />
+              ) : (
+                <ChevronDown className="h-4 w-4 sm:h-5 sm:w-5 text-zinc-400" aria-hidden="true" />
+              )}
+            </div>
           </button>
-          
+
           {showClosedPositions && (() => {
             // Construire les groupes pour le rendu
             const groups: Array<{ accountId: string | null; accountName: string; accountType: string; items: ClosedPosition[] }> = [];
@@ -350,9 +377,20 @@ export function PositionsTable({
             const uniqueAccountIds = new Set(closedPositions.map(p => p.accountId));
             const showAccountCol = !groupByAccount && uniqueAccountIds.size > 1;
             const colSpan = showAccountCol ? 7 : 6;
+            const gainClass = (value: number) => (value >= 0 ? 'text-emerald-600' : 'text-red-600');
+            const stillHeldBadge = (
+              <span className="ml-1.5 inline-flex items-center rounded-full border border-zinc-200 dark:border-zinc-700 px-1.5 py-px text-[10px] font-medium text-zinc-600 dark:text-zinc-300 align-middle">
+                Encore détenu
+              </span>
+            );
 
             return (
               <>
+                <p className="px-3 sm:px-4 py-2 text-xs text-zinc-500 dark:text-zinc-400 border-b border-zinc-100 dark:border-zinc-800">
+                  Titres vendus en totalité ou en partie. Plus-value réalisée = montant des ventes − prix de revient moyen (PRU) des titres vendus.
+                  {' '}Le total est converti en euros au cours du jour de chaque vente.
+                </p>
+
                 {/* Version mobile: cartes */}
                 <div className="sm:hidden">
                   {groups.map((group) => (
@@ -365,30 +403,48 @@ export function PositionsTable({
                         </div>
                       )}
                       {group.items.map((pos) => (
-                        <div key={pos.key} className="border-b border-zinc-100 dark:border-zinc-800 p-3 space-y-2">
-                          <div className="flex items-start justify-between">
-                            <div>
-                              <p className="font-semibold text-zinc-900 dark:text-zinc-100">{closedName(pos.symbol)}</p>
-                              <p className="text-xs text-zinc-500">{closedName(pos.symbol) !== pos.symbol ? `${pos.symbol} · ` : ''}{formatNumber(pos.totalSold, 0)} vendus</p>
+                        <div key={pos.key} className="border-b border-zinc-100 dark:border-zinc-800 p-3 space-y-2.5">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="font-semibold text-zinc-900 dark:text-zinc-100 truncate">{closedName(pos.symbol)}</p>
+                              <p className="text-xs text-zinc-500">
+                                {pos.symbol}
+                                {pos.stillHeld && stillHeldBadge}
+                              </p>
                               {showAccountCol && (
                                 <p className="text-[10px] text-zinc-500 mt-0.5">
                                   {pos.accountName} <span className="opacity-70">({getAccountTypeLabel(pos.accountType)})</span>
                                 </p>
                               )}
                             </div>
-                            <div className="text-right">
-                              <p className={`font-semibold ${pos.realizedGain >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                                {formatCurrency(pos.realizedGain, pos.currency)}
+                            <div className="text-right shrink-0">
+                              <p className="text-[11px] text-zinc-500">{pos.realizedGain >= 0 ? 'Plus-value' : 'Moins-value'}</p>
+                              <p className={`font-semibold tabular-nums ${gainClass(pos.realizedGain)}`}>
+                                {formatSignedCurrency(pos.realizedGain, pos.currency)}
                               </p>
-                              <p className={`text-xs ${pos.realizedGain >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                              <p className={`text-xs tabular-nums ${gainClass(pos.realizedGain)}`}>
                                 {formatPercent(pos.realizedGainPercent)}
                               </p>
                             </div>
                           </div>
-                          <div className="flex justify-between text-xs text-zinc-500">
-                            <span>Achat: {formatCurrency(pos.avgBuyPrice, pos.currency)} → Vente: {formatCurrency(pos.avgSellPrice, pos.currency)}</span>
-                            <span>{new Date(pos.lastSellDate).toLocaleDateString('fr-FR')}</span>
-                          </div>
+                          <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
+                            <div>
+                              <dt className="text-zinc-500">Prix moyen d’achat</dt>
+                              <dd className="font-medium text-zinc-900 dark:text-zinc-100 tabular-nums">{formatCurrency(pos.avgBuyPrice, pos.currency)}</dd>
+                            </div>
+                            <div>
+                              <dt className="text-zinc-500">Prix moyen de vente</dt>
+                              <dd className="font-medium text-zinc-900 dark:text-zinc-100 tabular-nums">{formatCurrency(pos.avgSellPrice, pos.currency)}</dd>
+                            </div>
+                            <div>
+                              <dt className="text-zinc-500">Quantité vendue</dt>
+                              <dd className="font-medium text-zinc-900 dark:text-zinc-100 tabular-nums">{formatQuantity(pos.totalSold)}</dd>
+                            </div>
+                            <div>
+                              <dt className="text-zinc-500">Dernière vente</dt>
+                              <dd className="font-medium text-zinc-900 dark:text-zinc-100 tabular-nums">{new Date(pos.lastSellDate).toLocaleDateString('fr-FR')}</dd>
+                            </div>
+                          </dl>
                         </div>
                       ))}
                     </div>
@@ -401,7 +457,7 @@ export function PositionsTable({
                     <thead>
                       <tr className="bg-zinc-50 dark:bg-zinc-800/50 text-left">
                         <th className="py-2 sm:py-3 px-3 sm:px-4 text-xs sm:text-sm font-semibold text-zinc-600 dark:text-zinc-400">
-                          Action
+                          Titre
                         </th>
                         {showAccountCol && (
                           <th className="py-2 sm:py-3 px-3 sm:px-4 text-xs sm:text-sm font-semibold text-zinc-600 dark:text-zinc-400">
@@ -412,16 +468,16 @@ export function PositionsTable({
                           Qté vendue
                         </th>
                         <th className="py-2 sm:py-3 px-3 sm:px-4 text-xs sm:text-sm font-semibold text-zinc-600 dark:text-zinc-400 text-right">
-                          Prix achat
+                          Prix moyen d’achat
                         </th>
                         <th className="py-2 sm:py-3 px-3 sm:px-4 text-xs sm:text-sm font-semibold text-zinc-600 dark:text-zinc-400 text-right">
-                          Prix vente
+                          Prix moyen de vente
                         </th>
                         <th className="py-2 sm:py-3 px-3 sm:px-4 text-xs sm:text-sm font-semibold text-zinc-600 dark:text-zinc-400 text-right">
                           Dernière vente
                         </th>
                         <th className="py-2 sm:py-3 px-3 sm:px-4 text-xs sm:text-sm font-semibold text-zinc-600 dark:text-zinc-400 text-right">
-                          +/- Value
+                          Plus-value réalisée
                         </th>
                       </tr>
                     </thead>
@@ -441,7 +497,10 @@ export function PositionsTable({
                             <tr key={pos.key} className="border-b border-zinc-100 dark:border-zinc-800">
                               <td className="py-2 sm:py-3 px-3 sm:px-4">
                                 <p className="font-medium text-sm text-zinc-900 dark:text-zinc-100">{closedName(pos.symbol)}</p>
-                                {closedName(pos.symbol) !== pos.symbol && <p className="text-xs text-zinc-500">{pos.symbol}</p>}
+                                <p className="text-xs text-zinc-500">
+                                  {pos.symbol}
+                                  {pos.stillHeld && stillHeldBadge}
+                                </p>
                               </td>
                               {showAccountCol && (
                                 <td className="py-2 sm:py-3 px-3 sm:px-4">
@@ -451,24 +510,22 @@ export function PositionsTable({
                                   </div>
                                 </td>
                               )}
-                              <td className="py-2 sm:py-3 px-3 sm:px-4 text-right text-sm text-zinc-900 dark:text-zinc-100">
-                                {formatNumber(pos.totalSold, 0)}
+                              <td className="py-2 sm:py-3 px-3 sm:px-4 text-right text-sm tabular-nums text-zinc-900 dark:text-zinc-100">
+                                {formatQuantity(pos.totalSold)}
                               </td>
-                              <td className="py-2 sm:py-3 px-3 sm:px-4 text-right text-sm text-zinc-900 dark:text-zinc-100">
+                              <td className="py-2 sm:py-3 px-3 sm:px-4 text-right text-sm tabular-nums text-zinc-900 dark:text-zinc-100">
                                 {formatCurrency(pos.avgBuyPrice, pos.currency)}
                               </td>
-                              <td className="py-2 sm:py-3 px-3 sm:px-4 text-right text-sm text-zinc-900 dark:text-zinc-100">
+                              <td className="py-2 sm:py-3 px-3 sm:px-4 text-right text-sm tabular-nums text-zinc-900 dark:text-zinc-100">
                                 {formatCurrency(pos.avgSellPrice, pos.currency)}
                               </td>
-                              <td className="py-2 sm:py-3 px-3 sm:px-4 text-right text-xs sm:text-sm text-zinc-500 dark:text-zinc-400">
+                              <td className="py-2 sm:py-3 px-3 sm:px-4 text-right text-xs sm:text-sm tabular-nums text-zinc-500 dark:text-zinc-400">
                                 {new Date(pos.lastSellDate).toLocaleDateString('fr-FR')}
                               </td>
-                              <td className={`py-2 sm:py-3 px-3 sm:px-4 text-right font-semibold text-sm ${
-                                pos.realizedGain >= 0 ? 'text-emerald-600' : 'text-red-600'
-                              }`}>
-                                {formatCurrency(pos.realizedGain, pos.currency)}
-                                <span className="text-xs font-normal ml-1">
-                                  ({formatPercent(pos.realizedGainPercent)})
+                              <td className={`py-2 sm:py-3 px-3 sm:px-4 text-right font-semibold text-sm tabular-nums ${gainClass(pos.realizedGain)}`}>
+                                {formatSignedCurrency(pos.realizedGain, pos.currency)}
+                                <span className="block text-xs font-normal">
+                                  {formatPercent(pos.realizedGainPercent)}
                                 </span>
                               </td>
                             </tr>

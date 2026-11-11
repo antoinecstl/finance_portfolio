@@ -278,7 +278,7 @@ export async function GET(request: NextRequest) {
     body: pdfRows([
       ['Valeur totale du portefeuille', formatBuckets(totalPortfolioByCurrency)],
       ['Cash disponible (tous comptes)', formatBuckets(totalCashByCurrency)],
-      ['Valeur des actions (au PRU)', formatBuckets(totalStocksAtPRUByCurrency)],
+      ['Valeur des titres (au PRU)', formatBuckets(totalStocksAtPRUByCurrency)],
       ['Nombre de comptes', String(accounts.length)],
       ['Nombre de positions actives', String(positionsMap.size)],
       ['Nombre total de transactions', String(allTransactions.length)],

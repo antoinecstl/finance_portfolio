@@ -39,6 +39,18 @@ export function prettifyInstrumentName(raw: string): string {
 }
 
 /**
+ * Choisit entre le nom court et le nom long du fournisseur. Le nom court est
+ * souvent en majuscules (« TOTALENERGIES », « ASML HOLDING ») : la casse ne se
+ * devine pas, le nom long (« TotalEnergies SE ») est alors plus juste.
+ */
+export function preferredInstrumentName(shortName?: string | null, longName?: string | null): string | null {
+  const short = shortName?.trim() || null;
+  const long = longName?.trim() || null;
+  if (short && long && isMostlyUppercase(short) && !isMostlyUppercase(long)) return long;
+  return short ?? long;
+}
+
+/**
  * Nom à afficher pour un titre, ou null s'il n'est pas connu (ou n'est que le
  * code). Les paires crypto perdent leur devise de cotation (« Bitcoin USD » →
  * « Bitcoin »).

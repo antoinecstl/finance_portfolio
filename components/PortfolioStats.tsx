@@ -157,7 +157,7 @@ export function PortfolioStats({
   // Répartition du patrimoine : titres, liquidités des comptes titres, épargne.
   const cashTotal = Math.max(0, totalPortfolioValue - totalValue - savingsTotal);
   const composition = [
-    { label: 'Actions', value: Math.max(0, totalValue), color: 'var(--chart-1)' },
+    { label: 'Titres', value: Math.max(0, totalValue), color: 'var(--chart-1)' },
     { label: 'Liquidités', value: cashTotal, color: 'var(--chart-3)' },
     { label: 'Épargne', value: Math.max(0, savingsTotal), color: 'var(--chart-2)' },
   ]
@@ -259,7 +259,7 @@ export function PortfolioStats({
 
       <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
         <StatCard
-          title="Portefeuille actions"
+          title="Portefeuille titres"
           value={formatCurrency(totalValue)}
           change={totalGainPercent}
           changeLabel={`${totalGain >= 0 ? '+' : ''}${formatCurrency(totalGain)} vs PRU`}

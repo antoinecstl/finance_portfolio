@@ -1,4 +1,5 @@
 import { StockQuote } from './types';
+import { preferredInstrumentName } from './instrument-names';
 import { parseChartResponse, type ParsedChart } from './market/chart-data';
 import {
   fundamentalsSeriesTypes,
@@ -98,7 +99,7 @@ async function getStockQuoteFromChart(symbol: string): Promise<StockQuote | null
 
     return {
       symbol: meta.symbol || symbol,
-      name: meta.shortName || meta.longName || symbol,
+      name: preferredInstrumentName(meta.shortName, meta.longName) || symbol,
       price: currentPrice,
       change,
       changePercent,
@@ -189,7 +190,7 @@ export async function searchStocks(
       )
       .map((q: { symbol: string; shortname?: string; longname?: string; exchange?: string; quoteType?: string }) => ({
         symbol: q.symbol,
-        name: q.shortname || q.longname || q.symbol,
+        name: preferredInstrumentName(q.shortname, q.longname) || q.symbol,
         exchange: q.exchange || (q.quoteType === 'CRYPTOCURRENCY' ? 'Crypto' : ''),
       }));
   } catch (error) {

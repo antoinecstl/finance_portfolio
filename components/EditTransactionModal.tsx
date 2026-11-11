@@ -15,6 +15,8 @@ import {
   isCryptoSymbol,
 } from '@/lib/utils';
 import { formatDecimalInput, parseDecimal } from '@/lib/decimal';
+import { instrumentLabel } from '@/lib/instrument-names';
+import { SelectedInstrument } from './SelectedInstrument';
 
 interface EditTransactionModalProps {
   isOpen: boolean;
@@ -31,8 +33,8 @@ interface EditTransactionModalProps {
 const transactionTypes: Array<{ value: TransactionType; label: string }> = [
   { value: 'DEPOSIT', label: 'Dépôt' },
   { value: 'WITHDRAWAL', label: 'Retrait' },
-  { value: 'BUY', label: 'Achat d\'action' },
-  { value: 'SELL', label: 'Vente d\'action' },
+  { value: 'BUY', label: 'Achat de titre' },
+  { value: 'SELL', label: 'Vente de titre' },
   { value: 'DIVIDEND', label: 'Dividende' },
   { value: 'INTEREST', label: 'Intérêts' },
   { value: 'FEE', label: 'Frais' },
@@ -204,12 +206,12 @@ export function EditTransactionModal({
       const normalizedTargetCurrency = targetCurrency.trim().toUpperCase();
 
       if (isStockTransaction) {
-        if (!stockSymbol) throw new Error('Veuillez sélectionner une action');
+        if (!stockSymbol) throw new Error('Veuillez sélectionner un titre');
         if (qty <= 0) throw new Error('La quantité doit être supérieure à 0');
         if (price <= 0) throw new Error('Le prix unitaire doit être supérieur à 0');
       }
       if (isDividendTransaction && !stockSymbol) {
-        throw new Error('Veuillez sélectionner l\'action associée au dividende');
+        throw new Error('Veuillez sélectionner le titre associé au dividende');
       }
       if (totalAmount <= 0) throw new Error('Le montant doit être supérieur à 0');
       if (!/^[A-Z]{3,10}$/.test(normalizedCurrency)) {
@@ -272,9 +274,9 @@ export function EditTransactionModal({
         description:
           description ||
           (isStockTransaction
-            ? `${type === 'BUY' ? 'Achat' : 'Vente'} ${qty} × ${stockName || stockSymbol}`
+            ? `${type === 'BUY' ? 'Achat' : 'Vente'} ${qty} × ${instrumentLabel(stockSymbol, stockName)}`
             : isDividendTransaction && stockSymbol
-              ? `Dividende ${stockName || stockSymbol}`
+              ? `Dividende ${instrumentLabel(stockSymbol, stockName)}`
               : isConversion
                 ? `Conversion ${normalizedCurrency} -> ${normalizedTargetCurrency}`
                 : ''),
@@ -416,7 +418,7 @@ export function EditTransactionModal({
           {(isStockTransaction || isDividendTransaction) && (
             <div className="relative" ref={searchRef}>
               <label className="block text-xs sm:text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-                Action
+                Titre
               </label>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
@@ -449,8 +451,8 @@ export function EditTransactionModal({
                         onClick={() => handleSelectStock(result.symbol, result.name)}
                         className="w-full text-left px-3 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-700 border-b border-zinc-100 dark:border-zinc-700 last:border-0"
                       >
-                        <div className="font-medium text-sm text-zinc-900 dark:text-zinc-100 truncate">{result.symbol}</div>
-                        <div className="text-xs text-zinc-500 truncate">{result.name}</div>
+                        <div className="font-medium text-sm text-zinc-900 dark:text-zinc-100 truncate">{instrumentLabel(result.symbol, result.name)}</div>
+                        <div className="text-xs text-zinc-500 truncate">{result.symbol}</div>
                       </button>
                     ))}
                 </div>
@@ -475,10 +477,7 @@ export function EditTransactionModal({
                 </div>
               )}
               {stockSymbol && stockName && (
-                <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-900/30 rounded-lg border border-blue-200 dark:border-blue-800">
-                  <div className="font-medium text-sm text-blue-900 dark:text-blue-100 truncate">{stockName || stockSymbol}</div>
-                  {stockName && <div className="text-xs text-blue-700 dark:text-blue-300 truncate">{stockSymbol}</div>}
-                </div>
+                <SelectedInstrument className="mt-2" symbol={stockSymbol} name={stockName} />
               )}
             </div>
           )}
