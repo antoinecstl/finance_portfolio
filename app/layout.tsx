@@ -3,7 +3,6 @@ import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Fraunces, Geist, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
-import { AuthProvider } from "@/lib/auth";
 import { PLANS } from "@/lib/plans";
 
 const SITE_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://fi-hub.subleet.com";
@@ -125,7 +124,7 @@ export default function RootLayout({
       className={`${fraunces.variable} ${geist.variable} ${jetbrains.variable}`}
     >
       <body className="antialiased">
-        <AuthProvider>{children}</AuthProvider>
+        {children}
         <Analytics />
         <SpeedInsights />
       </body>

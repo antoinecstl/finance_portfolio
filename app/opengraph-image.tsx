@@ -2,7 +2,6 @@ import { ImageResponse } from 'next/og';
 import { LOGO_MARK_PATHS } from '@/components/marketing/logo-paths';
 import { PLANS } from '@/lib/plans';
 
-export const runtime = 'edge';
 export const contentType = 'image/png';
 export const size = { width: 1200, height: 630 };
 export const alt = 'Fi-Hub — Vos placements réunis. Votre performance en clair.';
