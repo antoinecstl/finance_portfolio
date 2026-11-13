@@ -33,8 +33,10 @@ drop policy if exists "watchlist_items_delete_own" on public.watchlist_items;
 create policy "watchlist_items_delete_own" on public.watchlist_items
   for delete using (auth.uid() = user_id);
 
--- Pas de mise à jour : on retire puis on ajoute.
+-- Pas de mise à jour : on retire puis on ajoute. Les droits par défaut de
+-- Supabase (UPDATE, TRUNCATE…) sont retirés au rôle authenticated.
 revoke all on table public.watchlist_items from anon;
+revoke update, truncate, references, trigger on table public.watchlist_items from authenticated;
 grant select, insert, delete on table public.watchlist_items to authenticated;
 
 -- Plafond de 100 favoris par utilisateur, pour les appels directs à l'API REST.
