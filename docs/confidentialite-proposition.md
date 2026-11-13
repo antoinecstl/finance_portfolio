@@ -1,6 +1,8 @@
 # Politique de confidentialité — proposition de mise à jour
 
-Statut : **proposition à valider**, préparée le 30/09/2026. Ce document n'est pas une validation juridique. La page en ligne (`app/(marketing)/legal/confidentialite/page.tsx`, datée du 18/04/2026) n'a pas été modifiée.
+Statut : **publiée le 13/11/2026** dans `app/(marketing)/legal/confidentialite/page.tsx`, sur la base de cette proposition. Ce document reste l'inventaire de référence des traitements ; ce n'est pas une validation juridique.
+
+Points levés à la publication : la base Supabase est en `eu-west-3` (Paris) ; l'import est actif en production (relevés PDF, images, texte). Restent à confirmer par l'éditeur : le canal de notification d'inscription réellement configuré et les conditions de conservation chez Mistral et OpenAI pour les comptes utilisés.
 
 Méthode : lecture du code du dépôt uniquement.
 - Seuls des **noms** de variables d'environnement sont cités, jamais leurs valeurs.
