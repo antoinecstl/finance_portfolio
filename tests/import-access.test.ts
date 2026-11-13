@@ -5,6 +5,7 @@ import { PLANS, importAccess } from '@/lib/plans';
 
 let access = { allowed: true, offered: true };
 let rpcError: { message: string } | null = null;
+let importJobCount = 0;
 const getImportAccess = vi.fn(async () => access);
 type RateLimit = (key: string, limit: number, windowSeconds: number) => Promise<{ ok: boolean; retryAfterMs: number }>;
 const sharedRateLimit = vi.fn<RateLimit>(async () => ({ ok: true, retryAfterMs: 0 }));
@@ -30,7 +31,11 @@ function query(table: string) {
     maybeSingle: async () => result,
     single: async () => ({ data: { id: 'job-1' }, error: null }),
     then: (resolve: (v: unknown) => void) =>
-      resolve(table === 'import_jobs' ? { data: [{ id: JOB_ID, status: 'previewing', account_id: ACCOUNT_ID }], error: null } : result),
+      resolve(
+        table === 'import_jobs'
+          ? { data: [{ id: JOB_ID, status: 'previewing', account_id: ACCOUNT_ID }], error: null, count: importJobCount }
+          : result
+      ),
   };
   return api;
 }
@@ -76,6 +81,7 @@ const commitRequest = () =>
 beforeEach(() => {
   access = { allowed: true, offered: true };
   rpcError = null;
+  importJobCount = 0;
   getImportAccess.mockClear();
   sharedRateLimit.mockClear();
   runImportPipeline.mockClear();
@@ -109,6 +115,23 @@ describe('/api/import/parse', () => {
     expect(res.status).toBe(200);
     expect(sharedRateLimit).toHaveBeenCalledWith('import-parse-free:u:user-1', expect.any(Number), 24 * 60 * 60);
     expect(runImportPipeline).toHaveBeenCalledOnce();
+  });
+
+  it('ferme l’import offert après trop de documents analysés sans validation', async () => {
+    importJobCount = 25;
+    const res = await parse(parseRequest() as never);
+    expect(res.status).toBe(402);
+    expect((await res.json()).error).toBe('pro_required');
+    expect(runImportPipeline).not.toHaveBeenCalled();
+    expect(sharedRateLimit).not.toHaveBeenCalled();
+  });
+
+  it('applique un budget quotidien commun aux comptes Free', async () => {
+    sharedRateLimit.mockImplementation(async (key: string) => ({ ok: key !== 'import-parse-free:global', retryAfterMs: 1000 }));
+    const res = await parse(parseRequest() as never);
+    expect(res.status).toBe(429);
+    expect(runImportPipeline).not.toHaveBeenCalled();
+    sharedRateLimit.mockImplementation(async () => ({ ok: true, retryAfterMs: 0 }));
   });
 
   it('s’arrête à la limite du jour', async () => {

@@ -9,6 +9,10 @@
 
 export type Cursor = { date: string; effective_time: string; id: string };
 
+const CURSOR_DATE = /^\d{4}-\d{2}-\d{2}$/;
+const CURSOR_TIME = /^\d{2}:\d{2}(:\d{2}(\.\d{1,6})?)?$/;
+const CURSOR_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export function encodeCursor(c: Cursor): string {
   // base64url pour éviter les +/= dans les URLs.
   const json = JSON.stringify(c);
@@ -27,13 +31,18 @@ export function decodeCursor(raw: string | undefined | null): Cursor | null {
         ? Buffer.from(raw, 'base64url').toString('utf-8')
         : atob(raw.replace(/-/g, '+').replace(/_/g, '/'));
     const obj = JSON.parse(json);
+    // Les champs sont insérés dans un filtre PostgREST `.or()` : formats stricts,
+    // pour qu'un cursor forgé ne puisse pas y ajouter ses propres conditions.
     if (
       obj &&
       typeof obj.date === 'string' &&
+      CURSOR_DATE.test(obj.date) &&
       typeof obj.effective_time === 'string' &&
-      typeof obj.id === 'string'
+      CURSOR_TIME.test(obj.effective_time) &&
+      typeof obj.id === 'string' &&
+      CURSOR_ID.test(obj.id)
     ) {
-      return obj as Cursor;
+      return { date: obj.date, effective_time: obj.effective_time, id: obj.id };
     }
     return null;
   } catch {

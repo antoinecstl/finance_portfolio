@@ -2,8 +2,16 @@ import { NextResponse } from 'next/server';
 import { enforceAuthenticatedJsonMutation } from '@/lib/api-security';
 import { createClient } from '@/lib/supabase/server';
 import { sendWelcome } from '@/lib/email';
+import { formatZodError } from '@/lib/schemas';
+import { z } from 'zod';
 
 export const runtime = 'nodejs';
+
+const onboardSchema = z.object({
+  step: z.enum(['profile', 'complete']).optional(),
+  fullName: z.string().max(120, 'Nom trop long (120 caractères maximum)').nullish(),
+  marketingOptIn: z.boolean().optional(),
+});
 
 // Tunnel d'onboarding en deux appels :
 // - step 'profile'  : nom, préférence email et acceptation des CGU, au début
@@ -24,11 +32,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 
-  const body = (await request.json().catch(() => ({}))) as {
-    step?: 'profile' | 'complete';
-    fullName?: string;
-    marketingOptIn?: boolean;
-  };
+  const parsed = onboardSchema.safeParse(await request.json().catch(() => ({})));
+  if (!parsed.success) {
+    return NextResponse.json(formatZodError(parsed.error), { status: 400 });
+  }
+  const body = parsed.data;
   const step = body.step === 'profile' ? 'profile' : 'complete';
 
   const { data: current, error: currentError } = await supabase
@@ -51,7 +59,7 @@ export async function POST(request: Request) {
     terms_accepted_at: current?.terms_accepted_at ?? now,
   };
   if (step === 'complete') update.onboarded_at = current?.onboarded_at ?? now;
-  if (step === 'profile' || body.fullName !== undefined) update.full_name = body.fullName?.trim() || null;
+  if (step === 'profile' || body.fullName != null) update.full_name = body.fullName?.trim() || null;
   if (step === 'profile' || body.marketingOptIn !== undefined) update.marketing_opt_in = Boolean(body.marketingOptIn);
 
   const { error } = await supabase.from('profiles').upsert(update, { onConflict: 'id' });
