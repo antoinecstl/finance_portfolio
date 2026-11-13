@@ -169,10 +169,16 @@ export function parseEarningsSummary(result: Record<string, unknown>): EarningsS
   const nextDate = dates[0] ?? null;
   const nextDateEstimated = calendar.isEarningsDateEstimate === true || chart.isEarningsDateEstimate === true;
 
+  // Une société qui publie ses résultats par semestre (Schneider, LVMH…) a un CA
+  // trimestriel mais un résultat trimestriel à 0 chez le fournisseur : 0 veut dire « non publié ».
+  const published = (v: unknown) => {
+    const n = rawNumber(v);
+    return n === 0 ? null : n;
+  };
   const financialsChart = isRecord(earnings.financialsChart) ? earnings.financialsChart : {};
   const quarterlyFinancials: QuarterlyFinancial[] = (Array.isArray(financialsChart.quarterly) ? financialsChart.quarterly : [])
     .filter(isRecord)
-    .map((q) => ({ date: null, label: providerQuarterLabel(q.date) ?? '', revenue: rawNumber(q.revenue), netIncome: rawNumber(q.earnings) }))
+    .map((q) => ({ date: null, label: providerQuarterLabel(q.date) ?? '', revenue: published(q.revenue), netIncome: published(q.earnings) }))
     .filter((q) => q.label && (q.revenue !== null || q.netIncome !== null));
 
   currency ??= str(earnings.financialCurrency);
