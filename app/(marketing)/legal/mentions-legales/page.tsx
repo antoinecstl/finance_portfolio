@@ -30,7 +30,7 @@ export default function MentionsLegalesPage() {
         vercel.com
       </p>
       <p>
-        Base de données : Supabase, Inc. (infrastructure UE via AWS eu-central-1). supabase.com
+        Base de données : Supabase, Inc. (infrastructure UE via AWS eu-west-3, Paris). supabase.com
       </p>
 
       <h2 className="text-xl font-semibold mt-8">Propriété intellectuelle</h2>

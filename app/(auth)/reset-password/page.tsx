@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase/client';
 import { Lock, Loader2, Eye, EyeOff, Check, AlertTriangle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { authErrorMessage } from '@/lib/auth-errors';
 
 export default function ResetPasswordPage() {
   const [password, setPassword] = useState('');
@@ -52,7 +53,7 @@ export default function ResetPasswordPage() {
     const { error } = await supabase.auth.updateUser({ password });
     setLoading(false);
     if (error) {
-      setError(error.message);
+      setError(authErrorMessage(error, 'Le mot de passe n’a pas pu être modifié. Réessayez.'));
       return;
     }
     router.push('/dashboard');

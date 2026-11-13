@@ -1,5 +1,6 @@
 'use client';
 
+import { track } from '@vercel/analytics';
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { ArrowRight, Check, Loader2, Search, Upload } from 'lucide-react';
 import { getApiErrorMessage } from '@/lib/api-errors';
@@ -701,6 +702,7 @@ function ImportStep({
       setLeaving(null);
       return;
     }
+    track('onboarding_completed');
     window.location.assign(href);
   };
 
