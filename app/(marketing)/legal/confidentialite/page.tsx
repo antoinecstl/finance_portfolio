@@ -16,8 +16,9 @@ export default function PrivacyPage() {
 
       <h2 className="text-xl font-semibold mt-8">1. Responsable du traitement</h2>
       <p>
-        Le responsable du traitement est l&apos;éditeur de Fi-Hub (voir{' '}
-        <Link href="/legal/mentions-legales">Mentions légales</Link>). Contact :{' '}
+        Le responsable du traitement est la société SUBLEET, SAS immatriculée au RCS de Paris sous le numéro
+        105 008 031, éditrice de Fi-Hub (voir <Link href="/legal/mentions-legales">Mentions légales</Link>).
+        Contact :{' '}
         <a href="mailto:contact@subleet.com">contact@subleet.com</a>.
       </p>
 

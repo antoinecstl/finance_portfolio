@@ -14,11 +14,16 @@ export default function MentionsLegalesPage() {
 
       <h2 className="text-xl font-semibold mt-8">Éditeur</h2>
       <p>
-        Fi-Hub est édité par <strong>Subleet</strong> (personne physique, immatriculation en cours)
+        Fi-Hub est édité par <strong>SUBLEET</strong>, société par actions simplifiée (SAS) au capital de
+        1 000 €
         <br />
-        Adresse : 173 rue de Courcelles, 75017 Paris, France
+        Immatriculée au RCS de Paris sous le numéro 105 008 031
         <br />
-        Contact : contact@subleet.com
+        Siège social : 173 rue de Courcelles, 75017 Paris, France
+        <br />
+        Directeur de la publication : le représentant légal de SUBLEET
+        <br />
+        Contact : <a href="mailto:contact@subleet.com">contact@subleet.com</a>
       </p>
 
       <h2 className="text-xl font-semibold mt-8">Hébergeur</h2>
