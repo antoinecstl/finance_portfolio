@@ -11,6 +11,7 @@ import {
 import type { DcfPlan } from '@/lib/market/dcf';
 import type { HistoryRow } from '@/lib/market/history';
 import type { RecentPeriods } from '@/lib/market/quarters';
+import type { QuarterlyFinancial } from '@/lib/market/earnings';
 import { changeClass, fmtMoneyCompact, fmtMultiple, fmtPct, fmtPrice, fmtShare } from './format';
 import { useJson } from './useJson';
 
@@ -27,6 +28,8 @@ export interface FundamentalsResponse {
   dcf: DcfPlan;
   history: HistoryRow[];
   periods?: RecentPeriods;
+  /** CA et résultat net par trimestre. */
+  quarterly?: QuarterlyFinancial[];
   sources: { official: boolean; officialYears: number; years: number };
   asOf: string;
   stale: boolean;

@@ -18,6 +18,8 @@ import { ValuationPanel } from './ValuationPanel';
 import { ProfilePanel } from './ProfilePanel';
 import { CryptoMarketPanel, EtfCompositionPanel } from './DetailsPanels';
 import { MarketNews } from './MarketNews';
+import { FavoriteButton } from './FavoriteButton';
+import { SimilarSecurities } from './SimilarSecurities';
 import { useJson } from './useJson';
 import { assetClassOf, resolveTab, tabsFor, type AssetClass, type MarketTab } from '@/lib/market/asset-class';
 import { MarketTabs } from './MarketTabs';
@@ -216,7 +218,12 @@ export function MarketSymbolView({ symbol }: { symbol: string }) {
           data ? [data.symbol, data.exchange, assetClass === 'index' ? null : data.currency, instrumentLabel(data.instrumentType)].filter(Boolean).join(' · ') : 'Chargement…'
         }
         wideActions
-        actions={<div className="w-full sm:w-72"><MarketSearch size="sm" placeholder="Autre titre…" /></div>}
+        actions={
+          <div className="flex w-full items-center gap-2 sm:w-auto">
+            {data && <FavoriteButton symbol={data.symbol} name={data.name} />}
+            <div className="min-w-0 flex-1 sm:w-72 sm:flex-none"><MarketSearch size="sm" placeholder="Autre titre…" /></div>
+          </div>
+        }
       />
 
       {overview.error && overview.error !== 'not_found' && (
@@ -515,6 +522,8 @@ export function MarketSymbolView({ symbol }: { symbol: string }) {
             {data && <MarketNews symbol={data.symbol} name={data.name} />}
           </>
         )}
+
+        {data && <SimilarSecurities key={data.symbol} symbol={data.symbol} />}
 
         <p className="text-xs text-zinc-500 dark:text-zinc-400">
           Données de marché fournies à titre informatif, parfois différées selon la place de cotation. Fi-Hub ne donne pas de conseil en investissement.

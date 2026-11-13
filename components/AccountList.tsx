@@ -273,7 +273,7 @@ export function AccountCard({
                 <div className="flex items-center gap-2">
                   <TrendingUp className="h-4 w-4 text-blue-600 flex-shrink-0" />
                   <div className="min-w-0">
-                    <dt className="text-zinc-500 dark:text-zinc-400">Actions</dt>
+                    <dt className="text-zinc-500 dark:text-zinc-400">Titres</dt>
                     <dd className="font-medium text-zinc-900 dark:text-zinc-100 truncate">
                       {isMultiCurrency
                         ? formatCurrency(stocksValueInBase, 'EUR')

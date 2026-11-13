@@ -21,6 +21,7 @@ import type { StatementRow } from '@/lib/market/fundamentals';
 import { AccountsTable, useFundamentals, type FundamentalsResponse } from './MarketFundamentals';
 import { changeClass, fmtCompact, fmtMoneyCompact, fmtMultiple, fmtPct, fmtPrice, fmtShare } from './format';
 import { RecentPeriodsPanel } from './RecentPeriodsPanel';
+import { EarningsSection } from './EarningsPanel';
 import { chartStyle, Panel, PanelError, PanelSkeleton, StaleNotice, Toggle } from './ui';
 
 const SERIES_COLORS = ['var(--series-1)', 'var(--series-2)', 'var(--series-3)', 'var(--series-4)'];
@@ -195,6 +196,7 @@ function FinancesContent({ data, priceCurrency }: { data: FundamentalsResponse; 
   return (
     <div className="space-y-4 sm:space-y-6">
       <StaleNotice asOf={data.asOf} stale={data.stale} />
+      <EarningsSection earnings={data.summary?.earnings} quarterly={data.quarterly} statementCurrency={data.currency} asOf={data.asOf} />
       {data.periods && Object.keys(data.periods).length > 0 && <RecentPeriodsPanel periods={data.periods} currency={data.currency} />}
       <p className="text-xs text-zinc-500 dark:text-zinc-400">
         {history.length} exercice{history.length > 1 ? 's' : ''} publié{history.length > 1 ? 's' : ''} ({first}–{last}), en {data.currency}.

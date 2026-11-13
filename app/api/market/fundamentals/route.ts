@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { guardMarketRequest } from '@/lib/market/route-guard';
 import { dcfPlanFor, getFundamentalsBundle } from '@/lib/market/services/fundamentals';
+import { quarterlyFinancials } from '@/lib/market/earnings';
 
 // Premier chargement d'une société américaine : comptes SEC (plusieurs Mo) à lire.
 export const maxDuration = 30;
@@ -28,6 +29,8 @@ export async function GET(request: NextRequest) {
     ttm: bundle.statements.ttm,
     history: bundle.history,
     periods: bundle.periods,
+    // CA et résultat net par trimestre (bloc « Résultats trimestriels »).
+    quarterly: quarterlyFinancials(bundle.periods, bundle.summary?.earnings?.quarterlyFinancials),
     ratios: bundle.ratios,
     summary: bundle.summary,
     sources: bundle.sources,

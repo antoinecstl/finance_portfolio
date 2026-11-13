@@ -1,4 +1,5 @@
 import { StockQuote } from './types';
+import { preferredInstrumentName } from './instrument-names';
 import { parseChartResponse, type ParsedChart } from './market/chart-data';
 import {
   fundamentalsSeriesTypes,
@@ -8,6 +9,7 @@ import {
   type SeriesMap,
 } from './market/fundamentals';
 import { parseProviderNews, type NewsItem } from './market/news';
+import { industryScreenerQuery, parseRecommendations, parseScreener, type SimilarItem } from './market/similar';
 
 const MARKET_DATA_TIMEOUT_MS = 5_000;
 const MARKET_DATA_HEADERS = {
@@ -23,6 +25,8 @@ const MARKET_DATA_TIMESERIES_URL = `https://query1.${MARKET_DATA_DOMAIN}/ws/fund
 const MARKET_DATA_SUMMARY_URL = `https://query2.${MARKET_DATA_DOMAIN}/v10/finance/quoteSummary`;
 const MARKET_DATA_CRUMB_URL = `https://query1.${MARKET_DATA_DOMAIN}/v1/test/getcrumb`;
 const MARKET_DATA_COOKIE_URL = `https://fc.${MARKET_DATA_PROVIDER}.com`;
+const MARKET_DATA_RECOMMENDATIONS_URL = `https://query2.${MARKET_DATA_DOMAIN}/v6/finance/recommendationsbysymbol`;
+const MARKET_DATA_SCREENER_URL = `https://query1.${MARKET_DATA_DOMAIN}/v1/finance/screener`;
 
 async function fetchWithTimeout(url: string, ms = MARKET_DATA_TIMEOUT_MS, revalidate = 60): Promise<Response> {
   const controller = new AbortController();
@@ -98,7 +102,7 @@ async function getStockQuoteFromChart(symbol: string): Promise<StockQuote | null
 
     return {
       symbol: meta.symbol || symbol,
-      name: meta.shortName || meta.longName || symbol,
+      name: preferredInstrumentName(meta.shortName, meta.longName) || symbol,
       price: currentPrice,
       change,
       changePercent,
@@ -189,7 +193,7 @@ export async function searchStocks(
       )
       .map((q: { symbol: string; shortname?: string; longname?: string; exchange?: string; quoteType?: string }) => ({
         symbol: q.symbol,
-        name: q.shortname || q.longname || q.symbol,
+        name: preferredInstrumentName(q.shortname, q.longname) || q.symbol,
         exchange: q.exchange || (q.quoteType === 'CRYPTOCURRENCY' ? 'Crypto' : ''),
       }));
   } catch (error) {
@@ -452,7 +456,7 @@ async function getProviderSession(force = false): Promise<{ cookie: string; crum
   }
 }
 
-const SUMMARY_MODULES = ['assetProfile', 'summaryDetail', 'defaultKeyStatistics', 'financialData', 'calendarEvents', 'earningsTrend'];
+const SUMMARY_MODULES = ['assetProfile', 'summaryDetail', 'defaultKeyStatistics', 'financialData', 'calendarEvents', 'earningsTrend', 'earnings', 'earningsHistory'];
 const summaryCache = new Map<string, { data: QuoteSummaryData | null; expires: number }>();
 
 /**
@@ -492,6 +496,44 @@ export async function getQuoteSummary(symbol: string): Promise<QuoteSummaryData 
   if (summaryCache.size > 300) summaryCache.clear();
   summaryCache.set(symbol, { data, expires: Date.now() + (data ? 6 * 3600_000 : 600_000) });
   return data;
+}
+
+/** Titres souvent consultés avec celui-ci (sans jeton). Null si la source ne répond pas. */
+export async function getRecommendedSymbols(symbol: string): Promise<string[] | null> {
+  try {
+    const response = await fetchWithTimeout(`${MARKET_DATA_RECOMMENDATIONS_URL}/${encodeURIComponent(symbol)}`, MARKET_DATA_TIMEOUT_MS, 24 * 3600);
+    return response.ok ? parseRecommendations(await response.json()) : null;
+  } catch (error) {
+    console.error(`Error fetching recommendations for ${symbol}:`, error);
+    return null;
+  }
+}
+
+/**
+ * Actions d'un secteur d'activité dans une région, par capitalisation
+ * décroissante (filtre de titres, session + jeton). Null si indisponible.
+ */
+export async function screenIndustry(industry: string, region: string, size = 12): Promise<Array<SimilarItem & { marketCap: number | null }> | null> {
+  for (const force of [false, true]) {
+    const session = await getProviderSession(force);
+    if (!session) return null;
+    try {
+      const params = new URLSearchParams({ crumb: session.crumb, lang: 'en-US', region: 'US' });
+      const response = await fetch(`${MARKET_DATA_SCREENER_URL}?${params.toString()}`, {
+        method: 'POST',
+        headers: { ...MARKET_DATA_HEADERS, 'Content-Type': 'application/json', Cookie: session.cookie },
+        body: JSON.stringify(industryScreenerQuery(industry, region, size)),
+        cache: 'no-store',
+        signal: AbortSignal.timeout(MARKET_DATA_TIMEOUT_MS),
+      });
+      if (response.status === 401 || response.status === 403) continue; // jeton expiré : une nouvelle session
+      return response.ok ? parseScreener(await response.json()) : null;
+    } catch (error) {
+      console.error(`Error screening ${industry} (${region}):`, error);
+      return null;
+    }
+  }
+  return null;
 }
 
 /** Derniers articles liés au symbole selon la recherche du fournisseur. */

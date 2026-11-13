@@ -19,6 +19,8 @@ import {
 } from '@/lib/utils';
 import { formatDecimalInput, parseDecimal } from '@/lib/decimal';
 import { rememberInstrumentNames } from '@/lib/instrument-names-client';
+import { instrumentLabel } from '@/lib/instrument-names';
+import { SelectedInstrument } from './SelectedInstrument';
 import { findDuplicateTransaction } from '@/lib/transaction-duplicates';
 
 interface AddTransactionModalProps {
@@ -35,8 +37,8 @@ interface AddTransactionModalProps {
 const transactionTypes = [
   { value: 'DEPOSIT', label: 'Dépôt' },
   { value: 'WITHDRAWAL', label: 'Retrait' },
-  { value: 'BUY', label: 'Achat d\'action' },
-  { value: 'SELL', label: 'Vente d\'action' },
+  { value: 'BUY', label: 'Achat de titre' },
+  { value: 'SELL', label: 'Vente de titre' },
   { value: 'DIVIDEND', label: 'Dividende' },
   { value: 'INTEREST', label: 'Intérêts' },
   { value: 'FEE', label: 'Frais' },
@@ -78,6 +80,8 @@ export function AddTransactionModal({
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearchDropdown, setShowSearchDropdown] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
+  // Dernier prix proposé automatiquement : remplaçable tant que l’utilisateur n’y touche pas.
+  const autoPriceRef = useRef<string | null>(null);
   const { results: searchResults, search } = useStockSearch();
   const limitReached = useLimitReached();
   const isStockTransaction = ['BUY', 'SELL'].includes(type);
@@ -109,6 +113,7 @@ export function AddTransactionModal({
     setStockName('');
     setQuantity('');
     setPricePerUnit('');
+    autoPriceRef.current = null;
     setFees('');
     setCurrency(selectedAccount?.currency ?? 'EUR');
     setTargetAmount('');
@@ -233,6 +238,14 @@ export function AddTransactionModal({
 
   if (!isOpen) return null;
 
+  // Retire le titre choisi ; un prix proposé automatiquement part avec lui.
+  const clearSelectedStock = () => {
+    setStockSymbol('');
+    setStockName('');
+    setPricePerUnit((current) => (current === autoPriceRef.current ? '' : current));
+    autoPriceRef.current = null;
+  };
+
   const handleSelectStock = (symbol: string, name: string) => {
     setStockSymbol(symbol);
     setStockName(name);
@@ -243,9 +256,11 @@ export function AddTransactionModal({
   };
 
   // Achat ou vente du jour : prix unitaire proposé au dernier cours connu,
-  // modifiable. Rien n'est écrasé si l'utilisateur a déjà saisi un prix.
+  // modifiable. Un prix saisi à la main n'est jamais écrasé ; un prix proposé
+  // pour un autre titre est remplacé.
   const prefillLastPrice = async (symbol: string) => {
-    if (!isStockTransaction || date !== todayISO() || pricePerUnit.trim() !== '') return;
+    const untouched = pricePerUnit.trim() === '' || pricePerUnit === autoPriceRef.current;
+    if (!isStockTransaction || date !== todayISO() || !untouched) return;
     try {
       const response = await fetch(`/api/stocks/quotes?symbols=${encodeURIComponent(symbol)}`);
       if (!response.ok) return;
@@ -253,7 +268,12 @@ export function AddTransactionModal({
       const quote = data.quotes?.find((q) => q.symbol.toUpperCase() === symbol.toUpperCase());
       if (!quote || !(quote.price > 0)) return;
       if (quote.currency && quote.currency.toUpperCase() !== currency.toUpperCase()) return;
-      setPricePerUnit((current) => (current.trim() === '' ? formatDecimalInput(quote.price, quote.price < 10 ? 4 : 2) : current));
+      const proposed = formatDecimalInput(quote.price, quote.price < 10 ? 4 : 2);
+      setPricePerUnit((current) => {
+        if (current.trim() !== '' && current !== autoPriceRef.current) return current;
+        autoPriceRef.current = proposed;
+        return proposed;
+      });
     } catch {
       // Sans cours, l'utilisateur saisit le prix lui-même.
     }
@@ -263,6 +283,7 @@ export function AddTransactionModal({
     setStockSymbol(position.symbol);
     setStockName(position.name);
     setCurrency((position.currency ?? 'EUR').toUpperCase());
+    if (type === 'SELL') void prefillLastPrice(position.symbol);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -296,13 +317,13 @@ export function AddTransactionModal({
 
       // Validation côté client (UX feedback rapide). Le serveur re-valide.
       if (isStockTransaction) {
-        if (!stockSymbol) throw new Error('Veuillez sélectionner une action');
+        if (!stockSymbol) throw new Error('Veuillez sélectionner un titre');
         if (qty <= 0) throw new Error('La quantité doit être supérieure à 0');
         if (price <= 0) throw new Error('Le prix unitaire doit être supérieur à 0');
       }
 
       if (isDividendTransaction && !stockSymbol) {
-        throw new Error('Veuillez sélectionner l\'action associée au dividende');
+        throw new Error('Veuillez sélectionner le titre associé au dividende');
       }
 
       if (totalAmount <= 0) {
@@ -365,9 +386,9 @@ export function AddTransactionModal({
         description:
           description ||
           (isStockTransaction
-            ? `${type === 'BUY' ? 'Achat' : 'Vente'} ${qty} × ${stockName || stockSymbol}`
+            ? `${type === 'BUY' ? 'Achat' : 'Vente'} ${qty} × ${instrumentLabel(stockSymbol, stockName)}`
             : isDividendTransaction && stockSymbol
-              ? `Dividende ${stockName || stockSymbol}`
+              ? `Dividende ${instrumentLabel(stockSymbol, stockName)}`
               : isConversion
                 ? `Conversion ${normalizedCurrency} → ${normalizedTargetCurrency}`
                 : ''),
@@ -554,7 +575,7 @@ export function AddTransactionModal({
           {isDividendTransaction && dividendPositions.length > 0 && (
             <div>
               <label className="block text-xs sm:text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-                Action concernée
+                Titre concerné
               </label>
               <div className="grid grid-cols-2 gap-2 max-h-40 sm:max-h-48 overflow-y-auto pr-1">
                 {dividendPositions.map((pos) => (
@@ -565,32 +586,24 @@ export function AddTransactionModal({
                     className={`text-left p-2 rounded-lg border text-xs sm:text-sm transition-colors min-w-0 ${
                       stockSymbol.toUpperCase() === pos.symbol.toUpperCase()
                         && currency.toUpperCase() === (pos.currency ?? 'EUR').toUpperCase()
-                        ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/30'
+                        ? 'border-[color:var(--ink)] ring-1 ring-[color:var(--ink)] bg-zinc-50 dark:bg-zinc-800'
                         : 'border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800'
                     }`}
                   >
-                    <div className="font-medium text-zinc-900 dark:text-zinc-100 truncate">{pos.symbol}</div>
-                    <div className="text-xs text-zinc-500 truncate">{pos.name}</div>
+                    <div className="font-medium text-zinc-900 dark:text-zinc-100 truncate">{instrumentLabel(pos.symbol, pos.name)}</div>
+                    <div className="text-xs text-zinc-500 truncate">{pos.symbol}</div>
                     <div className="text-[10px] text-zinc-500 dark:text-zinc-400">{(pos.currency ?? 'EUR').toUpperCase()}</div>
                   </button>
                 ))}
               </div>
               {stockSymbol && (
-                <div className="mt-2 p-2 bg-emerald-50 dark:bg-emerald-900/30 rounded-lg border border-emerald-200 dark:border-emerald-800">
-                  <div className="flex justify-between items-center gap-2">
-                    <div className="flex-1 min-w-0 text-xs sm:text-sm text-emerald-700 dark:text-emerald-300 truncate">
-                      Dividende pour <span className="font-semibold">{stockSymbol}</span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => { setStockSymbol(''); setStockName(''); }}
-                      aria-label="Retirer la sélection"
-                      className="shrink-0 p-1 rounded text-emerald-500 hover:text-emerald-700 hover:bg-emerald-100 dark:hover:bg-emerald-900/50"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
+                <SelectedInstrument
+                  className="mt-2"
+                  symbol={stockSymbol}
+                  name={stockName}
+                  caption="Dividende versé par"
+                  onClear={clearSelectedStock}
+                />
               )}
             </div>
           )}
@@ -611,12 +624,12 @@ export function AddTransactionModal({
                         className={`text-left p-2 rounded-lg border text-xs sm:text-sm transition-colors min-w-0 ${
                           stockSymbol.toUpperCase() === pos.symbol.toUpperCase()
                             && currency.toUpperCase() === (pos.currency ?? 'EUR').toUpperCase()
-                            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30'
+                            ? 'border-[color:var(--ink)] ring-1 ring-[color:var(--ink)] bg-zinc-50 dark:bg-zinc-800'
                             : 'border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800'
                         }`}
                       >
-                        <div className="font-medium text-zinc-900 dark:text-zinc-100 truncate">{pos.symbol}</div>
-                        <div className="text-xs text-zinc-500 truncate">{pos.quantity} titres</div>
+                        <div className="font-medium text-zinc-900 dark:text-zinc-100 truncate">{instrumentLabel(pos.symbol, pos.name)}</div>
+                        <div className="text-xs text-zinc-500 truncate">{pos.symbol} · {formatNumber(pos.quantity, Number.isInteger(pos.quantity) ? 0 : 4)} titre{pos.quantity > 1 ? 's' : ''}</div>
                         <div className="text-[10px] text-zinc-500 dark:text-zinc-400">{(pos.currency ?? 'EUR').toUpperCase()}</div>
                       </button>
                     ))}
@@ -627,7 +640,7 @@ export function AddTransactionModal({
               {type === 'BUY' && (
                 <div className="relative" ref={searchRef}>
                   <label className="block text-xs sm:text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-                    {isCryptoAccount ? 'Rechercher une crypto' : 'Rechercher une action'}
+                    {isCryptoAccount ? 'Rechercher une crypto' : 'Rechercher un titre'}
                   </label>
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
@@ -652,14 +665,14 @@ export function AddTransactionModal({
                           onClick={() => handleSelectStock(result.symbol, result.name)}
                           className="w-full text-left px-3 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-700 border-b border-zinc-100 dark:border-zinc-700 last:border-0"
                         >
-                          <div className="font-medium text-sm text-zinc-900 dark:text-zinc-100 truncate">{result.symbol}</div>
-                          <div className="text-xs text-zinc-500 truncate">{result.name}</div>
+                          <div className="font-medium text-sm text-zinc-900 dark:text-zinc-100 truncate">{instrumentLabel(result.symbol, result.name)}</div>
+                          <div className="text-xs text-zinc-500 truncate">{result.symbol}</div>
                         </button>
                       ))}
                     </div>
                   )}
 
-                  {!searchQuery && (
+                  {!searchQuery && !stockSymbol && (
                     <div className="mt-2">
                       <div className="text-xs text-zinc-500 mb-1">
                         {isCryptoAccount ? 'Cryptos populaires :' : 'Titres populaires :'}
@@ -682,22 +695,12 @@ export function AddTransactionModal({
               )}
 
               {stockSymbol && (
-                <div className="p-2 sm:p-3 bg-blue-50 dark:bg-blue-900/30 rounded-lg border border-blue-200 dark:border-blue-800">
-                  <div className="flex justify-between items-center gap-2">
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium text-sm text-blue-900 dark:text-blue-100 truncate">{stockName || stockSymbol}</div>
-                      {stockName && <div className="text-xs text-blue-700 dark:text-blue-300 truncate">{stockSymbol}</div>}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => { setStockSymbol(''); setStockName(''); }}
-                      aria-label="Retirer la sélection"
-                      className="shrink-0 p-1 rounded text-blue-500 hover:text-blue-700 hover:bg-blue-100 dark:hover:bg-blue-900/50"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
+                <SelectedInstrument
+                  symbol={stockSymbol}
+                  name={stockName}
+                  caption={type === 'SELL' ? 'Titre vendu' : 'Titre acheté'}
+                  onClear={clearSelectedStock}
+                />
               )}
 
               <div className="grid grid-cols-2 gap-2 sm:gap-3">

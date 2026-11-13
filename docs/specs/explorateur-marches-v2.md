@@ -52,7 +52,9 @@ Crypto : volatilité annualisée sur 365 jours (cotation continue).
 
 ### 4.2 Finances (actions) — l'histoire des comptes
 
-**Derniers trimestres** (en tête d'onglet, `lib/market/quarters.ts`) : séries trimestrielles du fournisseur, poste par poste (CA, résultat opérationnel, résultat net, BPA, FCF). Rythme détecté (trimestre ou semestre : beaucoup de sociétés européennes publient leurs résultats par semestre). Garde-fous, car le fournisseur reconstitue des trimestres pour des sociétés semestrielles (cas LVMH : +28 % sur un trimestre d'une année en baisse) : une période n'est montrée que si un BPA est publié au même rythme et à la même date, et si la somme des périodes retrouve à 3 % près chaque exercice annuel et chaque total sur 12 mois publiés ; sinon le poste (ou le bloc) est masqué. Chaque période de l'année en cours face à la même période de l'année précédente, variation sur un an au-dessus des barres, cumul de l'année (« Cumul 2026 (T1 à T3) »). Libellés civils de la date de fin (T1 = janvier-mars).
+**Résultats trimestriels** (tout en haut, `lib/market/earnings.ts`, `components/market/EarningsPanel.tsx`) : prochaine publication (date annoncée ou estimée) et BPA attendu ; BPA publié face au consensus sur les quatre derniers trimestres (rond creux = attendu, rond plein vert ou rouge = publié au-dessus ou en dessous, écart sous chaque trimestre), plus le trimestre en cours en pointillé ; chiffre d'affaires et résultat net par trimestre (trimestres validés de `quarters.ts`, 8 au plus, sinon les 4 du fournisseur), marge nette en info-bulle ; prévisions des analystes pour le trimestre en cours et suivant, l'exercice en cours et suivant (BPA et CA attendus, fourchette, croissance sur un an, révisions à 30 et 90 jours, nombre d'analystes). Sources : modules `earnings`, `earningsHistory`, `earningsTrend`, `calendarEvents` du « résumé ». Chaque bloc est masqué sans données (ETF, sociétés non suivies).
+
+**Derniers trimestres** (en tête d'onglet, `lib/market/quarters.ts`) : séries trimestrielles du fournisseur, poste par poste (CA, résultat opérationnel, résultat net, BPA, FCF). Rythme détecté (trimestre ou semestre : beaucoup de sociétés européennes publient leurs résultats par semestre). Garde-fous, car le fournisseur reconstitue des trimestres pour des sociétés semestrielles (cas LVMH : +28 % sur un trimestre d'une année en baisse) : une période n'est montrée que si un BPA est publié au même rythme et à la même date, et si la somme des périodes retrouve à 3 % près chaque exercice annuel et chaque total sur 12 mois publiés ; sinon le poste (ou le bloc) est masqué. Chaque période de l'année en cours face à la même période de l'année précédente, variation sur un an au-dessus des barres, cumul de l'année (« Cumul 2026 (T1 à T3) »). Libellés civils lus au milieu de la période (T1 = janvier-mars ; un trimestre clos fin octobre, exercice décalé, est le T3).
 
 Petits graphiques à une seule échelle, chacun avec sa croissance annuelle moyenne. Une couleur par famille de postes (`--series-1..4` dans l'ordre validé) : activité (CA), résultats (résultat net, BPA, ROE), trésorerie (FCF, trésorerie), actionnaires (dividende, distribution, nombre d'actions) ; la dette reste à l'encre. Le dernier exercice ressort, les précédents sont atténués ; variation sur un an au-dessus des barres des montants (toutes jusqu'à 8 exercices, sinon la dernière) :
 
@@ -114,6 +116,12 @@ Description, secteur, pays, effectifs, site, actionnariat (initiés, institution
 - **Plus haut historique** (date, écart actuel) et ancienneté de l'actif.
 - **Corrélation** des variations quotidiennes sur 1 an avec le bitcoin (avec le S&P 500 pour le bitcoin lui-même).
 - Description et algorithme quand ils sont publiés.
+
+### 4.7 Favoris et titres similaires
+
+**Favoris** : étoile « Suivre » dans l'en-tête de chaque fiche ; bloc « Favoris » de l'accueil Marchés (cours, variation, courbe d'un mois, retrait en un clic). Table `watchlist_items` (RLS, une ligne par utilisateur et symbole, 100 au plus, migration `20261113_watchlist_items.sql`), route `/api/market/watchlist` (GET, POST, DELETE), inclus dans l'export de données.
+
+**Titres similaires** (bas de toutes les fiches, chargé à l'approche de l'écran) : sociétés du même secteur d'activité classées par capitalisation (filtre de titres du fournisseur, même place de cotation, complété par les grandes sociétés américaines du secteur quand la place en compte moins de 4), puis titres souvent consultés avec celui-ci. Route `/api/market/similar` (symboles et noms, cache 1 jour) ; les cours sont demandés à part. Logique pure dans `lib/market/similar.ts`. Mention : « ce ne sont pas des recommandations d'investissement ».
 
 ## 5. Données : ce qui est récupérable
 
@@ -188,7 +196,8 @@ Mêmes règles que la v1 : session obligatoire, 60 requêtes par minute et par u
 | 2 | Finances historiques (fournisseur + SEC), graphique personnalisé | Cette branche |
 | 3 | Valorisation historique, repères de valorisation | Cette branche |
 | 4 | Composition des ETF, marché des cryptos | Cette branche |
-| 5 | Comptes européens officiels (ESEF), éligibilité PEA, watchlists, alertes | Plus tard |
+| 5 | Résultats trimestriels et consensus, favoris, titres similaires | Fait |
+| 6 | Comptes européens officiels (ESEF), éligibilité PEA, alertes | Plus tard |
 
 ## 10. Décisions ouvertes
 

@@ -61,9 +61,12 @@ function lastRegularRun(points: SeriesPoint[], kind: PeriodKind): SeriesPoint[] 
   return points.slice(start);
 }
 
+// Libellé lu au milieu de la période (et non à sa date de fin) : un trimestre
+// clos fin octobre (exercice décalé) est le T3, un semestre clos fin janvier le S2.
 function labelOf(date: string, kind: PeriodKind): Pick<PeriodPoint, 'label' | 'year' | 'index'> {
-  const year = Number(date.slice(0, 4));
-  const month = Number(date.slice(5, 7));
+  const mid = new Date(Date.parse(`${date.slice(0, 10)}T00:00:00Z`) - (NOMINAL_DAYS[kind] / 2) * DAY_MS);
+  const year = mid.getUTCFullYear();
+  const month = mid.getUTCMonth() + 1;
   const index = kind === 'quarter' ? Math.floor((month - 1) / 3) + 1 : month <= 6 ? 1 : 2;
   return { label: `${kind === 'quarter' ? 'T' : 'S'}${index} ${year}`, year, index };
 }

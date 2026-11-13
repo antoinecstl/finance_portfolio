@@ -1012,9 +1012,10 @@ export function PositionPerformanceChart({
                             transactions={stats.allTransactions}
                             fallbackCurrency={m.quoteCurrency}
                           />
-                          <div className="space-y-1 max-h-48 overflow-y-auto">
-                            <p className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">Historique</p>
-                            {stats.allTransactions.slice(0, 10).map((t) => (
+                          {/* Toutes les transactions de la position, sans plafond : la liste suit le défilement de la page. */}
+                          <div className="space-y-1">
+                            <p className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">Historique ({stats.allTransactions.length})</p>
+                            {stats.allTransactions.map((t) => (
                               <div key={t.id} className="flex justify-between items-center text-xs py-1 border-b border-zinc-100 dark:border-zinc-800 last:border-0">
                                 <div className="flex items-center gap-2">
                                   <span
@@ -1037,11 +1038,6 @@ export function PositionPerformanceChart({
                                 </div>
                               </div>
                             ))}
-                            {stats.allTransactions.length > 10 && (
-                              <p className="text-[10px] text-zinc-400 text-center pt-1">
-                                +{stats.allTransactions.length - 10} autres transactions
-                              </p>
-                            )}
                           </div>
                         </div>
                       )}
@@ -1058,7 +1054,7 @@ export function PositionPerformanceChart({
           <table className="w-full text-sm">
             <thead className="bg-zinc-50 dark:bg-zinc-800/50">
               <tr>
-                <th className="py-2 px-3 text-left font-semibold text-zinc-600 dark:text-zinc-400">Action</th>
+                <th className="py-2 px-3 text-left font-semibold text-zinc-600 dark:text-zinc-400">Titre</th>
                 {!groupByAccount && uniqueAccountIdsInPositions.size > 1 && (
                   <th className="py-2 px-3 text-left font-semibold text-zinc-600 dark:text-zinc-400">Compte</th>
                 )}
@@ -1248,7 +1244,8 @@ export function PositionPerformanceChart({
                                   Historique des transactions ({stats.allTransactions.length})
                                 </h4>
                               </div>
-                              <div className="max-h-64 overflow-y-auto">
+                              {/* Toutes les lignes ; au-delà d'une quinzaine, défilement dans le tableau (en-tête fixe). */}
+                              <div className="max-h-[36rem] overflow-y-auto">
                                 <table className="w-full text-sm">
                                   <thead className="bg-zinc-50 dark:bg-zinc-800/50 sticky top-0">
                                     <tr>
@@ -1298,7 +1295,7 @@ export function PositionPerformanceChart({
                                     {stats.allTransactions.length === 0 && (
                                       <tr>
                                         <td colSpan={6} className="py-8 text-center text-zinc-500">
-                                          Aucune transaction pour cette action
+                                          Aucune transaction pour ce titre
                                         </td>
                                       </tr>
                                     )}
@@ -1982,7 +1979,7 @@ export function StockHistoryChart({
         <div className="flex items-center gap-2 mb-4">
           <Activity className="h-4 w-4 sm:h-5 sm:w-5 text-purple-600" />
           <h3 className="font-semibold text-sm sm:text-base text-zinc-900 dark:text-zinc-100">
-            Évolution des Actions
+            Évolution des titres
           </h3>
         </div>
         <div className="flex items-center justify-center py-8 sm:py-12">
@@ -1999,13 +1996,13 @@ export function StockHistoryChart({
         <div className="flex items-center gap-2 mb-4">
           <Activity className="h-4 w-4 sm:h-5 sm:w-5 text-zinc-400" />
           <h3 className="font-semibold text-sm sm:text-base text-zinc-900 dark:text-zinc-100">
-            Évolution des Actions
+            Évolution des titres
           </h3>
         </div>
         <div className="text-center py-8 sm:py-12">
           <TrendingUp className="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-zinc-400" />
           <p className="mt-3 sm:mt-4 text-sm text-zinc-500 dark:text-zinc-400">
-            Ajoutez des transactions pour voir l&apos;évolution de vos actions
+            Ajoutez des transactions pour voir l&apos;évolution de vos titres
           </p>
         </div>
       </div>
@@ -2018,7 +2015,7 @@ export function StockHistoryChart({
         <div className="flex items-center gap-2">
           <Activity className="h-4 w-4 sm:h-5 sm:w-5 text-purple-600" />
           <h3 className="font-semibold text-sm sm:text-base text-zinc-900 dark:text-zinc-100">
-            Variation des Actions (%)
+            Variation des titres (%)
           </h3>
         </div>
         
@@ -2222,7 +2219,7 @@ export function StockHistoryChart({
       {/* Légende informative */}
       <div className="mt-4 pt-3 border-t border-zinc-200 dark:border-zinc-700">
         <p className="text-[10px] sm:text-xs text-zinc-400 dark:text-zinc-500">
-          💡 Cliquez sur une action pour l&apos;afficher/masquer • Double-cliquez pour l&apos;isoler
+          💡 Cliquez sur un titre pour l&apos;afficher/masquer • Double-cliquez pour l&apos;isoler
         </p>
       </div>
     </div>

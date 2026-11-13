@@ -7,7 +7,8 @@
 import { useEffect, useMemo, useSyncExternalStore } from 'react';
 import { instrumentName } from './instrument-names';
 
-const STORAGE_KEY = 'fihub_instrument_names_v1';
+// v2 : noms longs préférés aux noms courts en majuscules (« TotalEnergies SE »).
+const STORAGE_KEY = 'fihub_instrument_names_v2';
 const names = new Map<string, string>();
 const listeners = new Set<() => void>();
 // Codes déjà demandés pendant cette visite (succès ou échec) : pas de boucle.

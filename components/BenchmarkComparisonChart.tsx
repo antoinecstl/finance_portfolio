@@ -322,7 +322,7 @@ export function BenchmarkComparisonChart({
             type="search"
             value={assetQuery}
             onChange={(event) => setAssetQuery(event.target.value)}
-            placeholder="Rechercher une action ou un actif…"
+            placeholder="Rechercher un titre ou un indice…"
             aria-label="Rechercher un actif de référence"
             className="w-full rounded-md border border-zinc-200 bg-white py-1.5 pl-8 pr-8 text-xs text-zinc-900 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
           />

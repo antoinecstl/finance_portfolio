@@ -243,7 +243,7 @@ export function DividendsTable({ transactions, quotes, accounts = [] }: Dividend
             <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 sm:text-base">Par position</h3>
             {!isPro && (
               <span className="inline-flex items-center gap-1 text-xs text-zinc-500">
-                <Lock className="h-3 w-3" /> Moyennes par action : Pro
+                <Lock className="h-3 w-3" /> Moyennes par titre : Pro
               </span>
             )}
           </div>
@@ -255,7 +255,7 @@ export function DividendsTable({ transactions, quotes, accounts = [] }: Dividend
                 <th className="px-2 py-2 text-right font-medium">Reçu</th>
                 <th className="px-2 py-2 text-left font-medium">Part</th>
                 <th className="px-2 py-2 text-right font-medium">Versements</th>
-                <th className="px-2 py-2 text-right font-medium">Moyenne par action</th>
+                <th className="px-2 py-2 text-right font-medium">Moyenne par titre</th>
                 <th className="px-2 py-2 text-right font-medium">Rendement sur coût</th>
                 <th className="py-2 pl-2 text-right font-medium">Dernier</th>
               </tr>
@@ -317,7 +317,7 @@ export function DividendsTable({ transactions, quotes, accounts = [] }: Dividend
                 </div>
                 {(position.avgPerShare !== null || position.avgYieldOnCost !== null) && (
                   <p className="mt-1 text-xs text-zinc-500">
-                    Moyenne par action{' '}
+                    Moyenne par titre{' '}
                     <ProValue locked={!isPro}>
                       {position.avgPerShare === null ? '—' : formatCurrency(position.avgPerShare, position.currency)}
                     </ProValue>

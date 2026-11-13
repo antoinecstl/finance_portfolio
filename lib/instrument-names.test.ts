@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { instrumentLabel, instrumentName, prettifyInstrumentName, shortInstrumentName } from './instrument-names';
+import { instrumentLabel, instrumentName, preferredInstrumentName, prettifyInstrumentName, shortInstrumentName } from './instrument-names';
 
 describe('prettifyInstrumentName', () => {
   it('remet en casse normale les noms en majuscules, sigles conservés', () => {
@@ -39,5 +39,22 @@ describe('shortInstrumentName', () => {
 
   it('coupe au-delà de la longueur demandée', () => {
     expect(shortInstrumentName('Amundi PEA Emergents ESG Transition UCITS ETF')).toBe('PEA Emergents ESG…');
+  });
+});
+
+describe('preferredInstrumentName', () => {
+  it('préfère le nom long quand le nom court est en majuscules', () => {
+    expect(preferredInstrumentName('TOTALENERGIES', 'TotalEnergies SE')).toBe('TotalEnergies SE');
+    expect(preferredInstrumentName('ASML HOLDING', 'ASML Holding N.V.')).toBe('ASML Holding N.V.');
+  });
+
+  it('garde le nom court quand il est déjà en casse normale', () => {
+    expect(preferredInstrumentName("L'Oréal", "L'Oréal S.A.")).toBe("L'Oréal");
+  });
+
+  it('retombe sur le nom disponible', () => {
+    expect(preferredInstrumentName('AIRBUS SE', null)).toBe('AIRBUS SE');
+    expect(preferredInstrumentName(undefined, 'Airbus SE')).toBe('Airbus SE');
+    expect(preferredInstrumentName('', '')).toBeNull();
   });
 });
