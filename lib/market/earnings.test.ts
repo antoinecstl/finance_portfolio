@@ -84,6 +84,19 @@ describe('parseEarningsSummary', () => {
     ]);
   });
 
+  it('traite un résultat trimestriel à 0 comme non publié (société semestrielle)', () => {
+    const semestrial = parseEarningsSummary({
+      earnings: { financialsChart: { quarterly: [
+        { date: '2Q2026', revenue: raw(9.8e9), earnings: raw(0) },
+        { date: '3Q2026', revenue: raw(11.5e9), earnings: raw(0) },
+      ] } },
+    })!;
+    expect(semestrial.quarterlyFinancials).toEqual([
+      { date: null, label: 'T2 2026', revenue: 9.8e9, netIncome: null },
+      { date: null, label: 'T3 2026', revenue: 11.5e9, netIncome: null },
+    ]);
+  });
+
   it('renvoie null sans aucune donnée de résultats (ETF, indice)', () => {
     expect(parseEarningsSummary({ assetProfile: {} })).toBeNull();
     expect(parseEarningsSummary({ earningsHistory: { history: [] }, earningsTrend: { trend: [] } })).toBeNull();

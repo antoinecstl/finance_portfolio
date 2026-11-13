@@ -211,7 +211,10 @@ function RevenueVsEarnings({ quarters, currency }: { quarters: QuarterlyFinancia
         </ResponsiveContainer>
       </div>
       <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
-        Trimestres civils (T1 = janvier-mars). L’écart entre les deux barres, c’est ce que coûtent l’activité, les intérêts et les impôts.
+        Trimestres civils (T1 = janvier-mars).
+        {hasNet
+          ? ' L’écart entre les deux barres, c’est ce que coûtent l’activité, les intérêts et les impôts.'
+          : ' Le résultat net n’est publié que par semestre : il figure dans les comptes annuels plus bas.'}
       </p>
     </Panel>
   );

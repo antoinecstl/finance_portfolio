@@ -53,7 +53,7 @@ function providerSeries(symbol: string) {
 
 /** Profil et consensus (module « résumé », fragile), avec copie de secours. */
 function providerSummary(symbol: string) {
-  return cached<QuoteSummaryData>(`prov:summary:v4:${symbol}`, { freshMs: 6 * HOUR, staleMs: 30 * DAY }, async () => {
+  return cached<QuoteSummaryData>(`prov:summary:v5:${symbol}`, { freshMs: 6 * HOUR, staleMs: 30 * DAY }, async () => {
     const summary = await getQuoteSummary(symbol);
     if (summary === null) throw new Error('summary unavailable');
     return summary;
