@@ -57,7 +57,7 @@ finance_portfolio/
 │   ├── email.ts
 │   ├── hooks.ts / types.ts / utils.ts
 │   └── theme.ts (côté Subleet)
-├── middleware.ts             # refresh session Supabase
+├── proxy.ts                  # refresh session Supabase (ex-middleware)
 └── supabase/
     ├── schema.sql
     └── migrations/           # à exécuter dans l'ordre chronologique
@@ -115,7 +115,7 @@ Pour les actions françaises, suffixe `.PA` : `MC.PA` (LVMH), `OR.PA` (L'Oréal)
 ## 🔐 Sécurité
 
 - RLS activé sur toutes les tables portefeuille (`accounts`, `positions`, `transactions`) → un user ne voit que ses données.
-- Webhook Paddle signé (`PADDLE_WEBHOOK_SECRET`), exclu du middleware de session.
+- Webhook Paddle signé (`PADDLE_WEBHOOK_SECRET`), exclu du proxy de session.
 - Rate limiting in-memory sur `/api/stocks/*` (par user) et pourra être migré vers Upstash/Redis si besoin distribué.
 
 ## 🚀 Déploiement (Vercel)

@@ -1,0 +1,31 @@
+# Mises à jour de dépendances proposées chaque semaine, regroupées pour limiter
+# le nombre de pull requests. Les correctifs de sécurité arrivent sans attendre.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      next:
+        patterns:
+          - "next"
+          - "eslint-config-next"
+      mineures-et-correctifs:
+        update-types:
+          - minor
+          - patch
+        exclude-patterns:
+          - "next"
+          - "eslint-config-next"
+    ignore:
+      # Vitest 5 demande @types/node 22+ : montée de version à faire à la main.
+      - dependency-name: vitest
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly

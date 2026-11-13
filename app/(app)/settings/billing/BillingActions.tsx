@@ -1,6 +1,7 @@
 'use client';
 
 import Script from 'next/script';
+import { track } from '@vercel/analytics';
 import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Loader2, ExternalLink } from 'lucide-react';
@@ -46,6 +47,9 @@ const POLL_MAX_DURATION_MS = 10 * 60 * 1000;
 const PADDLE_SDK_READY_TIMEOUT_MS = 10000;
 const PADDLE_SDK_READY_POLL_MS = 100;
 type PaddleLoadState = 'loading' | 'ready' | 'error';
+const PADDLE_UNAVAILABLE_MESSAGE =
+  'Le module de paiement n’a pas pu se charger. Désactivez votre bloqueur de publicité pour cette page, puis rechargez-la.';
+const PADDLE_NOT_CONFIGURED_MESSAGE = 'Le paiement est momentanément indisponible. Réessayez plus tard.';
 
 export function BillingActions({
   planId,
@@ -86,7 +90,7 @@ export function BillingActions({
   const missingSelectedPrice = !selectedPriceId;
   const canUpgrade = paddleReady && !missingClientToken && !missingSelectedPrice;
 
-  const markPaddleUnavailable = useCallback((message = 'SDK Paddle indisponible (cdn.paddle.com non chargé)') => {
+  const markPaddleUnavailable = useCallback((message = PADDLE_UNAVAILABLE_MESSAGE) => {
     setPaddleReady(false);
     setPaddleLoadState('error');
     setError(message);
@@ -101,7 +105,7 @@ export function BillingActions({
         setPaddleReady(true);
         setPaddleLoadState('ready');
         setError((current) =>
-          current === 'SDK Paddle indisponible (cdn.paddle.com non chargé)' ? null : current
+          current === PADDLE_UNAVAILABLE_MESSAGE ? null : current
         );
         return;
       }
@@ -160,6 +164,7 @@ export function BillingActions({
       token: clientToken,
       eventCallback: (ev) => {
         if (ev.name === 'checkout.completed') {
+          track('checkout_completed');
           startCelebration();
         }
       },
@@ -170,11 +175,8 @@ export function BillingActions({
     if (planId !== 'free') return;
     if (!missingClientToken && !missingSelectedPrice) return;
 
-    setError(
-      interval === 'year' && missingSelectedPrice
-        ? 'Paddle non configuré (PRICE_ID annuel manquant)'
-        : 'Paddle non configuré (CLIENT_TOKEN / PRICE_ID manquants)'
-    );
+    console.error('[billing] Paddle non configuré', { interval, missingClientToken, missingSelectedPrice });
+    setError(PADDLE_NOT_CONFIGURED_MESSAGE);
   }, [interval, missingClientToken, missingSelectedPrice, planId]);
 
   // Polling fallback: once a checkout is opened, poll the server until the
@@ -216,11 +218,8 @@ export function BillingActions({
 
   const handleUpgrade = () => {
     if (!clientToken || !selectedPriceId) {
-      setError(
-        interval === 'year'
-          ? 'Paddle non configuré (PRICE_ID annuel manquant)'
-          : 'Paddle non configuré (CLIENT_TOKEN / PRICE_ID manquants)'
-      );
+      console.error('[billing] Paddle non configuré', { interval });
+      setError(PADDLE_NOT_CONFIGURED_MESSAGE);
       return;
     }
 
@@ -229,6 +228,7 @@ export function BillingActions({
       return;
     }
 
+    track('upgrade_clicked', { interval });
     window.Paddle.Checkout.open({
       items: [{ priceId: selectedPriceId, quantity: 1 }],
       customer: { email },
@@ -250,11 +250,11 @@ export function BillingActions({
     setError(null);
     try {
       const res = await fetch('/api/billing/portal', { method: 'POST' });
-      if (!res.ok) throw new Error((await res.json()).error ?? 'portal_error');
+      if (!res.ok) throw new Error('portal_error');
       const { url } = await res.json();
       window.location.href = url;
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Erreur');
+    } catch {
+      setError('Impossible d’ouvrir l’espace de facturation pour le moment. Réessayez dans quelques instants.');
       setLoading(false);
     }
   };

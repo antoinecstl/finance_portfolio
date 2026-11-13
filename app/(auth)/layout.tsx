@@ -1,4 +1,5 @@
 import { Logo } from '@/components/marketing/Logo';
+import { AuthProvider } from '@/lib/auth';
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -7,7 +8,11 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         <div className="mb-10">
           <Logo />
         </div>
-        <main>{children}</main>
+        {/* Le client Supabase n'est chargé que sur les pages qui s'en servent
+            (connexion, application), pas sur les pages publiques. */}
+        <main>
+          <AuthProvider>{children}</AuthProvider>
+        </main>
       </div>
     </div>
   );

@@ -40,7 +40,7 @@ export function ProfileForm({ initial, email }: { initial: Profile; email?: stri
     setSaving(false);
     setMessage(
       error
-        ? { type: 'err', text: error.message }
+        ? { type: 'err', text: 'Le profil n’a pas pu être enregistré. Réessayez dans quelques instants.' }
         : { type: 'ok', text: 'Profil mis à jour avec succès' }
     );
   };

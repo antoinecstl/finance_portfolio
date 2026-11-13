@@ -1,7 +1,9 @@
 'use client';
 
 import { useState } from 'react';
+import { track } from '@vercel/analytics';
 import { useAuth } from '@/lib/auth';
+import { authErrorMessage } from '@/lib/auth-errors';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { freePlanSummary } from '@/components/marketing/product-facts';
 import Link from 'next/link';
@@ -32,9 +34,12 @@ export function SignupForm() {
     try {
       const { error } = await signUp(email, password);
       if (error) {
-        setError(error.message);
+        setError(authErrorMessage(error, 'La création du compte a échoué. Réessayez dans quelques instants.'));
       } else {
-        setSuccess('Compte créé ! Vérifiez votre email pour confirmer.');
+        track('signup_completed');
+        setSuccess(
+          `Compte créé. Ouvrez l’email envoyé à ${email} pour confirmer votre adresse (pensez à vérifier les indésirables).`
+        );
       }
     } catch {
       setError('Une erreur est survenue');

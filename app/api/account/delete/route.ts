@@ -21,10 +21,8 @@ export async function POST(request: Request) {
   }
 
   if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    return NextResponse.json(
-      { error: 'SUPABASE_SERVICE_ROLE_KEY manquant côté serveur' },
-      { status: 500 }
-    );
+    console.error('[api/account/delete] SUPABASE_SERVICE_ROLE_KEY missing');
+    return NextResponse.json({ error: 'internal_error' }, { status: 500 });
   }
 
   const email = user.email;

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Trash2, Loader2, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/lib/supabase/client';
+import { getApiErrorMessage } from '@/lib/api-errors';
 
 export function DangerZone() {
   const [deleting, setDeleting] = useState(false);
@@ -21,8 +22,8 @@ export function DangerZone() {
     try {
       const res = await fetch('/api/account/delete', { method: 'POST' });
       if (!res.ok) {
-        const body = await res.json().catch(() => ({ error: 'Suppression échouée' }));
-        throw new Error(body.message ?? body.error ?? 'Suppression échouée');
+        const body = await res.json().catch(() => null);
+        throw new Error(getApiErrorMessage(body, 'La suppression a échoué. Réessayez dans quelques instants.', res.status));
       }
       await supabase.auth.signOut();
       router.push('/');

@@ -8,6 +8,7 @@ import { LimitReachedProvider } from '@/components/LimitReachedModal';
 import { Onboarding } from '@/components/Onboarding';
 import { AppShell } from '@/components/app-shell/AppShell';
 import { isAdminEmail } from '@/lib/admin';
+import { AuthProvider } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,17 +26,20 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     redirect('/login');
   }
 
-  const { data: profile, error: profileError } = await supabase
-    .from('profiles')
-    .select('onboarded_at, terms_accepted_at, full_name, marketing_opt_in')
-    .eq('id', user.id)
-    .maybeSingle();
+  // Profil et abonnement sont indépendants : lus en parallèle.
+  const [{ data: profile, error: profileError }, sub] = await Promise.all([
+    supabase
+      .from('profiles')
+      .select('onboarded_at, terms_accepted_at, full_name, marketing_opt_in')
+      .eq('id', user.id)
+      .maybeSingle(),
+    getUserSubscription(user.id),
+  ]);
 
   if (profileError) {
     console.error('[app/layout] profile fetch failed', profileError);
   }
 
-  const sub = await getUserSubscription(user.id);
   const importAccess = await getImportAccess(user.id, sub);
 
   // Tunnel d'onboarding tant qu'il n'est pas terminé. Il reprend à la bonne
@@ -53,38 +57,42 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         .eq('user_id', user.id),
     ]);
     return (
-      <Onboarding
-        email={user.email ?? ''}
-        initialProfile={{
-          fullName: profile?.full_name ?? '',
-          marketingOptIn: Boolean(profile?.marketing_opt_in),
-          saved: Boolean(profile?.terms_accepted_at),
-        }}
-        initialAccounts={accounts ?? []}
-        initialTransactionCount={transactionCount ?? 0}
-        importAccess={importAccess}
-      />
+      <AuthProvider>
+        <Onboarding
+          email={user.email ?? ''}
+          initialProfile={{
+            fullName: profile?.full_name ?? '',
+            marketingOptIn: Boolean(profile?.marketing_opt_in),
+            saved: Boolean(profile?.terms_accepted_at),
+          }}
+          initialAccounts={accounts ?? []}
+          initialTransactionCount={transactionCount ?? 0}
+          importAccess={importAccess}
+        />
+      </AuthProvider>
     );
   }
 
   return (
-    <SubscriptionProvider
-      initial={{
-        planId: sub.planId,
-        status: sub.status,
-        currentPeriodEnd: sub.currentPeriodEnd,
-        cancelAtPeriodEnd: sub.cancelAtPeriodEnd,
-        isFounder: sub.isFounder,
-        importAccess,
-      }}
-    >
-      <ToastProvider>
-        <LimitReachedProvider>
-          <AppShell email={user.email ?? ''} fullName={profile?.full_name ?? null} isAdmin={isAdminEmail(user.email)}>
-            {children}
-          </AppShell>
-        </LimitReachedProvider>
-      </ToastProvider>
-    </SubscriptionProvider>
+    <AuthProvider>
+      <SubscriptionProvider
+        initial={{
+          planId: sub.planId,
+          status: sub.status,
+          currentPeriodEnd: sub.currentPeriodEnd,
+          cancelAtPeriodEnd: sub.cancelAtPeriodEnd,
+          isFounder: sub.isFounder,
+          importAccess,
+        }}
+      >
+        <ToastProvider>
+          <LimitReachedProvider>
+            <AppShell email={user.email ?? ''} fullName={profile?.full_name ?? null} isAdmin={isAdminEmail(user.email)}>
+              {children}
+            </AppShell>
+          </LimitReachedProvider>
+        </ToastProvider>
+      </SubscriptionProvider>
+    </AuthProvider>
   );
 }

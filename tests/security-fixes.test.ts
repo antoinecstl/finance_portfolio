@@ -112,6 +112,18 @@ describe('Paddle webhook', () => {
     expect(calls.some((c) => c.op === 'upsert')).toBe(true);
   });
 
+  it('ignores a late event for a subscription already canceled', async () => {
+    existingSubscription = { paddle_subscription_id: 'sub_attacker', paddle_customer_id: 'ctm_attacker', status: 'canceled' };
+    const res = await paddleWebhook(signed({ ...subscriptionEvent(), event_type: 'subscription.updated' }));
+    expect(res.status).toBe(200);
+    expect(calls.some((c) => c.table === 'subscriptions' && c.op === 'upsert')).toBe(false);
+
+    // Un nouvel abonnement du même client (autre identifiant) reste accepté.
+    calls.length = 0;
+    await paddleWebhook(signed(subscriptionEvent({ id: 'sub_new' })));
+    expect(calls.find((c) => c.op === 'upsert')?.payload).toMatchObject({ paddle_subscription_id: 'sub_new', plan_id: 'pro' });
+  });
+
   it('only cancels the subscription named in the event', async () => {
     await paddleWebhook(signed({ ...subscriptionEvent(), event_type: 'subscription.canceled' }));
     const update = calls.find((c) => c.table === 'subscriptions' && c.op === 'update');

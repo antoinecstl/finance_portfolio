@@ -97,6 +97,21 @@ export async function POST(request: Request) {
           break;
         }
 
+        // Paddle ne garantit pas l'ordre de livraison, et une résiliation est
+        // définitive : un événement arrivé en retard pour un abonnement déjà
+        // résilié ne doit pas rouvrir l'accès Pro.
+        if (
+          existing?.paddle_subscription_id === event.data.id &&
+          existing?.status === 'canceled' &&
+          status !== 'canceled'
+        ) {
+          console.warn('[webhooks/paddle] ignored late event for a canceled subscription', {
+            subscription: event.data.id,
+            type: event.event_type,
+          });
+          break;
+        }
+
         const { error: subError } = await admin.from('subscriptions').upsert(
           {
             user_id: userId,

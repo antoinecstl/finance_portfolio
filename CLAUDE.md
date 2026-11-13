@@ -61,11 +61,14 @@ Never commit secrets. Important environment variables include:
 - `PADDLE_PRO_PRICE_ID`
 - `PADDLE_PRO_YEARLY_PRICE_ID`
 - `RESEND_API_KEY` / `RESEND_FROM` for transactional email.
+- `FREE_IMPORT_DAILY_BUDGET`: optional, shared daily cap on Free statement analyses (default 200).
 - `SEC_USER_AGENT`: app name + contact email sent to SEC EDGAR (market explorer, US company accounts).
 - Supabase Edge Function signup notifications use function secrets such as `SIGNUP_SLACK_WEBHOOK_URL`, `SIGNUP_DISCORD_WEBHOOK_URL`, `APP_URL`, or `NEXT_PUBLIC_APP_URL`.
 
 ## App Layout
 
+- `AuthProvider` (`lib/auth.tsx`, browser Supabase client) is mounted in the `(auth)` and `(app)` layouts only, never in the root layout: public pages must not load the Supabase client.
+- Session refresh and route protection run in `proxy.ts` (Next 16 name for the former `middleware.ts`), logic in `lib/supabase/middleware.ts`.
 - Authenticated pages render inside `components/app-shell/AppShell.tsx`, mounted in `app/(app)/layout.tsx`. Same information architecture on every screen: Accueil · Portefeuille (Positions, Comptes) · Activité (Transactions, Dividendes) · Marchés, then tools and account (`DASHBOARD_GROUPS` in `components/app-shell/navigation.ts`).
   - From `xl` (1280px): fixed sidebar.
   - Below: bottom tab bar (`nav[data-bottom-nav]`, safe-area aware), slim top bar (logo + Pro) with a segmented control for the current group's sub-pages, and a « Plus » sheet (import, settings pages, admin, sign-out). Content reserves the bar height; fixed bottom UI uses `var(--app-bottom-nav)` (see Toast).
@@ -90,6 +93,7 @@ Never commit secrets. Important environment variables include:
 ## Billing and Paddle
 
 - Billing UI lives in `app/(app)/settings/billing`.
+- Free import cost caps in `app/api/import/parse`: 10 analyses per day and 25 distinct documents per Free account before a batch is validated, plus a shared daily budget for all Free accounts (`FREE_IMPORT_DAILY_BUDGET`, default 200).
 - Shared visible plan names, prices, labels, limits, and savings helpers live in `lib/plans.ts`.
 - Current Pro messaging:
   - Monthly: `Premier mois gratuit`.
@@ -122,7 +126,9 @@ Never commit secrets. Important environment variables include:
 
 ## Security
 
-- Last audit: `docs/securite/audit-2026-10.md` (findings, fixes, remaining console settings).
+- Last audits: `docs/audit-2026-11.md` (full audit: security, database, performance, product, compliance) and `docs/securite/audit-2026-10.md` (security).
+- Postgres grants `EXECUTE` to everyone by default: a new function in `public` must `revoke execute ... from public, anon` (trigger functions: also from `authenticated`). See `20261113_y_harden_function_privileges.sql`.
+- New RLS policies use `(select auth.uid())`, evaluated once per query. Exception: `import_jobs`, whose insert policy reads the table itself; wrapping its policies fails with « infinite recursion detected in policy ».
 - Anything that costs money per call (OCR, LLM) must use `sharedRateLimit` (`lib/shared-rate-limit.ts`, Postgres counter); `lib/rate-limit.ts` is per-instance memory only. Give each route its own bucket prefix.
 - Never trust `custom_data.user_id` from Paddle alone: it is set by the browser at checkout. Bind subscription changes to `paddle_subscription_id` / customer.
 - New `SECURITY DEFINER` functions that take a user id must `revoke execute ... from public, anon, authenticated`.
@@ -132,7 +138,8 @@ Never commit secrets. Important environment variables include:
 
 - Google Search site name is intended to be `fi-hub.subleet.com`.
 - Keep `WebSite` JSON-LD on the marketing homepage aligned with `openGraph.siteName`.
-- Vercel Analytics and Speed Insights are mounted globally in `app/layout.tsx`.
+- Vercel Analytics and Speed Insights are mounted globally in `app/layout.tsx`. Funnel events (`track` from `@vercel/analytics`): `signup_completed`, `onboarding_completed`, `upgrade_clicked`, `checkout_completed`.
+- Auth errors shown to users go through `authErrorMessage` (`lib/auth-errors.ts`), never the provider's raw English message.
 - Vercel dev analytics scripts are allowed in CSP through `https://va.vercel-scripts.com`.
 - `app/sitemap.ts` and `app/robots.ts` use `NEXT_PUBLIC_APP_URL`.
 

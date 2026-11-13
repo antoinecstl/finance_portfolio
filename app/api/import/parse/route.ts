@@ -21,6 +21,18 @@ export const runtime = 'nodejs';
 const MAX_FILE_BYTES = 10 * 1024 * 1024;       // 10 MB hard cap
 const MAX_TEXT_CHARS = 200_000;
 const FREE_PARSES_PER_DAY = 10;          // analyses / 24 h pour l'import offert (un lot de 5 + reprises)
+// Import offert : nombre de documents distincts analysables avant de valider un
+// lot. Sans ce plafond, un compte Free qui ne valide jamais garde l'OCR/LLM
+// ouvert indéfiniment (10 analyses par jour).
+const FREE_ANALYSES_TOTAL = 25;
+// Budget quotidien commun à tous les comptes Free : borne la facture OCR/LLM si
+// des comptes gratuits sont créés en masse. Réglable par FREE_IMPORT_DAILY_BUDGET.
+const FREE_GLOBAL_PARSES_PER_DAY = 200;
+
+function freeGlobalBudget(): number {
+  const configured = Number(process.env.FREE_IMPORT_DAILY_BUDGET);
+  return Number.isInteger(configured) && configured > 0 ? configured : FREE_GLOBAL_PARSES_PER_DAY;
+}
 
 export async function POST(request: NextRequest) {
   const securityError = enforceAuthenticatedMutation(request);
@@ -36,6 +48,26 @@ export async function POST(request: NextRequest) {
   const access = await getImportAccess(user.id);
   if (!access.allowed) {
     return NextResponse.json({ error: 'pro_required', message: IMPORT_USED_MESSAGE }, { status: 402 });
+  }
+
+  // Import offert : un compte Free ne peut pas analyser des documents sans fin
+  // sans jamais valider de lot.
+  if (access.offered) {
+    const { count, error: countError } = await supabase
+      .from('import_jobs')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', user.id);
+    if (countError) console.error('[api/import/parse] job count failed', countError);
+    if ((count ?? 0) >= FREE_ANALYSES_TOTAL) {
+      return NextResponse.json(
+        {
+          error: 'pro_required',
+          message:
+            'Vous avez atteint le nombre de documents analysables avec l’import offert. L’offre Pro permet d’importer autant de relevés que vous voulez.',
+        },
+        { status: 402 }
+      );
+    }
   }
 
   // Rate limit : 20 analyses / heure / user, une par document (chaque analyse peut
@@ -60,6 +92,19 @@ export async function POST(request: NextRequest) {
           retryAfterMs: daily.retryAfterMs,
         },
         { status: 429, headers: { 'Retry-After': String(Math.max(1, Math.ceil(daily.retryAfterMs / 1000))) } }
+      );
+    }
+    const budget = await sharedRateLimit('import-parse-free:global', freeGlobalBudget(), 24 * 60 * 60);
+    if (!budget.ok) {
+      // À surveiller : budget atteint = usage inhabituel des imports offerts.
+      console.error('[api/import/parse] free import daily budget exhausted');
+      return NextResponse.json(
+        {
+          error: 'rate_limited',
+          message: 'L’import offert est très demandé aujourd’hui. Réessayez demain, ou passez Pro pour importer sans attendre.',
+          retryAfterMs: budget.retryAfterMs,
+        },
+        { status: 429, headers: { 'Retry-After': String(Math.max(1, Math.ceil(budget.retryAfterMs / 1000))) } }
       );
     }
   }

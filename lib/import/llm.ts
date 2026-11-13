@@ -170,7 +170,9 @@ class OpenAIProvider implements LLMProvider {
   private client: OpenAI;
 
   constructor(apiKey: string, model: string) {
-    this.client = new OpenAI({ apiKey });
+    // Appel borné : le SDK attend 10 minutes et relance deux fois par défaut,
+    // ce qui peut occuper une fonction serverless (et son coût) sans fin utile.
+    this.client = new OpenAI({ apiKey, timeout: 120_000, maxRetries: 1 });
     this.model = model;
   }
 

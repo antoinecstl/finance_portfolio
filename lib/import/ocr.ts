@@ -152,6 +152,7 @@ interface MistralOCRResponse {
 }
 
 const MAX_RATE_LIMIT_RETRIES = 2;
+const OCR_TIMEOUT_MS = 120_000;
 const DEFAULT_RETRY_DELAY_MS = 1_000;
 const MAX_RETRY_DELAY_MS = 10_000;
 
@@ -248,6 +249,8 @@ export class MistralOCRProvider implements OCRProvider {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(requestBody),
+        // Appel borné : un fournisseur qui ne répond plus ne doit pas occuper la fonction.
+        signal: AbortSignal.timeout(OCR_TIMEOUT_MS),
       });
       if (res.status !== 429) break;
       lastRetryDelay = retryDelayMs(res, attempt);

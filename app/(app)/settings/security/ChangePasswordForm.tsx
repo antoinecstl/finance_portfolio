@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase/client';
 import { Loader2, Check, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { authErrorMessage } from '@/lib/auth-errors';
 
 const MIN_LENGTH = 8;
 
@@ -77,7 +78,7 @@ export function ChangePasswordForm() {
     setLoading(false);
 
     if (error) {
-      setMessage({ type: 'err', text: error.message });
+      setMessage({ type: 'err', text: authErrorMessage(error, 'Le mot de passe n’a pas pu être modifié. Réessayez.') });
       return;
     }
 

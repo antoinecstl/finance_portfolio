@@ -2,6 +2,7 @@ import 'server-only';
 import { PLANS } from '@/lib/plans';
 
 const RESEND_API = 'https://api.resend.com/emails';
+const EMAIL_TIMEOUT_MS = 8_000;
 
 function getFrom(): string {
   return process.env.RESEND_FROM || 'Fi-Hub <noreply@fi-hub.subleet.com>';
@@ -23,24 +24,32 @@ async function sendEmail(params: {
     return;
   }
 
-  const res = await fetch(RESEND_API, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      from: getFrom(),
-      to: [params.to],
-      subject: params.subject,
-      html: params.html,
-      reply_to: params.replyTo,
-    }),
-  });
+  // Un e-mail qui échoue ne doit jamais faire échouer l'action qui le déclenche
+  // (suppression de compte, webhook de paiement, onboarding) : délai borné,
+  // erreurs journalisées et jamais relancées vers l'appelant.
+  try {
+    const res = await fetch(RESEND_API, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: getFrom(),
+        to: [params.to],
+        subject: params.subject,
+        html: params.html,
+        reply_to: params.replyTo,
+      }),
+      signal: AbortSignal.timeout(EMAIL_TIMEOUT_MS),
+    });
 
-  if (!res.ok) {
-    const body = await res.text().catch(() => '');
-    console.error('[email] Resend failed:', res.status, body);
+    if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      console.error('[email] Resend failed:', res.status, body);
+    }
+  } catch (error) {
+    console.error('[email] Resend unreachable:', error);
   }
 }
 
