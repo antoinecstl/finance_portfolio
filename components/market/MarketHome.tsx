@@ -1,78 +1,17 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import Link from 'next/link';
-import { Clock } from 'lucide-react';
+import { Clock, Star } from 'lucide-react';
 import { useStockQuotes, useTransactions, usePositionsWithCalculatedValues } from '@/lib/hooks';
 import { BENCHMARKS } from '@/lib/benchmarks';
-import type { StockQuote } from '@/lib/types';
 import { MarketSearch } from './MarketSearch';
-import { Sparkline } from './Sparkline';
+import { MarketRow, useMonthSparklines } from './MarketList';
+import { FavoriteButton } from './FavoriteButton';
 import { useRecents } from './useRecents';
-import { changeClass, fmtPct, fmtPrice, marketHref } from './format';
+import { useWatchlist } from './useWatchlist';
+import { marketHref } from './format';
 import { instrumentLabel } from '@/lib/instrument-names';
-
-const isoDay = (d: Date) => d.toISOString().slice(0, 10);
-
-// Courbes 1 mois de toutes les lignes, en un seul appel groupé.
-function useMonthSparklines(symbols: string[]): Record<string, number[]> {
-  const key = symbols.join(',');
-  const [state, setState] = useState<{ key: string; data: Record<string, number[]> }>({ key: '', data: {} });
-
-  useEffect(() => {
-    if (!key) return;
-    const controller = new AbortController();
-    const end = new Date();
-    const start = new Date(end.getTime() - 35 * 86_400_000);
-    const params = new URLSearchParams({ symbols: key, startDate: isoDay(start), endDate: isoDay(end), interval: '1d' });
-    fetch(`/api/stocks/history?${params.toString()}`, { signal: controller.signal })
-      .then((res) => (res.ok ? res.json() : {}))
-      .then((json: Record<string, Array<{ close: number }>>) => {
-        const data: Record<string, number[]> = {};
-        for (const [symbol, rows] of Object.entries(json ?? {})) {
-          if (Array.isArray(rows)) data[symbol.toUpperCase()] = rows.map((r) => r.close).filter(Number.isFinite);
-        }
-        setState({ key, data });
-      })
-      .catch(() => {});
-    return () => controller.abort();
-  }, [key]);
-
-  return state.key === key ? state.data : {};
-}
-
-function MarketRow({ symbol, name, quote, spark, settled }: { symbol: string; name: string; quote?: StockQuote; spark?: number[]; settled: boolean }) {
-  const pct = quote ? quote.changePercent / 100 : null;
-  return (
-    <li>
-      <Link
-        href={marketHref(symbol)}
-        className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
-      >
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-sm font-medium text-zinc-900 dark:text-zinc-100">{name}</span>
-          <span className="block truncate text-xs text-zinc-500 dark:text-zinc-400">{symbol}</span>
-        </span>
-        <span className="hidden sm:block">
-          <Sparkline values={spark ?? []} />
-        </span>
-        <span className="w-28 shrink-0 text-right">
-          <span className="block text-sm tabular-nums text-zinc-900 dark:text-zinc-100">
-            {quote ? (
-              fmtPrice(quote.price, quote.currency)
-            ) : settled ? (
-              // Cours non revenu : on le dit plutôt que de laisser un chargement sans fin.
-              <span className="text-xs text-zinc-500 dark:text-zinc-400">Indisponible</span>
-            ) : (
-              <span className="inline-block h-4 w-16 animate-pulse rounded bg-zinc-100 dark:bg-zinc-800" />
-            )}
-          </span>
-          <span className={`block text-xs tabular-nums ${changeClass(pct)}`}>{quote ? fmtPct(pct) : ' '}</span>
-        </span>
-      </Link>
-    </li>
-  );
-}
 
 function Panel({ title, description, children }: { title: string; description?: string; children: React.ReactNode }) {
   return (
@@ -105,11 +44,15 @@ export function MarketHome() {
     () => Object.entries(BENCHMARKS).map(([symbol, b]) => ({ symbol, label: b.label })),
     []
   );
+  const watchlist = useWatchlist();
+  const favorites = watchlist.items;
   const allSymbols = useMemo(
-    () => Array.from(new Set([...holdings, ...benchmarks.map((b) => b.symbol)])).slice(0, 50),
-    [holdings, benchmarks]
+    // 50 cours par requête au plus : indices et favoris d'abord, puis les titres détenus.
+    () => Array.from(new Set([...benchmarks.map((b) => b.symbol), ...favorites.map((f) => f.symbol.toUpperCase()), ...holdings])).slice(0, 50),
+    [favorites, holdings, benchmarks]
   );
   const { quotes, ready: quotesSettled } = useStockQuotes(allSymbols);
+  const showHoldings = loadingTransactions || holdings.length > 0;
   const sparks = useMonthSparklines(allSymbols);
 
   return (
@@ -136,7 +79,7 @@ export function MarketHome() {
       </div>
 
       <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
-        {(loadingTransactions || holdings.length > 0) && (
+        {showHoldings && (
           <Panel title="Vos titres" description="Les lignes que vous détenez, du plus gros montant investi au plus petit.">
             {holdings.length === 0 ? (
               <div className="space-y-2 p-4">
@@ -152,13 +95,52 @@ export function MarketHome() {
           </Panel>
         )}
 
-        <Panel title="Indices et références" description="Les références du comparateur de performance.">
-          <ul className="divide-y divide-zinc-100 dark:divide-zinc-800">
-            {benchmarks.map((b) => (
-              <MarketRow key={b.symbol} symbol={b.symbol} name={b.label} quote={quotes[b.symbol]} spark={sparks[b.symbol]} settled={quotesSettled} />
-            ))}
-          </ul>
-        </Panel>
+        {/* Sans titres détenus : favoris et indices côte à côte sur toute la largeur. */}
+        <div className={showHoldings ? 'space-y-4 sm:space-y-6' : 'grid items-start gap-4 sm:gap-6 lg:col-span-2 lg:grid-cols-2'}>
+          <Panel title="Favoris" description="Les titres que vous suivez, sans forcément les détenir.">
+            {!watchlist.ready && !watchlist.failed ? (
+              <div className="space-y-2 p-4" aria-busy="true">
+                {[0, 1].map((i) => <div key={i} className="h-10 animate-pulse rounded bg-zinc-100 dark:bg-zinc-800" />)}
+              </div>
+            ) : watchlist.failed && favorites.length === 0 ? (
+              <p className="p-4 text-sm text-zinc-600 dark:text-zinc-400">
+                Favoris momentanément indisponibles.{' '}
+                <button type="button" onClick={() => void watchlist.reload()} className="font-medium underline underline-offset-4">Réessayer</button>
+              </p>
+            ) : favorites.length === 0 ? (
+              <p className="flex gap-2 p-4 text-sm text-zinc-600 dark:text-zinc-400">
+                <Star className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                <span>Aucun favori pour l’instant. Sur la fiche d’un titre, touchez « Suivre » pour le retrouver ici.</span>
+              </p>
+            ) : (
+              <ul className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                {favorites.map((f) => {
+                  const symbol = f.symbol.toUpperCase();
+                  const name = instrumentLabel(symbol, quotes[symbol]?.name ?? f.name);
+                  return (
+                    <MarketRow
+                      key={symbol}
+                      symbol={symbol}
+                      name={name}
+                      quote={quotes[symbol]}
+                      spark={sparks[symbol]}
+                      settled={quotesSettled}
+                      trailing={<FavoriteButton symbol={symbol} name={name} compact />}
+                    />
+                  );
+                })}
+              </ul>
+            )}
+          </Panel>
+
+          <Panel title="Indices et références" description="Les références du comparateur de performance.">
+            <ul className="divide-y divide-zinc-100 dark:divide-zinc-800">
+              {benchmarks.map((b) => (
+                <MarketRow key={b.symbol} symbol={b.symbol} name={b.label} quote={quotes[b.symbol]} spark={sparks[b.symbol]} settled={quotesSettled} />
+              ))}
+            </ul>
+          </Panel>
+        </div>
       </div>
 
       <p className="text-xs text-zinc-500 dark:text-zinc-400">

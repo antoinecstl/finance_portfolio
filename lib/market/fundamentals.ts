@@ -2,6 +2,8 @@
 // Fonctions pures : lecture des séries comptables du fournisseur, ratios de
 // valorisation calculés par Fi-Hub et petit modèle DCF. Aucun appel réseau ici.
 
+import { parseEarningsSummary, type EarningsSummary } from './earnings';
+
 /** Postes comptables demandés au fournisseur (nom de série sans préfixe). */
 export const STATEMENT_ITEMS = {
   revenue: 'TotalRevenue',
@@ -396,6 +398,8 @@ export interface QuoteSummaryData {
     nextEarningsDate: string | null;
     exDividendDate: string | null;
   };
+  /** BPA publié face au consensus, prévisions, prochaine publication (actions suivies par des analystes). */
+  earnings?: EarningsSummary | null;
 }
 
 const str = (v: unknown): string | null => (typeof v === 'string' && v.trim() ? v.trim() : null);
@@ -470,6 +474,7 @@ export function parseQuoteSummary(json: unknown): QuoteSummaryData | null {
       nextEarningsDate: earningsDates.map(isoDate).filter((d): d is string => d !== null).sort().at(-1) ?? null,
       exDividendDate: isoDate(detail.exDividendDate) ?? isoDate(calendar.exDividendDate),
     },
+    earnings: parseEarningsSummary(result),
   };
 }
 
