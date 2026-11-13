@@ -1012,9 +1012,10 @@ export function PositionPerformanceChart({
                             transactions={stats.allTransactions}
                             fallbackCurrency={m.quoteCurrency}
                           />
-                          <div className="space-y-1 max-h-48 overflow-y-auto">
-                            <p className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">Historique</p>
-                            {stats.allTransactions.slice(0, 10).map((t) => (
+                          {/* Toutes les transactions de la position, sans plafond : la liste suit le défilement de la page. */}
+                          <div className="space-y-1">
+                            <p className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">Historique ({stats.allTransactions.length})</p>
+                            {stats.allTransactions.map((t) => (
                               <div key={t.id} className="flex justify-between items-center text-xs py-1 border-b border-zinc-100 dark:border-zinc-800 last:border-0">
                                 <div className="flex items-center gap-2">
                                   <span
@@ -1037,11 +1038,6 @@ export function PositionPerformanceChart({
                                 </div>
                               </div>
                             ))}
-                            {stats.allTransactions.length > 10 && (
-                              <p className="text-[10px] text-zinc-400 text-center pt-1">
-                                +{stats.allTransactions.length - 10} autres transactions
-                              </p>
-                            )}
                           </div>
                         </div>
                       )}
@@ -1248,7 +1244,8 @@ export function PositionPerformanceChart({
                                   Historique des transactions ({stats.allTransactions.length})
                                 </h4>
                               </div>
-                              <div className="max-h-64 overflow-y-auto">
+                              {/* Toutes les lignes ; au-delà d'une quinzaine, défilement dans le tableau (en-tête fixe). */}
+                              <div className="max-h-[36rem] overflow-y-auto">
                                 <table className="w-full text-sm">
                                   <thead className="bg-zinc-50 dark:bg-zinc-800/50 sticky top-0">
                                     <tr>
