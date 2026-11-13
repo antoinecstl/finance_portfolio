@@ -2,7 +2,8 @@
 
 import { track } from '@vercel/analytics';
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import { ArrowRight, Check, Loader2, Search, Upload } from 'lucide-react';
+import { ArrowRight, Check, ListChecks, Loader2, PenLine, Search, Upload } from 'lucide-react';
+import { QuickPortfolioForm } from '@/components/QuickPortfolioForm';
 import { getApiErrorMessage } from '@/lib/api-errors';
 import { useStockSearch } from '@/lib/hooks';
 import { PLANS, type ImportAccess } from '@/lib/plans';
@@ -51,6 +52,19 @@ async function postJson(url: string, body: unknown): Promise<{ ok: boolean; stat
   });
   const data = await res.json().catch(() => ({}));
   return { ok: res.ok, status: res.status, data };
+}
+
+// Termine l'onboarding puis recharge l'app : le layout lit onboarded_at à
+// chaque rendu serveur, une navigation complète garantit son état à jour.
+// Renvoie un message d'erreur si la finalisation échoue.
+async function completeOnboarding(href: string): Promise<string | null> {
+  const res = await postJson('/api/account/onboard', { step: 'complete' }).catch(() => null);
+  if (!res || !res.ok) {
+    return res ? getApiErrorMessage(res.data, 'Erreur lors de la finalisation.', res.status) : 'Erreur réseau';
+  }
+  track('onboarding_completed');
+  window.location.assign(href);
+  return null;
 }
 
 // Tunnel affiché à la première connexion, tant que l'onboarding n'est pas
@@ -142,6 +156,7 @@ export function Onboarding({
           {step === 'transaction' && (
             <TransactionStep
               accounts={accounts}
+              importAccess={importAccess}
               headingRef={headingRef}
               onDone={(labels) => {
                 setDone((prev) => [...prev, ...labels]);
@@ -397,16 +412,159 @@ function AccountStep({
 
 /* ───────── 3. Première opération ───────── */
 
+type FillMethod = 'quick' | 'single';
+
+// Trois façons de remplir le compte, de la plus rapide à la plus manuelle :
+// importer un relevé, saisir ses positions actuelles, ajouter une opération.
 function TransactionStep({
   accounts,
+  importAccess,
   headingRef,
   onDone,
   onSkip,
 }: {
   accounts: OnboardingAccount[];
+  importAccess: ImportAccess;
   headingRef: HeadingRef;
   onDone: (labels: string[]) => void;
   onSkip: () => void;
+}) {
+  const account = accounts[accounts.length - 1];
+  const canHoldSecurities = account ? accountSupportsPositions(account) : false;
+  const hasChoice = Boolean(account) && (importAccess.allowed || canHoldSecurities);
+  const [method, setMethod] = useState<FillMethod | null>(hasChoice ? null : 'single');
+  const [leaving, setLeaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const startImport = async () => {
+    setLeaving(true);
+    setError(null);
+    const failure = await completeOnboarding('/dashboard/import');
+    if (failure) {
+      setError(failure);
+      setLeaving(false);
+    }
+  };
+
+  if (method === 'single' || !account) {
+    return (
+      <SingleOperationStep
+        accounts={accounts}
+        headingRef={headingRef}
+        onDone={onDone}
+        onSkip={onSkip}
+        onBack={hasChoice ? () => setMethod(null) : undefined}
+      />
+    );
+  }
+
+  if (method === 'quick') {
+    return (
+      <div>
+        <StepHeading headingRef={headingRef}>Vos positions actuelles</StepHeading>
+        <p className="text-[color:var(--ink-soft)] mb-6">
+          Indiquez ce que contient « {account.name} » aujourd’hui : une ligne par titre, avec la quantité et le prix
+          de revient. Inutile de ressaisir chaque achat.
+        </p>
+        <QuickPortfolioForm
+          account={account}
+          cancelLabel="Choisir une autre méthode"
+          onCancel={() => setMethod(null)}
+          onDone={(count) => onDone([count > 1 ? `${count} positions ajoutées` : 'Position ajoutée'])}
+        />
+      </div>
+    );
+  }
+
+  const options: Array<{ id: string; icon: typeof Upload; title: string; hint: string; badge?: string; onClick: () => void }> = [];
+  if (importAccess.allowed) {
+    options.push({
+      id: 'import',
+      icon: Upload,
+      title: 'Importer un relevé',
+      hint: 'PDF, capture d’écran, CSV ou Excel de votre banque ou courtier. Fi-Hub lit les opérations, vous les vérifiez avant d’enregistrer.',
+      badge: importAccess.offered ? 'Le plus rapide · offert' : 'Le plus rapide',
+      onClick: startImport,
+    });
+  }
+  if (canHoldSecurities) {
+    options.push({
+      id: 'quick',
+      icon: ListChecks,
+      title: 'Saisir mes positions actuelles',
+      hint: 'Titre, quantité, prix de revient : une minute pour retrouver votre portefeuille et vos plus-values.',
+      onClick: () => setMethod('quick'),
+    });
+  }
+  options.push({
+    id: 'single',
+    icon: PenLine,
+    title: canHoldSecurities ? 'Ajouter une opération' : 'Indiquer le solde',
+    hint: canHoldSecurities
+      ? 'Un versement ou un achat, saisi à la main. Vous ajouterez les suivants au fil de l’eau.'
+      : 'Le montant placé sur ce compte, daté d’aujourd’hui.',
+    onClick: () => setMethod('single'),
+  });
+
+  return (
+    <div>
+      <StepHeading headingRef={headingRef}>Remplissez « {account.name} »</StepHeading>
+      <p className="text-[color:var(--ink-soft)] mb-6">
+        Fi-Hub calcule soldes, positions et performance à partir de ce que contient votre compte. Choisissez la
+        façon la plus simple pour vous.
+      </p>
+
+      <ul className="space-y-3">
+        {options.map(({ id, icon: Icon, title, hint, badge, onClick }) => (
+          <li key={id}>
+            <button
+              type="button"
+              onClick={onClick}
+              disabled={leaving}
+              className="flex w-full items-start gap-3 rounded-lg border border-[color:var(--rule)] px-4 py-3.5 text-left transition-colors hover:border-[color:var(--ink)] hover:bg-[color:var(--paper-2)] disabled:opacity-50"
+            >
+              <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-[color:var(--paper-2)] text-[color:var(--ink)]">
+                {id === 'import' && leaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Icon className="h-4 w-4" aria-hidden="true" />}
+              </span>
+              <span className="min-w-0">
+                <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <span className="text-sm font-medium text-[color:var(--ink)]">{title}</span>
+                  {badge && (
+                    <span className="rounded-full bg-[color:var(--gain-soft)] px-2 py-0.5 text-[11px] font-medium text-[color:var(--gain)]">
+                      {badge}
+                    </span>
+                  )}
+                </span>
+                <span className="mt-0.5 block text-sm text-[color:var(--ink-soft)]">{hint}</span>
+              </span>
+            </button>
+          </li>
+        ))}
+      </ul>
+
+      <ErrorMessage message={error} />
+
+      <div className="mt-8">
+        <button type="button" onClick={onSkip} disabled={leaving} className={SKIP}>
+          Passer cette étape
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function SingleOperationStep({
+  accounts,
+  headingRef,
+  onDone,
+  onSkip,
+  onBack,
+}: {
+  accounts: OnboardingAccount[];
+  headingRef: HeadingRef;
+  onDone: (labels: string[]) => void;
+  onSkip: () => void;
+  onBack?: () => void;
 }) {
   const [accountId, setAccountId] = useState(accounts[accounts.length - 1]?.id ?? '');
   const account = accounts.find((a) => a.id === accountId) ?? accounts[0];
@@ -658,8 +816,8 @@ function TransactionStep({
       <ErrorMessage message={error} />
 
       <div className="mt-8 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <button type="button" onClick={onSkip} disabled={submitting} className={SKIP}>
-          Passer cette étape
+        <button type="button" onClick={onBack ?? onSkip} disabled={submitting} className={SKIP}>
+          {onBack ? 'Choisir une autre méthode' : 'Passer cette étape'}
         </button>
         {partial ? (
           <button type="button" onClick={() => onDone(partial)} className="btn-ink inline-flex items-center justify-center gap-2 py-2.5 px-5 rounded-lg">
@@ -691,19 +849,14 @@ function ImportStep({
   const [error, setError] = useState<string | null>(null);
   const { maxAccounts, maxTransactions, maxPositions } = PLANS.free;
 
-  // Termine l'onboarding puis recharge l'app : le layout lit onboarded_at à
-  // chaque rendu serveur, une navigation complète garantit son état à jour.
   const finish = async (href: string) => {
     setLeaving(href);
     setError(null);
-    const res = await postJson('/api/account/onboard', { step: 'complete' }).catch(() => null);
-    if (!res || !res.ok) {
-      setError(res ? getApiErrorMessage(res.data, 'Erreur lors de la finalisation.', res.status) : 'Erreur réseau');
+    const failure = await completeOnboarding(href);
+    if (failure) {
+      setError(failure);
       setLeaving(null);
-      return;
     }
-    track('onboarding_completed');
-    window.location.assign(href);
   };
 
   return (

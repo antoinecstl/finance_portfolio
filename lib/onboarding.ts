@@ -1,6 +1,6 @@
 // Tunnel d'onboarding des nouveaux utilisateurs : profil, premier compte,
-// première opération, puis présentation de l'import (facultatif ; le premier
-// est offert en Free).
+// remplissage du compte (import d'un relevé, saisie rapide des positions ou
+// première opération), puis rappel de l'import (le premier est offert en Free).
 // Logique pure partagée par le composant (components/onboarding) et les tests.
 
 import { accountSupportsPositions, accountTypeAllowsAsset, assetAccountMismatchMessage } from './utils';
@@ -11,7 +11,7 @@ export type OnboardingStep = 'profile' | 'account' | 'transaction' | 'import';
 export const ONBOARDING_STEPS: ReadonlyArray<{ id: OnboardingStep; label: string }> = [
   { id: 'profile', label: 'Profil' },
   { id: 'account', label: 'Premier compte' },
-  { id: 'transaction', label: 'Première opération' },
+  { id: 'transaction', label: 'Vos placements' },
   { id: 'import', label: 'Pour aller plus loin' },
 ];
 
