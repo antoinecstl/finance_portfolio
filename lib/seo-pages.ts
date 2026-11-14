@@ -541,6 +541,7 @@ export const indexableMarketingRoutes: SeoRoute[] = [
   { href: '/guides', lastModified: SEO_LAST_MODIFIED, changeFrequency: 'weekly', priority: 0.85 },
   { href: '/fonctionnalites', lastModified: SEO_LAST_MODIFIED, changeFrequency: 'monthly', priority: 0.8 },
   { href: '/alternatives', lastModified: SEO_LAST_MODIFIED, changeFrequency: 'monthly', priority: 0.8 },
+  { href: '/outils/calcul-pru', lastModified: '2026-11-14', changeFrequency: 'monthly', priority: 0.8 },
   ...guidePages.map((page) => ({
     href: page.href,
     lastModified: SEO_LAST_MODIFIED,

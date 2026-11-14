@@ -18,6 +18,7 @@ const COLUMNS = [
       { href: '/guides/suivi-portefeuille-boursier', label: 'Suivi de portefeuille' },
       { href: '/guides/suivi-pea', label: 'PEA et positions' },
       { href: '/guides/calcul-pru', label: 'Calcul du PRU' },
+      { href: '/outils/calcul-pru', label: 'Calculateur de PRU' },
       { href: '/guides/suivi-dividendes', label: 'Dividendes' },
     ],
   },
