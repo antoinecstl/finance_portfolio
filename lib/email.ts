@@ -12,16 +12,18 @@ function appUrl(): string {
   return process.env.NEXT_PUBLIC_APP_URL || 'https://fi-hub.subleet.com';
 }
 
+/** Envoie un e-mail ; renvoie true s'il a été accepté par le prestataire. */
 async function sendEmail(params: {
   to: string;
   subject: string;
   html: string;
   replyTo?: string;
-}): Promise<void> {
+  headers?: Record<string, string>;
+}): Promise<boolean> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
     console.warn('[email] RESEND_API_KEY missing — skipping send');
-    return;
+    return false;
   }
 
   // Un e-mail qui échoue ne doit jamais faire échouer l'action qui le déclenche
@@ -40,6 +42,7 @@ async function sendEmail(params: {
         subject: params.subject,
         html: params.html,
         reply_to: params.replyTo,
+        headers: params.headers,
       }),
       signal: AbortSignal.timeout(EMAIL_TIMEOUT_MS),
     });
@@ -47,9 +50,12 @@ async function sendEmail(params: {
     if (!res.ok) {
       const body = await res.text().catch(() => '');
       console.error('[email] Resend failed:', res.status, body);
+      return false;
     }
+    return true;
   } catch (error) {
     console.error('[email] Resend unreachable:', error);
+    return false;
   }
 }
 
@@ -125,4 +131,29 @@ export async function sendAccountDeletion(to: string): Promise<void> {
     <p>Si ce n'est pas vous qui avez demandé cette suppression, contactez-nous immédiatement à <a href="mailto:support@fi-hub.subleet.com">support@fi-hub.subleet.com</a>.</p>`
   );
   await sendEmail({ to, subject: 'Votre compte Fi-Hub a été supprimé', html });
+}
+
+/**
+ * Récapitulatif mensuel du patrimoine (lib/digest.ts). Porte les en-têtes de
+ * désabonnement en un clic attendus par les messageries.
+ */
+export async function sendMonthlyDigest(
+  to: string,
+  email: { subject: string; title: string; body: string },
+  unsubscribeUrl: string
+): Promise<boolean> {
+  return sendEmail({
+    to,
+    subject: email.subject,
+    html: layout(email.title, email.body),
+    headers: {
+      'List-Unsubscribe': `<${unsubscribeUrl}>`,
+      'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+    },
+  });
+}
+
+/** Gabarit complet d'un e-mail, pour un aperçu sans envoi. */
+export function renderEmailLayout(title: string, body: string): string {
+  return layout(title, body);
 }

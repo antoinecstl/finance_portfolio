@@ -12,7 +12,7 @@ export default function PrivacyPage() {
   return (
     <div className="space-y-4 text-zinc-800 dark:text-zinc-200">
       <h1 className="text-3xl font-bold">Politique de confidentialité</h1>
-      <p className="text-sm text-zinc-500">Dernière mise à jour : 2026-11-13</p>
+      <p className="text-sm text-zinc-500">Dernière mise à jour : 2026-11-14</p>
 
       <h2 className="text-xl font-semibold mt-8">1. Responsable du traitement</h2>
       <p>
@@ -51,12 +51,13 @@ export default function PrivacyPage() {
       <p>
         Les données sont utilisées pour fournir le Service (suivi et calculs de votre patrimoine, import de relevés,
         accès par API), gérer la facturation, assurer la sécurité du Service, mesurer son audience et communiquer
-        avec vous au sujet de votre compte. Vos données ne sont ni vendues ni utilisées à des fins publicitaires.
+        avec vous au sujet de votre compte, dont un récapitulatif mensuel de votre patrimoine par email, que vous
+        pouvez désactiver en un clic. Vos données ne sont ni vendues ni utilisées à des fins publicitaires.
       </p>
 
       <h2 className="text-xl font-semibold mt-8">4. Base légale</h2>
       <ul className="list-disc pl-6 space-y-1">
-        <li>Exécution du contrat (CGU) : compte, suivi du patrimoine, import, abonnement.</li>
+        <li>Exécution du contrat (CGU) : compte, suivi du patrimoine, import, abonnement, récapitulatif mensuel.</li>
         <li>Intérêt légitime : sécurité du Service, prévention des abus, mesure d&apos;audience sans cookie.</li>
         <li>Consentement : emails d&apos;information, que vous pouvez désactiver à tout moment dans Paramètres.</li>
         <li>Obligation légale : conservation des factures.</li>

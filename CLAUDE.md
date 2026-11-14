@@ -62,6 +62,8 @@ Never commit secrets. Important environment variables include:
 - `PADDLE_PRO_YEARLY_PRICE_ID`
 - `RESEND_API_KEY` / `RESEND_FROM` for transactional email.
 - `FREE_IMPORT_DAILY_BUDGET`: optional, shared daily cap on Free statement analyses (default 200).
+- `CRON_SECRET`: required for the monthly digest cron (`vercel.json`); Vercel sends it as a bearer token. Without it the cron route answers 503.
+- `DIGEST_SECRET`: optional, signs the digest unsubscribe links (falls back to `CRON_SECRET`, then the service role key).
 - `SEC_USER_AGENT`: app name + contact email sent to SEC EDGAR (market explorer, US company accounts).
 - Supabase Edge Function signup notifications use function secrets such as `SIGNUP_SLACK_WEBHOOK_URL`, `SIGNUP_DISCORD_WEBHOOK_URL`, `APP_URL`, or `NEXT_PUBLIC_APP_URL`.
 
@@ -77,6 +79,9 @@ Never commit secrets. Important environment variables include:
 - Securities are shown by name, code second (« L'Oréal », OR.PA): helpers in `lib/instrument-names.ts` (prettify upper-case provider names, short chart labels) and the browser name registry `lib/instrument-names-client.ts` (`useInstrumentNames`, fed by quotes and searches). Never display a bare ticker when a name is known.
 - Price history and FX requests go through `lib/shared-fetch.ts` (one request per URL, the « Rafraîchir » button calls `refreshSharedData`) and `lib/fx-client.ts` (last known rate as fallback, `FxNotice` banner when a rate is stale or missing). Charts take `error`/`onRetry` and show `ChartUnavailable` on a failed load: never the « add transactions » empty state.
 - Amount inputs are text fields with `inputMode="decimal"` parsed by `lib/decimal.ts` (comma or dot).
+- Quick portfolio entry (`components/QuickPortfolioForm.tsx`, `lib/quick-portfolio.ts`, `POST /api/positions/quick`): one row per security already held (quantity, cost price) plus cash; saved atomically as one opening deposit per currency and one buy per security through `insert_transactions_batch`. Offered in onboarding (import first, then quick entry, then single operation) and from the Positions tab. Cost price and unrealised gains are exact; past performance needs the real history.
+- PEA tracker (`lib/pea.ts`, `components/PeaStatusCard.tsx`): deposits vs the 150 000 € cap and the 5-year date, from the declared `accounts.opened_on` (never from `created_at`, which is when the account was added to Fi-Hub).
+- Year-to-date stats (`lib/account-stats.ts`): when an account is empty on 31/12 the Modified Dietz window starts at its first operation of the year, not on 1 January.
 - Wrap page content in `PageContainer` (shared max width and gutters, so edges align across pages) and start pages with `PageHeader` (`components/app-shell/PageLayout.tsx`). Do not add per-page back links or full-screen backgrounds.
 
 ## Market Explorer
@@ -140,6 +145,7 @@ Never commit secrets. Important environment variables include:
 - Keep `WebSite` JSON-LD on the marketing homepage aligned with `openGraph.siteName`.
 - Vercel Analytics and Speed Insights are mounted globally in `app/layout.tsx`. Funnel events (`track` from `@vercel/analytics`): `signup_completed`, `onboarding_completed`, `upgrade_clicked`, `checkout_completed`.
 - Auth errors shown to users go through `authErrorMessage` (`lib/auth-errors.ts`), never the provider's raw English message.
+- Monthly digest email: `lib/digest.ts` (period, figures, HTML; pure and tested), `lib/monthly-digest.ts` (server run), cron `GET /api/cron/monthly-digest` scheduled daily in `vercel.json` (sends once per user and month through `profiles.monthly_digest_sent_for`; `?dry=1` computes without sending, `&html=1` returns a preview), unsubscribe `GET/POST /api/digest/unsubscribe` with a signed link, toggle in Settings → Profil (`profiles.monthly_digest`). Never send when a held security has no quote for the period.
 - Vercel dev analytics scripts are allowed in CSP through `https://va.vercel-scripts.com`.
 - `app/sitemap.ts` and `app/robots.ts` use `NEXT_PUBLIC_APP_URL`.
 
