@@ -27,6 +27,7 @@ import { useSubscription } from '@/lib/subscription-client';
 import { AddAccountModal } from './AddAccountModal';
 import { AddTransactionModal } from './AddTransactionModal';
 import { QuickPortfolioModal } from './QuickPortfolioModal';
+import { sumPeaDeposits } from '@/lib/pea';
 import { 
   useAccounts, 
   useTransactions, 
@@ -164,6 +165,15 @@ export function Dashboard() {
 
   // Valeur de l'univers actions = positions + cash PEA/CTO
   // Comptes éligibles au filtre de l'onglet Positions (PEA/CTO uniquement)
+  // PEA : cumul des versements par compte, pour le suivi du plafond.
+  const peaDeposits = useMemo(() => {
+    const totals: Record<string, number> = {};
+    for (const account of accounts) {
+      if (account.type === 'PEA') totals[account.id] = sumPeaDeposits(transactions, account.id);
+    }
+    return totals;
+  }, [accounts, transactions]);
+
   const stockAccounts = useMemo(() => {
     return enrichedAccounts.filter(accountSupportsPositions);
   }, [enrichedAccounts]);
@@ -492,6 +502,7 @@ export function Dashboard() {
                       loading={!valuesReady}
                       yearToDateLoading={!yearToDateReady}
                       positionActivityAccountIds={positionActivityAccountIds}
+                      peaDeposits={peaDeposits}
                       onChanged={handleMutationSuccess}
                     />
                   </ErrorBoundary>
@@ -540,6 +551,7 @@ export function Dashboard() {
               loading={!valuesReady}
               yearToDateLoading={!yearToDateReady}
               positionActivityAccountIds={positionActivityAccountIds}
+              peaDeposits={peaDeposits}
               onChanged={handleMutationSuccess}
             />
           </div>

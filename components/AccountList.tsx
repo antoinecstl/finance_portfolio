@@ -34,6 +34,7 @@ import {
   Pencil,
 } from 'lucide-react';
 import { useToast } from './Toast';
+import { PeaStatusCard } from './PeaStatusCard';
 
 const accountTypeValues: AccountType[] = [
   'PEA',
@@ -160,6 +161,10 @@ interface AccountCardProps {
   defaultExpanded?: boolean;
   onRequestEdit?: (account: EnrichedAccount) => void;
   onRequestDelete?: (account: EnrichedAccount) => void;
+  /** PEA : cumul des versements saisis, pour le suivi du plafond. */
+  peaDeposits?: number;
+  /** Rechargement après une modification faite dans la carte (date d'ouverture). */
+  onAccountSaved?: () => void | Promise<void>;
 }
 
 export function AccountCard({
@@ -170,6 +175,8 @@ export function AccountCard({
   defaultExpanded = false,
   onRequestEdit,
   onRequestDelete,
+  peaDeposits,
+  onAccountSaved,
 }: AccountCardProps) {
   const [expanded, setExpanded] = useState(defaultExpanded);
   const Icon = accountIcons[account.type] || MoreHorizontal;
@@ -286,9 +293,9 @@ export function AccountCard({
             <div className="flex items-center gap-2">
               <Calendar className="h-4 w-4 text-zinc-500 flex-shrink-0" />
               <div className="min-w-0">
-                <dt className="text-zinc-500 dark:text-zinc-400">Ouvert le</dt>
+                <dt className="text-zinc-500 dark:text-zinc-400">{account.opened_on ? 'Ouvert le' : 'Ajouté le'}</dt>
                 <dd className="font-medium text-zinc-900 dark:text-zinc-100 truncate">
-                  {formatDate(account.created_at)}
+                  {formatDate(account.opened_on ?? account.created_at)}
                 </dd>
               </div>
             </div>
@@ -307,6 +314,10 @@ export function AccountCard({
 
           {showYearToDate && !yearToDateLoading && (
             <YearToDateStats stats={yearToDate} accountCurrency={account.currency} />
+          )}
+
+          {account.type === 'PEA' && peaDeposits !== undefined && (
+            <PeaStatusCard account={account} deposits={peaDeposits} onSaved={onAccountSaved} />
           )}
 
           {(onRequestEdit || onRequestDelete) && (
@@ -566,6 +577,8 @@ interface AccountListProps {
   loading?: boolean;
   yearToDateLoading?: boolean;
   positionActivityAccountIds?: ReadonlySet<string>;
+  /** Cumul des versements par compte PEA (suivi du plafond). */
+  peaDeposits?: Record<string, number>;
   onChanged?: () => void | Promise<void>;
   onDeleted?: () => void | Promise<void>;
 }
@@ -576,6 +589,7 @@ export function AccountList({
   loading = false,
   yearToDateLoading = false,
   positionActivityAccountIds,
+  peaDeposits,
   onChanged,
   onDeleted,
 }: AccountListProps) {
@@ -743,6 +757,8 @@ export function AccountList({
           yearToDateLoading={yearToDateLoading}
           onRequestEdit={onMutated ? openEdit : undefined}
           onRequestDelete={onMutated ? openDelete : undefined}
+          peaDeposits={peaDeposits?.[account.id]}
+          onAccountSaved={onMutated}
         />
       ))}
       {pendingEdit && (

@@ -10,6 +10,9 @@ export interface Account {
   // Si null/undefined : utilise le défaut du type (PEA/CTO/ASSURANCE_VIE → true, autres → false).
   // Si défini : surcharge explicite (utile pour AUTRE).
   supports_positions?: boolean | null;
+  // Date d'ouverture réelle du compte, déclarée par l'utilisateur (PEA : départ
+  // de l'antériorité fiscale). Distincte de created_at, date d'ajout dans Fi-Hub.
+  opened_on?: string | null;
   created_at: string;
   updated_at: string;
 }

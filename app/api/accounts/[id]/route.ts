@@ -80,12 +80,25 @@ export async function PATCH(request: Request, { params }: IdRouteContext) {
     }
   }
 
+  if (body.opened_on) {
+    const tomorrow = new Date(Date.now() + 14 * 3_600_000).toISOString().slice(0, 10); // tolère tous les fuseaux
+    if (body.opened_on > tomorrow || body.opened_on < '1970-01-01') {
+      return NextResponse.json(
+        { error: 'invalid_payload', message: 'La date d’ouverture doit être une date passée.' },
+        { status: 400 }
+      );
+    }
+  }
+
   const { data, error } = await supabase
     .from('accounts')
     .update({
       name: body.name,
       type: body.type,
       supports_positions: body.type === 'AUTRE' ? body.supports_positions ?? null : null,
+      // Envoyée seulement si la requête la porte : la modification du nom ou
+      // du type ne touche pas à la date d'ouverture.
+      ...(body.opened_on !== undefined ? { opened_on: body.opened_on } : {}),
     })
     .eq('id', id)
     .eq('user_id', user.id)
