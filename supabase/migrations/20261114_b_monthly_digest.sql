@@ -27,7 +27,15 @@ $$;
 
 revoke execute on function public.protect_digest_tracking() from public, anon, authenticated;
 
-drop trigger if exists protect_digest_tracking_trigger on public.profiles;
-create trigger protect_digest_tracking_trigger
-  before update on public.profiles
-  for each row execute function public.protect_digest_tracking();
+do $$
+begin
+  if not exists (
+    select 1 from pg_trigger
+    where tgname = 'protect_digest_tracking_trigger' and tgrelid = 'public.profiles'::regclass
+  ) then
+    create trigger protect_digest_tracking_trigger
+      before update on public.profiles
+      for each row execute function public.protect_digest_tracking();
+  end if;
+end;
+$$;

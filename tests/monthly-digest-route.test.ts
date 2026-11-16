@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Tâche planifiée du récapitulatif mensuel : jamais exécutable sans le secret.
 
@@ -14,6 +14,12 @@ const call = (query = '', authorization?: string) =>
 beforeEach(() => {
   runMonthlyDigest.mockClear();
   process.env.CRON_SECRET = 'secret-de-test';
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date('2026-12-02T08:00:00Z'));
+});
+
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 describe('/api/cron/monthly-digest', () => {
@@ -35,6 +41,16 @@ describe('/api/cron/monthly-digest', () => {
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ ok: true, dryRun: false, period: '2026-10-01', candidates: 2, sent: 1, skipped: 1, failed: 0 });
     expect(runMonthlyDigest).toHaveBeenCalledWith(expect.objectContaining({ dryRun: false }));
+  });
+
+  it('ne fait rien après la première semaine du mois, sauf en mode essai', async () => {
+    vi.setSystemTime(new Date('2026-11-14T08:00:00Z'));
+    const res = await call('', 'Bearer secret-de-test');
+    expect(await res.json()).toMatchObject({ ok: true, outsideSendWindow: true, sent: 0 });
+    expect(runMonthlyDigest).not.toHaveBeenCalled();
+
+    await call('?dry=1', 'Bearer secret-de-test');
+    expect(runMonthlyDigest).toHaveBeenCalledWith(expect.objectContaining({ dryRun: true }));
   });
 
   it('calcule sans envoyer en mode essai et sait renvoyer l’aperçu', async () => {

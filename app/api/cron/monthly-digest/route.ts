@@ -3,10 +3,13 @@
 //
 // Protégée par CRON_SECRET : Vercel l'envoie dans `Authorization: Bearer …`
 // à chaque exécution planifiée. Sans cette variable, la route refuse tout.
-// `?dry=1` calcule sans envoyer ; `?dry=1&html=1` renvoie l'aperçu du premier e-mail.
+// L'envoi n'a lieu que la première semaine du mois (un seul e-mail par personne).
+// `?dry=1` calcule sans envoyer, à tout moment ; `?dry=1&html=1` renvoie l'aperçu
+// du premier e-mail.
 
 import { timingSafeEqual } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
+import { isDigestSendWindow } from '@/lib/digest';
 import { runMonthlyDigest } from '@/lib/monthly-digest';
 
 export const runtime = 'nodejs';
@@ -33,6 +36,11 @@ export async function GET(request: NextRequest) {
   const dryRun = params.get('dry') === '1';
   // Date du jour à Paris : le mois « écoulé » suit le calendrier des utilisateurs.
   const today = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Paris' });
+
+  // Hors de la première semaine du mois, la tâche quotidienne ne fait rien.
+  if (!dryRun && !isDigestSendWindow(today)) {
+    return NextResponse.json({ ok: true, dryRun: false, outsideSendWindow: true, sent: 0 }, { headers: { 'Cache-Control': 'no-store' } });
+  }
 
   try {
     const result = await runMonthlyDigest({ today, dryRun });

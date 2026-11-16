@@ -145,7 +145,7 @@ Never commit secrets. Important environment variables include:
 - Keep `WebSite` JSON-LD on the marketing homepage aligned with `openGraph.siteName`.
 - Vercel Analytics and Speed Insights are mounted globally in `app/layout.tsx`. Funnel events (`track` from `@vercel/analytics`): `signup_completed`, `onboarding_completed`, `upgrade_clicked`, `checkout_completed`.
 - Auth errors shown to users go through `authErrorMessage` (`lib/auth-errors.ts`), never the provider's raw English message.
-- Monthly digest email: `lib/digest.ts` (period, figures, HTML; pure and tested), `lib/monthly-digest.ts` (server run), cron `GET /api/cron/monthly-digest` scheduled daily in `vercel.json` (sends once per user and month through `profiles.monthly_digest_sent_for`; `?dry=1` computes without sending, `&html=1` returns a preview), unsubscribe `GET/POST /api/digest/unsubscribe` with a signed link, toggle in Settings → Profil (`profiles.monthly_digest`). Never send when a held security has no quote for the period.
+- Monthly digest email: `lib/digest.ts` (period, figures, HTML; pure and tested), `lib/monthly-digest.ts` (server run), cron `GET /api/cron/monthly-digest` scheduled daily in `vercel.json` (sends once per user and month through `profiles.monthly_digest_sent_for`, only during the first 7 days of the month; `?dry=1` computes without sending at any time, `&html=1` returns a preview), unsubscribe `GET/POST /api/digest/unsubscribe` with a signed link, toggle in Settings → Profil (`profiles.monthly_digest`). Never send when a held security has no quote for the period.
 - Vercel dev analytics scripts are allowed in CSP through `https://va.vercel-scripts.com`.
 - `app/sitemap.ts` and `app/robots.ts` use `NEXT_PUBLIC_APP_URL`.
 

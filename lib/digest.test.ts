@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { computeDigest, previousMonthPeriod, renderDigestEmail } from './digest';
+import { computeDigest, isDigestSendWindow, previousMonthPeriod, renderDigestEmail } from './digest';
 import type { Transaction } from './types';
 import type { PortfolioHistoryPoint } from './portfolio-calculator';
 
@@ -39,6 +39,15 @@ describe('previousMonthPeriod', () => {
   it('passe l’année et gère février', () => {
     expect(previousMonthPeriod('2027-01-03')).toMatchObject({ start: '2026-12-01', end: '2026-12-31', previousEnd: '2026-11-30', label: 'décembre 2026' });
     expect(previousMonthPeriod('2028-03-01')).toMatchObject({ start: '2028-02-01', end: '2028-02-29', previousEnd: '2028-01-31' });
+  });
+});
+
+describe('isDigestSendWindow', () => {
+  it('n’envoie que la première semaine du mois', () => {
+    expect(isDigestSendWindow('2026-12-01')).toBe(true);
+    expect(isDigestSendWindow('2026-12-07')).toBe(true);
+    expect(isDigestSendWindow('2026-12-08')).toBe(false);
+    expect(isDigestSendWindow('2026-11-14')).toBe(false);
   });
 });
 

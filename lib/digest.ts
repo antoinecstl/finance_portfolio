@@ -26,6 +26,19 @@ const MONTHS = [
 
 const iso = (d: Date) => d.toISOString().slice(0, 10);
 
+/** Derniers jours du mois où le récapitulatif du mois précédent a encore du sens. */
+export const DIGEST_SEND_DAYS = 7;
+
+/**
+ * Le récapitulatif part en début de mois. Passé ce délai (mise en service en
+ * cours de mois, panne prolongée), on attend le mois suivant plutôt que
+ * d'envoyer un bilan daté de plusieurs semaines.
+ */
+export function isDigestSendWindow(today: string): boolean {
+  const day = Number(today.slice(8, 10));
+  return day >= 1 && day <= DIGEST_SEND_DAYS;
+}
+
 /** Mois civil précédant `today` (YYYY-MM-DD). */
 export function previousMonthPeriod(today: string): DigestPeriod {
   const [year, month] = today.split('-').map(Number);
