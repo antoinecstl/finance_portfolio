@@ -6,6 +6,7 @@ import {
   Plus,
   Upload,
   Lock,
+  ListChecks,
 } from 'lucide-react';
 import Link from 'next/link';
 import { PortfolioStats } from './PortfolioStats';
@@ -25,6 +26,8 @@ import { PerformanceProjectionChart } from './PerformanceProjectionChart';
 import { useSubscription } from '@/lib/subscription-client';
 import { AddAccountModal } from './AddAccountModal';
 import { AddTransactionModal } from './AddTransactionModal';
+import { QuickPortfolioModal } from './QuickPortfolioModal';
+import { sumPeaDeposits } from '@/lib/pea';
 import { 
   useAccounts, 
   useTransactions, 
@@ -74,6 +77,7 @@ export function Dashboard() {
   const activeTab = parseDashboardTab(searchParams.get('tab'));
   const [showAddAccount, setShowAddAccount] = useState(false);
   const [showAddTransaction, setShowAddTransaction] = useState(false);
+  const [showQuickPortfolio, setShowQuickPortfolio] = useState(false);
   const [addTransactionDefaultAccountId, setAddTransactionDefaultAccountId] = useState<string | undefined>();
   const [addTransactionDefaultType, setAddTransactionDefaultType] = useState<Transaction['type'] | undefined>();
   const [lastUpdate, setLastUpdate] = useState(() => new Date());
@@ -161,6 +165,15 @@ export function Dashboard() {
 
   // Valeur de l'univers actions = positions + cash PEA/CTO
   // Comptes éligibles au filtre de l'onglet Positions (PEA/CTO uniquement)
+  // PEA : cumul des versements par compte, pour le suivi du plafond.
+  const peaDeposits = useMemo(() => {
+    const totals: Record<string, number> = {};
+    for (const account of accounts) {
+      if (account.type === 'PEA') totals[account.id] = sumPeaDeposits(transactions, account.id);
+    }
+    return totals;
+  }, [accounts, transactions]);
+
   const stockAccounts = useMemo(() => {
     return enrichedAccounts.filter(accountSupportsPositions);
   }, [enrichedAccounts]);
@@ -341,18 +354,31 @@ export function Dashboard() {
       ),
     },
     positions: {
-      description: 'Ajoutez une position via une transaction d’achat.',
+      description: 'Ajoutez un achat, ou saisissez d’un coup les titres que vous détenez déjà.',
       actions: (
-        <button
-          type="button"
-          onClick={() =>
-            openAddTransaction({ accountId: selectedPositionsAccountFilter ?? undefined, type: 'BUY' })
-          }
-          className={primaryButtonClass}
-        >
-          <Plus className="h-4 w-4" />
-          <span>Ajouter une position</span>
-        </button>
+        <>
+          {stockAccounts.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setShowQuickPortfolio(true)}
+              className="btn-outline inline-flex items-center justify-center gap-2 rounded-lg px-3.5 py-2 text-sm"
+            >
+              <ListChecks className="h-4 w-4" />
+              <span>Saisie rapide</span>
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() =>
+              openAddTransaction({ accountId: selectedPositionsAccountFilter ?? undefined, type: 'BUY' })
+            }
+            className={primaryButtonClass}
+          >
+            <Plus className="h-4 w-4" />
+            <span className="sm:hidden">Ajouter</span>
+            <span className="hidden sm:inline">Ajouter une position</span>
+          </button>
+        </>
       ),
     },
     transactions: {
@@ -476,6 +502,7 @@ export function Dashboard() {
                       loading={!valuesReady}
                       yearToDateLoading={!yearToDateReady}
                       positionActivityAccountIds={positionActivityAccountIds}
+                      peaDeposits={peaDeposits}
                       onChanged={handleMutationSuccess}
                     />
                   </ErrorBoundary>
@@ -524,6 +551,7 @@ export function Dashboard() {
               loading={!valuesReady}
               yearToDateLoading={!yearToDateReady}
               positionActivityAccountIds={positionActivityAccountIds}
+              peaDeposits={peaDeposits}
               onChanged={handleMutationSuccess}
             />
           </div>
@@ -713,6 +741,14 @@ export function Dashboard() {
         isOpen={showAddAccount}
         onClose={() => setShowAddAccount(false)}
         onSuccess={handleMutationSuccess}
+      />
+
+      <QuickPortfolioModal
+        isOpen={showQuickPortfolio}
+        onClose={() => setShowQuickPortfolio(false)}
+        onSuccess={handleMutationSuccess}
+        accounts={stockAccounts}
+        defaultAccountId={selectedPositionsAccountFilter ?? undefined}
       />
 
       <AddTransactionModal

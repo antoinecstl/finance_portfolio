@@ -117,8 +117,52 @@ describe('calculateAccountYearToDateStats', () => {
     expect(stats.change).toBe(1100);
     expect(stats.netFlows).toBe(1000);
     expect(stats.performance).toBe(100);
-    // Modified Dietz : le capital n'a été investi que 121 jours sur 272.
-    expect(stats.performancePercent).toBeCloseTo((100 / (1000 * 121 / 272)) * 100, 5);
+    // Compte vide au 31/12 : la période démarre au premier versement. 100 € de
+    // gain sur 1 000 € versés font +10 %, pas +22 % (capital « présent 121 jours
+    // sur 272 » si l'on comptait depuis le 1er janvier).
+    expect(stats.performancePercent).toBeCloseTo(10, 5);
+  });
+
+  it('stays sensible in the first days of a new account', () => {
+    // Versement et achat du jour même, +0,5 % dans la journée : l'ancien calcul
+    // (fenêtre depuis le 1er janvier) affichait plus de +100 %.
+    const firstDay = calculateAccountYearToDateStats({
+      accountId: 'acc-1',
+      transactions: [tx({ type: 'DEPOSIT', amount: 2000, date: '2026-11-13' })],
+      startValue: 0,
+      currentValue: 2010,
+      today: '2026-11-13',
+    });
+    expect(firstDay.performance).toBe(10);
+    expect(firstDay.performancePercent).toBeCloseTo(0.5, 5);
+
+    // Un second versement plus tard reste pondéré par sa durée de présence.
+    const later = calculateAccountYearToDateStats({
+      accountId: 'acc-1',
+      transactions: [
+        tx({ type: 'DEPOSIT', amount: 1000, date: '2026-06-01' }),
+        tx({ type: 'DEPOSIT', amount: 1000, date: '2026-08-01' }),
+      ],
+      startValue: 0,
+      currentValue: 2100,
+      today: '2026-09-30',
+    });
+    expect(later.performance).toBe(100);
+    // 121 jours de période ; le second versement est présent 60 jours sur 121.
+    expect(later.performancePercent).toBeCloseTo((100 / (1000 + 1000 * (60 / 121))) * 100, 5);
+  });
+
+  it('keeps the full-year window when the account held money on 31/12', () => {
+    const stats = calculateAccountYearToDateStats({
+      accountId: 'acc-1',
+      transactions: [tx({ type: 'DEPOSIT', amount: 1000, date: '2026-07-01' })],
+      startValue: 5000,
+      currentValue: 6300,
+      today: '2026-12-31',
+    });
+    expect(stats.performance).toBe(300);
+    // 5 000 € toute l'année + 1 000 € présents 183 jours sur 364 (1er janvier → 31 décembre).
+    expect(stats.performancePercent).toBeCloseTo((300 / (5000 + 1000 * (183 / 364))) * 100, 5);
   });
 
   it('converts foreign-currency flows to EUR', () => {

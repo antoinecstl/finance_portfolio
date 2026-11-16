@@ -11,11 +11,22 @@ export default async function ProfilePage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { data: profile } = await supabase
+  // monthly_digest arrive avec la migration 20261114_b : si elle n'est pas
+  // encore appliquée, le profil se charge sans ce réglage (il est alors masqué).
+  const withDigest = await supabase
     .from('profiles')
-    .select('full_name, avatar_url, locale, marketing_opt_in')
+    .select('full_name, avatar_url, locale, marketing_opt_in, monthly_digest')
     .eq('id', user!.id)
     .single();
+  const profile =
+    withDigest.data ??
+    (
+      await supabase
+        .from('profiles')
+        .select('full_name, avatar_url, locale, marketing_opt_in')
+        .eq('id', user!.id)
+        .single()
+    ).data;
 
   return (
     <div>

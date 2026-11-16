@@ -10,11 +10,15 @@ type Profile = {
   avatar_url: string | null;
   locale: string;
   marketing_opt_in: boolean;
+  /** Récapitulatif mensuel ; absent tant que la colonne n'existe pas en base. */
+  monthly_digest?: boolean | null;
 };
 
 export function ProfileForm({ initial, email }: { initial: Profile; email?: string | null }) {
   const [fullName, setFullName] = useState(initial.full_name ?? '');
   const [marketing, setMarketing] = useState(initial.marketing_opt_in);
+  const hasDigestSetting = typeof initial.monthly_digest === 'boolean';
+  const [digest, setDigest] = useState(initial.monthly_digest ?? true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
 
@@ -35,6 +39,7 @@ export function ProfileForm({ initial, email }: { initial: Profile; email?: stri
       .update({
         full_name: fullName || null,
         marketing_opt_in: marketing,
+        ...(hasDigestSetting ? { monthly_digest: digest } : {}),
       })
       .eq('id', user.id);
     setSaving(false);
@@ -97,6 +102,24 @@ export function ProfileForm({ initial, email }: { initial: Profile; email?: stri
             </p>
           </div>
         </label>
+        {hasDigestSetting && (
+          <label className="mt-4 flex items-start gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={digest}
+              onChange={(e) => setDigest(e.target.checked)}
+              className="mt-0.5 rounded border-[color:var(--rule)] text-[color:var(--accent)] focus:ring-[color:var(--accent)]"
+            />
+            <div>
+              <p className="text-sm font-medium text-[color:var(--ink)]">
+                Récapitulatif mensuel
+              </p>
+              <p className="text-xs text-[color:var(--ink-soft)]">
+                Chaque début de mois, la valeur de votre patrimoine et son évolution sur le mois écoulé.
+              </p>
+            </div>
+          </label>
+        )}
       </div>
 
       {message && (

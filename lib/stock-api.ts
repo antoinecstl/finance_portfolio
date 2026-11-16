@@ -205,7 +205,8 @@ export async function searchStocks(
 
 function localFallbackSearch(query: string): Array<{ symbol: string; name: string; exchange: string }> {
   const q = query.toLowerCase();
-  const stocks = POPULAR_FRENCH_STOCKS
+  // Actions et ETF : les ETF éligibles au PEA sont parmi les titres les plus détenus.
+  const stocks = [...POPULAR_FRENCH_STOCKS, ...POPULAR_ETFS]
     .filter(s => s.symbol.toLowerCase().includes(q) || s.name.toLowerCase().includes(q))
     .map(s => ({ ...s, exchange: 'Paris' }));
   const cryptos = POPULAR_CRYPTOS
@@ -251,6 +252,8 @@ export const POPULAR_ETFS = [
   { symbol: 'PANX.PA', name: 'Amundi Nasdaq-100' },
   { symbol: 'ESE.PA', name: 'BNP S&P 500' },
   { symbol: 'PAEEM.PA', name: 'Amundi Emerging Markets' },
+  { symbol: 'WPEA.PA', name: 'iShares MSCI World Swap PEA' },
+  { symbol: 'DCAM.PA', name: 'Amundi PEA Monde (MSCI World)' },
 ];
 
 /**

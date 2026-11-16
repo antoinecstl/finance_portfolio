@@ -33,6 +33,13 @@ export interface AccountYearToDateStats {
   performancePercent: number;
 }
 
+/** Veille d'une date YYYY-MM-DD. */
+function previousDay(date: string): string {
+  const d = new Date(`${date}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() - 1);
+  return d.toISOString().slice(0, 10);
+}
+
 /** Date de référence de début d'année : le 31/12 de l'année précédente. */
 export function getYearStartReferenceDate(year: number): string {
   return `${year - 1}-12-31`;
@@ -117,15 +124,34 @@ export function calculatePortfolioYearToDateStats({
   const includedAccountIds = new Set(accountIds);
   const accountTransactions = transactions.filter((t) => includedAccountIds.has(t.account_id));
 
-  // Deux points suffisent au Modified Dietz : valeur au 31/12 et valeur du jour.
+  // Compte vide au 31/12 (ouvert ou réalimenté en cours d'année) : la période
+  // mesurée démarre à sa première opération de l'année, pas au 1er janvier.
+  // Sinon le versement de départ, pondéré par le temps restant dans l'année,
+  // ne compte presque pas dans le capital moyen et le pourcentage s'envole
+  // (un gain de 1 % en décembre s'affichait comme +12 % sur l'année).
+  let periodStart = yearStart;
+  let referenceDate = getYearStartReferenceDate(year);
+  if (Math.abs(startValue) < 0.005) {
+    let firstDate: string | null = null;
+    for (const tx of accountTransactions) {
+      if (tx.date < yearStart || tx.date > today) continue;
+      if (firstDate === null || tx.date < firstDate) firstDate = tx.date;
+    }
+    if (firstDate !== null) {
+      periodStart = firstDate;
+      referenceDate = previousDay(firstDate);
+    }
+  }
+
+  // Deux points suffisent au Modified Dietz : valeur de départ et valeur du jour.
   const history: PortfolioHistoryPoint[] = [
-    { date: getYearStartReferenceDate(year), totalValue: startValue, stocksValue: 0, savingsValue: 0, positions: [] },
+    { date: referenceDate, totalValue: startValue, stocksValue: 0, savingsValue: 0, positions: [] },
     { date: today, totalValue: currentValue, stocksValue: 0, savingsValue: 0, positions: [] },
   ];
   const dietz = calculateModifiedDietzPerformance(
     history,
     accountTransactions,
-    yearStart,
+    periodStart,
     today,
     'totalValue',
     fxRates

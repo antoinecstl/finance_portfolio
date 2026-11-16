@@ -107,6 +107,9 @@ export const updateAccountSchema = z.object({
   name: z.string().trim().min(1, 'Nom requis').max(100, 'Nom trop long'),
   type: accountTypeSchema,
   supports_positions: z.boolean().nullable().optional(),
+  // Date d'ouverture réelle du compte (antériorité fiscale d'un PEA). Omise :
+  // inchangée ; null : effacée.
+  opened_on: isoDateSchema.nullable().optional(),
 });
 export type UpdateAccountInput = z.infer<typeof updateAccountSchema>;
 
