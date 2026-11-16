@@ -4,6 +4,7 @@ Statut : brouillon à relire et à publier par toi. Le brief de lancement classa
 
 ## Avant de publier
 
+- **Réécris l'accroche avec ta vraie expérience.** Le texte parle à la première personne (« mon courtier affiche un PRU hors frais ») : ne le publie que si c'est exact pour toi, sinon remplace-le par ce qui t'a réellement amené à faire l'outil.
 - **Relis les règles du sous-forum sur l'auto-promotion** (barre latérale et message épinglé). Beaucoup de communautés finance exigent une participation préalable ou l'accord des modérateurs : demande-le par message aux modérateurs plutôt que de risquer la suppression.
 - **Publie avec ton compte personnel**, pas un compte créé pour l'occasion, et réponds aux commentaires dans les heures qui suivent.
 - **Ne mets pas de code promo dans le post** : il transforme un retour d'expérience en publicité.
